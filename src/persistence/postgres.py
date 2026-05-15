@@ -39,10 +39,13 @@ class Database:
 
     async def connect(self) -> None:
         """Initialize the connection pool."""
+        # asyncpg uses 'postgresql://' not 'postgresql+asyncpg://'
+        dsn = self._dsn.replace("postgresql+asyncpg://", "postgresql://")
         self._pool = await asyncpg.create_pool(
-            dsn=self._dsn,
+            dsn=dsn,
             min_size=self._min_size,
             max_size=self._max_size,
+            ssl=False,  # local Docker — no SSL needed
         )
         logger.info(
             "PostgreSQL pool ready min=%d max=%d",

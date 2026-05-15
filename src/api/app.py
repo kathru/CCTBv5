@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -21,7 +22,33 @@ def create_app() -> FastAPI:
     async def lifespan(app: FastAPI):
         await db.connect()
         await cache.connect()
+
+        # Start trading loop in background (non-blocking)
+        trading_task = None
+        if settings.app_env != "test":
+            try:
+                from ..core.trading_loop import TradingLoop
+                loop = TradingLoop(db=db, cache=cache, app_state=app.state)
+                trading_task = asyncio.create_task(
+                    loop.start(), name="trading_loop"
+                )
+                app.state.trading_loop = loop
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "TradingLoop not started: %s", exc
+                )
+
         yield
+
+        # Shutdown
+        if trading_task and not trading_task.done():
+            trading_task.cancel()
+            try:
+                await trading_task
+            except (asyncio.CancelledError, Exception):
+                pass
+
         await db.disconnect()
         await cache.disconnect()
 
@@ -29,6 +56,7 @@ def create_app() -> FastAPI:
 
     app.state.db = db
     app.state.cache = cache
+    app.state.trading_loop = None
 
     # Routers
     app.include_router(positions.router)
@@ -50,11 +78,13 @@ def create_app() -> FastAPI:
     async def health() -> dict:
         db_ok = db.is_connected
         cache_ok = await cache.ping()
+        loop = app.state.trading_loop
         return {
             "status": "ok" if db_ok and cache_ok else "degraded",
             "version": "5.0.0",
             "postgres": db_ok,
             "redis": cache_ok,
+            "trading_loop": loop is not None,
         }
 
     @app.get("/", response_class=HTMLResponse)

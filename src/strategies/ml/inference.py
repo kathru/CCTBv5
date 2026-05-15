@@ -62,8 +62,9 @@ class PlattCalibrator:
     def _load(self, path: Path) -> None:
         try:
             data = json.loads(path.read_text())
-            self._A = float(data.get("A", self.DEFAULT_A))
-            self._B = float(data.get("B", self.DEFAULT_B))
+            # Support both V4 format (platt_a/platt_b) and generic (A/B)
+            self._A = float(data.get("platt_a", data.get("A", self.DEFAULT_A)))
+            self._B = float(data.get("platt_b", data.get("B", self.DEFAULT_B)))
             self._loaded = True
             logger.info("PlattCalibrator loaded A=%.4f B=%.4f from %s", self._A, self._B, path)
         except Exception as exc:

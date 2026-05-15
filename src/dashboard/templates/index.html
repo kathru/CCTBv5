@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CCTBv5 Dashboard</title>
+  <title id="page-title">CCTBv5 Dashboard</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', monospace; background: #0d1117; color: #e6edf3; min-height: 100vh; }
@@ -17,6 +17,12 @@
       justify-content: space-between;
     }
     header h1 { font-size: 1.1rem; color: #58a6ff; letter-spacing: 1px; }
+    #title-desktop { display: inline; }
+    #title-mobile  { display: none; }
+    @media (max-width: 600px) {
+      #title-desktop { display: none; }
+      #title-mobile  { display: inline; }
+    }
     #status-badge {
       font-size: 0.75rem;
       padding: 3px 10px;
@@ -86,7 +92,7 @@
 <body>
 
 <header>
-  <h1>⚡ CCTBv5</h1>
+  <h1>⚡ <span id="title-desktop">Claude Code Trading Bot v…</span><span id="title-mobile">CCTB v.…</span></h1>
   <div style="display:flex;align-items:center;gap:16px;">
     <span id="last-update" style="font-size:0.75rem;color:#484f58;"></span>
     <span id="status-badge" class="status-unknown">–</span>
@@ -302,6 +308,15 @@
       'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
   }
 
+  async function loadVersion() {
+    const data = await fetchJSON('/version');
+    if (!data) return;
+    document.getElementById('title-desktop').textContent = data.title_desktop;
+    document.getElementById('title-mobile').textContent  = data.title_mobile;
+    document.getElementById('page-title').textContent    = data.title_desktop;
+  }
+
+  loadVersion();
   refresh();
   setInterval(refresh, REFRESH_MS);
 </script>

@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..core.config import settings
+from ..core.version import get_version, get_version_info
 from ..persistence import Cache, Database
 from .routers import metrics, orders, positions, watchdog
 
@@ -81,11 +82,15 @@ def create_app() -> FastAPI:
         loop = app.state.trading_loop
         return {
             "status": "ok" if db_ok and cache_ok else "degraded",
-            "version": "5.0.0",
+            "version": get_version(),
             "postgres": db_ok,
             "redis": cache_ok,
             "trading_loop": loop is not None,
         }
+
+    @app.get("/version")
+    async def version() -> dict:
+        return get_version_info()
 
     @app.get("/", response_class=HTMLResponse)
     async def dashboard():

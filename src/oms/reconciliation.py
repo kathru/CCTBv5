@@ -113,12 +113,6 @@ class Reconciler:
     def _check_divergence(self, order: Order, remote: dict) -> bool:
         """Return True if local state differs from exchange state."""
         remote_status = remote.get("status", "")
-        local_terminal = order.status in {
-            OrderStatus.FILLED,
-            OrderStatus.CANCELLED,
-            OrderStatus.REJECTED,
-            OrderStatus.EXPIRED,
-        }
 
         # Exchange says filled but we think it's still open
         if remote_status == "filled" and order.status != OrderStatus.FILLED:

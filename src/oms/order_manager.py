@@ -13,10 +13,6 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
-
-def _now() -> datetime:
-    return datetime.now(UTC)
-
 from ..core.bus import EventBus
 from ..core.events import (
     OrderCancelledEvent,
@@ -43,6 +39,10 @@ logger = logging.getLogger(__name__)
 
 # Orders older than this with no fill are expired
 ORDER_TIMEOUT = timedelta(minutes=15)
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
 
 
 class ExecutionRouterProtocol(Protocol):

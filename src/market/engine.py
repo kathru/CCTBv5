@@ -47,6 +47,7 @@ class MarketEngine:
         self._symbols = symbols
         self._granularities = granularities or ["1H", "6H"]
         self._poll_interval = poll_interval
+        self._on_poll_callback = None   # called after each successful poll
         self._running = False
         self._task: asyncio.Task | None = None
 
@@ -78,10 +79,16 @@ class MarketEngine:
                 pass
         logger.info("MarketEngine stopped")
 
+    def set_on_poll_callback(self, callback) -> None:
+        """Register callback called after each successful poll (e.g. ws_watchdog.record_message)."""
+        self._on_poll_callback = callback
+
     async def _loop(self) -> None:
         while self._running:
             try:
                 await self._poll_cycle()
+                if self._on_poll_callback:
+                    self._on_poll_callback()
             except asyncio.CancelledError:
                 break
             except Exception as exc:

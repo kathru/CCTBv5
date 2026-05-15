@@ -143,7 +143,7 @@ class TradingLoop:
         )
         self._ws_watchdog = WebSocketWatchdog(
             on_dead=self._on_ws_dead,
-            dead_threshold=30,
+            dead_threshold=120,   # REST polling — threshold maior até WS real
             name="okx_market",
         )
         self._resource_watchdog = ResourceWatchdog(
@@ -160,6 +160,9 @@ class TradingLoop:
             kill_switch=self._kill_switch,
             interval_seconds=120,
         )
+
+        # Wire MarketEngine poll → WS watchdog (REST polling acts as WS heartbeat)
+        self._market.set_on_poll_callback(self._ws_watchdog.record_message)
 
     async def start(self) -> bool:
         """

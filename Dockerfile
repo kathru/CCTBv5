@@ -30,11 +30,10 @@ COPY infra/   ./infra/
 COPY main.py  .
 
 # Non-root user for security
-RUN useradd -m -u 1000 cctb && chown -R cctb:cctb /app
+RUN useradd -m -u 1000 cctb && \
+    mkdir -p /app/logs && \
+    chown -R cctb:cctb /app
 USER cctb
-
-# Create logs directory
-RUN mkdir -p logs
 
 EXPOSE 8001
 

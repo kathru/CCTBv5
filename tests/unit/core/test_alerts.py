@@ -1,5 +1,3 @@
-from unittest.mock import AsyncMock, patch
-
 import pytest
 
 from src.alerts.base import Alert, AlertLevel, CompositeAlertChannel, NullAlertChannel

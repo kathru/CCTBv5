@@ -1,8 +1,14 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 
 from ..core.config import settings
 from ..persistence import Database, Cache
+from .routers import positions, orders, metrics
+
+DASHBOARD_DIR = Path(__file__).parent.parent / "dashboard"
 
 
 def create_app() -> FastAPI:
@@ -12,19 +18,26 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        # Startup
         await db.connect()
         await cache.connect()
         yield
-        # Shutdown
         await db.disconnect()
         await cache.disconnect()
 
     app = FastAPI(title="CCTBv5", version="5.0.0", lifespan=lifespan)
 
-    # Attach to app state for use in routes
     app.state.db = db
     app.state.cache = cache
+
+    # Routers
+    app.include_router(positions.router)
+    app.include_router(orders.router)
+    app.include_router(metrics.router)
+
+    # Static files
+    static_dir = DASHBOARD_DIR / "static"
+    static_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
     @app.get("/health")
     async def health() -> dict:
@@ -36,5 +49,12 @@ def create_app() -> FastAPI:
             "postgres": db_ok,
             "redis": cache_ok,
         }
+
+    @app.get("/", response_class=HTMLResponse)
+    async def dashboard():
+        html_file = DASHBOARD_DIR / "templates" / "index.html"
+        if html_file.exists():
+            return HTMLResponse(html_file.read_text(encoding="utf-8"))
+        return HTMLResponse("<h1>CCTBv5 Dashboard</h1><p>Template not found.</p>")
 
     return app

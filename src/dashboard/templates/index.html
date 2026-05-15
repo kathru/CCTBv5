@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCTBv5 Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', monospace; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+
+    header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 1.1rem; color: #58a6ff; letter-spacing: 1px; }
+    #status-badge {
+      font-size: 0.75rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: bold;
+    }
+    .status-ok      { background: #1a4731; color: #3fb950; }
+    .status-degraded{ background: #4a2306; color: #f78166; }
+    .status-unknown { background: #2d2d2d; color: #8b949e; }
+
+    main { padding: 20px 24px; display: grid; gap: 20px; max-width: 1400px; margin: 0 auto; }
+
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .card h3 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8b949e;
+      margin-bottom: 10px;
+    }
+    .metric-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #e6edf3;
+    }
+    .metric-sub { font-size: 0.75rem; color: #8b949e; margin-top: 4px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th { text-align: left; padding: 8px 12px; color: #8b949e; font-weight: normal;
+         border-bottom: 1px solid #21262d; font-size: 0.72rem; text-transform: uppercase; }
+    td { padding: 8px 12px; border-bottom: 1px solid #21262d; }
+    tr:hover td { background: #1c2128; }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: bold;
+    }
+    .pill-buy      { background: #1a4731; color: #3fb950; }
+    .pill-sell     { background: #4a2306; color: #f78166; }
+    .pill-submitted{ background: #1b3050; color: #58a6ff; }
+    .pill-filled   { background: #1a4731; color: #3fb950; }
+    .pill-cancelled{ background: #2d2d2d; color: #8b949e; }
+    .pill-open     { background: #1a4731; color: #3fb950; }
+    .pill-closed   { background: #2d2d2d; color: #8b949e; }
+
+    .price-row { display: flex; justify-content: space-between; align-items: center;
+                 padding: 6px 0; border-bottom: 1px solid #21262d; }
+    .price-row:last-child { border-bottom: none; }
+    .price-symbol { font-weight: bold; color: #58a6ff; }
+    .price-value  { font-size: 1.1rem; }
+
+    .last-update { font-size: 0.7rem; color: #484f58; text-align: right; margin-top: 8px; }
+    .empty-state  { color: #484f58; font-size: 0.85rem; padding: 16px 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ CCTBv5</h1>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <span id="last-update" style="font-size:0.75rem;color:#484f58;"></span>
+    <span id="status-badge" class="status-unknown">–</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- Row 1: KPI cards -->
+  <div class="grid-3">
+    <div class="card">
+      <h3>Sistema</h3>
+      <div class="metric-value" id="system-status">–</div>
+      <div class="metric-sub">Estado operacional</div>
+    </div>
+    <div class="card">
+      <h3>Posições abertas</h3>
+      <div class="metric-value" id="open-positions-count">–</div>
+      <div class="metric-sub">Ativos no momento</div>
+    </div>
+    <div class="card">
+      <h3>Ordens abertas</h3>
+      <div class="metric-value" id="open-orders-count">–</div>
+      <div class="metric-sub">Aguardando execução</div>
+    </div>
+  </div>
+
+  <!-- Row 2: Prices + Open Positions -->
+  <div class="grid-2">
+    <div class="card">
+      <h3>Preços (cache)</h3>
+      <div id="prices-container">
+        <div class="empty-state">Carregando...</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Posições abertas</h3>
+      <div id="positions-container">
+        <div class="empty-state">Nenhuma posição aberta</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Open Orders -->
+  <div class="card">
+    <h3>Ordens abertas</h3>
+    <div id="orders-container">
+      <div class="empty-state">Nenhuma ordem aberta</div>
+    </div>
+    <div class="last-update" id="orders-update"></div>
+  </div>
+
+</main>
+
+<script>
+  const API = '';
+  const REFRESH_MS = 10000;
+
+  function pill(text, cls) {
+    return `<span class="pill pill-${cls}">${text}</span>`;
+  }
+
+  function fmt(v) {
+    const n = parseFloat(v);
+    return isNaN(n) ? v : n.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 4});
+  }
+
+  async function fetchJSON(url) {
+    try {
+      const r = await fetch(API + url);
+      if (!r.ok) throw new Error(r.status);
+      return await r.json();
+    } catch(e) {
+      console.error('Fetch error', url, e);
+      return null;
+    }
+  }
+
+  async function updateHealth() {
+    const data = await fetchJSON('/health');
+    if (!data) return;
+    const badge = document.getElementById('status-badge');
+    const ok = data.postgres && data.redis;
+    badge.textContent = ok ? 'OK' : 'DEGRADED';
+    badge.className = 'status-badge ' + (ok ? 'status-ok' : 'status-degraded');
+  }
+
+  async function updateMetrics() {
+    const data = await fetchJSON('/api/metrics/system');
+    if (!data) return;
+    document.getElementById('system-status').textContent = data.system_status || '–';
+  }
+
+  async function updatePrices() {
+    const data = await fetchJSON('/api/metrics/prices');
+    if (!data) return;
+    const container = document.getElementById('prices-container');
+    const entries = Object.entries(data);
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="empty-state">Aguardando dados de mercado...</div>';
+      return;
+    }
+    container.innerHTML = entries.map(([sym, price]) =>
+      `<div class="price-row">
+        <span class="price-symbol">${sym}</span>
+        <span class="price-value">$${fmt(price)}</span>
+      </div>`
+    ).join('');
+  }
+
+  async function updatePositions() {
+    const data = await fetchJSON('/api/positions/open');
+    const count = document.getElementById('open-positions-count');
+    const container = document.getElementById('positions-container');
+    if (!data) { count.textContent = '–'; return; }
+    count.textContent = data.length;
+    if (data.length === 0) {
+      container.innerHTML = '<div class="empty-state">Nenhuma posição aberta</div>';
+      return;
+    }
+    container.innerHTML = `
+      <table>
+        <tr><th>Par</th><th>Lado</th><th>Qtd</th><th>Preço médio</th><th>P&L</th><th>Status</th></tr>
+        ${data.map(p => `
+          <tr>
+            <td>${p.symbol || '–'}</td>
+            <td>${pill(p.side || '–', p.side === 'long' ? 'buy' : 'sell')}</td>
+            <td>${fmt(p.quantity)}</td>
+            <td>${fmt(p.avg_entry_price)}</td>
+            <td style="color:${parseFloat(p.unrealized_pnl) >= 0 ? '#3fb950' : '#f78166'}">
+              ${fmt(p.unrealized_pnl)}
+            </td>
+            <td>${pill(p.status || '–', p.status)}</td>
+          </tr>`).join('')}
+      </table>`;
+  }
+
+  async function updateOrders() {
+    const data = await fetchJSON('/api/orders/open');
+    const count = document.getElementById('open-orders-count');
+    const container = document.getElementById('orders-container');
+    const upd = document.getElementById('orders-update');
+    if (!data) { count.textContent = '–'; return; }
+    count.textContent = data.length;
+    upd.textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
+    if (data.length === 0) {
+      container.innerHTML = '<div class="empty-state">Nenhuma ordem aberta</div>';
+      return;
+    }
+    container.innerHTML = `
+      <table>
+        <tr><th>Par</th><th>Lado</th><th>Status</th><th>Qtd</th><th>Preenchido</th><th>Estratégia</th><th>Criado</th></tr>
+        ${data.map(o => `
+          <tr>
+            <td>${o.symbol}</td>
+            <td>${pill(o.side, o.side)}</td>
+            <td>${pill(o.status, o.status)}</td>
+            <td>${fmt(o.quantity)}</td>
+            <td>${fmt(o.filled_quantity)}</td>
+            <td style="color:#8b949e;font-size:0.75rem">${o.strategy_id}</td>
+            <td style="color:#484f58;font-size:0.75rem">${o.created_at?.slice(0,19) || '–'}</td>
+          </tr>`).join('')}
+      </table>`;
+  }
+
+  async function refresh() {
+    document.getElementById('last-update').textContent =
+      'Atualizando...';
+    await Promise.all([
+      updateHealth(),
+      updateMetrics(),
+      updatePrices(),
+      updatePositions(),
+      updateOrders(),
+    ]);
+    document.getElementById('last-update').textContent =
+      'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
+  }
+
+  refresh();
+  setInterval(refresh, REFRESH_MS);
+</script>
+
+</body>
+</html>

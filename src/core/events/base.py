@@ -4,7 +4,7 @@ Frozen dataclass = immutable + hashable + serializable.
 """
 
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 import uuid
 
@@ -14,7 +14,7 @@ class BaseEvent:
     """Every event is immutable and carries a unique ID and timestamp."""
 
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dict — required for replay and persistence."""

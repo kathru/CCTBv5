@@ -1,4 +1,5 @@
 services:
+
   postgres:
     image: postgres:16-alpine
     container_name: cctb_postgres
@@ -16,6 +17,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -29,6 +31,37 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
+
+  cctb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cctb_app
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      # Override localhost → docker service names
+      DATABASE_URL: postgresql+asyncpg://cctb:cctb_secret@postgres:5432/cctbv5
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs      # persist logs on host
+      - ./data:/app/data      # persist calibration files
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   postgres_data:

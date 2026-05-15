@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint (Ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff
+        run: ruff check src/ tests/
+
+  typecheck:
+    name: Type Check (Pyright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyright
+
+      - name: Run Pyright
+        run: pyright src/
+        continue-on-error: true   # non-blocking for now — strict mode gradual adoption
+
+  test:
+    name: Tests (Pytest)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cctb
+          POSTGRES_PASSWORD: cctb_secret
+          POSTGRES_DB: cctbv5
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create .env for CI
+        run: |
+          cat > .env << 'EOF'
+          APP_ENV=development
+          APP_PORT=8001
+          LOG_LEVEL=INFO
+          DATABASE_URL=postgresql+asyncpg://cctb:cctb_secret@127.0.0.1:5432/cctbv5
+          REDIS_URL=redis://127.0.0.1:6379/0
+          OKX_API_KEY=test
+          OKX_SECRET_KEY=test
+          OKX_PASSPHRASE=test
+          OKX_PAPER_TRADING=true
+          DISCORD_WEBHOOK_URL=
+          FINNHUB_TOKEN=test
+          EODHD_TOKEN=test
+          MAX_TOTAL_EXPOSURE=0.5
+          MAX_DAILY_DRAWDOWN=0.03
+          EOF
+
+      - name: Run tests
+        run: python -m pytest tests/ -q --tb=short --cov=src --cov-report=term-missing
+
+      - name: Upload coverage
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: .coverage
+          retention-days: 7

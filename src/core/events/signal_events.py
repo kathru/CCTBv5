@@ -1,6 +1,7 @@
 from dataclasses import dataclass
-from .base import BaseEvent
+
 from ..models import Signal
+from .base import BaseEvent
 
 
 @dataclass(frozen=True)

@@ -1,4 +1,3 @@
-import pytest
 from src.risk.drawdown import DrawdownEngine
 
 

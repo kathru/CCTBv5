@@ -14,12 +14,13 @@ what was open before it went down.
 
 import logging
 from dataclasses import dataclass
+from datetime import UTC
 
-from ..persistence.postgres import Database
+from ..core.models import Order
 from ..persistence.cache import Cache
+from ..persistence.postgres import Database
 from ..persistence.repositories.orders import OrderRepository
 from ..persistence.repositories.positions import PositionRepository
-from ..core.models import Order, OrderStatus
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ class StateLoader:
         Main boot loader. Call once before starting the trading loop.
         Returns the loaded state for handoff to Reconciler.
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
         logger.info("StateLoader: starting boot sequence")
 
         # Step 1: Load open orders from DB
@@ -77,7 +78,7 @@ class StateLoader:
         logger.info("Step 3/3: Warming Redis cache...")
         await self._warm_cache(open_positions)
 
-        loaded_at = datetime.now(timezone.utc).isoformat()
+        loaded_at = datetime.now(UTC).isoformat()
         state = LoadedState(
             open_orders=open_orders,
             open_positions=open_positions,

@@ -8,11 +8,11 @@ Two layers:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, date, timezone
+from datetime import UTC, date, datetime
 
 
 def _today() -> date:
-    return datetime.now(timezone.utc).date()
+    return datetime.now(UTC).date()
 
 
 @dataclass

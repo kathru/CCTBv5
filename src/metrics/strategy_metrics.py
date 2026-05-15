@@ -14,8 +14,8 @@ Metrics:
   - Calmar Ratio    : annualized return / max drawdown
 """
 
-import math
 import logging
+import math
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)

@@ -18,20 +18,19 @@ If divergences cannot be resolved → trigger SOFT kill switch.
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from ..core.bus import EventBus
-from ..core.events import Topic, ReconciliationEvent, SystemStatusEvent
+from ..core.events import ReconciliationEvent, SystemStatusEvent, Topic
 from ..core.events.system_events import SystemStatus
 from ..persistence.postgres import Database
-from ..persistence.repositories.orders import OrderRepository
 from .reconciler import BootReconciler, ExchangeStateProtocol
 
 logger = logging.getLogger(__name__)
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class PeriodicReconciler:

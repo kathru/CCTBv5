@@ -1,7 +1,7 @@
 import pytest
-from src.metrics.strategy_metrics import compute_metrics, StrategyMetrics
-from src.metrics.infra_metrics import InfraMetrics
 
+from src.metrics.infra_metrics import InfraMetrics
+from src.metrics.strategy_metrics import StrategyMetrics, compute_metrics
 
 # ── Strategy Metrics ──────────────────────────────────────────
 

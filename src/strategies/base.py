@@ -17,7 +17,7 @@ This makes strategies:
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from ..core.models import Signal, Candle, Ticker
+from ..core.models import Candle, Signal, Ticker
 
 
 @dataclass

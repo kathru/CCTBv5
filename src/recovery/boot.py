@@ -18,12 +18,12 @@ import logging
 from pathlib import Path
 
 from ..core.bus import EventBus
-from ..core.events import Topic, SystemStatusEvent
+from ..core.events import SystemStatusEvent, Topic
 from ..core.events.system_events import SystemStatus
-from ..persistence.postgres import Database
 from ..persistence.cache import Cache
-from .state_loader import StateLoader
+from ..persistence.postgres import Database
 from .reconciler import BootReconciler, ExchangeStateProtocol
+from .state_loader import StateLoader
 
 logger = logging.getLogger(__name__)
 

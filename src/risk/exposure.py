@@ -5,7 +5,8 @@ MAX_TOTAL_EXPOSURE = 0.5 means at most 50% of portfolio can be deployed
 at any given time. Prevents over-allocation in correlated markets.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+
 from ..core.models import Position, PositionStatus
 
 

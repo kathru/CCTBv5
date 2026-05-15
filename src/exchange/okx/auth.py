@@ -11,12 +11,12 @@ OKX requires:
 import base64
 import hashlib
 import hmac
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def _utc_now() -> str:
     """Return current UTC time in OKX format: 2024-01-01T00:00:00.000Z"""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
 def sign(

@@ -1,8 +1,10 @@
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
+
+from src.core.models import Candle, SignalDirection
 from src.strategies.base import BaseStrategy, StrategyContext
 from src.strategies.momentum.v4_strategy import V4MomentumStrategy
-from src.core.models import Candle, SignalDirection
 
 
 def make_candles(n: int = 30, trend: str = "up") -> list[Candle]:
@@ -17,7 +19,7 @@ def make_candles(n: int = 30, trend: str = "up") -> list[Candle]:
         candles.append(Candle(
             symbol="BTC-USDT",
             granularity="1H",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             open=close - 50,
             high=close + 100,
             low=close - 100,

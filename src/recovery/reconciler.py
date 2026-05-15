@@ -19,11 +19,11 @@ After reconciliation:
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Protocol
 
 from ..core.bus import EventBus
-from ..core.events import Topic, SystemStatusEvent, ReconciliationEvent
+from ..core.events import ReconciliationEvent, SystemStatusEvent, Topic
 from ..core.events.system_events import SystemStatus
 from ..core.models import Order, OrderStatus
 from ..persistence.postgres import Database

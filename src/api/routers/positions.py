@@ -1,5 +1,6 @@
 """Positions endpoints — read-only."""
 from fastapi import APIRouter, Request
+
 from src.persistence.repositories.positions import PositionRepository
 
 router = APIRouter(prefix="/api/positions", tags=["positions"])

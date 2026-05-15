@@ -1,6 +1,6 @@
-import asyncio
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.core.bus import EventBus
 from src.recovery.periodic_reconciler import PeriodicReconciler

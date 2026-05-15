@@ -31,7 +31,6 @@ from pathlib import Path
 
 import structlog
 
-
 LOG_DIR = Path("logs")
 LOG_FILE = LOG_DIR / "cctbv5.log"
 MAX_BYTES = 10 * 1024 * 1024   # 10 MB per file

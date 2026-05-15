@@ -1,4 +1,4 @@
-from .base import AlertChannel, Alert, AlertLevel, NullAlertChannel, CompositeAlertChannel
+from .base import Alert, AlertChannel, AlertLevel, CompositeAlertChannel, NullAlertChannel
 from .discord import DiscordAlertChannel, create_alert_channel
 from .listener import AlertListener
 

@@ -1,9 +1,9 @@
 from .candle import Candle
-from .ticker import Ticker
-from .signal import Signal, SignalDirection, SignalStrength
-from .order import Order, OrderSide, OrderType, OrderStatus, OrderMode
 from .fill import Fill
+from .order import Order, OrderMode, OrderSide, OrderStatus, OrderType
 from .position import Position, PositionSide, PositionStatus
+from .signal import Signal, SignalDirection, SignalStrength
+from .ticker import Ticker
 
 __all__ = [
     "Candle",

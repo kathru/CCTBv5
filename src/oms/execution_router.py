@@ -11,7 +11,7 @@ The OMS only calls router.submit() and router.cancel().
 import logging
 from typing import Protocol
 
-from ..core.models import Order, OrderType, OrderMode
+from ..core.models import Order, OrderMode, OrderType
 
 logger = logging.getLogger(__name__)
 

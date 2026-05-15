@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
+
 from .base import BaseEvent
 
 

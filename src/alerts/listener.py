@@ -16,8 +16,11 @@ import logging
 
 from ..core.bus import EventBus
 from ..core.events import (
-    Topic, KillSwitchEvent, RiskEvaluatedEvent,
-    ReconciliationEvent, SystemStatusEvent,
+    KillSwitchEvent,
+    ReconciliationEvent,
+    RiskEvaluatedEvent,
+    SystemStatusEvent,
+    Topic,
 )
 from ..core.events.risk_events import RiskAction
 from ..core.events.system_events import SystemStatus
@@ -83,7 +86,7 @@ class AlertListener:
                             drawdown=f"{event.drawdown_pct:.2%}",
                         )
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             except asyncio.CancelledError:
                 break
@@ -118,7 +121,7 @@ class AlertListener:
                             status=event.status,
                         )
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             except asyncio.CancelledError:
                 break

@@ -1,12 +1,11 @@
-import asyncio
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime, timezone
 
-from src.watchdog.websocket_watchdog import WebSocketWatchdog
-from src.watchdog.heartbeat import HeartbeatWatchdog
+import pytest
+
 from src.core.bus import EventBus
-
+from src.watchdog.heartbeat import HeartbeatWatchdog
+from src.watchdog.websocket_watchdog import WebSocketWatchdog
 
 # ── WebSocket Watchdog ────────────────────────────────────────
 
@@ -25,7 +24,7 @@ async def test_ws_watchdog_calls_callback_when_dead():
     wd = WebSocketWatchdog(on_dead=callback, dead_threshold=30)
     # Manually set last_message to old time
     from datetime import timedelta
-    wd._last_message = datetime.now(timezone.utc) - timedelta(seconds=60)
+    wd._last_message = datetime.now(UTC) - timedelta(seconds=60)
     await wd._check()
     callback.assert_called_once()
 
@@ -76,7 +75,7 @@ async def test_heartbeat_triggers_kill_switch_on_hang():
     wd = HeartbeatWatchdog(bus=bus, timeout_seconds=30, kill_switch=kill_switch)
 
     from datetime import timedelta
-    wd._last_beat = datetime.now(timezone.utc) - timedelta(seconds=60)
+    wd._last_beat = datetime.now(UTC) - timedelta(seconds=60)
     await wd._check()
 
     kill_switch.trigger_soft.assert_called_once()

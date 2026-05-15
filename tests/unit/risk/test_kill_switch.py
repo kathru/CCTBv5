@@ -1,4 +1,3 @@
-import pytest
 from src.risk.kill_switch import KillSwitch, KillSwitchState
 
 

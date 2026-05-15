@@ -18,13 +18,13 @@ import logging
 from dataclasses import dataclass
 
 from ..core.bus import EventBus
-from ..core.events import Topic, RiskEvaluatedEvent, RiskAction, KillSwitchEvent
+from ..core.events import KillSwitchEvent, RiskAction, RiskEvaluatedEvent, Topic
 from ..core.events.risk_events import KillSwitchMode
 from ..core.models import Position
-from .exposure import ExposureEngine
-from .drawdown import DrawdownEngine
 from .cooldown import CooldownEngine
-from .kill_switch import KillSwitch, KillSwitchState
+from .drawdown import DrawdownEngine
+from .exposure import ExposureEngine
+from .kill_switch import KillSwitch
 
 logger = logging.getLogger(__name__)
 

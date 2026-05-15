@@ -1,7 +1,7 @@
 """Position repository — PostgreSQL CRUD."""
 
+from ...core.models import Position
 from ..postgres import Database
-from ...core.models import Position, PositionSide, PositionStatus
 
 
 class PositionRepository:

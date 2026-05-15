@@ -10,8 +10,8 @@ via a callback. This keeps it decoupled from the exchange adapter.
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ CHECK_INTERVAL_SECONDS = 5
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class WebSocketWatchdog:

@@ -1,7 +1,7 @@
 """Fill repository — PostgreSQL CRUD."""
 
-from ..postgres import Database
 from ...core.models import Fill, OrderSide
+from ..postgres import Database
 
 
 class FillRepository:

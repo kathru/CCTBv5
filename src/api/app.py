@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
+
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from ..core.config import settings
-from ..persistence import Database, Cache
-from .routers import positions, orders, metrics, watchdog
+from ..persistence import Cache, Database
+from .routers import metrics, orders, positions, watchdog
 
 DASHBOARD_DIR = Path(__file__).parent.parent / "dashboard"
 

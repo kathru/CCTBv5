@@ -1,8 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, patch
-from src.alerts.base import Alert, AlertLevel, NullAlertChannel, CompositeAlertChannel
-from src.alerts.discord import DiscordAlertChannel, create_alert_channel
 
+import pytest
+
+from src.alerts.base import Alert, AlertLevel, CompositeAlertChannel, NullAlertChannel
+from src.alerts.discord import DiscordAlertChannel, create_alert_channel
 
 # ── Base / Null ───────────────────────────────────────────────
 

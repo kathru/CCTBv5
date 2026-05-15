@@ -9,12 +9,12 @@ Cooldown is per-strategy, not global — one bad strategy
 shouldn't freeze the entire system.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass

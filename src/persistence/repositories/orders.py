@@ -1,8 +1,7 @@
 """Order repository — PostgreSQL CRUD."""
 
-from datetime import datetime
+from ...core.models import Order, OrderMode, OrderSide, OrderStatus, OrderType
 from ..postgres import Database
-from ...core.models import Order, OrderSide, OrderType, OrderStatus, OrderMode
 
 
 class OrderRepository:

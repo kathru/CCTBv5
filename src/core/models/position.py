@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import StrEnum
 
 
@@ -39,7 +39,7 @@ class Position:
 
     # Lifecycle
     status: PositionStatus = PositionStatus.OPEN
-    opened_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    opened_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     closed_at: datetime | None = None
 
     # Audit

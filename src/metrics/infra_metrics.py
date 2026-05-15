@@ -11,14 +11,14 @@ Metrics:
 
 import logging
 from collections import deque
-from datetime import datetime, timezone
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass

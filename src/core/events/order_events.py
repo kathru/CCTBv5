@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+
+from ..models import Fill, Order
 from .base import BaseEvent
-from ..models import Order, Fill
 
 
 @dataclass(frozen=True)

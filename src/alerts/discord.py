@@ -13,14 +13,13 @@ Rate limiting: Discord allows ~30 messages/minute per webhook.
 We add a small delay between sends to stay safe.
 """
 
-import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
-from .base import AlertChannel, Alert, AlertLevel, NullAlertChannel
+from .base import Alert, AlertChannel, AlertLevel, NullAlertChannel
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +98,7 @@ class DiscordAlertChannel(AlertChannel):
         """Build Discord webhook payload with embed."""
         emoji = LEVEL_EMOJI.get(alert.level, "")
         color = LEVEL_COLORS.get(alert.level, 0x95A5A6)
-        ts = (alert.timestamp or datetime.now(timezone.utc)).isoformat()
+        ts = (alert.timestamp or datetime.now(UTC)).isoformat()
 
         embed: dict = {
             "title": f"{emoji} {alert.title}",

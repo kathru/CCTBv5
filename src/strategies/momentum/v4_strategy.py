@@ -14,10 +14,10 @@ Migration note:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from ..base import BaseStrategy, StrategyContext
 from ...core.models import Signal, SignalDirection
+from ..base import BaseStrategy, StrategyContext
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class V4MomentumStrategy(BaseStrategy):
             strategy_id=self._strategy_id,
             symbol=ctx.symbol,
             direction=direction,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             score=score,
             calibrated_score=calibrated,
             confidence=calibrated,

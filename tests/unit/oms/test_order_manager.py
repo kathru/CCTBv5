@@ -1,12 +1,11 @@
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
+
 import pytest
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock
 
 from src.core.bus import EventBus
-from src.core.events import Topic, SignalEvent
-from src.core.models import (
-    Signal, SignalDirection, Order, OrderStatus, Fill, OrderSide
-)
+from src.core.events import SignalEvent
+from src.core.models import Fill, OrderSide, OrderStatus, Signal, SignalDirection
 from src.oms.order_manager import OrderManager
 
 
@@ -15,7 +14,7 @@ def make_signal() -> Signal:
         strategy_id="test_strategy",
         symbol="BTC-USDT",
         direction=SignalDirection.LONG,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         score=0.75,
         calibrated_score=0.72,
         confidence=0.8,
@@ -82,7 +81,7 @@ async def test_fill_transitions_to_filled(oms):
         price=60000.0,
         fee=0.006,
         fee_currency="USDT",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         is_maker=True,
     )
     await oms.on_fill(fill)

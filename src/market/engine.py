@@ -15,10 +15,10 @@ Design:
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from ..core.bus import EventBus
-from ..core.events import Topic, CandleEvent, TickerEvent
+from ..core.events import CandleEvent, TickerEvent, Topic
 from ..core.models import Candle, Ticker
 from ..exchange.okx.client import OKXClient
 from ..persistence.cache import Cache
@@ -91,7 +91,7 @@ class MarketEngine:
 
     async def _poll_cycle(self) -> None:
         self._poll_count += 1
-        self._last_poll = datetime.now(timezone.utc)
+        self._last_poll = datetime.now(UTC)
 
         async with self._okx as client:
             for symbol in self._symbols:

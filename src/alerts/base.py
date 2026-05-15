@@ -15,8 +15,8 @@ Alert levels:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import StrEnum
-from datetime import datetime, timezone
 
 
 class AlertLevel(StrEnum):
@@ -36,7 +36,7 @@ class Alert:
 
     def __post_init__(self):
         if self.timestamp is None:
-            self.timestamp = datetime.now(timezone.utc)
+            self.timestamp = datetime.now(UTC)
 
 
 class AlertChannel(ABC):

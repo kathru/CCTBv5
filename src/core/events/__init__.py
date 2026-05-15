@@ -1,14 +1,18 @@
-from .topics import Topic
 from .base import BaseEvent
 from .market_events import CandleEvent, TickerEvent
-from .signal_events import SignalEvent
 from .order_events import (
-    OrderCreatedEvent, OrderSubmittedEvent, OrderFilledEvent,
-    OrderPartialEvent, OrderCancelledEvent, OrderRejectedEvent,
+    OrderCancelledEvent,
+    OrderCreatedEvent,
     OrderExpiredEvent,
+    OrderFilledEvent,
+    OrderPartialEvent,
+    OrderRejectedEvent,
+    OrderSubmittedEvent,
 )
-from .risk_events import RiskEvaluatedEvent, KillSwitchEvent, RiskAction, KillSwitchMode
-from .system_events import HeartbeatEvent, SystemStatusEvent, ReconciliationEvent, SystemStatus
+from .risk_events import KillSwitchEvent, KillSwitchMode, RiskAction, RiskEvaluatedEvent
+from .signal_events import SignalEvent
+from .system_events import HeartbeatEvent, ReconciliationEvent, SystemStatus, SystemStatusEvent
+from .topics import Topic
 
 __all__ = [
     "Topic", "BaseEvent",

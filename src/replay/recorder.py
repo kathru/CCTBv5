@@ -19,7 +19,7 @@ Usage:
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ..core.bus import EventBus
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 def _default_path() -> Path:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     return Path("logs") / f"session_{ts}.jsonl"
 
 
@@ -99,7 +99,7 @@ class EventRecorder:
             try:
                 event = await asyncio.wait_for(queue.get(), timeout=1.0)
                 self._write(topic, event)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             except asyncio.CancelledError:
                 break

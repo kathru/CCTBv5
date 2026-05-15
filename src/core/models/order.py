@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
-from dataclasses import dataclass, field
-from enum import StrEnum
 import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
 
 
 class OrderSide(StrEnum):
@@ -67,7 +67,7 @@ class Order:
     fees_paid: float = 0.0
 
     # Timestamps
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     submitted_at: datetime | None = None
     filled_at: datetime | None = None
     cancelled_at: datetime | None = None

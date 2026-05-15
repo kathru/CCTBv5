@@ -1,5 +1,5 @@
-import pytest
-from datetime import timezone
+from datetime import UTC
+
 from src.exchange.okx.normalizer import candle_from_okx, ticker_from_okx
 
 
@@ -15,7 +15,7 @@ def test_candle_from_okx_confirmed():
     assert candle.close == 42500.0
     assert candle.volume == 100.5
     assert candle.confirmed is True
-    assert candle.timestamp.tzinfo == timezone.utc
+    assert candle.timestamp.tzinfo == UTC
 
 
 def test_candle_from_okx_forming():

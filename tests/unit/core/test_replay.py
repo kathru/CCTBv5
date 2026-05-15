@@ -1,14 +1,14 @@
 import asyncio
 import json
+from datetime import UTC, datetime
+
 import pytest
-from pathlib import Path
-from datetime import datetime, timezone
 
 from src.core.bus import EventBus
-from src.core.events import Topic, CandleEvent, SignalEvent
+from src.core.events import CandleEvent, Topic
 from src.core.models import Candle
-from src.replay.recorder import EventRecorder
 from src.replay.event_player import EventPlayer, ReplaySpeed
+from src.replay.recorder import EventRecorder
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ async def test_recorder_creates_file(bus, tmp_session):
     candle = Candle(
         symbol="BTC-USDT",
         granularity="1H",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         open=42000, high=43000, low=41000, close=42500, volume=100,
     )
     await bus.publish(Topic.MARKET, CandleEvent(candle=candle))

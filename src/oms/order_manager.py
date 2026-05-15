@@ -10,33 +10,32 @@ Responsibilities:
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 from ..core.bus import EventBus
 from ..core.events import (
-    Topic,
+    OrderCancelledEvent,
     OrderCreatedEvent,
-    OrderSubmittedEvent,
+    OrderExpiredEvent,
     OrderFilledEvent,
     OrderPartialEvent,
-    OrderCancelledEvent,
     OrderRejectedEvent,
-    OrderExpiredEvent,
+    OrderSubmittedEvent,
     SignalEvent,
+    Topic,
 )
 from ..core.models import (
-    Order,
     Fill,
-    OrderStatus,
-    OrderSide,
-    OrderType,
+    Order,
     OrderMode,
-    Signal,
+    OrderSide,
+    OrderStatus,
+    OrderType,
     SignalDirection,
 )
 

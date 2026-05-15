@@ -10,11 +10,10 @@ Retries: handled by caller (RetryPolicy).
 
 import json
 import logging
+
 import httpx
-from datetime import datetime, timezone
 
 from ...core.models import Candle, Ticker
-from ...core.config import settings
 from .auth import build_headers
 from .normalizer import candle_from_okx, ticker_from_okx
 

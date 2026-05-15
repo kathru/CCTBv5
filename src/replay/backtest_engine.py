@@ -19,9 +19,9 @@ Never run on Oracle — local only.
 import logging
 import random
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 
-from ..core.models import Candle, Signal, SignalDirection, Fill, OrderSide
+from ..core.models import Candle, Signal, SignalDirection
 from ..strategies.base import BaseStrategy, StrategyContext
 
 logger = logging.getLogger(__name__)

@@ -12,18 +12,17 @@ On hang detected:
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from ..core.bus import EventBus
-from ..core.events import Topic
+from ..core.events import HeartbeatEvent, Topic
 from ..core.events.system_events import SystemStatus
-from ..core.events import HeartbeatEvent
 
 logger = logging.getLogger(__name__)
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class HeartbeatWatchdog:

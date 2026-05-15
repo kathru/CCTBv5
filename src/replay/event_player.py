@@ -21,21 +21,30 @@ This is the key design principle: one codebase, multiple execution modes.
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import AsyncIterator
 
 from ..core.bus import EventBus
 from ..core.events import (
-    Topic,
-    CandleEvent, TickerEvent,
+    CandleEvent,
+    HeartbeatEvent,
+    KillSwitchEvent,
+    OrderCancelledEvent,
+    OrderCreatedEvent,
+    OrderExpiredEvent,
+    OrderFilledEvent,
+    OrderPartialEvent,
+    OrderRejectedEvent,
+    OrderSubmittedEvent,
+    ReconciliationEvent,
+    RiskEvaluatedEvent,
     SignalEvent,
-    OrderCreatedEvent, OrderSubmittedEvent, OrderFilledEvent,
-    OrderPartialEvent, OrderCancelledEvent, OrderRejectedEvent, OrderExpiredEvent,
-    RiskEvaluatedEvent, KillSwitchEvent,
-    HeartbeatEvent, SystemStatusEvent, ReconciliationEvent,
+    SystemStatusEvent,
+    TickerEvent,
+    Topic,
 )
 from ..core.events.base import BaseEvent
 
@@ -113,7 +122,7 @@ class EventPlayer:
             raise FileNotFoundError(f"Session file not found: {self._session_file}")
 
         self._stats = ReplayStats(
-            started_at=datetime.now(timezone.utc)
+            started_at=datetime.now(UTC)
         )
 
         logger.info(
@@ -145,7 +154,7 @@ class EventPlayer:
                 self._stats.errors += 1
                 logger.warning("Failed to publish event: %s", exc)
 
-        self._stats.finished_at = datetime.now(timezone.utc)
+        self._stats.finished_at = datetime.now(UTC)
         logger.info(
             "EventPlayer finished: published=%d skipped=%d errors=%d duration=%.1fs",
             self._stats.published,

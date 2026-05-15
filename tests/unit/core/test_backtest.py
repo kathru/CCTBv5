@@ -1,11 +1,10 @@
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
 
 from src.core.models import Candle
+from src.replay.backtest_engine import BacktestEngine, BacktestResult, SimulatedFillEngine
 from src.strategies.momentum.v4_strategy import V4MomentumStrategy
-from src.replay.backtest_engine import (
-    BacktestEngine, SimulatedFillEngine, BacktestResult
-)
 
 
 def make_candles(n: int = 50, trend: str = "up") -> list[Candle]:
@@ -17,7 +16,7 @@ def make_candles(n: int = 50, trend: str = "up") -> list[Candle]:
         candles.append(Candle(
             symbol="BTC-USDT",
             granularity="1H",
-            timestamp=datetime(2026, 1, 1, i % 24, tzinfo=timezone.utc),
+            timestamp=datetime(2026, 1, 1, i % 24, tzinfo=UTC),
             open=price - 100,
             high=price + 200,
             low=price - 200,
@@ -74,7 +73,7 @@ def test_simulated_fill_engine_partial_fills():
         strategy_id="test",
         symbol="BTC-USDT",
         direction=SignalDirection.LONG,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         score=0.75,
         calibrated_score=0.72,
         confidence=0.8,
@@ -96,8 +95,8 @@ def test_backtest_result_summary_keys():
     result = BacktestResult(
         symbol="BTC-USDT",
         strategy_id="test",
-        start_date=datetime.now(timezone.utc),
-        end_date=datetime.now(timezone.utc),
+        start_date=datetime.now(UTC),
+        end_date=datetime.now(UTC),
         initial_capital=10000.0,
     )
     summary = result.summary()

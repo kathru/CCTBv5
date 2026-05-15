@@ -11,7 +11,8 @@ OKX candle format:
 OKX ticker format: standard REST/WS response dict
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from ...core.models import Candle, Ticker
 
 # OKX granularity string → our internal label
@@ -28,7 +29,7 @@ GRANULARITY_MAP = {
 
 def _ts(ms: str | int) -> datetime:
     """Convert OKX millisecond timestamp to UTC datetime."""
-    return datetime.fromtimestamp(int(ms) / 1000, tz=timezone.utc)
+    return datetime.fromtimestamp(int(ms) / 1000, tz=UTC)
 
 
 def candle_from_okx(

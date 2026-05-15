@@ -1,4 +1,3 @@
-import pytest
 from src.oms.retry_policy import RetryPolicy
 
 

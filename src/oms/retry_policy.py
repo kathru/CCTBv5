@@ -8,8 +8,8 @@ order submissions.
 """
 
 import asyncio
-import random
 import logging
+import random
 
 logger = logging.getLogger(__name__)
 

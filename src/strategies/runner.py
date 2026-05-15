@@ -13,10 +13,9 @@ This is the bridge between Market Engine and OMS.
 
 import asyncio
 import logging
-from datetime import datetime, timezone
 
 from ..core.bus import EventBus
-from ..core.events import Topic, SignalEvent, CandleEvent
+from ..core.events import CandleEvent, SignalEvent, Topic
 from ..core.models import Signal
 from ..market.engine import MarketEngine
 from ..persistence.cache import Cache
@@ -92,7 +91,7 @@ class StrategyRunner:
                     # Only evaluate on confirmed candles
                     if candle.confirmed:
                         await self._evaluate_all(candle.symbol)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             except asyncio.CancelledError:
                 break

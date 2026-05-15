@@ -114,6 +114,14 @@
     </div>
   </div>
 
+  <!-- Row 1b: Watchdogs -->
+  <div class="card">
+    <h3>Watchdogs</h3>
+    <div id="watchdog-container" style="display:flex;gap:24px;flex-wrap:wrap;">
+      <div class="empty-state">Aguardando dados...</div>
+    </div>
+  </div>
+
   <!-- Row 2: Prices + Open Positions -->
   <div class="grid-2">
     <div class="card">
@@ -252,6 +260,33 @@
       </table>`;
   }
 
+  async function updateWatchdogs() {
+    const data = await fetchJSON('/api/watchdog/status');
+    const container = document.getElementById('watchdog-container');
+    if (!data || Object.keys(data).length === 0) {
+      container.innerHTML = '<div class="empty-state">Nenhum watchdog registrado</div>';
+      return;
+    }
+    const labels = { websocket: 'WebSocket', heartbeat: 'Heartbeat', resources: 'Recursos' };
+    container.innerHTML = Object.entries(data).map(([key, s]) => {
+      const alive = s.is_alive !== false;
+      const color = alive ? '#3fb950' : '#f78166';
+      const icon  = alive ? '●' : '✕';
+      const detail = key === 'websocket'
+        ? `${s.seconds_since_last_message ?? '–'}s | reconexões: ${s.reconnect_count ?? 0}`
+        : key === 'heartbeat'
+        ? `beats: ${s.beat_count ?? 0} | hangs: ${s.hang_count ?? 0}`
+        : `CPU: ${s.cpu_pct ?? 0}% | MEM: ${s.mem_pct ?? 0}%`;
+      return `<div style="min-width:160px;">
+        <div style="font-size:0.7rem;color:#8b949e;text-transform:uppercase;margin-bottom:4px">
+          ${labels[key] || key}
+        </div>
+        <div style="color:${color};font-size:1.1rem;font-weight:bold">${icon} ${alive ? 'OK' : 'ALERTA'}</div>
+        <div style="font-size:0.72rem;color:#484f58;margin-top:2px">${detail}</div>
+      </div>`;
+    }).join('');
+  }
+
   async function refresh() {
     document.getElementById('last-update').textContent =
       'Atualizando...';
@@ -261,6 +296,7 @@
       updatePrices(),
       updatePositions(),
       updateOrders(),
+      updateWatchdogs(),
     ]);
     document.getElementById('last-update').textContent =
       'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');

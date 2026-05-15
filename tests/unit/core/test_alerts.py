@@ -79,16 +79,8 @@ async def test_discord_channel_level_filter():
 
 @pytest.mark.asyncio
 async def test_discord_send_success():
-    ch = DiscordAlertChannel(webhook_url="https://discord.com/api/webhooks/test")
     alert = Alert(AlertLevel.INFO, "Test", "Hello")
-
-    with patch("httpx.AsyncClient.post") as mock_post:
-        mock_resp = AsyncMock()
-        mock_resp.status_code = 204
-        mock_post.return_value.__aenter__ = AsyncMock(return_value=mock_resp)
-        mock_post.return_value.__aexit__ = AsyncMock(return_value=False)
-
-        # Use NullAlertChannel for actual test (avoid real HTTP)
-        null_ch = NullAlertChannel()
-        result = await null_ch.send(alert)
-        assert result is True
+    # Use NullAlertChannel to avoid real HTTP calls in tests
+    null_ch = NullAlertChannel()
+    result = await null_ch.send(alert)
+    assert result is True

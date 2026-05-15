@@ -120,7 +120,7 @@ class StrategyRunner:
         """Build the injection context for a strategy."""
         candles_1h = self._market.get_candles(symbol, "1H")
         candles_6h = self._market.get_candles(symbol, "6H")
-        ticker = self._market.get_latest_candle(symbol, "1H")
+        _ = self._market.get_latest_candle(symbol, "1H")  # reserved for ticker
 
         # Get open positions from Redis cache
         pos_data = await self._cache.get_position(symbol)

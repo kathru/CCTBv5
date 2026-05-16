@@ -75,6 +75,7 @@ class SignalAuditLog:
     def __init__(self, maxlen: int = MAX_ENTRIES) -> None:
         self._entries: Deque[SignalAuditEntry] = deque(maxlen=maxlen)
         self._counters: dict[str, int] = {}
+        self._started_at: datetime = datetime.now(UTC)
 
     def record(self, entry: SignalAuditEntry) -> None:
         self._entries.appendleft(entry)   # mais recente primeiro
@@ -86,11 +87,15 @@ class SignalAuditLog:
     def stats(self) -> dict:
         total = sum(self._counters.values())
         signals = self._counters.get("SIGNAL", 0)
+        uptime_min = (datetime.now(UTC) - self._started_at).total_seconds() / 60
         return {
             "total_evaluations": total,
             "signals_generated": signals,
             "signal_rate_pct":   round(100 * signals / total, 1) if total else 0,
+            "uptime_minutes":    round(uptime_min, 1),
+            "evals_per_minute":  round(total / uptime_min, 1) if uptime_min > 0 else 0,
             "by_result":         dict(self._counters),
+            "started_at":        self._started_at.isoformat(),
         }
 
     def symbol_stats(self) -> dict:

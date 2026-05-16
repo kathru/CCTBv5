@@ -835,10 +835,12 @@
 
     // ── Stats globais ──────────────────────────────
     const s = data.stats || {};
-    const total = s.total_evaluations || 0;
-    const rate  = s.signal_rate_pct   || 0;
+    const total   = s.total_evaluations || 0;
+    const rate    = s.signal_rate_pct  || 0;
+    const epm     = s.evals_per_minute || 0;
+    const uptime  = s.uptime_minutes   || 0;
     document.getElementById('signal-stats').textContent =
-      total ? `${total} avaliações · ${rate}% sinais` : '';
+      total ? `${total} aval. · ${rate}% sinais · ${epm}/min · uptime ${uptime.toFixed(0)}min` : '';
 
     const byResult = s.by_result || {};
     for (const key of ['SIGNAL','SCORE_LOW','EV_LOW','REGIME_BLOCKED','DIRECTION_FLAT','NO_CANDLES']) {

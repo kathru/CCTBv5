@@ -79,16 +79,13 @@ if (-not $OracleOnly) {
 if (-not $LocalOnly) {
     Write-Step "Deploying no Oracle Cloud (137.131.220.216:8001)..."
 
-    $remote_cmd = @"
-set -e
-cd ~/CCTBv5
-git pull
-export GIT_MINOR=`$(git tag | wc -l | tr -d ' ')
-export GIT_PATCH=`$(git rev-list --count HEAD | tr -d ' ')
-echo "Versao: 5.`$GIT_MINOR.`$GIT_PATCH"
-sudo -E docker compose up -d --build cctb
-echo "Oracle OK"
-"@
+    # Passa cada linha como argumento separado para evitar CRLF do Windows
+    $remote_cmd = "set -e; cd ~/CCTBv5; git pull; " +
+                  "GIT_MINOR=`$(git tag | wc -l | tr -d ' '); " +
+                  "GIT_PATCH=`$(git rev-list --count HEAD | tr -d ' '); " +
+                  "echo Versao: 5.`$GIT_MINOR.`$GIT_PATCH; " +
+                  "GIT_MINOR=`$GIT_MINOR GIT_PATCH=`$GIT_PATCH sudo -E docker compose up -d --build cctb; " +
+                  "echo Oracle OK"
 
     ssh -i $ORACLE_KEY -o StrictHostKeyChecking=no $ORACLE_HOST $remote_cmd
     if ($LASTEXITCODE -ne 0) { Write-Fail "Deploy Oracle falhou"; exit 1 }
@@ -96,8 +93,8 @@ echo "Oracle OK"
 }
 
 # ── 6. Health check ────────────────────────────────────────────────────────────
-Write-Step "Verificando health..."
-Start-Sleep -Seconds 5
+Write-Step "Verificando health (aguardando containers iniciarem)..."
+Start-Sleep -Seconds 20
 
 if (-not $OracleOnly) {
     try {

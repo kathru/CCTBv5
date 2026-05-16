@@ -151,31 +151,57 @@ def to_candle_objects(raw: list[dict], symbol: str) -> list[Candle]:
 # ── Calibração Platt (mesmo algoritmo do recalibrate.py) ─────────────────────
 
 def score_raw(candles_window: list[dict]) -> float | None:
-    """Computa score bruto V4 para um ponto (último candle da janela)."""
+    """
+    Computa score bruto V4 v2 para um ponto.
+    DEVE ser idêntico ao _score_signal() em v4_strategy.py.
+    """
     if len(candles_window) < 21:
         return None
 
     closes  = [c["close"]  for c in candles_window[:21]]
-    highs   = [c["high"]   for c in candles_window[:5]]
-    volumes = [c["volume"] for c in candles_window[:21]]
+    opens   = [c["open"]   for c in candles_window[:10]]
+    highs   = [c["high"]   for c in candles_window[:10]]
+    lows    = [c["low"]    for c in candles_window[:10]]
+    volumes = [c["volume"] for c in candles_window[:20]]
 
-    # M1 — Momentum
-    momentum = (closes[0] - closes[-1]) / closes[-1] if closes[-1] > 0 else 0
-    m1 = min(max((momentum + 0.05) / 0.10, 0.0), 1.0)
+    # M1 — Adaptive Momentum (25%)
+    atr = sum(highs[i]-lows[i] for i in range(min(10,len(highs))))/min(10,len(highs))
+    norm = max(atr*2, closes[0]*0.005)
+    r5   = (closes[0]-closes[5])/closes[5]   if len(closes)>5  and closes[5]>0  else 0
+    r10  = (closes[0]-closes[10])/closes[10] if len(closes)>10 and closes[10]>0 else 0
+    r20  = (closes[0]-closes[20])/closes[20] if len(closes)>20 and closes[20]>0 else 0
+    mw   = r5*0.5 + r10*0.3 + r20*0.2
+    m1   = min(max((mw/(norm/closes[0]))*0.5+0.5, 0.0), 1.0)
 
-    # M2 — Estrutura
-    m2 = 1.0 if (highs[0] > highs[1] > highs[2]) else 0.4
+    # M2 — Trend Consistency (25%)
+    n = min(5, len(closes)-1)
+    bull = sum(1 for i in range(n) if closes[i]>opens[i])/n if n>0 else 0.5
+    hh = sum(1 for i in range(min(4,len(highs)-1)) if highs[i]>highs[i+1])/4
+    hl = sum(1 for i in range(min(4,len(lows)-1))  if lows[i]>lows[i+1])/4
+    m2 = bull*0.5 + (hh+hl)/2*0.5
 
-    # M3 — Volume
-    avg_v = sum(volumes[:5]) / 5 if volumes else 1.0
-    m3 = min(volumes[0] / avg_v, 2.0) / 2.0 if avg_v > 0 else 0.5
+    # M3 — Volume Confirmation (20%)
+    avg5  = sum(volumes[:5])/5   if len(volumes)>=5  else volumes[0] if volumes else 1
+    avg20 = sum(volumes[:20])/20 if len(volumes)>=20 else avg5
+    vr  = min(volumes[0]/avg5, 3.0)/3.0 if avg5>0 else 0.5
+    vt  = min(max(sum(volumes[:3])/sum(volumes[3:6]), 0.3), 2.0) if len(volumes)>=6 and sum(volumes[3:6])>0 else 1.0
+    cc  = 1.0 if closes[0]>opens[0] and volumes[0]>avg20 else 0.4
+    m3  = vr*0.4 + (vt-0.3)/1.7*0.3 + cc*0.3
 
-    # M4 — Regime (simplificado)
-    sma5 = sum(closes[:5]) / 5
-    sma20 = sum(closes[:20]) / 20
-    m4 = 0.85 if sma5 > sma20 else 0.45
+    # M4 — Regime Strength (20%)
+    sma5  = sum(closes[:5])/5
+    sma20 = sum(closes[:20])/20
+    dist  = (sma5-sma20)/sma20 if sma20>0 else 0
+    m4r   = min(max((dist+0.02)/0.04, 0.0), 1.0)
+    m4f   = 0.85 if sma5>sma20 else 0.45
+    m4    = m4r*0.6 + m4f*0.4
 
-    return m1 * 0.3 + m2 * 0.3 + m3 * 0.2 + m4 * 0.2
+    # M5 — Candle Structure (10%)
+    cs = [(closes[i]-lows[i])/(highs[i]-lows[i]) if highs[i]>lows[i] else 0.5
+          for i in range(min(3, len(closes)))]
+    m5 = sum(cs)/len(cs) if cs else 0.5
+
+    return m1*0.25 + m2*0.25 + m3*0.20 + m4*0.20 + m5*0.10
 
 
 def fit_platt_on_period(candles: list[dict], forward: int = 5,
@@ -288,16 +314,21 @@ async def run_fold_backtest(
     """Cria estratégia com coeficientes do fold e roda backtest."""
 
     class CalibratedStrategy(V4MomentumStrategy):
-        """Strategy com Platt coefficients injetados para este fold."""
+        """Strategy com Platt coefficients injetados para este fold.
+        No WFO, BEAR_TREND NÃO bloqueia — queremos medir performance em todos os regimes.
+        """
         def __init__(self):
             super().__init__(symbols=[symbol])
-            # Override com coeficientes do fold
             from src.strategies.ml.inference import PlattCalibrator
             self._platt = PlattCalibrator.__new__(PlattCalibrator)
             self._platt._A       = platt_a
             self._platt._B       = platt_b
             self._platt._loaded  = True
             self._platt._regime_thresholds = {}
+
+        def _confirm_regime_mtf(self, ctx, regime_1h):
+            # No WFO: sem MTF (candles_6h=[] no backtest) e permite BEAR para medir
+            return regime_1h if regime_1h != 'BEAR_TREND' else 'MEAN_REVERTING_CHOP'
 
     strategy = CalibratedStrategy()
     engine   = BacktestEngine(

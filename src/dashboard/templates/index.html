@@ -714,12 +714,12 @@
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
       <div class="clabel" style="margin:0">Feed de Sinais</div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div class="feed-live"><div class="dot-live"></div>ao vivo</div>
-        <span class="hdr-cycle" id="feed-cycle">ciclo #–</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="hbadge hbadge-gray" id="feed-total-badge">0 sinais</span>
+        <span style="font-size:0.6rem;color:var(--muted)" id="feed-signal-rate"></span>
       </div>
     </div>
-    <div id="signal-feed" style="max-height:340px;overflow-y:auto;">
+    <div id="signal-feed" style="max-height:480px;overflow-y:auto;">
       <div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>
     </div>
   </div>
@@ -890,6 +890,40 @@
       <tbody id="orders-body"><tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr></tbody>
     </table>
   </div>
+</div>
+
+<!-- ══ FEATURE GOVERNANCE ══════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Feature Governance<span class="cnt" id="gov-schema-ver"></span></div>
+<div class="grid g11">
+
+  <!-- Drift Monitor -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="clabel" style="margin:0">Drift Monitor <span style="font-size:0.58rem;color:var(--muted)">(PSI)</span></div>
+      <span class="hbadge hbadge-gray" id="gov-drift-badge">–</span>
+    </div>
+    <div id="gov-drift-list" style="display:flex;flex-direction:column;gap:8px;">
+      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando baseline...</div>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:0.6rem;color:var(--muted)">
+      PSI &lt;0.1 estável · 0.1–0.2 atenção · &gt;0.2 drift significativo
+    </div>
+  </div>
+
+  <!-- Live Feature Stats + Schema -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:12px">Live Feature Stats <span style="font-size:0.58rem;color:var(--muted)">(últimas 500 obs.)</span></div>
+    <div id="gov-live-list" style="display:flex;flex-direction:column;gap:8px;">
+      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando dados ao vivo...</div>
+    </div>
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+      <div class="clabel" style="margin-bottom:8px">Schema de Features</div>
+      <div id="gov-schema-list" style="display:flex;flex-direction:column;gap:5px;">
+        <div class="m" style="font-size:0.72rem">Carregando schema...</div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 </main>
@@ -1100,7 +1134,7 @@ function regimeTag(r){
 // ── Signal feed v2 ─────────────────────────────────────────
 function buildSignalFeed(entries){
   if(!entries||!entries.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>';
-  return entries.slice(0,20).map(e=>{
+  return entries.slice(0,30).map(e=>{
     const t=new Date(e.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     const sym=e.symbol.replace('-USDT','');
     const scorePct=(e.score*100).toFixed(0)+'%';
@@ -1237,8 +1271,114 @@ function wdItem(idS,idD,alive,detail){
   document.getElementById(idD).textContent=detail||'–';
 }
 
+// ── Feature Governance ────────────────────────────────────────
+function psiColor(psi){
+  if(psi==null) return 'var(--muted)';
+  return psi<0.1?'var(--green)':psi<0.2?'var(--yellow)':'var(--red)';
+}
+function psiLabel(psi){
+  if(psi==null) return '–';
+  return psi<0.1?'estável':psi<0.2?'atenção':'drift!';
+}
+
+function renderGovernance(status, drift, live, schema){
+  // Schema version badge
+  const verEl=document.getElementById('gov-schema-ver');
+  if(verEl&&schema) verEl.textContent=`schema v${schema.version||'–'}`;
+
+  // Drift Monitor
+  const driftEl=document.getElementById('gov-drift-list');
+  const driftBadge=document.getElementById('gov-drift-badge');
+  if(drift&&driftEl){
+    const features=drift.features||{};
+    const keys=Object.keys(features);
+    if(!keys.length){
+      driftEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Baseline não configurado — rode feature_analysis.py</div>';
+      if(driftBadge){ driftBadge.textContent='sem baseline'; driftBadge.className='hbadge hbadge-gray'; }
+    } else {
+      const maxPsi=Math.max(...keys.map(k=>features[k].psi||0));
+      if(driftBadge){
+        driftBadge.textContent=maxPsi<0.1?'ESTÁVEL':maxPsi<0.2?'ATENÇÃO':'DRIFT';
+        driftBadge.className='hbadge '+(maxPsi<0.1?'hbadge-green':maxPsi<0.2?'hbadge-yellow':'hbadge-red');
+      }
+      driftEl.innerHTML=keys.map(k=>{
+        const f=features[k];
+        const psi=f.psi!=null?f.psi.toFixed(3):'–';
+        const col=psiColor(f.psi);
+        const lbl=psiLabel(f.psi);
+        const barW=f.psi!=null?Math.min(f.psi/0.3*100,100).toFixed(0):0;
+        return`<div style="display:grid;grid-template-columns:120px 1fr 44px 56px;align-items:center;gap:8px;">
+          <span style="font-size:0.65rem;color:var(--text);font-weight:600">${k}</span>
+          <div style="height:5px;background:#0d1520;border-radius:10px;overflow:hidden;">
+            <div style="height:5px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
+          </div>
+          <span style="font-size:0.63rem;color:${col};font-weight:700;text-align:right">PSI ${psi}</span>
+          <span style="font-size:0.6rem;color:${col};text-align:right">${lbl}</span>
+        </div>`;
+      }).join('');
+    }
+  } else if(driftEl){
+    driftEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando baseline...</div>';
+  }
+
+  // Live Feature Stats
+  const liveEl=document.getElementById('gov-live-list');
+  if(live&&liveEl){
+    const keys=Object.keys(live);
+    if(!keys.length){
+      liveEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Sem dados ao vivo ainda</div>';
+    } else {
+      // Pegar pesos do schema
+      const schemaFeats=schema?.features||{};
+      liveEl.innerHTML=keys.map(k=>{
+        const s=live[k];
+        const w=schemaFeats[k]?((schemaFeats[k].weight||0)*100).toFixed(0)+'%':'–';
+        const mean=s.mean!=null?s.mean.toFixed(3):'–';
+        const std=s.std!=null?s.std.toFixed(3):'–';
+        const p50=s.p50!=null?s.p50.toFixed(3):'–';
+        const n=s.n||0;
+        return`<div style="display:grid;grid-template-columns:120px 1fr auto;align-items:center;gap:8px;padding:3px 0;">
+          <div>
+            <span style="font-size:0.65rem;color:var(--text);font-weight:600">${k}</span>
+            <span style="font-size:0.58rem;color:var(--muted);margin-left:5px">w:${w}</span>
+          </div>
+          <div style="font-size:0.6rem;color:var(--muted)">
+            μ <span style="color:var(--text);font-weight:600">${mean}</span>
+            &nbsp;σ <span style="color:var(--text)">${std}</span>
+            &nbsp;p50 <span style="color:var(--blue)">${p50}</span>
+          </div>
+          <span style="font-size:0.58rem;color:var(--muted)">${n} obs</span>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Schema features list
+  const schemaEl=document.getElementById('gov-schema-list');
+  if(schema&&schemaEl){
+    const feats=schema.features||{};
+    const keys=Object.keys(feats);
+    if(!keys.length){
+      schemaEl.innerHTML='<div class="m" style="font-size:0.72rem">Schema vazio</div>';
+    } else {
+      schemaEl.innerHTML=`<div style="display:grid;grid-template-columns:repeat(${Math.min(keys.length,5)},1fr);gap:5px;">`+
+        keys.map(k=>{
+          const f=feats[k];
+          const w=((f.weight||0)*100).toFixed(0);
+          const lb=f.lookback||0;
+          const safe=f.leakage_safe;
+          return`<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:7px 9px;text-align:center;">
+            <div style="font-size:0.65rem;font-weight:700;color:var(--text);margin-bottom:3px">${k.replace('_',' ')}</div>
+            <div style="font-size:1rem;font-weight:900;color:var(--blue)">${w}%</div>
+            <div style="font-size:0.58rem;color:var(--muted);margin-top:2px">lb:${lb} · ${safe?'<span style="color:var(--green)">safe</span>':'<span style="color:var(--red)">⚠</span>'}</div>
+          </div>`;
+        }).join('')+'</div>';
+    }
+  }
+}
+
 async function updateAll(){
-  const [health,version,system,portfolio,perf,prices,sym,exits,log,wd,pos,oOpen,oRec,calib,quant]=await Promise.all([
+  const [health,version,system,portfolio,perf,prices,sym,exits,log,wd,pos,oOpen,oRec,calib,quant,govStatus,govDrift,govLive,govSchema]=await Promise.all([
     fetchJSON('/health'),fetchJSON('/version'),fetchJSON('/api/metrics/system'),
     fetchJSON('/api/portfolio/summary'),fetchJSON('/api/metrics/performance'),
     fetchJSON('/api/metrics/prices'),fetchJSON('/api/signals/symbols'),
@@ -1246,6 +1386,8 @@ async function updateAll(){
     fetchJSON('/api/watchdog/status'),fetchJSON('/api/positions/open'),
     fetchJSON('/api/orders/open'),fetchJSON('/api/orders/recent?limit=15'),
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
+    fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
+    fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
   ]);
 
   // Header
@@ -1546,15 +1688,22 @@ async function updateAll(){
     }
   }
 
+  // Feature Governance
+  renderGovernance(govStatus, govDrift, govLive, govSchema);
+
   // Donut (portfolio distribution)
   if(portfolio&&portfolio.total_value) updateDonut(portfolio,_c.prices);
 
   // Signal feed v2
   if(log){
     const entries=log.entries||[];
+    const s=log.stats||{};
     document.getElementById('signal-feed').innerHTML=buildSignalFeed(entries);
-    _cycleCount++;
-    document.getElementById('feed-cycle').textContent=`ciclo #${_cycleCount}`;
+    // Contador total de avaliações
+    const totalEval=s.total_evaluations||0;
+    const totalSig=s.signals_generated||0;
+    document.getElementById('feed-total-badge').textContent=`${totalEval.toLocaleString('pt-BR')} aval`;
+    document.getElementById('feed-signal-rate').textContent=totalSig>0?`${totalSig} sinais (${s.signal_rate_pct||0}%)`:'sem sinais';
   }
 
   // Trade history

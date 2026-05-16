@@ -894,6 +894,8 @@
 
 <!-- ══ FEATURE GOVERNANCE ══════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Feature Governance<span class="cnt" id="gov-schema-ver"></span></div>
+
+<!-- Row 1: Drift + Live Stats + Schema -->
 <div class="grid g11">
 
   <!-- Drift Monitor -->
@@ -921,6 +923,37 @@
       <div id="gov-schema-list" style="display:flex;flex-direction:column;gap:5px;">
         <div class="m" style="font-size:0.72rem">Carregando schema...</div>
       </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Row 2: Feature Importance + WFO Results -->
+<div class="grid g11" style="margin-top:12px;">
+
+  <!-- Feature Importance -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="clabel" style="margin:0">Feature Importance <span style="font-size:0.58rem;color:var(--muted)">(permutação)</span></div>
+      <span class="hbadge hbadge-gray" id="imp-computed-at">–</span>
+    </div>
+    <div id="imp-list" style="display:flex;flex-direction:column;gap:10px;">
+      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/feature_analysis.py</div>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);">
+      <span id="imp-meta"></span>
+      <span>verde = alinhado com schema · vermelho = desalinhado</span>
+    </div>
+  </div>
+
+  <!-- WFO Results -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="clabel" style="margin:0">Walk-Forward Optimization</div>
+      <span class="hbadge hbadge-gray" id="wfo-run-at">–</span>
+    </div>
+    <div id="wfo-content">
+      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/walk_forward.py</div>
     </div>
   </div>
 
@@ -1377,8 +1410,135 @@ function renderGovernance(status, drift, live, schema){
   }
 }
 
+// ── Feature Importance ────────────────────────────────────────
+function renderImportance(data){
+  const el=document.getElementById('imp-list');
+  const metaEl=document.getElementById('imp-meta');
+  const atEl=document.getElementById('imp-computed-at');
+  if(!data||!data.available){
+    if(el) el.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/feature_analysis.py</div>';
+    return;
+  }
+  const feats=data.features||{};
+  const keys=Object.keys(feats);
+  if(!keys.length) return;
+
+  // Data badge
+  if(atEl&&data.computed_at){
+    const d=new Date(data.computed_at);
+    atEl.textContent=d.toLocaleDateString('pt-BR');
+    atEl.className='hbadge hbadge-blue';
+  }
+  if(metaEl) metaEl.textContent=`${(data.n_samples||0).toLocaleString('pt-BR')} amostras · Win Rate ${((data.win_rate||0)*100).toFixed(1)}%`;
+
+  // Ordenar por relative_importance desc
+  const sorted=keys.sort((a,b)=>(feats[b].relative_importance||0)-(feats[a].relative_importance||0));
+  const maxImp=Math.max(...sorted.map(k=>Math.max(feats[k].relative_importance||0,0)),0.01);
+
+  el.innerHTML=sorted.map(k=>{
+    const f=feats[k];
+    const relImp=f.relative_importance||0;
+    const schW=f.schema_weight||0;
+    const aligned=f.aligned;
+    const barW=(relImp/maxImp*100).toFixed(0);
+    const schBarW=(schW/maxImp*100).toFixed(0);
+    const corr=f.spearman_corr||0;
+    const corrSign=corr>=0?'+':'';
+    const col=relImp>0.01?'var(--blue)':'var(--muted)';
+    const alignCol=aligned?'var(--green)':'var(--red)';
+    const delta=((relImp-schW)*100).toFixed(0);
+    const deltaSign=delta>=0?'+':'';
+    return`<div style="padding:2px 0;">
+      <div style="display:grid;grid-template-columns:120px 1fr 52px 80px;align-items:center;gap:8px;margin-bottom:3px;">
+        <span style="font-size:0.65rem;color:var(--text);font-weight:600">${k}</span>
+        <div style="position:relative;height:8px;background:#0d1520;border-radius:10px;overflow:visible;">
+          <div style="position:absolute;top:0;left:0;height:8px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
+          <div style="position:absolute;top:-3px;left:${schBarW}%;width:2px;height:14px;background:rgba(255,255,255,0.3);border-radius:2px;" title="Schema weight"></div>
+        </div>
+        <span style="font-size:0.68rem;font-weight:800;color:${col};text-align:right">${(relImp*100).toFixed(0)}%</span>
+        <span style="font-size:0.6rem;color:${alignCol};text-align:right">${deltaSign}${delta}% <span style="opacity:0.6">(sch ${(schW*100).toFixed(0)}%)</span></span>
+      </div>
+      <div style="font-size:0.58rem;color:var(--muted);padding-left:128px;">
+        Spearman ${corrSign}${corr.toFixed(3)} · PermImp ${(f.perm_importance||0).toFixed(4)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── WFO Results ───────────────────────────────────────────────
+function renderWfo(data){
+  const el=document.getElementById('wfo-content');
+  const atEl=document.getElementById('wfo-run-at');
+  if(!data||!data.available){
+    if(el) el.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/walk_forward.py</div>';
+    return;
+  }
+  const syms=data.symbols||{};
+  const symKeys=Object.keys(syms);
+  if(!symKeys.length) return;
+
+  // Badge com data do run mais recente
+  const latestRun=symKeys.map(s=>syms[s].run_at).sort().pop();
+  if(atEl&&latestRun){
+    const d=new Date(latestRun);
+    atEl.textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    atEl.className='hbadge hbadge-blue';
+  }
+
+  el.innerHTML=symKeys.map(sym=>{
+    const r=syms[sym];
+    const s=r.summary||{};
+    const folds=r.folds||[];
+    const validFolds=folds.filter(f=>f.valid);
+    const wr=s.avg_win_rate!=null?(s.avg_win_rate*100).toFixed(1)+'%':'–';
+    const ret=s.avg_oos_return!=null?((s.avg_oos_return>=0?'+':'')+( s.avg_oos_return*100).toFixed(2)+'%'):'–';
+    const pf=s.avg_pf!=null?s.avg_pf.toFixed(2):'–';
+    const stab=s.stability_score!=null?s.stability_score.toFixed(2):'–';
+    const retCls=s.avg_oos_return>0?'g':s.avg_oos_return<0?'r':'m';
+    const pfCls=s.avg_pf>1.2?'g':s.avg_pf>1.0?'y':'r';
+    const stabCls=s.stability_score>0.5?'g':s.stability_score>0.3?'y':'r';
+    const name=sym.replace('-USDT','');
+
+    // Tabela de folds
+    const foldsHtml=folds.slice(-6).map(f=>{
+      const vMark=f.valid?'✓':'✗';
+      const vCol=f.valid?'var(--green)':'var(--red)';
+      const oor=f.oos_return!=null?((f.oos_return>=0?'+':'')+(f.oos_return*100).toFixed(1)+'%'):'–';
+      const oWr=f.oos_win_rate!=null?(f.oos_win_rate*100).toFixed(0)+'%':'–';
+      const rrCls=f.oos_return>0?'g':f.oos_return<0?'r':'m';
+      return`<tr>
+        <td style="color:${vCol};font-weight:700">${f.fold}${vMark}</td>
+        <td class="m" style="font-size:0.6rem">${(f.oos_start||'').slice(0,7)}</td>
+        <td>${f.oos_trades||0}</td>
+        <td>${oWr}</td>
+        <td class="${rrCls}">${oor}</td>
+        <td class="m">${f.oos_pf!=null?f.oos_pf.toFixed(2):'–'}</td>
+      </tr>`;
+    }).join('');
+
+    return`<div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size:0.78rem;font-weight:800;color:var(--text)">${name}</span>
+        <span style="font-size:0.62rem;color:var(--muted)">${validFolds.length}/${folds.length} folds válidos</span>
+        <span class="${retCls}" style="font-size:0.72rem;font-weight:700;margin-left:auto">OOS ${ret}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
+        <div class="calib-item"><div class="calib-val ${retCls}">${ret}</div><div class="calib-label">Retorno OOS</div></div>
+        <div class="calib-item"><div class="calib-val ${pfCls}">${pf}</div><div class="calib-label">Profit Factor</div></div>
+        <div class="calib-item"><div class="calib-val ${stabCls}">${stab}</div><div class="calib-label">Stability</div></div>
+      </div>
+      <div class="table-wrap">
+        <table style="font-size:0.65rem;">
+          <thead><tr><th>Fold</th><th>OOS Start</th><th>Trades</th><th>WR</th><th>Retorno</th><th>PF</th></tr></thead>
+          <tbody>${foldsHtml}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('<hr style="border-color:var(--border);margin:8px 0;">');
+}
+
 async function updateAll(){
-  const [health,version,system,portfolio,perf,prices,sym,exits,log,wd,pos,oOpen,oRec,calib,quant,govStatus,govDrift,govLive,govSchema]=await Promise.all([
+  const [health,version,system,portfolio,perf,prices,sym,exits,log,wd,pos,oOpen,oRec,calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo]=await Promise.all([
     fetchJSON('/health'),fetchJSON('/version'),fetchJSON('/api/metrics/system'),
     fetchJSON('/api/portfolio/summary'),fetchJSON('/api/metrics/performance'),
     fetchJSON('/api/metrics/prices'),fetchJSON('/api/signals/symbols'),
@@ -1388,6 +1548,7 @@ async function updateAll(){
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
+    fetchJSON('/api/governance/importance'),fetchJSON('/api/governance/wfo'),
   ]);
 
   // Header
@@ -1690,6 +1851,8 @@ async function updateAll(){
 
   // Feature Governance
   renderGovernance(govStatus, govDrift, govLive, govSchema);
+  renderImportance(govImp);
+  renderWfo(govWfo);
 
   // Donut (portfolio distribution)
   if(portfolio&&portfolio.total_value) updateDonut(portfolio,_c.prices);

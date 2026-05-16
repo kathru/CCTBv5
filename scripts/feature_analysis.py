@@ -41,8 +41,9 @@ from src.monitoring.feature_governance import (  # noqa: E402
     governance,
 )
 
-CACHE_DIR    = ROOT / "data" / "cache"
-BASELINE_OUT = ROOT / "data" / "models" / "feature_baseline.json"
+CACHE_DIR       = ROOT / "data" / "cache"
+BASELINE_OUT    = ROOT / "data" / "models" / "feature_baseline.json"
+IMPORTANCE_OUT  = ROOT / "data" / "models" / "feature_importance.json"
 
 
 # ── Scoring v2 (espelho de v4_strategy._score_signal) ─────────────────────────
@@ -237,6 +238,28 @@ def main() -> None:
         status   = "OK" if abs(delta) < 0.10 else "DESALINHADO"
         log.info("  %-20s  schema=%.0f%%  medido=%.0f%%  delta=%+.0f%%  [%s]",
                  fname, schema_w*100, rel_imp*100, delta*100, status)
+
+    # Salva feature importance
+    importance_data = {
+        "schema_version": CURRENT_SCHEMA.version,
+        "symbol":         args.symbol,
+        "n_samples":      len(features_list),
+        "win_rate":       round(win_rate, 4),
+        "computed_at":    datetime.now(UTC).isoformat(),
+        "features": {
+            fname: {
+                "spearman_corr":     round(m["spearman_corr"], 4),
+                "perm_importance":   round(m["perm_importance"], 4),
+                "relative_importance": round(m["relative_importance"], 4),
+                "schema_weight":     m["schema_weight"],
+                "aligned":           abs(m["relative_importance"] - m["schema_weight"]) < 0.10,
+            }
+            for fname, m in importance.items()
+        },
+    }
+    IMPORTANCE_OUT.parent.mkdir(parents=True, exist_ok=True)
+    IMPORTANCE_OUT.write_text(json.dumps(importance_data, indent=2))
+    log.info("  Feature importance salvo em: %s", IMPORTANCE_OUT)
 
     log.info("\n" + "=" * 65)
     log.info("  Análise completa.")

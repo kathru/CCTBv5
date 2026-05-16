@@ -527,17 +527,23 @@ def print_report(wfo: WalkForwardResult, symbol: str) -> None:
 
 
 def save_results(wfo: WalkForwardResult, symbol: str, output_path: Path) -> None:
-    """Salva resultados em JSON."""
+    """Salva resultados em JSON (timestamped + latest para o dashboard)."""
     output_path.mkdir(parents=True, exist_ok=True)
-    fname = output_path / f"wfo_{symbol.replace('-','_')}_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.json"
     data = {
         "symbol":    symbol,
         "run_at":    datetime.now(UTC).isoformat(),
         "summary":   wfo.summary(),
         "folds":     wfo.folds,
     }
+    # Arquivo timestamped (histórico)
+    fname = output_path / f"wfo_{symbol.replace('-','_')}_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.json"
     fname.write_text(json.dumps(data, indent=2))
     log.info("Resultados salvos em: %s", fname)
+
+    # Arquivo latest por símbolo (para o dashboard via API)
+    latest = output_path / f"wfo_{symbol.replace('-','_')}_latest.json"
+    latest.write_text(json.dumps(data, indent=2))
+    log.info("Latest atualizado: %s", latest)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

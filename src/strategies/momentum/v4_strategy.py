@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ...core.models import Signal, SignalDirection
+from ...monitoring.feature_governance import governance
 from ...monitoring.signal_log import SignalAuditEntry, signal_audit_log
 from ..base import BaseStrategy, StrategyContext
 from ..ml.inference import PlattCalibrator
@@ -369,6 +370,11 @@ class V4MomentumStrategy(BaseStrategy):
             "m4_regime_str": round(m4, 3),
             "m5_candle":     round(m5, 3),
         }
+        # Registra features no drift monitor (nunca bloqueia o trading)
+        try:
+            governance.record_live(ctx.symbol, factors)
+        except Exception:
+            pass
         return score, factors
 
     def _calibrate(self, score: float) -> float:

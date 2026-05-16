@@ -530,14 +530,14 @@ function buildCryptoCards(prices, symData, exits) {
     const thrPct   = Math.min(thr*100,100);
     const scoreColor = score>=thr?'var(--green)':score>=thr*0.85?'var(--yellow)':'var(--red)';
     const factors = d.factors||{};
-    const atr_est = price * 0.01; // ATR estimado 1%
+    const atr_est = price>0 ? price * 0.01 : 0;
 
-    // SL / TP
-    const sl  = ep ? ep.stop_loss    : (price*(1-0.015));
-    const tp  = ep ? ep.take_profit  : (price*(1+0.030));
-    const slPct = price>0 ? ((sl-price)/price*100).toFixed(1) : '–';
-    const tpPct = price>0 ? ((tp-price)/price*100).toFixed(1) : '–';
+    // SL / TP — só mostra se há preço ou posição real
     const hasPos = !!ep;
+    const sl  = hasPos ? ep.stop_loss    : (price>0 ? price*(1-0.015) : null);
+    const tp  = hasPos ? ep.take_profit  : (price>0 ? price*(1+0.030) : null);
+    const slPct = sl&&price>0 ? ((sl-price)/price*100).toFixed(1)+'%' : '–';
+    const tpPct = tp&&price>0 ? ((tp-price)/price*100).toFixed(1)+'%' : '–';
 
     const name = sym.replace('-USDT','');
     const icon = name==='BTC'?'₿':name==='ETH'?'Ξ':'◎';
@@ -550,7 +550,7 @@ function buildCryptoCards(prices, symData, exits) {
           <div class="crypto-sub">${sym} · OKX</div>
         </div>
         <div class="crypto-price">
-          <div class="price">${usd(price,2)}</div>
+          <div class="price">${price>0?usd(price,2):'<span style="color:var(--muted)">–</span>'}</div>
         </div>
       </div>
 
@@ -583,8 +583,8 @@ function buildCryptoCards(prices, symData, exits) {
       <div class="sl-tp-row">
         <div class="sl-tp-box">
           <div class="sl-tp-label">Stop Loss</div>
-          <div class="sl-tp-val r">${usd(sl,2)}</div>
-          <div style="font-size:0.58rem;color:var(--muted)">${slPct}%</div>
+          <div class="sl-tp-val r">${sl?usd(sl,2):'–'}</div>
+          <div style="font-size:0.58rem;color:var(--muted)">${slPct}</div>
         </div>
         <div class="sl-tp-box">
           <div class="sl-tp-label">Entrada</div>
@@ -593,8 +593,8 @@ function buildCryptoCards(prices, symData, exits) {
         </div>
         <div class="sl-tp-box">
           <div class="sl-tp-label">Take Profit</div>
-          <div class="sl-tp-val g">${usd(tp,2)}</div>
-          <div style="font-size:0.58rem;color:var(--muted)">+${tpPct}%</div>
+          <div class="sl-tp-val g">${tp?usd(tp,2):'–'}</div>
+          <div style="font-size:0.58rem;color:var(--muted)">${tpPct}</div>
         </div>
       </div>
     </div>`;
@@ -604,7 +604,7 @@ function buildCryptoCards(prices, symData, exits) {
 // ── Updaters ──────────────────────────────────────────────────
 
 async function updateAll() {
-  const [health, version, system, portfolio, perf, prices, symData, exits, log, watchdog, positions, ordersOpen, ordersRecent] = await Promise.all([
+  const [health, version, system, portfolio, perf, prices, symData, exits, log, watchdog, positions, ordersOpen, ordersRecent, calib] = await Promise.all([
     fetchJSON('/health'),
     fetchJSON('/version'),
     fetchJSON('/api/metrics/system'),
@@ -618,14 +618,16 @@ async function updateAll() {
     fetchJSON('/api/positions/open'),
     fetchJSON('/api/orders/open'),
     fetchJSON('/api/orders/recent?limit=15'),
+    fetchJSON('/api/signals/calibration'),
   ]);
 
   // ── Header ──────────────────────────────────────────────
   if(version){
-    document.getElementById('hdr-version').textContent = ' v'+version.version;
-    document.getElementById('page-title').textContent  = 'CCTBv5 '+version.version;
-    document.getElementById('title-desktop').textContent = version.title_desktop;
-    document.getElementById('title-mobile').textContent  = version.title_mobile;
+    // Fix: title_desktop já inclui versão — não duplicar em hdr-version
+    document.getElementById('hdr-version').textContent = 'v'+version.version;
+    document.getElementById('page-title').textContent  = version.title_desktop;
+    document.getElementById('title-desktop').textContent = 'Claude Code Trading Bot';
+    document.getElementById('title-mobile').textContent  = 'CCTB';
   }
   if(system){
     const m=system.mode||'paper';
@@ -707,13 +709,19 @@ async function updateAll() {
     }
   }
 
-  // Calibration — fetch from version endpoint (has win rate embedded)
-  // We'll show from signal stats
-  if(log){
-    const s=log.stats||{};
-    document.getElementById('calib-n').textContent=(s.total_evaluations||0).toLocaleString('pt-BR');
-    document.getElementById('calib-wr').textContent=(s.signal_rate_pct||0).toFixed(1)+'%';
-    document.getElementById('calib-date').textContent=s.started_at?(new Date(s.started_at)).toLocaleDateString('pt-BR'):'–';
+  // Calibração real do arquivo calibration_coef.json
+  if(calib && calib.available){
+    document.getElementById('calib-n').textContent=(calib.n||0).toLocaleString('pt-BR');
+    document.getElementById('calib-wr').textContent=calib.win_rate!=null?(calib.win_rate*100).toFixed(1)+'%':'–';
+    const d=calib.calibrated_at?new Date(calib.calibrated_at):null;
+    document.getElementById('calib-date').textContent=d?d.toLocaleDateString('pt-BR'):'–';
+    // Mostra período no motor-sub se disponível
+    if(calib.period_start&&calib.period_end){
+      const sub=document.getElementById('motor-sub');
+      if(sub.textContent==='Aguardando dados...'){
+        sub.textContent=`Calibrado: ${calib.period_start} → ${calib.period_end} (A=${(calib.platt_a||0).toFixed(3)})`;
+      }
+    }
   }
 
   // ── Market Breadth ──────────────────────────────────────

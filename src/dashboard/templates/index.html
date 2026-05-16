@@ -1255,10 +1255,8 @@ async function updateAll(){
   }
   if(system){
     const m=(system.mode||'paper').toLowerCase();
-    const mb=document.getElementById('hdr-mode');
-    mb.textContent=m.toUpperCase();
-    mb.className='hbadge '+(m==='live'?'hbadge-red':'hbadge-blue');
-    document.getElementById('hdr-sub').textContent='OKX · '+(m==='live'?'Live Trading':'Paper Mode');
+    const sub=document.getElementById('hdr-sub');
+    if(sub) sub.textContent='OKX · '+(m==='live'?'Live Trading':'Paper Mode');
   }
   if(health){
     const ok=health.postgres&&health.redis;

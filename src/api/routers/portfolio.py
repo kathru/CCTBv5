@@ -21,6 +21,15 @@ def _serialize(v):
     return str(v)
 
 
+@router.get("/exits")
+async def exit_plans(request: Request) -> dict:
+    """Status dos planos de saída ativos (PositionMonitor)."""
+    monitor = getattr(request.app.state, "position_monitor", None)
+    if monitor is None:
+        return {"available": False, "active_plans": 0, "plans": {}}
+    return monitor.status()
+
+
 @router.get("/summary")
 async def portfolio_summary(request: Request) -> dict:
     """

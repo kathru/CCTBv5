@@ -1,0 +1,463 @@
+"""
+Position Monitor — gerencia saídas automáticas de posições abertas.
+
+Fases implementadas:
+  A. ATR-based stop loss + take profit + timeout adaptativo por regime
+  B. Trailing stop ativado após +1R de lucro
+  C. Saída parcial (50%) em +1.5R, restante corre com trailing
+  D. Saída imediata se regime deteriorar para PANIC/VACUUM
+
+Roda a cada 30s verificando todas as posições abertas.
+Uma ExitPlan é criada quando uma posição é aberta (via FillEvent)
+e destruída quando a posição é fechada.
+
+Integração:
+  TradingLoop → PositionMonitor.start()
+  FillEvent   → _on_fill() → cria/atualiza ExitPlan
+  Loop 30s    → _check_positions() → dispara saídas via OrderManager
+"""
+
+import asyncio
+import logging
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+
+from ..core.bus import EventBus
+from ..core.events import Topic
+from ..core.events.order_events import OrderFilledEvent
+from ..core.models import Candle
+from ..market.engine import MarketEngine
+from ..oms.order_manager import OrderManager
+from ..persistence.cache import Cache
+from ..portfolio.engine import PortfolioEngine
+
+logger = logging.getLogger(__name__)
+
+# ── Constantes de saída ───────────────────────────────────────────────────────
+
+# Phase A — ATR multipliers
+SL_ATR_MULT   = 1.5   # stop loss  = entrada - ATR × 1.5
+TP_ATR_MULT   = 3.0   # take profit = entrada + ATR × 3.0  (ratio 2:1)
+ATR_PERIOD    = 14    # candles para calcular ATR
+
+# Phase B — Trailing stop
+TRAIL_ACTIVATE_R = 1.0   # ativa trailing após +1R de ganho
+TRAIL_ATR_MULT   = 1.0   # distância do trailing = ATR × 1.0
+
+# Phase C — Saída parcial
+PARTIAL_EXIT_R   = 1.5   # sai 50% em +1.5R
+PARTIAL_EXIT_PCT = 0.50  # fracção da posição a vender
+
+# Phase D — Regimes que forçam saída imediata
+EXIT_REGIMES = {"PANIC_LIQUIDATION", "LIQUIDITY_VACUUM"}
+
+# Timeout adaptativo por regime (horas)
+TIMEOUT_HOURS: dict[str, int] = {
+    "TREND_EXPANSION":        48,
+    "VOLATILITY_COMPRESSION": 24,
+    "TREND_EXHAUSTION":       12,
+    "MEAN_REVERTING_CHOP":    8,
+    "HIGH_CORRELATION_RISK":  6,
+}
+DEFAULT_TIMEOUT_HOURS = 24
+
+
+# ── ExitPlan ──────────────────────────────────────────────────────────────────
+
+@dataclass
+class ExitPlan:
+    """Plano de saída para uma posição aberta."""
+    symbol:        str
+    strategy_id:   str
+    quantity:      float          # quantidade original da posição
+    entry_price:   float
+    entry_time:    datetime
+    entry_regime:  str
+    atr:           float          # ATR no momento da entrada
+
+    # Phase A — níveis fixos
+    stop_loss:     float = 0.0
+    take_profit:   float = 0.0
+    timeout_at:    datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    # Phase B — trailing (None = não ativado ainda)
+    trailing_stop:      float | None = None
+    trailing_activated: bool = False
+
+    # Phase C — saída parcial
+    partial_done:      bool  = False
+    qty_remaining:     float = 0.0   # quantidade que ainda está aberta
+
+    def __post_init__(self) -> None:
+        r = self.atr * SL_ATR_MULT
+        self.stop_loss   = round(self.entry_price - r, 4)
+        self.take_profit = round(self.entry_price + r * (TP_ATR_MULT / SL_ATR_MULT), 4)
+        hours = TIMEOUT_HOURS.get(self.entry_regime, DEFAULT_TIMEOUT_HOURS)
+        self.timeout_at  = self.entry_time + timedelta(hours=hours)
+        self.qty_remaining = self.quantity
+
+    @property
+    def r_value(self) -> float:
+        """1R = distância entre entrada e stop loss."""
+        return self.entry_price - self.stop_loss
+
+    def price_at_r(self, multiples: float) -> float:
+        """Preço correspondente a N × R de lucro."""
+        return self.entry_price + self.r_value * multiples
+
+    def summary(self) -> str:
+        return (
+            f"{self.symbol} entry={self.entry_price:.2f} "
+            f"sl={self.stop_loss:.2f} tp={self.take_profit:.2f} "
+            f"atr={self.atr:.2f} regime={self.entry_regime} "
+            f"trail={'ON' if self.trailing_activated else 'off'} "
+            f"partial={'done' if self.partial_done else 'pending'}"
+        )
+
+
+# ── PositionMonitor ───────────────────────────────────────────────────────────
+
+class PositionMonitor:
+    """
+    Monitora posições abertas e dispara saídas automáticas.
+    Uma instância por TradingLoop.
+    """
+
+    def __init__(
+        self,
+        bus: EventBus,
+        market: MarketEngine,
+        portfolio: PortfolioEngine,
+        oms: OrderManager,
+        cache: Cache,
+        interval_seconds: int = 30,
+    ) -> None:
+        self._bus      = bus
+        self._market   = market
+        self._portfolio = portfolio
+        self._oms      = oms
+        self._cache    = cache
+        self._interval = interval_seconds
+
+        # ExitPlans ativos: symbol → ExitPlan
+        self._plans: dict[str, ExitPlan] = {}
+
+        self._running = False
+        self._task: asyncio.Task | None = None
+        self._exits_today = 0
+
+    # ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    async def start(self) -> None:
+        if self._running:
+            return
+        self._running = True
+
+        # Escuta fills para criar ExitPlans de novas posições
+        await self._bus.subscribe(Topic.ORDER, self._on_order_event)
+
+        # Cria planos para posições já abertas (restart recovery)
+        await self._recover_existing_positions()
+
+        self._task = asyncio.create_task(self._loop(), name="position_monitor")
+        logger.info("PositionMonitor started interval=%ds", self._interval)
+
+    async def stop(self) -> None:
+        self._running = False
+        if self._task and not self._task.done():
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+        logger.info("PositionMonitor stopped — exits_today=%d", self._exits_today)
+
+    # ── Evento de fill → criar ExitPlan ──────────────────────────────────────
+
+    async def _on_order_event(self, event) -> None:
+        """Cria ExitPlan quando um fill de compra é confirmado."""
+        if not isinstance(event, OrderFilledEvent):
+            return
+        order = event.order
+        if order is None:
+            return
+
+        side = str(getattr(order, "side", "")).upper()
+        if side not in ("BUY", "LONG"):
+            return   # fills de venda não criam planos
+
+        symbol   = order.symbol
+        qty      = order.filled_quantity or order.quantity
+        price    = order.avg_fill_price or 0.0
+        strat_id = order.strategy_id or "unknown"
+
+        if price <= 0 or qty <= 0:
+            return
+
+        await self._create_plan(symbol, qty, price, strat_id)
+
+    async def _create_plan(
+        self,
+        symbol: str,
+        quantity: float,
+        entry_price: float,
+        strategy_id: str,
+    ) -> None:
+        candles = self._market.get_candles(symbol, "1H", limit=ATR_PERIOD + 5)
+        atr = _calc_atr(candles, ATR_PERIOD)
+
+        if atr <= 0:
+            # Fallback: 1.5% do preço como ATR estimado
+            atr = entry_price * 0.015
+            logger.warning("%s: ATR indisponível — usando fallback %.2f", symbol, atr)
+
+        regime = _detect_regime(candles)
+
+        plan = ExitPlan(
+            symbol=symbol,
+            strategy_id=strategy_id,
+            quantity=quantity,
+            entry_price=entry_price,
+            entry_time=datetime.now(UTC),
+            entry_regime=regime,
+            atr=atr,
+        )
+        self._plans[symbol] = plan
+        logger.info(
+            "ExitPlan criado: %s", plan.summary()
+        )
+
+    async def _recover_existing_positions(self) -> None:
+        """Cria ExitPlans para posições abertas ao reiniciar o sistema."""
+        positions = self._portfolio.state.positions
+        if not positions:
+            return
+
+        logger.info("PositionMonitor: recuperando %d posições abertas…", len(positions))
+        for symbol, pos in positions.items():
+            if symbol in self._plans:
+                continue
+            entry_price = float(pos.get("avg_entry", 0))
+            quantity    = float(pos.get("quantity", 0))
+            strat_id    = pos.get("strategy_id", "recovered")
+            if entry_price > 0 and quantity > 0:
+                await self._create_plan(symbol, quantity, entry_price, strat_id)
+
+    # ── Loop principal ────────────────────────────────────────────────────────
+
+    async def _loop(self) -> None:
+        while self._running:
+            try:
+                await self._check_positions()
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.error("PositionMonitor error: %s", exc, exc_info=True)
+            await asyncio.sleep(self._interval)
+
+    async def _check_positions(self) -> None:
+        if not self._plans:
+            return
+
+        now = datetime.now(UTC)
+
+        for symbol, plan in list(self._plans.items()):
+            try:
+                await self._evaluate_plan(symbol, plan, now)
+            except Exception as exc:
+                logger.error("Erro ao avaliar %s: %s", symbol, exc, exc_info=True)
+
+    async def _evaluate_plan(
+        self,
+        symbol: str,
+        plan: ExitPlan,
+        now: datetime,
+    ) -> None:
+        # Preço atual
+        price = await self._cache.get_price(symbol)
+        if not price or price <= 0:
+            return
+        price = float(price)
+
+        candles = self._market.get_candles(symbol, "1H", limit=25)
+        current_regime = _detect_regime(candles)
+
+        # ── Phase D — Regime deteriorado ──────────────────────
+        if current_regime in EXIT_REGIMES:
+            await self._exit(
+                plan, price, plan.qty_remaining,
+                reason=f"regime_{current_regime.lower()}",
+                partial=False,
+            )
+            return
+
+        # ── Phase A — Stop Loss ───────────────────────────────
+        effective_sl = plan.trailing_stop if plan.trailing_stop else plan.stop_loss
+        if price <= effective_sl:
+            await self._exit(
+                plan, price, plan.qty_remaining,
+                reason="stop_loss" if not plan.trailing_stop else "trailing_stop",
+                partial=False,
+            )
+            return
+
+        # ── Phase A — Take Profit ────────────────────────────
+        if price >= plan.take_profit:
+            await self._exit(
+                plan, price, plan.qty_remaining,
+                reason="take_profit",
+                partial=False,
+            )
+            return
+
+        # ── Phase A — Timeout ────────────────────────────────
+        if now >= plan.timeout_at:
+            await self._exit(
+                plan, price, plan.qty_remaining,
+                reason=f"timeout_{plan.entry_regime.lower()}",
+                partial=False,
+            )
+            return
+
+        # ── Phase C — Saída parcial em +1.5R ─────────────────
+        if not plan.partial_done and price >= plan.price_at_r(PARTIAL_EXIT_R):
+            qty_to_sell = round(plan.quantity * PARTIAL_EXIT_PCT, 8)
+            await self._exit(
+                plan, price, qty_to_sell,
+                reason="partial_take_profit",
+                partial=True,
+            )
+            plan.partial_done  = True
+            plan.qty_remaining = round(plan.qty_remaining - qty_to_sell, 8)
+            logger.info(
+                "%s: saída parcial %.4f unidades @ %.2f (+1.5R) — restante: %.4f",
+                symbol, qty_to_sell, price, plan.qty_remaining,
+            )
+
+        # ── Phase B — Ativa / atualiza trailing stop ──────────
+        if price >= plan.price_at_r(TRAIL_ACTIVATE_R):
+            new_trail = round(price - plan.atr * TRAIL_ATR_MULT, 4)
+            if not plan.trailing_activated:
+                plan.trailing_stop      = new_trail
+                plan.trailing_activated = True
+                logger.info(
+                    "%s: trailing stop ativado @ %.2f (preço=%.2f, +1R atingido)",
+                    symbol, new_trail, price,
+                )
+            elif new_trail > (plan.trailing_stop or 0):
+                logger.debug(
+                    "%s: trailing stop atualizado %.2f → %.2f",
+                    symbol, plan.trailing_stop, new_trail,
+                )
+                plan.trailing_stop = new_trail
+
+    # ── Execução de saída ─────────────────────────────────────────────────────
+
+    async def _exit(
+        self,
+        plan: ExitPlan,
+        price: float,
+        quantity: float,
+        reason: str,
+        partial: bool,
+    ) -> None:
+        symbol = plan.symbol
+        pnl_r  = (price - plan.entry_price) / plan.r_value if plan.r_value > 0 else 0
+
+        logger.info(
+            "SAÍDA %s %s qty=%.4f price=%.2f pnl=%.2fR reason=%s",
+            "PARCIAL" if partial else "TOTAL",
+            symbol, quantity, price, pnl_r, reason,
+        )
+
+        success = await self._oms.exit_position(
+            symbol=symbol,
+            quantity=quantity,
+            reason=reason,
+            strategy_id=plan.strategy_id,
+        )
+
+        if success:
+            self._exits_today += 1
+            if not partial:
+                # Remove o plano — posição fechada
+                self._plans.pop(symbol, None)
+                logger.info(
+                    "%s: ExitPlan removido após saída total (reason=%s)",
+                    symbol, reason,
+                )
+
+    # ── Status ────────────────────────────────────────────────────────────────
+
+    def status(self) -> dict:
+        return {
+            "running":       self._running,
+            "active_plans":  len(self._plans),
+            "exits_today":   self._exits_today,
+            "plans": {
+                sym: {
+                    "entry_price":   p.entry_price,
+                    "stop_loss":     p.trailing_stop or p.stop_loss,
+                    "take_profit":   p.take_profit,
+                    "timeout_at":    p.timeout_at.isoformat(),
+                    "trailing":      p.trailing_activated,
+                    "partial_done":  p.partial_done,
+                    "qty_remaining": p.qty_remaining,
+                    "regime":        p.entry_regime,
+                }
+                for sym, p in self._plans.items()
+            },
+        }
+
+
+# ── Helpers (espelham v4_strategy, sem import circular) ───────────────────────
+
+def _calc_atr(candles: list[Candle], period: int = 14) -> float:
+    """Average True Range dos últimos `period` candles."""
+    if len(candles) < period + 1:
+        return 0.0
+    trs = []
+    for i in range(period):
+        high       = candles[i].high
+        low        = candles[i].low
+        prev_close = candles[i + 1].close
+        tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+        trs.append(tr)
+    return sum(trs) / len(trs)
+
+
+def _detect_regime(candles: list[Candle]) -> str:
+    """Espelho de V4MomentumStrategy._detect_regime (sem importação circular)."""
+    if len(candles) < 20:
+        return "MEAN_REVERTING_CHOP"
+
+    closes  = [c.close  for c in candles[:20]]
+    volumes = [c.volume for c in candles[:20]]
+
+    sma_fast = sum(closes[:5])  / 5
+    sma_slow = sum(closes[:20]) / 20
+    avg_vol  = sum(volumes) / len(volumes)
+    last_vol = volumes[0]
+
+    drop = (closes[0] - closes[1]) / closes[1] if closes[1] > 0 else 0
+    if drop < -0.05:
+        return "PANIC_LIQUIDATION"
+
+    if sma_fast > sma_slow:
+        if last_vol > avg_vol * 1.2:
+            return "TREND_EXPANSION"
+        if last_vol < avg_vol * 0.8:
+            return "TREND_EXHAUSTION"
+        return "VOLATILITY_COMPRESSION"
+
+    highs = [c.high for c in candles[:10]]
+    lows  = [c.low  for c in candles[:10]]
+    atr_5 = sum(h - l for h, l in zip(highs[:5], lows[:5])) / 5
+    rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
+
+    if rel_atr < 0.005:
+        return "LIQUIDITY_VACUUM"
+    if rel_atr > 0.025:
+        return "HIGH_CORRELATION_RISK"
+
+    return "MEAN_REVERTING_CHOP"

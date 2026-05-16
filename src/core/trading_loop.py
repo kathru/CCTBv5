@@ -37,6 +37,7 @@ from ..strategies.momentum.v4_strategy import V4MomentumStrategy
 from ..strategies.ml.inference import MLInferenceEngine
 from ..recovery.boot import BootSequence
 from ..recovery.periodic_reconciler import PeriodicReconciler
+from ..oms.position_monitor import PositionMonitor
 from ..watchdog.heartbeat import HeartbeatWatchdog
 from ..watchdog.websocket_watchdog import WebSocketWatchdog
 from ..watchdog.resource_watchdog import ResourceWatchdog
@@ -151,6 +152,16 @@ class TradingLoop:
             interval_seconds=30,
         )
 
+        # ── Position Monitor (saídas automáticas) ────────────
+        self._position_monitor = PositionMonitor(
+            bus=self._bus,
+            market=self._market,
+            portfolio=self._portfolio,
+            oms=self._oms,
+            cache=self._cache,
+            interval_seconds=30,
+        )
+
         # ── Periodic Reconciler ───────────────────────────────
         self._reconciler = PeriodicReconciler(
             bus=self._bus,
@@ -189,7 +200,8 @@ class TradingLoop:
             self._app_state.ws_watchdog = self._ws_watchdog
             self._app_state.heartbeat_watchdog = self._heartbeat
             self._app_state.resource_watchdog = self._resource_watchdog
-            self._app_state.portfolio = self._portfolio
+            self._app_state.portfolio        = self._portfolio
+            self._app_state.position_monitor = self._position_monitor
 
         # Start all services
         await self._alert_listener.start()
@@ -198,6 +210,7 @@ class TradingLoop:
         await self._resource_watchdog.start()
         await self._market.start()
         await self._runner.start()
+        await self._position_monitor.start()
         await self._reconciler.start()
 
         self._running = True
@@ -242,6 +255,7 @@ class TradingLoop:
 
         await self._market.stop()
         await self._runner.stop()
+        await self._position_monitor.stop()
         await self._reconciler.stop()
         await self._heartbeat.stop()
         await self._ws_watchdog.stop()

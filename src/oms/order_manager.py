@@ -266,6 +266,45 @@ class OrderManager:
         )
         logger.error("Order REJECTED coid=%s reason=%s", order.client_order_id, reason)
 
+    # ── Exit position (chamado pelo PositionMonitor) ──────────
+
+    async def exit_position(
+        self,
+        symbol: str,
+        quantity: float,
+        reason: str,
+        strategy_id: str = "position_monitor",
+    ) -> bool:
+        """
+        Cria e submete uma ordem de venda a mercado para fechar (ou reduzir)
+        uma posição. Bypassa o gate de entradas — saídas são sempre permitidas.
+        Returns True se a ordem foi submetida com sucesso.
+        """
+        import uuid
+        order = Order(
+            symbol=symbol,
+            side=OrderSide.SELL,
+            order_type=OrderType.MARKET,
+            quantity=round(quantity, 8),
+            strategy_id=strategy_id,
+            signal_id=f"exit_{reason}_{uuid.uuid4().hex[:8]}",
+            mode=OrderMode.PASSIVE_LIMIT,
+        )
+        await self._register(order)
+        try:
+            await self._submit(order)
+            logger.info(
+                "Exit order SUBMITTED symbol=%s qty=%.6f reason=%s",
+                symbol, quantity, reason,
+            )
+            return True
+        except Exception as exc:
+            logger.error(
+                "Exit order FAILED symbol=%s qty=%.6f reason=%s error=%s",
+                symbol, quantity, reason, exc,
+            )
+            return False
+
     # ── Queries ───────────────────────────────────────────────
 
     def get_open_orders(self) -> list[Order]:

@@ -53,6 +53,8 @@ class MarketEngine:
 
         # Local candle cache: (symbol, granularity) → list[Candle]
         self._candles: dict[tuple[str, str], list[Candle]] = {}
+        # Último timestamp publicado por (symbol, granularity) — evita republicar histórico
+        self._last_published: dict[tuple[str, str], datetime] = {}
         self._last_poll: datetime | None = None
         self._poll_count = 0
         self._error_count = 0
@@ -139,13 +141,23 @@ class MarketEngine:
         key = (symbol, granularity)
         self._candles[key] = candles
 
-        # Only publish confirmed candles that are new
-        for candle in candles:
-            if candle.confirmed:
-                await self._bus.publish(
-                    Topic.MARKET,
-                    CandleEvent(candle=candle),
-                )
+        # Publica apenas candles confirmados MAIS NOVOS que o último publicado.
+        # Sem isso, todos os 100 candles históricos são republicados a cada poll.
+        last_ts = self._last_published.get(key)
+        new_candles = [
+            c for c in candles
+            if c.confirmed and (last_ts is None or c.timestamp > last_ts)
+        ]
+
+        for candle in new_candles:
+            await self._bus.publish(Topic.MARKET, CandleEvent(candle=candle))
+
+        if new_candles:
+            self._last_published[key] = max(c.timestamp for c in new_candles)
+            logger.debug(
+                "Published %d new candles symbol=%s gran=%s",
+                len(new_candles), symbol, granularity,
+            )
 
     # ── Query interface for strategies ────────────────────────
 

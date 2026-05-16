@@ -49,17 +49,19 @@ PARTIAL_EXIT_R   = 1.5   # sai 50% em +1.5R
 PARTIAL_EXIT_PCT = 0.50  # fracção da posição a vender
 
 # Phase D — Regimes que forçam saída imediata
-EXIT_REGIMES = {"PANIC_LIQUIDATION"}  # LIQUIDITY_VACUUM removido (N/A para BTC/ETH/SOL)
+EXIT_REGIMES = {"PANIC_LIQUIDATION", "BEAR_TREND"}  # saída imediata nesses regimes
 
 # Timeout adaptativo por regime (horas)
 TIMEOUT_HOURS: dict[str, int] = {
-    "TREND_EXPANSION":        48,
+    "TREND_EXPANSION":        48,   # BULL  — deixa correr
     "VOLATILITY_COMPRESSION": 24,
     "TREND_EXHAUSTION":       12,
-    "MEAN_REVERTING_CHOP":    8,
-    "HIGH_CORRELATION_RISK":  6,
+    "MEAN_REVERTING_CHOP":    8,    # CHOP  — sai rápido
+    "HIGH_CORRELATION_RISK":  4,    # risco — sai muito rápido
+    "BEAR_TREND":             0,    # BEAR  — saída imediata (EXIT_REGIMES)
+    "PANIC_LIQUIDATION":      0,    # PANIC — saída imediata
 }
-DEFAULT_TIMEOUT_HOURS = 24
+DEFAULT_TIMEOUT_HOURS = 12
 
 
 # ── ExitPlan ──────────────────────────────────────────────────────────────────
@@ -480,7 +482,12 @@ def _detect_regime(candles: list[Candle]) -> str:
     atr_5 = sum(h - l for h, l in zip(highs[:5], lows[:5])) / 5
     rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
 
-    if rel_atr > 0.030:   # volatilidade extrema — único caso de saída forçada
+    # BEAR: preço atual abaixo de 10 candles atrás em > 2%
+    if len(closes) >= 11 and closes[10] > 0:
+        if (closes[0] - closes[10]) / closes[10] < -0.02:
+            return "BEAR_TREND"
+
+    if rel_atr > 0.030:
         return "HIGH_CORRELATION_RISK"
 
     return "MEAN_REVERTING_CHOP"

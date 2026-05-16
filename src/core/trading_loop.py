@@ -330,11 +330,23 @@ class TradingLoop:
         if price <= 0:
             return
 
-        kelly        = signal.kelly_fraction or 0.10
-        notional     = portfolio_value * kelly
-        precision    = QTY_PRECISION.get(signal.symbol, 4)
-        quantity     = round(notional / price, precision)
-        min_qty      = MIN_QTY.get(signal.symbol, 0.0001)
+        # Kelly já vem ajustado pelo regime_mult da estratégia
+        kelly    = signal.kelly_fraction or 0.05
+        regime   = getattr(signal, "regime", "MEAN_REVERTING_CHOP")
+
+        # Cap máximo de Kelly por família de regime (segurança extra)
+        KELLY_CAP = {
+            "TREND_EXPANSION":        0.15,
+            "VOLATILITY_COMPRESSION": 0.12,
+            "TREND_EXHAUSTION":       0.10,
+            "MEAN_REVERTING_CHOP":    0.08,
+            "HIGH_CORRELATION_RISK":  0.05,
+        }
+        kelly    = min(kelly, KELLY_CAP.get(regime, 0.08))
+        notional = portfolio_value * kelly
+        precision = QTY_PRECISION.get(signal.symbol, 4)
+        quantity  = round(notional / price, precision)
+        min_qty   = MIN_QTY.get(signal.symbol, 0.0001)
 
         if quantity < min_qty:
             logger.info(
@@ -344,9 +356,11 @@ class TradingLoop:
             return
 
         logger.info(
-            "Sinal aprovado: %s %s qty=%.6f price=%.2f notional=%.2f kelly=%.1f%%",
-            signal.direction, signal.symbol,
+            "Sinal aprovado: %s %s regime=%s qty=%.6f price=%.2f "
+            "notional=%.2f kelly=%.1f%% (cap=%.0f%%)",
+            signal.direction, signal.symbol, regime,
             quantity, price, notional, kelly * 100,
+            KELLY_CAP.get(regime, 0.08) * 100,
         )
 
         # 3. Criar e submeter ordem via OMS

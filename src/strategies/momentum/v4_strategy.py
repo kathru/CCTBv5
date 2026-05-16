@@ -1,13 +1,19 @@
 """
-V4 Momentum Strategy — plugin wrapper around the V4 signal logic.
+V4 Momentum Strategy — BULL / CHOP / BEAR aware.
 
-This is a THIN wrapper. The actual signal logic lives in the
-V4 engines (regime, signal, sizing) from the original codebase.
-This plugin:
-  1. Receives StrategyContext by injection
-  2. Delegates to V4 engines
-  3. Returns Signal | None
-  4. Logs every evaluation to SignalAuditLog (visível no dashboard)
+Camadas de proteção:
+  1. Detecção explícita de BEAR (downtrend gradual)
+  2. Sizing adaptativo por regime (Kelly multiplier)
+  3. Confirmação multi-timeframe 1H + 6H
+
+Regimes e comportamento:
+  TREND_EXPANSION      → BULL  : threshold 0.50, Kelly 100%, timeout 48h
+  VOLATILITY_COMPRESSION       : threshold 0.52, Kelly 80%,  timeout 24h
+  TREND_EXHAUSTION             : threshold 0.54, Kelly 60%,  timeout 12h
+  MEAN_REVERTING_CHOP  → CHOP  : threshold 0.56, Kelly 50%,  timeout 8h
+  HIGH_CORRELATION_RISK        : threshold 0.60, Kelly 30%,  timeout 6h
+  BEAR_TREND           → BEAR  : BLOQUEADO para novas entradas
+  PANIC_LIQUIDATION            : BLOQUEADO + saída imediata
 """
 
 import logging
@@ -21,69 +27,66 @@ from ..base import BaseStrategy, StrategyContext
 from ..ml.inference import PlattCalibrator
 
 MODELS_DIR = Path("data") / "models"
+logger     = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
+
+# ── Configuração por regime ───────────────────────────────────────────────────
+
+# Thresholds em RAW score space (0-1)
+REGIME_THRESHOLDS: dict[str, float] = {
+    "TREND_EXPANSION":        0.50,
+    "VOLATILITY_COMPRESSION": 0.52,
+    "TREND_EXHAUSTION":       0.54,
+    "MEAN_REVERTING_CHOP":    0.56,
+    "HIGH_CORRELATION_RISK":  0.60,
+    "BEAR_TREND":             0.99,   # bloqueado
+    "PANIC_LIQUIDATION":      0.99,   # bloqueado
+}
+
+# Multiplicador Kelly por regime (aplicado sobre o kelly base)
+REGIME_KELLY_MULT: dict[str, float] = {
+    "TREND_EXPANSION":        1.00,   # 100% — mercado favorável
+    "VOLATILITY_COMPRESSION": 0.80,   # 80%
+    "TREND_EXHAUSTION":       0.60,   # 60%
+    "MEAN_REVERTING_CHOP":    0.50,   # 50% — mercado lateral
+    "HIGH_CORRELATION_RISK":  0.30,   # 30% — alto risco
+    "BEAR_TREND":             0.00,   # bloqueado
+    "PANIC_LIQUIDATION":      0.00,   # bloqueado
+}
+
+# M4 regime alignment score
+REGIME_M4: dict[str, float] = {
+    "TREND_EXPANSION":        0.85,
+    "VOLATILITY_COMPRESSION": 0.65,
+    "TREND_EXHAUSTION":       0.50,
+    "MEAN_REVERTING_CHOP":    0.45,
+    "HIGH_CORRELATION_RISK":  0.30,
+    "BEAR_TREND":             0.10,
+    "PANIC_LIQUIDATION":      0.00,
+}
+
+# Regimes que bloqueiam novas entradas
+BLOCKED_REGIMES = {"BEAR_TREND", "PANIC_LIQUIDATION"}
 
 
 class V4MomentumStrategy(BaseStrategy):
-    """
-    Probabilistic momentum strategy based on the V4 architecture:
-    - 7-regime detection
-    - 4 probabilistic sub-models
-    - Platt-scaled calibration (lê coeficientes reais do JSON)
-    - Kelly-based sizing hint
 
-    Thresholds by regime:
-      TREND_EXPANSION     : 0.56
-      VOLATILITY_COMPRESS : 0.60
-      TREND_EXHAUSTION    : 0.68
-      MEAN_REVERTING_CHOP : 0.72
-      HIGH_CORRELATION    : 0.75
-      PANIC_LIQUIDATION   : bloqueado
-      LIQUIDITY_VACUUM    : bloqueado
-    """
-
-    # Thresholds em RAW score space (0-1), não calibrado.
-    # Calibrated probability (Platt) é usada APENAS para Kelly e EV.
-    # Com A=0.378, B=-1.075: calibrated range é [25%–33%], nunca alcança 0.56+.
-    REGIME_THRESHOLDS: dict[str, float] = {
-        "TREND_EXPANSION":        0.50,   # mercado favorável — mais fácil
-        "VOLATILITY_COMPRESSION": 0.52,
-        "TREND_EXHAUSTION":       0.54,
-        "MEAN_REVERTING_CHOP":    0.56,   # mercado lateral — conservador
-        "HIGH_CORRELATION_RISK":  0.60,   # alto risco — mais exigente
-        "PANIC_LIQUIDATION":      0.99,
-        "LIQUIDITY_VACUUM":       0.99,
-    }
-
+    REGIME_THRESHOLDS = REGIME_THRESHOLDS
     MIN_EV_MULTIPLIER = 3.0
-    ROUND_TRIP_FEE    = 0.005   # 0.5% round-trip
+    ROUND_TRIP_FEE    = 0.005
 
-    def __init__(
-        self,
-        symbols: list[str],
-        strategy_id: str = "v4_momentum",
-    ) -> None:
+    def __init__(self, symbols: list[str], strategy_id: str = "v4_momentum") -> None:
         super().__init__(strategy_id=strategy_id, symbols=symbols)
-        self._platt = PlattCalibrator(
-            coef_path=MODELS_DIR / "calibration_coef.json"
-        )
+        self._platt = PlattCalibrator(coef_path=MODELS_DIR / "calibration_coef.json")
 
     # ── Evaluation ────────────────────────────────────────────────────────────
 
     async def evaluate(self, ctx: StrategyContext) -> Signal | None:
-        """
-        Avalia condições de mercado e retorna sinal se aprovado em todos os filtros.
-        Registra o resultado (com motivo detalhado) no SignalAuditLog.
-        """
         ts     = datetime.now(UTC)
         symbol = ctx.symbol
 
-        def _log(result: str, detail: str,
-                 regime: str = "–", score: float = 0.0,
-                 calibrated: float = 0.0, threshold: float = 0.0,
-                 ev: float = 0.0, direction: str = "N/A",
-                 factors: dict | None = None) -> None:
+        def _log(result, detail, regime="–", score=0.0, calibrated=0.0,
+                 threshold=0.0, ev=0.0, direction="N/A", factors=None):
             signal_audit_log.record(SignalAuditEntry(
                 timestamp=ts, symbol=symbol, regime=regime,
                 score=score, calibrated=calibrated,
@@ -92,69 +95,71 @@ class V4MomentumStrategy(BaseStrategy):
                 factors=factors or {},
             ))
 
-        # ── Filtro 0: candles suficientes ────────────────────
+        # ── Filtro 0: candles ────────────────────────────────
         if len(ctx.candles_1h) < 20:
-            _log("NO_CANDLES",
-                 f"Candles insuficientes: {len(ctx.candles_1h)}/20")
+            _log("NO_CANDLES", f"Candles 1H insuficientes: {len(ctx.candles_1h)}/20")
             return None
 
-        # ── Filtro 1: regime ──────────────────────────────────
-        regime    = self._detect_regime(ctx)
-        # Threshold em RAW score space — calibrated (Platt) só para Kelly/EV
-        threshold = self.REGIME_THRESHOLDS.get(regime, 0.56)
+        # ── Camada 1: Detecção de regime 1H ─────────────────
+        regime_1h = self._detect_regime_1h(ctx)
 
-        if regime in {"PANIC_LIQUIDATION"}:
+        # ── Camada 3: Confirmação multi-timeframe ────────────
+        regime = self._confirm_regime_mtf(ctx, regime_1h)
+
+        threshold  = REGIME_THRESHOLDS.get(regime, 0.56)
+        kelly_mult = REGIME_KELLY_MULT.get(regime, 0.5)
+
+        if regime in BLOCKED_REGIMES:
             _log("REGIME_BLOCKED",
-                 f"Regime bloqueado: {regime}",
+                 f"Regime bloqueado: {regime} (sem entradas LONG em bear/panic)",
                  regime=regime, threshold=threshold)
             return None
 
-        # ── Filtro 2: score bruto vs threshold ────────────────
+        # ── Filtro 2: score bruto ────────────────────────────
         score, factors = self._score_signal(ctx, regime)
-        calibrated     = self._calibrate(score)   # usado só para Kelly/EV
+        calibrated     = self._calibrate(score)
 
         if score < threshold:
             _log("SCORE_LOW",
-                 f"Score bruto {score:.3f} < threshold {threshold:.3f} ({regime})",
+                 f"Score {score:.3f} < thr {threshold:.3f} [{regime}]",
                  regime=regime, score=score, calibrated=calibrated,
                  threshold=threshold, factors=factors)
             return None
 
-        # ── Filtro 3: expected value ──────────────────────────
-        ev      = self._expected_value(calibrated)
-        min_ev  = self.MIN_EV_MULTIPLIER * self.ROUND_TRIP_FEE
-
+        # ── Filtro 3: EV ─────────────────────────────────────
+        ev     = self._expected_value(calibrated)
+        min_ev = self.MIN_EV_MULTIPLIER * self.ROUND_TRIP_FEE
         if ev < min_ev:
             _log("EV_LOW",
-                 f"EV {ev:.3f} < mínimo {min_ev:.3f}",
+                 f"EV {ev:.3f} < min {min_ev:.3f}",
                  regime=regime, score=score, calibrated=calibrated,
                  threshold=threshold, ev=ev, factors=factors)
             return None
 
-        # ── Filtro 4: direção ────────────────────────────────
+        # ── Filtro 4: Direção ────────────────────────────────
         direction = self._direction(ctx)
         if direction == SignalDirection.FLAT:
-            _log("DIRECTION_FLAT",
-                 "Sem direção clara (preço lateralizado)",
+            _log("DIRECTION_FLAT", "Preço lateralizado",
                  regime=regime, score=score, calibrated=calibrated,
-                 threshold=threshold, ev=ev, direction="FLAT",
-                 factors=factors)
+                 threshold=threshold, ev=ev, direction="FLAT", factors=factors)
             return None
 
-        # ── ✅ Sinal aprovado ─────────────────────────────────
-        kelly = min(calibrated * 0.25, 0.15)
-        dir_str = "LONG" if direction == SignalDirection.LONG else "SHORT"
+        # ── Camada 2: Kelly adaptativo por regime ────────────
+        base_kelly = min(calibrated * 0.25, 0.15)
+        kelly      = round(base_kelly * kelly_mult, 4)
+        dir_str    = "LONG"
 
         _log("SIGNAL",
-             f"Sinal LONG gerado — score={score:.3f} "
-             f"prob={calibrated:.3f} EV={ev:.3f} kelly={kelly:.1%}",
+             f"BUY {regime} score={score:.3f} prob={calibrated:.3f} "
+             f"kelly={kelly:.1%} (mult={kelly_mult:.0%})",
              regime=regime, score=score, calibrated=calibrated,
-             threshold=threshold, ev=ev, direction=dir_str,
-             factors=factors)
+             threshold=threshold, ev=ev, direction=dir_str, factors=factors)
 
         logger.info(
-            "SIGNAL %s %s regime=%s score=%.3f prob=%.3f EV=%.3f kelly=%.1f%%",
-            dir_str, symbol, regime, score, calibrated, ev, kelly * 100,
+            "SIGNAL %s %s regime=%s score=%.3f prob=%.3f "
+            "EV=%.3f kelly=%.1f%% (regime_mult=%.0f%%)",
+            dir_str, symbol, regime, score, calibrated, ev,
+            kelly * 100, kelly_mult * 100,
         )
 
         return Signal(
@@ -172,26 +177,23 @@ class V4MomentumStrategy(BaseStrategy):
             factors=factors,
         )
 
-    # ── Internal helpers ──────────────────────────────────────────────────────
+    # ── Camada 1: Detecção de regime 1H ──────────────────────────────────────
 
-    def _detect_regime(self, ctx: StrategyContext) -> str:
-        if not ctx.candles_1h:
-            return "MEAN_REVERTING_CHOP"
-
+    def _detect_regime_1h(self, ctx: StrategyContext) -> str:
         closes  = [c.close  for c in ctx.candles_1h[:20]]
         volumes = [c.volume for c in ctx.candles_1h[:20]]
 
         sma_fast = sum(closes[:5])  / 5
         sma_slow = sum(closes[:20]) / 20
-        avg_vol  = sum(volumes) / len(volumes)
+        avg_vol  = sum(volumes)     / len(volumes)
         last_vol = volumes[0]
 
-        # Panic: queda > 5% no candle mais recente vs anterior
+        # Panic: queda brusca > 5%
         if len(closes) >= 2 and closes[1] > 0:
-            drop = (closes[0] - closes[1]) / closes[1]   # negativo = queda
-            if drop < -0.05:
+            if (closes[0] - closes[1]) / closes[1] < -0.05:
                 return "PANIC_LIQUIDATION"
 
+        # BULL: preço acima da SMA lenta
         if sma_fast > sma_slow:
             if last_vol > avg_vol * 1.2:
                 return "TREND_EXPANSION"
@@ -199,26 +201,83 @@ class V4MomentumStrategy(BaseStrategy):
                 return "TREND_EXHAUSTION"
             return "VOLATILITY_COMPRESSION"
 
-        # BTC/ETH/SOL são sempre líquidos — LIQUIDITY_VACUUM não se aplica.
-        # Diferencia apenas pelo nível de volatilidade:
-        highs = [c.high for c in ctx.candles_1h[:10]]
-        lows  = [c.low  for c in ctx.candles_1h[:10]]
-        atr_5 = sum(h - l for h, l in zip(highs[:5], lows[:5])) / 5
-        rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
+        # Abaixo da SMA lenta — diferencia BEAR de CHOP
+        # BEAR: preço atual abaixo de 10 candles atrás em > 2%
+        if len(closes) >= 11 and closes[10] > 0:
+            decline = (closes[0] - closes[10]) / closes[10]
+            if decline < -0.02:
+                return "BEAR_TREND"
 
-        if rel_atr > 0.030:   # volatilidade extrema (>3% range/hora)
+        # ATR alto → correlação / volatilidade extrema
+        highs  = [c.high for c in ctx.candles_1h[:5]]
+        lows   = [c.low  for c in ctx.candles_1h[:5]]
+        atr_5  = sum(h - l for h, l in zip(highs, lows)) / 5
+        rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
+        if rel_atr > 0.030:
             return "HIGH_CORRELATION_RISK"
 
         return "MEAN_REVERTING_CHOP"
 
-    def _score_signal(
-        self, ctx: StrategyContext, regime: str
-    ) -> tuple[float, dict[str, float]]:
+    # ── Camada 3: Confirmação multi-timeframe ─────────────────────────────────
+
+    def _confirm_regime_mtf(self, ctx: StrategyContext, regime_1h: str) -> str:
+        """
+        Confirma regime 1H com o contexto de 6H.
+        Regras:
+          - Se 6H concorda (mesma família) → regime_1h confirmado
+          - Se 6H diz BEAR mas 1H diz BULL → downgrade para CHOP
+          - Se 6H diz BULL mas 1H diz CHOP → pequeno upgrade (VOLATILITY_COMPRESSION)
+          - Se 6H diz BEAR e 1H diz CHOP   → upgrade para BEAR_TREND
+          - Sem candles 6H → usa só 1H (sem penalidade)
+        """
+        if not ctx.candles_6h or len(ctx.candles_6h) < 5:
+            return regime_1h   # sem 6H, confia no 1H
+
+        closes_6h = [c.close for c in ctx.candles_6h[:10]]
+        sma_fast_6h = sum(closes_6h[:3]) / 3
+        sma_slow_6h = sum(closes_6h[:10]) / 10
+
+        # Tendência de 6H
+        if sma_fast_6h > sma_slow_6h:
+            trend_6h = "BULL"
+        elif len(closes_6h) >= 5 and closes_6h[4] > 0:
+            decline_6h = (closes_6h[0] - closes_6h[4]) / closes_6h[4]
+            trend_6h = "BEAR" if decline_6h < -0.03 else "CHOP"
+        else:
+            trend_6h = "CHOP"
+
+        # Família do regime 1H
+        family_1h = ("BULL" if regime_1h in {"TREND_EXPANSION", "VOLATILITY_COMPRESSION", "TREND_EXHAUSTION"}
+                     else "BEAR" if regime_1h in {"BEAR_TREND", "PANIC_LIQUIDATION"}
+                     else "CHOP")
+
+        # Regras de confirmação
+        if family_1h == "BULL" and trend_6h == "BEAR":
+            # 1H acha BULL mas 6H está em BEAR → sinal fraco, downgrade
+            logger.debug("MTF: 1H=%s (BULL) conflita com 6H BEAR → CHOP", regime_1h)
+            return "MEAN_REVERTING_CHOP"
+
+        if family_1h == "CHOP" and trend_6h == "BEAR":
+            # 1H lateral mas 6H em queda → confirma downtrend
+            logger.debug("MTF: 1H=CHOP + 6H BEAR → BEAR_TREND")
+            return "BEAR_TREND"
+
+        if family_1h == "CHOP" and trend_6h == "BULL":
+            # 1H lateral mas 6H em alta → pode ser consolidação antes de subida
+            logger.debug("MTF: 1H=CHOP + 6H BULL → VOLATILITY_COMPRESSION")
+            return "VOLATILITY_COMPRESSION"
+
+        # Regimes concordantes ou PANIC/BEAR confirmado
+        return regime_1h
+
+    # ── Scoring ────────────────────────────────────────────────────────────────
+
+    def _score_signal(self, ctx: StrategyContext, regime: str) -> tuple[float, dict]:
         closes = [c.close  for c in ctx.candles_1h[:20]]
         highs  = [c.high   for c in ctx.candles_1h[:5]]
         vols   = [c.volume for c in ctx.candles_1h[:5]]
 
-        # M1 — Momentum (30%)
+        # M1 — Momentum 20 candles (30%)
         momentum = (closes[0] - closes[-1]) / closes[-1] if closes[-1] > 0 else 0
         m1 = min(max((momentum + 0.05) / 0.10, 0.0), 1.0)
 
@@ -229,27 +288,19 @@ class V4MomentumStrategy(BaseStrategy):
         avg_v = sum(vols) / len(vols) if vols else 1.0
         m3 = min(vols[0] / avg_v, 2.0) / 2.0 if avg_v > 0 else 0.5
 
-        # M4 — Alinhamento de regime (20%)
-        m4 = 0.8 if regime == "TREND_EXPANSION" else 0.5
+        # M4 — Alinhamento de regime (20%) — penaliza BEAR/CHOP
+        m4 = REGIME_M4.get(regime, 0.45)
 
         score   = m1 * 0.3 + m2 * 0.3 + m3 * 0.2 + m4 * 0.2
-        factors = {"m1_momentum": m1, "m2_structure": m2,
-                   "m3_volume": m3, "m4_regime": m4}
+        factors = {"m1_momentum": round(m1,3), "m2_structure": round(m2,3),
+                   "m3_volume":   round(m3,3), "m4_regime":    round(m4,3)}
         return score, factors
 
     def _calibrate(self, score: float) -> float:
-        """
-        Platt scaling usando coeficientes reais do calibration_coef.json.
-        Fallback para defaults (A=2.5, B=-1.2) se arquivo não encontrado.
-        """
         return self._platt.calibrate(score)
 
     def _expected_value(self, calibrated: float) -> float:
-        win_prob  = calibrated
-        loss_prob = 1 - calibrated
-        reward_r  = 2.5
-        risk_r    = 1.0
-        return win_prob * reward_r - loss_prob * risk_r
+        return calibrated * 2.5 - (1 - calibrated) * 1.0
 
     def _direction(self, ctx: StrategyContext) -> SignalDirection:
         if len(ctx.candles_1h) < 2:

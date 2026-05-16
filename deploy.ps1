@@ -22,15 +22,15 @@ $PROJECT_DIR = $PSScriptRoot
 
 function Write-Step($text) {
     Write-Host ""
-    Write-Host "  ▶  $text" -ForegroundColor Cyan
+    Write-Host "  >> $text" -ForegroundColor Cyan
 }
 
 function Write-Ok($text) {
-    Write-Host "  ✅ $text" -ForegroundColor Green
+    Write-Host "  OK $text" -ForegroundColor Green
 }
 
 function Write-Fail($text) {
-    Write-Host "  ❌ $text" -ForegroundColor Red
+    Write-Host "  ERRO $text" -ForegroundColor Red
 }
 
 Set-Location $PROJECT_DIR
@@ -63,7 +63,7 @@ $GIT_MINOR = (git tag | Measure-Object -Line).Lines
 $GIT_PATCH = git rev-list --count HEAD
 $VERSION   = "5.$GIT_MINOR.$GIT_PATCH"
 Write-Host ""
-Write-Host "  📦 Versão: v$VERSION" -ForegroundColor Yellow
+Write-Host "  Versão: v$VERSION" -ForegroundColor Yellow
 
 # ── 4. Deploy LOCAL ────────────────────────────────────────────────────────────
 if (-not $OracleOnly) {
@@ -106,7 +106,7 @@ if (-not $OracleOnly) {
         if ($local_ok) { Write-Ok "Local: OK (v$($local_health.version))" }
         else { Write-Fail "Local: DEGRADED" }
     } catch {
-        Write-Host "  ⚠️  Local: sem resposta ainda (aguarde ~15s)" -ForegroundColor Yellow
+        Write-Host "  AVISO Local: sem resposta ainda (aguarde ~15s)" -ForegroundColor Yellow
     }
 }
 
@@ -117,10 +117,10 @@ if (-not $LocalOnly) {
         if ($oracle_ok) { Write-Ok "Oracle: OK (v$($oracle_health.version))" }
         else { Write-Fail "Oracle: DEGRADED" }
     } catch {
-        Write-Host "  ⚠️  Oracle: sem resposta ainda (aguarde ~15s)" -ForegroundColor Yellow
+        Write-Host "  AVISO Oracle: sem resposta ainda (aguarde ~15s)" -ForegroundColor Yellow
     }
 }
 
 Write-Host ""
-Write-Host "  🚀 Deploy v$VERSION concluído!" -ForegroundColor Green
+Write-Host "  >> Deploy v$VERSION concluido!" -ForegroundColor Green
 Write-Host ""

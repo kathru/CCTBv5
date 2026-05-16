@@ -8,11 +8,15 @@ Responsibilities:
   - Publish SignalEvent for every non-None result
   - Never touches the OMS or exchange directly
 
-This is the bridge between Market Engine and OMS.
+Deduplication rules:
+  - Só avalia candles recentes (< 2 períodos de idade) para ignorar histórico
+  - Só avalia 1x por símbolo por ciclo (evita dupla avaliação de 1H + 6H)
+  - Intervalo mínimo entre avaliações do mesmo símbolo: 55 minutos
 """
 
 import asyncio
 import logging
+from datetime import UTC, datetime, timedelta
 
 from ..core.bus import EventBus
 from ..core.events import CandleEvent, SignalEvent, Topic
@@ -22,6 +26,12 @@ from ..persistence.cache import Cache
 from .base import BaseStrategy, StrategyContext
 
 logger = logging.getLogger(__name__)
+
+# Só avalia candles com menos de 2 horas de idade
+MAX_CANDLE_AGE = timedelta(hours=2)
+
+# Intervalo mínimo entre avaliações do mesmo símbolo (evita avaliar 1H + 6H = 2×)
+MIN_EVAL_INTERVAL = timedelta(minutes=55)
 
 
 class StrategyRunner:
@@ -46,9 +56,12 @@ class StrategyRunner:
         self._task: asyncio.Task | None = None
         self._running = False
         self._signal_count = 0
+        self._eval_count = 0
+
+        # Última avaliação por símbolo — evita avaliar múltiplas vezes no mesmo ciclo
+        self._last_eval: dict[str, datetime] = {}
 
     def register(self, strategy: BaseStrategy) -> None:
-        """Register a strategy plugin."""
         self._strategies[strategy.strategy_id] = strategy
         logger.info("Strategy registered: %s symbols=%s",
                     strategy.strategy_id, strategy.symbols)
@@ -60,7 +73,6 @@ class StrategyRunner:
         if self._running:
             return
         self._running = True
-        # Subscribe to MARKET events
         self._queue = self._bus.subscribe(Topic.MARKET)
         self._task = asyncio.create_task(
             self._consume(), name="strategy_runner"
@@ -80,17 +92,36 @@ class StrategyRunner:
                 pass
 
     async def _consume(self) -> None:
-        """Consume MARKET events and trigger strategy evaluation."""
+        """Consume MARKET events e dispara avaliação apenas em candles novos e recentes."""
         while self._running:
             try:
                 event = await asyncio.wait_for(
                     self._queue.get(), timeout=1.0
                 )
-                if isinstance(event, CandleEvent) and event.candle:
-                    candle = event.candle
-                    # Only evaluate on confirmed candles
-                    if candle.confirmed:
-                        await self._evaluate_all(candle.symbol)
+                if not isinstance(event, CandleEvent) or not event.candle:
+                    continue
+
+                candle = event.candle
+                if not candle.confirmed:
+                    continue
+
+                now = datetime.now(UTC)
+
+                # Filtro 1: ignora candles históricos (mais de 2h de idade)
+                age = now - candle.timestamp.replace(tzinfo=UTC) \
+                    if candle.timestamp.tzinfo is None \
+                    else now - candle.timestamp
+                if age > MAX_CANDLE_AGE:
+                    continue
+
+                # Filtro 2: intervalo mínimo entre avaliações do mesmo símbolo
+                last = self._last_eval.get(candle.symbol)
+                if last and (now - last) < MIN_EVAL_INTERVAL:
+                    continue
+
+                self._last_eval[candle.symbol] = now
+                await self._evaluate_all(candle.symbol)
+
             except TimeoutError:
                 continue
             except asyncio.CancelledError:
@@ -106,6 +137,7 @@ class StrategyRunner:
             if symbol not in strategy.symbols:
                 continue
             try:
+                self._eval_count += 1
                 ctx = await self._build_context(symbol)
                 signal = await strategy.evaluate(ctx)
                 if signal is not None:
@@ -117,12 +149,9 @@ class StrategyRunner:
                 )
 
     async def _build_context(self, symbol: str) -> StrategyContext:
-        """Build the injection context for a strategy."""
         candles_1h = self._market.get_candles(symbol, "1H")
         candles_6h = self._market.get_candles(symbol, "6H")
-        _ = self._market.get_latest_candle(symbol, "1H")  # reserved for ticker
 
-        # Get open positions from Redis cache
         pos_data = await self._cache.get_position(symbol)
         open_positions = [pos_data] if pos_data else []
 
@@ -130,7 +159,7 @@ class StrategyRunner:
             symbol=symbol,
             candles_1h=candles_1h,
             candles_6h=candles_6h,
-            ticker=None,          # Ticker injected via TickerEvent separately
+            ticker=None,
             portfolio_value=self._portfolio_value,
             open_positions=open_positions,
         )
@@ -149,7 +178,12 @@ class StrategyRunner:
 
     def status(self) -> dict:
         return {
-            "running": self._running,
-            "strategies": list(self._strategies.keys()),
-            "signal_count": self._signal_count,
+            "running":       self._running,
+            "strategies":    list(self._strategies.keys()),
+            "signal_count":  self._signal_count,
+            "eval_count":    self._eval_count,
+            "last_eval":     {
+                sym: ts.isoformat()
+                for sym, ts in self._last_eval.items()
+            },
         }

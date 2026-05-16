@@ -1335,27 +1335,52 @@ async function updateAll(){
   if(sym&&Object.keys(sym).length){
     const latest=Object.values(sym)[0]||{};
     const rg=(latest.regime||'AGUARDANDO').replace(/_/g,' ');
-    const subMap={'TREND EXPANSION':'Operação Agressiva','MEAN REVERTING CHOP':'Operação Conservadora','TREND EXHAUSTION':'Operação Defensiva','VOLATILITY COMPRESSION':'Aguardando Rompimento','HIGH CORRELATION RISK':'Reduzir Exposição','PANIC LIQUIDATION':'Proteger Capital'};
-    const subTxt=subMap[rg]||'Analisando...';
-    // Regime box
+    const subMap={
+      'TREND EXPANSION':        'Operação Agressiva — BULL confirmado',
+      'VOLATILITY COMPRESSION': 'Aguardando Rompimento',
+      'TREND EXHAUSTION':       'Operação Defensiva — Trend fraquejando',
+      'MEAN REVERTING CHOP':    'Operação Conservadora — Mercado lateral',
+      'HIGH CORRELATION RISK':  'Reduzir Exposição — Alta correlação',
+      'BEAR TREND':             'Entradas bloqueadas — Downtrend ativo',
+      'PANIC LIQUIDATION':      'Proteger Capital — Pânico detectado',
+    };
+    const subTxt=subMap[rg]||'Analisando condições...';
+
+    // Fix 1: Regime box cor correta (usa rg com espaço, não underscore)
     const box=document.getElementById('motor-regime-box');
     let boxCls='motor-regime-box', arrow='⇄';
-    if(rg.includes('EXPANSION')){ boxCls+=' rb-trend'; arrow='↗'; }
+    if(rg.includes('PANIC'))      { boxCls+=' rb-panic'; arrow='⚠'; }
+    else if(rg.includes('BEAR'))  { boxCls+=' rb-panic'; arrow='↓'; }  // BEAR = vermelho
+    else if(rg.includes('EXPANSION')){ boxCls+=' rb-trend'; arrow='↗'; }
     else if(rg.includes('EXHAUSTION')){ boxCls+=' rb-other'; arrow='↘'; }
-    else if(rg.includes('PANIC')){ boxCls+=' rb-panic'; arrow='⚠'; }
-    else if(rg.includes('CHOP')){ arrow='⇄'; }
+    else if(rg.includes('CHOP'))  { arrow='⇄'; }
     box.className=boxCls;
     document.getElementById('motor-regime').textContent=`${arrow} ${rg} — ${subTxt}`;
+
+    // Fix 2: Risk Engine badge — verde quando Normal (risco controlado)
     const mb=document.getElementById('motor-badge');
-    mb.textContent=latest.result==='SIGNAL'?'sinal':'normal';
-    mb.className='hbadge '+(latest.result==='SIGNAL'?'hbadge-green':'hbadge-gray');
-    // Factors
+    if(latest.result==='SIGNAL'){
+      mb.textContent='sinal'; mb.className='hbadge hbadge-green';
+    } else if(rg.includes('BEAR')||rg.includes('PANIC')){
+      mb.textContent='bloqueado'; mb.className='hbadge hbadge-red';
+    } else {
+      mb.textContent='normal'; mb.className='hbadge hbadge-green';  // verde = sem alertas
+    }
+
+    // Fix 3: Pesos adaptativos — nomes dos fatores v2 atualizados
     const f=latest.factors||{};
-    const m1=(f.m1_momentum||f.momentum||0),m2=(f.m2_structure||f.structure||0),m3=(f.m3_volume||f.volume||0),m4=(f.m4_regime||f.regime||0);
-    document.getElementById('w-m1').textContent=(m1*30).toFixed(0)+'%';
-    document.getElementById('w-m2').textContent=(m2*30).toFixed(0)+'%';
-    document.getElementById('w-m3').textContent=(m3*20).toFixed(0)+'%';
-    document.getElementById('w-m4').textContent=(m4*20).toFixed(0)+'%';
+    // Contribuição real = fator × peso (mostra quanto cada um contribui para o score)
+    const m1=f.m1_momentum   ||f.momentum  ||0;
+    const m2=f.m2_consistency||f.m2_structure||f.structure||0;
+    const m3=f.m3_volume     ||f.volume    ||0;
+    const m4=f.m4_regime_str ||f.m4_regime ||f.regime   ||0;
+    const m5=f.m5_candle     ||0;
+    // Exibe o valor do fator (0-1) como percentual — quanto está ativado
+    document.getElementById('w-m1').textContent=(m1*100).toFixed(0)+'%';
+    document.getElementById('w-m2').textContent=(m2*100).toFixed(0)+'%';
+    document.getElementById('w-m3').textContent=(m3*100).toFixed(0)+'%';
+    document.getElementById('w-m4').textContent=(m4*100).toFixed(0)+'%';
+
     // Kelly hint
     const kelly=(latest.calibrated||0)*0.25;
     document.getElementById('motor-kelly').textContent=kelly>0?(kelly*100).toFixed(0)+'% parcial':'–';

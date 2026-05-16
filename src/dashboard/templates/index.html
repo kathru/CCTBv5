@@ -997,7 +997,7 @@ function buildSignalFeed(entries){
     const evCls=e.ev>0.001?'pos':e.ev<-0.001?'neg':'neu';
     // Action pill
     let actCls='tp-sell', actTxt='HOLD';
-    if(e.result==='SIGNAL'){ actCls='tp-buy'; actTxt='COMPRAR'; }
+    if(e.result==='SIGNAL'){ actCls='tp-buy'; actTxt='BUY'; }
     else if(e.direction==='LONG') actTxt='BUY';
     return`<div class="sfeed-item">
       <div class="sfeed-top">
@@ -1059,12 +1059,12 @@ function bar(id,v,max,warn=0.7,danger=0.9){
   el.style.background=f>=danger?'var(--red)':f>=warn?'var(--yellow)':'var(--green)';
 }
 function action(result,cal,thr,regime){
-  if(regime==='PANIC_LIQUIDATION')return{l:'PROTEGER',c:'ap-panic'};
-  if(result==='SIGNAL')return{l:'COMPRAR',c:'ap-buy'};
-  if(!cal||!thr)return{l:'AGUARDAR',c:'ap-hold'};
+  if(regime==='PANIC_LIQUIDATION')return{l:'PROTECT',c:'ap-panic'};
+  if(result==='SIGNAL')return{l:'BUY',c:'ap-buy'};
+  if(!cal||!thr)return{l:'WAIT',c:'ap-hold'};
   const r=cal/thr;
-  if(r>=0.90)return{l:'AGUARDAR',c:'ap-wait'};
-  return{l:'SEGURAR',c:'ap-hold'};
+  if(r>=0.90)return{l:'WAIT',c:'ap-wait'};
+  return{l:'HOLD',c:'ap-hold'};
 }
 
 function buildCards(prices,sym,exits){

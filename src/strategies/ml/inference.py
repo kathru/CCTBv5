@@ -50,6 +50,7 @@ class PlattCalibrator:
         self._A = self.DEFAULT_A
         self._B = self.DEFAULT_B
         self._loaded = False
+        self._regime_thresholds: dict[str, float] = {}
 
         if coef_path and coef_path.exists():
             self._load(coef_path)
@@ -65,14 +66,27 @@ class PlattCalibrator:
             # Support both V4 format (platt_a/platt_b) and generic (A/B)
             self._A = float(data.get("platt_a", data.get("A", self.DEFAULT_A)))
             self._B = float(data.get("platt_b", data.get("B", self.DEFAULT_B)))
+            self._regime_thresholds = data.get("regime_thresholds", {})
             self._loaded = True
-            logger.info("PlattCalibrator loaded A=%.4f B=%.4f from %s", self._A, self._B, path)
+            calibrated_at = data.get("calibrated_at", "desconhecido")
+            win_rate = data.get("win_rate", None)
+            logger.info(
+                "PlattCalibrator loaded A=%.4f B=%.4f win_rate=%s calibrated_at=%s from %s",
+                self._A, self._B,
+                f"{win_rate:.1%}" if win_rate else "n/a",
+                calibrated_at[:10] if calibrated_at else "?",
+                path,
+            )
         except Exception as exc:
             logger.error("PlattCalibrator load failed: %s — using defaults", exc)
 
     def calibrate(self, raw_score: float) -> float:
         """Convert raw score to calibrated probability."""
         return 1.0 / (1.0 + math.exp(-(self._A * raw_score + self._B)))
+
+    def get_regime_threshold(self, regime: str, default: float) -> float:
+        """Return calibrated threshold for a regime, or the hardcoded default."""
+        return self._regime_thresholds.get(regime, default)
 
     @property
     def is_using_defaults(self) -> bool:

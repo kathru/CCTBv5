@@ -15,9 +15,13 @@ Migration note:
 
 import logging
 from datetime import UTC, datetime
+from pathlib import Path
 
 from ...core.models import Signal, SignalDirection
 from ..base import BaseStrategy, StrategyContext
+from ..ml.inference import PlattCalibrator
+
+MODELS_DIR = Path("data") / "models"
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +63,10 @@ class V4MomentumStrategy(BaseStrategy):
         strategy_id: str = "v4_momentum",
     ) -> None:
         super().__init__(strategy_id=strategy_id, symbols=symbols)
+        # Load calibrator — reads regime_thresholds if recalibrate.py was run
+        self._platt = PlattCalibrator(
+            coef_path=MODELS_DIR / "calibration_coef.json"
+        )
 
     async def evaluate(self, ctx: StrategyContext) -> Signal | None:
         """
@@ -74,7 +82,9 @@ class V4MomentumStrategy(BaseStrategy):
 
         # ── Step 1: Detect regime ─────────────────────────────
         regime = self._detect_regime(ctx)
-        threshold = self.REGIME_THRESHOLDS.get(regime, 0.65)
+        # Prefer threshold from calibration file (recalibrate.py), fall back to hardcoded
+        hardcoded = self.REGIME_THRESHOLDS.get(regime, 0.65)
+        threshold = self._platt.get_regime_threshold(regime, hardcoded)
 
         # Hard stop regimes
         if regime in {"PANIC_LIQUIDATION", "LIQUIDITY_VACUUM"}:

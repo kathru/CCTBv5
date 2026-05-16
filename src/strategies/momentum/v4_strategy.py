@@ -43,12 +43,15 @@ class V4MomentumStrategy(BaseStrategy):
       LIQUIDITY_VACUUM    : bloqueado
     """
 
+    # Thresholds em RAW score space (0-1), não calibrado.
+    # Calibrated probability (Platt) é usada APENAS para Kelly e EV.
+    # Com A=0.378, B=-1.075: calibrated range é [25%–33%], nunca alcança 0.56+.
     REGIME_THRESHOLDS: dict[str, float] = {
-        "TREND_EXPANSION":        0.56,
-        "VOLATILITY_COMPRESSION": 0.60,
-        "TREND_EXHAUSTION":       0.68,
-        "MEAN_REVERTING_CHOP":    0.65,
-        "HIGH_CORRELATION_RISK":  0.75,
+        "TREND_EXPANSION":        0.50,   # mercado favorável — mais fácil
+        "VOLATILITY_COMPRESSION": 0.52,
+        "TREND_EXHAUSTION":       0.54,
+        "MEAN_REVERTING_CHOP":    0.56,   # mercado lateral — conservador
+        "HIGH_CORRELATION_RISK":  0.60,   # alto risco — mais exigente
         "PANIC_LIQUIDATION":      0.99,
         "LIQUIDITY_VACUUM":       0.99,
     }
@@ -97,8 +100,8 @@ class V4MomentumStrategy(BaseStrategy):
 
         # ── Filtro 1: regime ──────────────────────────────────
         regime    = self._detect_regime(ctx)
-        hardcoded = self.REGIME_THRESHOLDS.get(regime, 0.65)
-        threshold = self._platt.get_regime_threshold(regime, hardcoded)
+        # Threshold em RAW score space — calibrated (Platt) só para Kelly/EV
+        threshold = self.REGIME_THRESHOLDS.get(regime, 0.56)
 
         if regime in {"PANIC_LIQUIDATION"}:
             _log("REGIME_BLOCKED",
@@ -106,13 +109,13 @@ class V4MomentumStrategy(BaseStrategy):
                  regime=regime, threshold=threshold)
             return None
 
-        # ── Filtro 2: score ───────────────────────────────────
+        # ── Filtro 2: score bruto vs threshold ────────────────
         score, factors = self._score_signal(ctx, regime)
-        calibrated = self._calibrate(score)
+        calibrated     = self._calibrate(score)   # usado só para Kelly/EV
 
-        if calibrated < threshold:
+        if score < threshold:
             _log("SCORE_LOW",
-                 f"Score {calibrated:.3f} < threshold {threshold:.3f} ({regime})",
+                 f"Score bruto {score:.3f} < threshold {threshold:.3f} ({regime})",
                  regime=regime, score=score, calibrated=calibrated,
                  threshold=threshold, factors=factors)
             return None

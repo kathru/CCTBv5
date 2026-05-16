@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title id="page-title">CCTBv5</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -269,6 +270,18 @@
     .wd-dot.ok  { background:var(--green); box-shadow:0 0 5px rgba(16,185,129,0.5); }
     .wd-dot.bad { background:var(--red);   box-shadow:0 0 5px rgba(239,68,68,0.5); }
 
+    /* ══ COUNTDOWN ═══════════════════════════════════════════ */
+    .hdr-countdown { display:flex; align-items:center; gap:6px; font-size:0.68rem; }
+    .hdr-countdown .cd-label { color:var(--muted); }
+    .hdr-countdown .cd-val   { color:var(--blue); font-weight:800; font-size:0.78rem; font-variant-numeric:tabular-nums; }
+    .hdr-cycle { font-size:0.62rem; color:var(--muted); }
+
+    /* ══ SIGNAL FEED REDESIGN ═════════════════════════════════ */
+    .feed-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .feed-live { display:flex; align-items:center; gap:6px; font-size:0.65rem; color:var(--green); }
+    .feed-live .dot-live { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 5px rgba(16,185,129,0.6); animation:pulse-green 1.5s infinite; }
+    .feed-cycle { font-size:0.62rem; color:var(--muted); }
+
     /* ══ SIGNAL FEED ══════════════════════════════════════════ */
     .feed-wrap { max-height:200px; overflow-y:auto; }
     .feed-wrap::-webkit-scrollbar { width:4px; }
@@ -292,6 +305,56 @@
     .fr-REGIME_BLOCKED { background:rgba(239,68,68,0.10);  color:var(--red);    border:1px solid rgba(239,68,68,0.2); }
     .fr-DIRECTION_FLAT { background:rgba(90,106,126,0.10); color:var(--muted);  border:1px solid var(--border); }
     .fr-NO_CANDLES     { background:transparent; color:#2d3748; border:1px solid var(--border); }
+
+    /* ══ TRADE HISTORY ═══════════════════════════════════════ */
+    .trade-item { display:grid; grid-template-columns:56px 1fr auto; gap:10px; align-items:center; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,0.02); margin-bottom:6px; transition:background 0.15s; }
+    .trade-item:hover { background:rgba(255,255,255,0.04); }
+    .trade-item:last-child { margin-bottom:0; }
+    .trade-pill { padding:4px 10px; border-radius:7px; font-size:0.68rem; font-weight:800; letter-spacing:0.5px; text-align:center; }
+    .tp-buy  { background:rgba(16,185,129,0.15); color:var(--green); border:1px solid rgba(16,185,129,0.3); }
+    .tp-sell { background:rgba(239,68,68,0.15);  color:var(--red);   border:1px solid rgba(239,68,68,0.3); }
+    .trade-sym { font-size:0.82rem; font-weight:700; margin-bottom:2px; }
+    .trade-meta { font-size:0.62rem; color:var(--muted); }
+    .trade-meta .strat { color:var(--blue); }
+    .trade-right { text-align:right; }
+    .trade-pnl { font-size:0.95rem; font-weight:800; letter-spacing:-0.3px; }
+    .trade-ts { font-size:0.6rem; color:var(--muted); margin-top:2px; }
+
+    /* ══ REGIME TAGS ══════════════════════════════════════════ */
+    .rtag { padding:2px 8px; border-radius:5px; font-size:0.6rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; display:inline-block; }
+    .rtag-chop  { background:rgba(245,158,11,0.12); color:var(--yellow); border:1px solid rgba(245,158,11,0.25); }
+    .rtag-trend { background:rgba(16,185,129,0.12); color:var(--green);  border:1px solid rgba(16,185,129,0.25); }
+    .rtag-corr  { background:rgba(239,68,68,0.12);  color:var(--red);    border:1px solid rgba(239,68,68,0.25); }
+    .rtag-vol   { background:rgba(59,130,246,0.12); color:var(--blue);   border:1px solid rgba(59,130,246,0.25); }
+    .rtag-panic { background:rgba(239,68,68,0.2);   color:var(--red);    border:1px solid rgba(239,68,68,0.4); }
+    .rtag-exh   { background:rgba(139,92,246,0.12); color:var(--purple); border:1px solid rgba(139,92,246,0.25); }
+
+    /* score + EV pills */
+    .spill { padding:2px 8px; border-radius:5px; font-size:0.62rem; font-weight:700; background:rgba(255,255,255,0.05); border:1px solid var(--border2); }
+    .evpill { padding:2px 8px; border-radius:5px; font-size:0.62rem; font-weight:700; }
+    .evpill.pos { background:rgba(16,185,129,0.1); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
+    .evpill.neg { background:rgba(239,68,68,0.1);  color:var(--red);   border:1px solid rgba(239,68,68,0.2); }
+    .evpill.neu { background:rgba(90,106,126,0.1); color:var(--muted); border:1px solid var(--border); }
+
+    /* Signal feed v2 */
+    .sfeed-item { padding:9px 10px; border-radius:9px; border:1px solid var(--border); background:rgba(255,255,255,0.02); margin-bottom:5px; transition:background 0.15s; }
+    .sfeed-item:hover { background:rgba(255,255,255,0.04); border-color:var(--border2); }
+    .sfeed-top { display:flex; align-items:center; gap:7px; margin-bottom:5px; }
+    .sfeed-ts  { margin-left:auto; font-size:0.6rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+    .sfeed-tags { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+
+    /* Charts */
+    .chart-btn { padding:3px 10px; border-radius:6px; font-size:0.62rem; font-weight:600; background:transparent; border:1px solid var(--border2); color:var(--muted); cursor:pointer; transition:all 0.15s; }
+    .chart-btn.active { background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.4); color:var(--blue); }
+    .chart-btn:hover { border-color:var(--border2); color:var(--text); }
+
+    /* Donut legend */
+    .donut-legend { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+    .donut-row { display:flex; align-items:center; justify-content:space-between; font-size:0.7rem; }
+    .donut-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-right:7px; }
+    .donut-sym { display:flex; align-items:center; color:var(--muted); }
+    .donut-val { font-weight:700; color:var(--text); }
+    .donut-pct { color:var(--muted); font-size:0.65rem; margin-left:5px; }
 
     /* ══ TABLES ═══════════════════════════════════════════════ */
     .table-wrap { overflow-x:auto; }
@@ -342,6 +405,11 @@
     <div class="hdr-info">
       <div class="hdr-info-top" id="last-update">–</div>
       <div class="hdr-info-sub">Última atualização</div>
+    </div>
+    <div class="hdr-sep"></div>
+    <div class="hdr-countdown">
+      <span class="cd-label">próximo ciclo</span>
+      <span class="cd-val" id="hdr-countdown">–</span>
     </div>
     <div class="hdr-sep"></div>
     <div class="status-pill" id="status-pill">
@@ -475,12 +543,63 @@
   </div>
 </div>
 
-<!-- ══ SIGNAL FEED ════════════════════════════════════════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--yellow)"></div>Feed de Sinais<span class="cnt" id="feed-stats"></span></div>
-<div class="card" style="padding:12px 14px">
-  <div class="feed-wrap" id="signal-feed">
-    <div class="m" style="padding:12px;font-size:0.72rem;text-align:center">Aguardando avaliações...</div>
+<!-- ══ HISTÓRICO + FEED ════════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--yellow)"></div>Histórico & Sinais<span class="cnt" id="feed-stats"></span></div>
+<div class="grid g11">
+
+  <!-- Histórico de Trades -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="clabel" style="margin:0">Histórico de Trades</div>
+      <span class="hbadge hbadge-gray" id="trade-count-badge">0 trades</span>
+    </div>
+    <div id="trade-history" style="max-height:340px;overflow-y:auto;">
+      <div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Nenhum trade executado ainda</div>
+    </div>
   </div>
+
+  <!-- Feed de Sinais -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="clabel" style="margin:0">Feed de Sinais</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="feed-live"><div class="dot-live"></div>ao vivo</div>
+        <span class="hdr-cycle" id="feed-cycle">ciclo #–</span>
+      </div>
+    </div>
+    <div id="signal-feed" style="max-height:340px;overflow-y:auto;">
+      <div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ GRÁFICOS ════════════════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Evolução & Distribuição</div>
+<div class="grid g21">
+
+  <!-- Evolução do Portfolio -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="clabel" style="margin:0">Evolução do Portfolio</div>
+      <div style="display:flex;gap:4px;">
+        <button class="chart-btn active" onclick="setChartWindow(15,'1h')"  id="btn-1h" >1h</button>
+        <button class="chart-btn"        onclick="setChartWindow(72,'6h')"  id="btn-6h" >6h</button>
+        <button class="chart-btn"        onclick="setChartWindow(288,'1d')" id="btn-1d" >1d</button>
+      </div>
+    </div>
+    <canvas id="portfolio-chart" height="140"></canvas>
+  </div>
+
+  <!-- Distribuição -->
+  <div class="card">
+    <div class="clabel">Distribuição do Portfolio</div>
+    <div style="max-width:200px;margin:0 auto;">
+      <canvas id="donut-chart" height="200"></canvas>
+    </div>
+    <div class="donut-legend" id="donut-legend"></div>
+  </div>
+
 </div>
 
 <!-- ══ POSIÇÕES + PLANOS ══════════════════════════════════════ -->
@@ -521,6 +640,191 @@
 
 <script>
 const API='', REFRESH_MS=600000;
+
+// ── Portfolio chart data (in-session memory) ───────────────
+const _portfolioHistory = { labels:[], values:[], maxPoints:288 };
+let _chartWindow = 15; // points to show
+let _portfolioChart = null, _donutChart = null, _cycleCount = 0;
+
+// ── Countdown timer (15s poll cycle) ──────────────────────
+function startCountdown(){
+  const el=document.getElementById('hdr-countdown');
+  setInterval(()=>{
+    const now=new Date(), sec=now.getSeconds(), ms=now.getMilliseconds();
+    const rem=15-((sec%15))-(ms/1000);
+    const s=Math.max(0,rem).toFixed(1);
+    el.textContent=parseFloat(s)<1?`0.${s.split('.')[1]}`:(parseInt(s)+':'+s.split('.')[1].padStart(1,'0'));
+  },100);
+}
+
+// ── Chart window ───────────────────────────────────────────
+function setChartWindow(pts,btnId){
+  _chartWindow=pts;
+  document.querySelectorAll('.chart-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btn-'+btnId)?.classList.add('active');
+  updatePortfolioChart();
+}
+
+// ── Portfolio line chart ───────────────────────────────────
+function initPortfolioChart(){
+  const ctx=document.getElementById('portfolio-chart').getContext('2d');
+  _portfolioChart=new Chart(ctx,{
+    type:'line',
+    data:{ labels:[], datasets:[{
+      label:'Portfolio',data:[],
+      borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.06)',
+      borderWidth:2,pointRadius:0,pointHoverRadius:4,
+      fill:true,tension:0.4,
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      animation:{duration:400},
+      plugins:{legend:{display:false},tooltip:{
+        mode:'index',intersect:false,
+        backgroundColor:'#0f1623',borderColor:'#1e2a3a',borderWidth:1,
+        titleColor:'#6b7280',bodyColor:'#e2e8f0',
+        callbacks:{label:ctx=>'$'+ctx.raw.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+      }},
+      scales:{
+        x:{grid:{color:'rgba(30,42,58,0.5)'},ticks:{color:'#5a6a7e',font:{size:10},maxTicksLimit:6}},
+        y:{grid:{color:'rgba(30,42,58,0.5)'},ticks:{color:'#5a6a7e',font:{size:10},callback:v=>'$'+v.toLocaleString('pt-BR',{minimumFractionDigits:0})}},
+      }
+    }
+  });
+}
+
+function pushPortfolioValue(value){
+  const ts=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  _portfolioHistory.labels.push(ts);
+  _portfolioHistory.values.push(value);
+  if(_portfolioHistory.labels.length>_portfolioHistory.maxPoints){
+    _portfolioHistory.labels.shift(); _portfolioHistory.values.shift();
+  }
+}
+
+function updatePortfolioChart(){
+  if(!_portfolioChart) return;
+  const n=Math.min(_chartWindow,_portfolioHistory.labels.length);
+  const labels=_portfolioHistory.labels.slice(-n);
+  const values=_portfolioHistory.values.slice(-n);
+  _portfolioChart.data.labels=labels;
+  _portfolioChart.data.datasets[0].data=values;
+  const min=Math.min(...values)*0.9995, max=Math.max(...values)*1.0005;
+  _portfolioChart.options.scales.y.min=min; _portfolioChart.options.scales.y.max=max;
+  _portfolioChart.update('none');
+}
+
+// ── Donut chart ────────────────────────────────────────────
+function initDonutChart(){
+  const ctx=document.getElementById('donut-chart').getContext('2d');
+  _donutChart=new Chart(ctx,{
+    type:'doughnut',
+    data:{ labels:['Cash',...['BTC-USDT','ETH-USDT','SOL-USDT']], datasets:[{
+      data:[100,0,0,0],
+      backgroundColor:['#3b82f6','#f97316','#6366f1','#8b5cf6'],
+      borderColor:'#0f1623',borderWidth:3,hoverBorderWidth:3,
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:'72%',
+      animation:{duration:600},
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'#0f1623',borderColor:'#1e2a3a',borderWidth:1,
+        titleColor:'#6b7280',bodyColor:'#e2e8f0',
+      }},
+    }
+  });
+}
+
+function updateDonut(portfolio,prices){
+  if(!_donutChart||!portfolio||!prices) return;
+  const cash=portfolio.cash_available||portfolio.total_value||0;
+  const tv=portfolio.total_value||1;
+  const pos=portfolio.positions||{};
+  const data=[cash];
+  const syms=['BTC-USDT','ETH-USDT','SOL-USDT'];
+  const colors=['#3b82f6','#f97316','#6366f1','#8b5cf6'];
+  const names=['Cash','BTC','ETH','SOL'];
+  const vals=[cash];
+  syms.forEach(s=>{ const p=pos[s]; vals.push(p?p.notional||0:0); data.push(p?p.notional||0:0); });
+  _donutChart.data.datasets[0].data=data;
+  _donutChart.update('none');
+  // Legend
+  const leg=document.getElementById('donut-legend');
+  leg.innerHTML=names.map((n,i)=>{
+    const v=vals[i],pct=tv>0?(v/tv*100).toFixed(1):'0.0';
+    return`<div class="donut-row"><div class="donut-sym"><div class="donut-dot" style="background:${colors[i]}"></div>${n}</div><div><span class="donut-val">$${v.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span><span class="donut-pct">(${pct}%)</span></div></div>`;
+  }).join('');
+}
+
+// ── Regime tag helper ──────────────────────────────────────
+function regimeTag(r){
+  if(!r) return '';
+  const R=r.toUpperCase();
+  if(R.includes('EXPANSION'))   return`<span class="rtag rtag-trend">${r.replace(/_/g,' ')}</span>`;
+  if(R.includes('EXHAUSTION'))  return`<span class="rtag rtag-exh">${r.replace(/_/g,' ')}</span>`;
+  if(R.includes('CHOP'))        return`<span class="rtag rtag-chop">CHOP</span>`;
+  if(R.includes('COMPRESSION')) return`<span class="rtag rtag-vol">VOL COMPRESS</span>`;
+  if(R.includes('CORRELATION')) return`<span class="rtag rtag-corr">HIGH CORR</span>`;
+  if(R.includes('PANIC'))       return`<span class="rtag rtag-panic">PANIC</span>`;
+  return`<span class="rtag rtag-chop">${r.replace(/_/g,' ')}</span>`;
+}
+
+// ── Signal feed v2 ─────────────────────────────────────────
+function buildSignalFeed(entries){
+  if(!entries||!entries.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>';
+  return entries.slice(0,20).map(e=>{
+    const t=new Date(e.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const sym=e.symbol.replace('-USDT','');
+    const scorePct=(e.score*100).toFixed(0)+'%';
+    const ev=e.ev!=null?(e.ev>=0?'+':'')+(e.ev*100).toFixed(4):'–';
+    const evCls=e.ev>0.001?'pos':e.ev<-0.001?'neg':'neu';
+    // Action pill
+    let actCls='tp-sell', actTxt='HOLD';
+    if(e.result==='SIGNAL'){ actCls='tp-buy'; actTxt='COMPRAR'; }
+    else if(e.direction==='LONG') actTxt='BUY';
+    return`<div class="sfeed-item">
+      <div class="sfeed-top">
+        <div class="trade-pill ${actCls}" style="min-width:52px;font-size:0.62rem">${actTxt}</div>
+        <span class="b" style="font-weight:700;font-size:0.78rem">${sym}</span>
+        <span class="m" style="font-size:0.62rem">V4</span>
+        <span class="sfeed-ts">${t}</span>
+      </div>
+      <div class="sfeed-tags">
+        <span class="spill">score ${scorePct}</span>
+        <span class="evpill ${evCls}">EV ${ev}</span>
+        ${regimeTag(e.regime)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Trade history ──────────────────────────────────────────
+function buildTradeHistory(orders){
+  if(!orders||!orders.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Nenhum trade executado ainda</div>';
+  const filled=orders.filter(o=>(o.status||'').toLowerCase()==='filled');
+  if(!filled.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Nenhum trade preenchido ainda</div>';
+  document.getElementById('trade-count-badge').textContent=filled.length+' trades';
+  return filled.map(o=>{
+    const side=(o.side||'buy').toLowerCase();
+    const qty=parseFloat(o.filled_quantity||0), px=parseFloat(o.avg_fill_price||0);
+    const notional=qty*px;
+    const pnl=parseFloat(o.pnl||0); // may not exist
+    const pnlStr=pnl!==0?(pnl>0?'+':'')+usd(pnl):'–';
+    const pnlCls=pnl>0?'g':pnl<0?'r':'m';
+    const ts=dt(o.created_at||o.filled_at);
+    return`<div class="trade-item">
+      <div class="trade-pill ${side==='buy'?'tp-buy':'tp-sell'}">${side.toUpperCase()}</div>
+      <div>
+        <div class="trade-sym">${o.symbol||'–'}</div>
+        <div class="trade-meta"><span class="strat">${o.strategy_id||'V4'}</span> · ${qty.toFixed(4)} un · fee –</div>
+      </div>
+      <div class="trade-right">
+        <div class="trade-pnl ${pnlCls}">${pnlStr!=='–'?pnlStr:usd(-notional)}</div>
+        <div class="trade-ts">${ts}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
 const SYMBOLS=['BTC-USDT','ETH-USDT','SOL-USDT'];
 const _c={prices:{},sym:{},exits:{}};
 
@@ -771,7 +1075,31 @@ async function updateAll(){
   }).join(''):'<tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr>';
 
   document.getElementById('last-update').textContent=new Date().toLocaleTimeString('pt-BR');
+
+  // Portfolio chart
+  if(portfolio&&portfolio.total_value){
+    pushPortfolioValue(portfolio.total_value);
+    updatePortfolioChart();
+    updateDonut(portfolio,_c.prices);
+  }
+
+  // Signal feed v2
+  if(log){
+    const entries=log.entries||[];
+    document.getElementById('signal-feed').innerHTML=buildSignalFeed(entries);
+    _cycleCount++;
+    document.getElementById('feed-cycle').textContent=`ciclo #${_cycleCount}`;
+  }
+
+  // Trade history
+  const allOrders=[...(oOpen||[]),...(oRec||[])];
+  document.getElementById('trade-history').innerHTML=buildTradeHistory(allOrders);
 }
+
+// Init charts + countdown
+initPortfolioChart();
+initDonutChart();
+startCountdown();
 
 updateAll();
 setInterval(updateAll, REFRESH_MS);

@@ -1,0 +1,44 @@
+{
+  "schema_version": "2.0.0",
+  "symbol": "BTC-USDT",
+  "n_samples": 11974,
+  "win_rate": 0.2424,
+  "computed_at": "2026-05-16T14:37:38.539567+00:00",
+  "features": {
+    "m3_volume": {
+      "spearman_corr": 0.0095,
+      "perm_importance": 0.0025,
+      "relative_importance": 0.9615,
+      "schema_weight": 0.2,
+      "aligned": false
+    },
+    "m2_consistency": {
+      "spearman_corr": 0.026,
+      "perm_importance": 0.0001,
+      "relative_importance": 0.0385,
+      "schema_weight": 0.25,
+      "aligned": false
+    },
+    "m5_candle": {
+      "spearman_corr": 0.0035,
+      "perm_importance": -0.0,
+      "relative_importance": -0.0,
+      "schema_weight": 0.1,
+      "aligned": false
+    },
+    "m4_regime_str": {
+      "spearman_corr": -0.0505,
+      "perm_importance": -0.0035,
+      "relative_importance": 0.0,
+      "schema_weight": 0.2,
+      "aligned": false
+    },
+    "m1_momentum": {
+      "spearman_corr": -0.0279,
+      "perm_importance": -0.006,
+      "relative_importance": 0.0,
+      "schema_weight": 0.25,
+      "aligned": false
+    }
+  }
+}

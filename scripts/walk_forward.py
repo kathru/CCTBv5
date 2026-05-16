@@ -205,9 +205,13 @@ def score_raw(candles_window: list[dict]) -> float | None:
 
 
 def fit_platt_on_period(candles: list[dict], forward: int = 5,
-                        fee: float = 0.005) -> tuple[float, float, int, float]:
+                        fee: float = 0.005,
+                        min_score: float = 0.50) -> tuple[float, float, int, float]:
     """
     Calibra coeficientes Platt em um período de treino.
+    Usa apenas amostras com score >= min_score (igual ao threshold real).
+    Isso evita contaminar a calibração com sinais fracos que a estratégia
+    real nunca executaria.
     Retorna (A, B, n_samples, win_rate).
     """
     scores, labels = [], []
@@ -216,7 +220,7 @@ def fit_platt_on_period(candles: list[dict], forward: int = 5,
     for i in range(20, n - forward):
         window = list(reversed(candles[max(0, i-20):i+1]))
         score  = score_raw(window)
-        if score is None or score < 0.3:
+        if score is None or score < min_score:   # era 0.3 — contaminava com sinais fracos
             continue
 
         entry = candles[i]["close"]

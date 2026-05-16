@@ -375,7 +375,10 @@ class V4MomentumStrategy(BaseStrategy):
         return self._platt.calibrate(score)
 
     def _expected_value(self, calibrated: float) -> float:
-        return calibrated * 2.5 - (1 - calibrated) * 1.0
+        # Reward 3.0R (alinha com PositionMonitor: TP = entry + ATR*3.0)
+        # Risk  1.0R (SL = entry - ATR*1.5, R = ATR*1.5)
+        # EV positivo requer P > 1/(3+1) = 25% — alcançável com IS_WR real
+        return calibrated * 3.0 - (1 - calibrated) * 1.0
 
     def _direction(self, ctx: StrategyContext) -> SignalDirection:
         if len(ctx.candles_1h) < 2:

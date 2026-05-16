@@ -54,6 +54,15 @@
       box-shadow: 0 2px 12px rgba(234,88,12,0.45), 0 0 0 1px rgba(255,255,255,0.06);
     }
     .logo-title { font-size: 1rem; font-weight: 800; color: var(--text); letter-spacing: -0.2px; white-space: nowrap; }
+    .hdr-short-title { display: none; }
+    @media (max-width: 700px) {
+      .hdr-full-title  { display: none; }
+      .hdr-short-title { display: inline; }
+      .logo-sub        { display: none; }
+      .hdr-info-sub    { display: none; }
+      .hdr-sep         { display: none; }
+      .hdr-cycle-block { display: none; }
+    }
     .logo-ver   {
       font-size: 0.72rem; font-weight: 700; color: var(--blue);
       background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25);
@@ -415,15 +424,17 @@
       <div class="logo-icon">✳</div>
       <div>
         <div>
-          <span class="logo-title" id="title-desktop">Claude Code Trading Bot</span>
-          <span class="logo-ver"   id="hdr-version">v–.–.–</span>
+          <span class="logo-title">
+            <span class="hdr-full-title" id="title-desktop">Claude Code Trading Bot</span>
+            <span class="hdr-short-title">CCTB</span>
+          </span>
+          <span class="logo-ver" id="hdr-version">v–.–.–</span>
         </div>
         <div class="logo-sub" id="hdr-sub">OKX · Paper Mode</div>
       </div>
     </div>
 
     <div class="hdr-sep"></div>
-    <span id="hdr-mode" class="hbadge hbadge-blue">PAPER</span>
     <div id="hdr-regime" class="regime-badge rb-other">
       <span class="rb-arrow">⇄</span>
       <span id="hdr-regime-txt">–</span>
@@ -1261,14 +1272,26 @@ async function updateAll(){
     const rTxt=r.replace(/_/g,' ')||'–';
     const rb=document.getElementById('hdr-regime');
     const rtEl=document.getElementById('hdr-regime-txt');
-    rtEl.textContent=rTxt;
-    // Arrow + color by regime
+    // Labels curtos para o badge de regime
+    const regimeShortMap = {
+      'TREND_EXPANSION':        'BULL',
+      'VOLATILITY_COMPRESSION': 'BULL~',
+      'TREND_EXHAUSTION':       'EXHAUST',
+      'MEAN_REVERTING_CHOP':    'CHOP',
+      'HIGH_CORRELATION_RISK':  'HIGH CORR',
+      'BEAR_TREND':             'BEAR',
+      'PANIC_LIQUIDATION':      'PANIC',
+    };
+    rtEl.textContent = regimeShortMap[r] || r.replace(/_/g,' ') || '–';
     const arrowEl=rb.querySelector('.rb-arrow');
-    if(r.includes('PANIC'))     { rb.className='regime-badge rb-panic'; arrowEl.textContent='⚠'; }
-    else if(r.includes('EXPANSION')) { rb.className='regime-badge rb-trend'; arrowEl.textContent='↗'; }
-    else if(r.includes('EXHAUSTION')){ rb.className='regime-badge rb-other'; arrowEl.textContent='↘'; }
-    else if(r.includes('CHOP'))      { rb.className='regime-badge rb-chop';  arrowEl.textContent='⇄'; }
-    else                             { rb.className='regime-badge rb-other'; arrowEl.textContent='→'; }
+    if(r.includes('PANIC'))            { rb.className='regime-badge rb-panic'; arrowEl.textContent='⚠'; }
+    else if(r==='BEAR_TREND')          { rb.className='regime-badge rb-panic'; arrowEl.textContent='↓'; }
+    else if(r.includes('EXPANSION'))   { rb.className='regime-badge rb-trend'; arrowEl.textContent='↗'; }
+    else if(r.includes('EXHAUSTION'))  { rb.className='regime-badge rb-other'; arrowEl.textContent='↘'; }
+    else if(r.includes('CHOP'))        { rb.className='regime-badge rb-chop';  arrowEl.textContent='⇄'; }
+    else if(r.includes('CORRELATION')) { rb.className='regime-badge rb-other'; arrowEl.textContent='⚡'; }
+    else if(r.includes('COMPRESS'))    { rb.className='regime-badge rb-trend'; arrowEl.textContent='→'; }
+    else                               { rb.className='regime-badge rb-other'; arrowEl.textContent='·'; }
   }
 
   // KPIs

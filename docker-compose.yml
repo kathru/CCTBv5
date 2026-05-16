@@ -37,6 +37,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        GIT_MINOR: ${GIT_MINOR:-0}
+        GIT_PATCH: ${GIT_PATCH:-0}
     container_name: cctb_app
     ports:
       - "8001:8001"

@@ -183,8 +183,9 @@ class V4MomentumStrategy(BaseStrategy):
         avg_vol  = sum(volumes) / len(volumes)
         last_vol = volumes[0]
 
-        if len(closes) >= 2:
-            drop = (closes[1] - closes[0]) / closes[1]
+        # Panic: queda > 5% no candle mais recente vs anterior
+        if len(closes) >= 2 and closes[1] > 0:
+            drop = (closes[0] - closes[1]) / closes[1]   # negativo = queda
             if drop < -0.05:
                 return "PANIC_LIQUIDATION"
 
@@ -200,9 +201,9 @@ class V4MomentumStrategy(BaseStrategy):
         atr_5 = sum(h - l for h, l in zip(highs[:5], lows[:5])) / 5
         rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
 
-        if rel_atr < 0.005:
+        if rel_atr < 0.010:   # 1% — era 0.5% (muito sensível, causava bloqueio total)
             return "LIQUIDITY_VACUUM"
-        if rel_atr > 0.025:
+        if rel_atr > 0.030:   # 3% — era 2.5%
             return "HIGH_CORRELATION_RISK"
 
         return "MEAN_REVERTING_CHOP"

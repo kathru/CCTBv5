@@ -1,18 +1,19 @@
 """
 Trading Loop — wires all engines together and runs the main cycle.
 
-Component wiring:
+Pipeline completo (corrigido):
   MarketEngine → (CandleEvent) → StrategyRunner
-  StrategyRunner → (SignalEvent) → RiskEngine
-  RiskEngine → (RiskEvaluatedEvent) → OrderManager
-  OrderManager → (OrderEvent) → ExecutionRouter → OKX
+  StrategyRunner → (SignalEvent) → [signal_consumer task]
+  signal_consumer → RiskEngine.evaluate() → sizing → OrderManager
+  OrderManager → ExecutionRouter → OKX
+  OKX fill → (FillEvent) → PositionMonitor → exit orders
 
 Parallel services:
   - PeriodicReconciler (every 2 min)
   - HeartbeatWatchdog (every 15s)
   - WebSocketWatchdog (every 5s)
   - AlertListener (continuous)
-  - PeriodicReconciler (continuous)
+  - PositionMonitor (every 30s)
 
 Boot sequence (BootSequence handles this):
   Connect → Schema → RECONCILING → Load state → Reconcile → RUNNING
@@ -24,10 +25,13 @@ from pathlib import Path
 
 from .bus import EventBus
 from .config import settings
+from .events import SignalEvent, Topic
+from .events.risk_events import RiskAction
 from ..exchange.okx.client import OKXClient
 from ..market.engine import MarketEngine
 from ..oms.order_manager import OrderManager
 from ..oms.execution_router import ExecutionRouter
+from ..oms.position_monitor import PositionMonitor
 from ..risk.engine import RiskEngine, RiskContext
 from ..risk.kill_switch import KillSwitch
 from ..portfolio.engine import PortfolioEngine
@@ -37,7 +41,6 @@ from ..strategies.momentum.v4_strategy import V4MomentumStrategy
 from ..strategies.ml.inference import MLInferenceEngine
 from ..recovery.boot import BootSequence
 from ..recovery.periodic_reconciler import PeriodicReconciler
-from ..oms.position_monitor import PositionMonitor
 from ..watchdog.heartbeat import HeartbeatWatchdog
 from ..watchdog.websocket_watchdog import WebSocketWatchdog
 from ..watchdog.resource_watchdog import ResourceWatchdog
@@ -51,6 +54,19 @@ logger = logging.getLogger(__name__)
 SYMBOLS = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
 MODELS_DIR = Path("data") / "models"
 
+# Quantidade mínima por símbolo (OKX spot minimums)
+MIN_QTY = {
+    "BTC-USDT": 0.00001,
+    "ETH-USDT": 0.0001,
+    "SOL-USDT": 0.01,
+}
+# Precisão de casas decimais por símbolo
+QTY_PRECISION = {
+    "BTC-USDT": 5,
+    "ETH-USDT": 4,
+    "SOL-USDT": 2,
+}
+
 
 class TradingLoop:
     """
@@ -62,7 +78,7 @@ class TradingLoop:
         self,
         db: Database,
         cache: Cache,
-        app_state=None,    # FastAPI app.state for watchdog registration
+        app_state=None,
     ) -> None:
         self._db = db
         self._cache = cache
@@ -123,7 +139,6 @@ class TradingLoop:
             market=self._market,
             cache=self._cache,
         )
-        # Register strategies
         v4 = V4MomentumStrategy(symbols=SYMBOLS)
         self._runner.register(v4)
         self._meta.register(v4.strategy_id)
@@ -144,7 +159,7 @@ class TradingLoop:
         )
         self._ws_watchdog = WebSocketWatchdog(
             on_dead=self._on_ws_dead,
-            dead_threshold=120,   # REST polling — threshold maior até WS real
+            dead_threshold=120,
             name="okx_market",
         )
         self._resource_watchdog = ResourceWatchdog(
@@ -152,7 +167,7 @@ class TradingLoop:
             interval_seconds=30,
         )
 
-        # ── Position Monitor (saídas automáticas) ────────────
+        # ── Position Monitor ──────────────────────────────────
         self._position_monitor = PositionMonitor(
             bus=self._bus,
             market=self._market,
@@ -172,17 +187,17 @@ class TradingLoop:
             interval_seconds=120,
         )
 
-        # Wire MarketEngine poll → WS watchdog (REST polling acts as WS heartbeat)
+        # ── Signal consumer (pipeline SIGNAL → RISK → OMS) ───
+        self._signal_queue: asyncio.Queue | None = None
+        self._signal_task: asyncio.Task | None = None
+
         self._market.set_on_poll_callback(self._ws_watchdog.record_message)
 
+    # ── Lifecycle ─────────────────────────────────────────────────────────────
+
     async def start(self) -> bool:
-        """
-        Run boot sequence then start all services.
-        Returns True if ready to trade.
-        """
         logger.info("TradingLoop: starting boot sequence...")
 
-        # Boot sequence
         boot = BootSequence(
             bus=self._bus,
             db=self._db,
@@ -195,15 +210,19 @@ class TradingLoop:
             logger.error("TradingLoop: boot failed — not starting")
             return False
 
-        # Register watchdogs in app.state for dashboard
         if self._app_state:
-            self._app_state.ws_watchdog = self._ws_watchdog
+            self._app_state.ws_watchdog       = self._ws_watchdog
             self._app_state.heartbeat_watchdog = self._heartbeat
-            self._app_state.resource_watchdog = self._resource_watchdog
-            self._app_state.portfolio        = self._portfolio
-            self._app_state.position_monitor = self._position_monitor
+            self._app_state.resource_watchdog  = self._resource_watchdog
+            self._app_state.portfolio          = self._portfolio
+            self._app_state.position_monitor   = self._position_monitor
 
-        # Start all services
+        # ── Subscreve ao pipeline de sinais ──────────────────
+        self._signal_queue = self._bus.subscribe(Topic.SIGNAL)
+        self._signal_task  = asyncio.create_task(
+            self._consume_signals(), name="signal_consumer"
+        )
+
         await self._alert_listener.start()
         await self._heartbeat.start()
         await self._ws_watchdog.start()
@@ -216,42 +235,26 @@ class TradingLoop:
         self._running = True
         logger.info("TradingLoop: all services started — RUNNING")
 
-        # Send startup alert
         await self._alert_channel.info(
-            title="✅ CCTBv5 Started",
+            title="CCTBv5 Started",
             message="Sistema iniciado com sucesso.",
             mode="paper" if settings.okx_paper_trading else "live",
             symbols=", ".join(SYMBOLS),
         )
 
-        # Main heartbeat loop
         await self._run_loop()
         return True
 
-    async def _run_loop(self) -> None:
-        """Main loop — beats heartbeat and checks kill switch."""
-        while self._running:
-            try:
-                self._heartbeat.beat()
-                self._infra_metrics.record_ws_message()
-
-                # Check kill switch
-                if not self._kill_switch.allows_any_operation:
-                    logger.critical("HARD kill switch active — stopping loop")
-                    break
-
-                await asyncio.sleep(15)
-
-            except asyncio.CancelledError:
-                break
-            except Exception as exc:
-                logger.error("TradingLoop error: %s", exc, exc_info=True)
-                self._infra_metrics.record_error()
-
     async def stop(self) -> None:
-        """Graceful shutdown."""
         self._running = False
         logger.info("TradingLoop: shutting down...")
+
+        if self._signal_task and not self._signal_task.done():
+            self._signal_task.cancel()
+            try:
+                await self._signal_task
+            except asyncio.CancelledError:
+                pass
 
         await self._market.stop()
         await self._runner.stop()
@@ -268,12 +271,128 @@ class TradingLoop:
         )
         logger.info("TradingLoop: shutdown complete")
 
+    # ── Pipeline: Signal → Risk → Sizing → OMS ───────────────────────────────
+
+    async def _consume_signals(self) -> None:
+        """
+        Consumer do pipeline de sinais.
+        Recebe cada SignalEvent, avalia risco, dimensiona e envia ao OMS.
+        """
+        logger.info("Signal consumer iniciado — aguardando sinais...")
+        while self._running:
+            try:
+                event = await asyncio.wait_for(
+                    self._signal_queue.get(), timeout=1.0
+                )
+                if isinstance(event, SignalEvent) and event.signal:
+                    await self._process_signal(event)
+            except TimeoutError:
+                continue
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.error("Signal consumer error: %s", exc, exc_info=True)
+
+    async def _process_signal(self, event: SignalEvent) -> None:
+        """
+        Processa um sinal aprovado pela estratégia:
+          1. RiskEngine — verifica limites de drawdown, exposição, cooldown
+          2. Sizing     — calcula quantidade usando kelly_fraction e preço atual
+          3. OMS        — cria e submete ordem de mercado
+        """
+        signal = event.signal
+
+        # 1. Avaliação de risco
+        portfolio_value = self._portfolio.state.total_value or 10000.0
+        risk_ctx = RiskContext(
+            portfolio_value=portfolio_value,
+            open_positions=[],
+            strategy_id=signal.strategy_id,
+        )
+        action = await self._risk.evaluate(risk_ctx)
+
+        if action != RiskAction.NORMAL:
+            logger.info(
+                "Sinal rejeitado pelo RiskEngine action=%s symbol=%s strategy=%s",
+                action, signal.symbol, signal.strategy_id,
+            )
+            return
+
+        # 2. Sizing usando kelly_fraction e preço atual
+        price_raw = await self._cache.get_price(signal.symbol)
+        if not price_raw:
+            logger.warning(
+                "Sem preço em cache para %s — sinal descartado", signal.symbol
+            )
+            return
+
+        price = float(price_raw)
+        if price <= 0:
+            return
+
+        kelly        = signal.kelly_fraction or 0.10
+        notional     = portfolio_value * kelly
+        precision    = QTY_PRECISION.get(signal.symbol, 4)
+        quantity     = round(notional / price, precision)
+        min_qty      = MIN_QTY.get(signal.symbol, 0.0001)
+
+        if quantity < min_qty:
+            logger.info(
+                "Quantidade %.6f < mínimo %.6f para %s — sinal descartado",
+                quantity, min_qty, signal.symbol,
+            )
+            return
+
+        logger.info(
+            "Sinal aprovado: %s %s qty=%.6f price=%.2f notional=%.2f kelly=%.1f%%",
+            signal.direction, signal.symbol,
+            quantity, price, notional, kelly * 100,
+        )
+
+        # 3. Criar e submeter ordem via OMS
+        await self._oms.create_order_from_signal(event, quantity)
+
+        # Alerta Discord para sinais reais
+        if not settings.okx_paper_trading:
+            await self._alert_channel.info(
+                title=f"Sinal: {signal.symbol}",
+                message=(
+                    f"Direção: {signal.direction} | "
+                    f"Score: {signal.calibrated_score:.3f} | "
+                    f"Qty: {quantity} | Notional: ${notional:.0f}"
+                ),
+            )
+
+    # ── Main heartbeat loop ────────────────────────────────────────────────────
+
+    async def _run_loop(self) -> None:
+        while self._running:
+            try:
+                self._heartbeat.beat()
+                self._infra_metrics.record_ws_message()
+
+                # Atualiza portfolio value no runner
+                self._runner.update_portfolio_value(
+                    self._portfolio.state.total_value
+                )
+
+                if not self._kill_switch.allows_any_operation:
+                    logger.critical("HARD kill switch active — stopping loop")
+                    break
+
+                await asyncio.sleep(15)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.error("TradingLoop error: %s", exc, exc_info=True)
+                self._infra_metrics.record_error()
+
     async def _on_ws_dead(self) -> None:
-        """Called when WebSocket is declared dead."""
         logger.warning("WS dead — triggering soft kill switch")
         self._kill_switch.trigger_soft(reason="websocket_dead")
         self._infra_metrics.record_error()
         await self._alert_channel.warning(
-            title="⚠️ WebSocket Morto",
-            message="Conexão com OKX perdida. Kill switch SOFT ativado.",
+            title="WebSocket Morto",
+            message="Conexao com OKX perdida. Kill switch SOFT ativado.",
         )

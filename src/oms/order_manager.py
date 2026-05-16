@@ -22,9 +22,9 @@ from ..core.events import (
     OrderPartialEvent,
     OrderRejectedEvent,
     OrderSubmittedEvent,
-    SignalEvent,
     Topic,
 )
+from ..core.events.signal_events import SignalEvent
 from ..core.models import (
     Fill,
     Order,
@@ -266,7 +266,50 @@ class OrderManager:
         )
         logger.error("Order REJECTED coid=%s reason=%s", order.client_order_id, reason)
 
-    # ── Exit position (chamado pelo PositionMonitor) ──────────
+    # ── Entrada de sinal (chamado pelo TradingLoop) ───────────
+
+    async def create_order_from_signal(
+        self,
+        event: SignalEvent,
+        quantity: float,
+    ) -> None:
+        """
+        Cria e submete ordem de mercado a partir de um sinal aprovado.
+        Quantidade já calculada pelo TradingLoop (kelly sizing).
+        Ordem MARKET — execução imediata ao preço atual.
+        """
+        if not self._accepting_orders:
+            logger.info(
+                "OMS gate fechado — sinal descartado symbol=%s",
+                event.signal.symbol if event.signal else "?",
+            )
+            return
+
+        signal = event.signal
+        if signal is None or quantity <= 0:
+            return
+
+        from ..core.models import SignalDirection
+        side = (
+            OrderSide.BUY
+            if signal.direction == SignalDirection.LONG
+            else OrderSide.SELL
+        )
+
+        order = Order(
+            symbol=signal.symbol,
+            side=side,
+            order_type=OrderType.MARKET,
+            quantity=quantity,
+            strategy_id=signal.strategy_id,
+            signal_id=event.event_id,
+            mode=OrderMode.PASSIVE_LIMIT,
+        )
+
+        await self._register(order)
+        await self._submit(order)
+
+    # ── Exit position (chamado pelo PositionMonitor) ───────────
 
     async def exit_position(
         self,

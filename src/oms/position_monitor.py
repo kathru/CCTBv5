@@ -144,6 +144,8 @@ class PositionMonitor:
 
         self._running = False
         self._task: asyncio.Task | None = None
+        self._fill_task: asyncio.Task | None = None
+        self._fill_queue: asyncio.Queue | None = None
         self._exits_today = 0
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -153,8 +155,11 @@ class PositionMonitor:
             return
         self._running = True
 
-        # Escuta fills para criar ExitPlans de novas posições
-        await self._bus.subscribe(Topic.ORDER, self._on_order_event)
+        # Subscreve fills via queue (API correta do EventBus)
+        self._fill_queue = self._bus.subscribe(Topic.FILL)
+        self._fill_task  = asyncio.create_task(
+            self._consume_fills(), name="position_monitor_fills"
+        )
 
         # Cria planos para posições já abertas (restart recovery)
         await self._recover_existing_positions()
@@ -164,13 +169,31 @@ class PositionMonitor:
 
     async def stop(self) -> None:
         self._running = False
-        if self._task and not self._task.done():
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
+        for task in (self._task, self._fill_task):
+            if task and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
         logger.info("PositionMonitor stopped — exits_today=%d", self._exits_today)
+
+    # ── Consumer de fills ─────────────────────────────────────────────────────
+
+    async def _consume_fills(self) -> None:
+        """Consome FillEvents do bus e cria ExitPlans para compras."""
+        while self._running:
+            try:
+                event = await asyncio.wait_for(
+                    self._fill_queue.get(), timeout=1.0
+                )
+                await self._on_order_event(event)
+            except TimeoutError:
+                continue
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.error("PositionMonitor fill consumer error: %s", exc, exc_info=True)
 
     # ── Evento de fill → criar ExitPlan ──────────────────────────────────────
 
@@ -439,9 +462,11 @@ def _detect_regime(candles: list[Candle]) -> str:
     avg_vol  = sum(volumes) / len(volumes)
     last_vol = volumes[0]
 
-    drop = (closes[0] - closes[1]) / closes[1] if closes[1] > 0 else 0
-    if drop < -0.05:
-        return "PANIC_LIQUIDATION"
+    # Panic: queda > 5% no candle mais recente vs anterior
+    if len(closes) >= 2 and closes[1] > 0:
+        drop = (closes[0] - closes[1]) / closes[1]
+        if drop < -0.05:
+            return "PANIC_LIQUIDATION"
 
     if sma_fast > sma_slow:
         if last_vol > avg_vol * 1.2:
@@ -455,9 +480,9 @@ def _detect_regime(candles: list[Candle]) -> str:
     atr_5 = sum(h - l for h, l in zip(highs[:5], lows[:5])) / 5
     rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
 
-    if rel_atr < 0.005:
+    if rel_atr < 0.010:
         return "LIQUIDITY_VACUUM"
-    if rel_atr > 0.025:
+    if rel_atr > 0.030:
         return "HIGH_CORRELATION_RISK"
 
     return "MEAN_REVERTING_CHOP"

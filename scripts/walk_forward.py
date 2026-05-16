@@ -1,0 +1,577 @@
+#!/usr/bin/env python3
+"""
+Walk-Forward Optimization (WFO) — CCTBv5
+
+Valida a estratégia V4 contra dados OOS (out-of-sample) reais para
+garantir que a calibração não está overfitada ao período de treino.
+
+Metodologia:
+  - Janela expandida (anchored): treino sempre começa na mesma data
+  - Cada fold adiciona mais dados de treino e testa no período seguinte
+  - Resultado final é a média das métricas OOS de todos os folds válidos
+
+Output:
+  - Tabela de folds com métricas IS e OOS
+  - Score de estabilidade (quão consistente é a performance OOS)
+  - Recomendação: os coeficientes Platt do fold mais recente com dados reais
+
+Uso:
+  python scripts/walk_forward.py
+  python scripts/walk_forward.py --symbol BTC-USDT --train-months 6 --test-months 2
+  python scripts/walk_forward.py --start 2024-01-01 --no-cache
+"""
+
+import argparse
+import asyncio
+import json
+import logging
+import math
+import statistics
+import sys
+import time
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+import numpy as np
+import requests
+from dotenv import load_dotenv
+
+# ── Bootstrap path ────────────────────────────────────────────────────────────
+ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(ROOT))
+
+load_dotenv(ROOT / ".env")
+
+from src.core.models import Candle
+from src.replay.backtest_engine import BacktestEngine
+from src.strategies.momentum.v4_strategy import V4MomentumStrategy
+from src.strategies.ml.inference import PlattCalibrator
+from src.strategies.base import StrategyContext
+
+logging.basicConfig(
+    level=logging.WARNING,   # silencia logs da estratégia durante backtest
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    datefmt="%H:%M:%S",
+)
+log = logging.getLogger("wfo")
+log.setLevel(logging.INFO)
+
+# ── Constantes ────────────────────────────────────────────────────────────────
+CACHE_DIR   = ROOT / "data" / "cache"
+OUTPUT_DIR  = ROOT / "data" / "wfo"
+OKX_BASE    = "https://www.okx.com"
+GRAN_MS     = {"1H": 3_600_000}
+DEFAULT_FEE = 0.005   # round-trip 0.5%
+
+PLATT_A_INIT = 0.378188
+PLATT_B_INIT = -1.075301
+
+
+# ── Candle fetching (reusa cache do recalibrate.py) ───────────────────────────
+
+def fetch_candles(symbol: str, start_dt: datetime, end_dt: datetime,
+                  use_cache: bool = True) -> list[dict]:
+    """Baixa candles 1H da OKX ou usa cache local."""
+    cache_file = CACHE_DIR / f"{symbol.replace('-','_')}_1H.json"
+
+    if use_cache and cache_file.exists():
+        all_candles = json.loads(cache_file.read_text())
+        start_ms = int(start_dt.timestamp() * 1000)
+        end_ms   = int(end_dt.timestamp()   * 1000)
+        filtered = [c for c in all_candles if start_ms <= c["ts"] <= end_ms]
+        if filtered:
+            log.info("Cache: %d candles para %s (%s → %s)",
+                     len(filtered), symbol,
+                     start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d"))
+            return filtered
+
+    log.info("Baixando %s de %s até %s...",
+             symbol, start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d"))
+
+    end_ms    = int(end_dt.timestamp()   * 1000)
+    start_ms  = int(start_dt.timestamp() * 1000)
+    after_ms  = end_ms
+    candles   = []
+
+    while True:
+        url = (f"{OKX_BASE}/api/v5/market/history-candles"
+               f"?instId={symbol}&bar=1H&limit=100&after={after_ms}")
+        try:
+            resp = requests.get(url, timeout=15)
+            resp.raise_for_status()
+            rows = resp.json().get("data", [])
+        except Exception as exc:
+            log.warning("Erro na API: %s — aguardando 5s", exc)
+            time.sleep(5)
+            continue
+
+        if not rows:
+            break
+
+        for row in rows:
+            ts_ms = int(row[0])
+            if row[8] == "1" and start_ms <= ts_ms <= end_ms:
+                candles.append({
+                    "ts":     ts_ms,
+                    "open":   float(row[1]),
+                    "high":   float(row[2]),
+                    "low":    float(row[3]),
+                    "close":  float(row[4]),
+                    "volume": float(row[5]),
+                })
+            if ts_ms <= start_ms:
+                candles.sort(key=lambda c: c["ts"])
+                return candles
+
+        oldest = int(rows[-1][0])
+        if oldest <= start_ms:
+            break
+        after_ms = oldest - 1
+        time.sleep(0.25)
+
+    candles.sort(key=lambda c: c["ts"])
+    return candles
+
+
+def to_candle_objects(raw: list[dict], symbol: str) -> list[Candle]:
+    """Converte dicts para objetos Candle."""
+    result = []
+    for r in raw:
+        result.append(Candle(
+            symbol=symbol,
+            granularity="1H",
+            timestamp=datetime.fromtimestamp(r["ts"] / 1000, tz=UTC),
+            open=r["open"], high=r["high"], low=r["low"],
+            close=r["close"], volume=r["volume"],
+            confirmed=True,
+        ))
+    return result
+
+
+# ── Calibração Platt (mesmo algoritmo do recalibrate.py) ─────────────────────
+
+def score_raw(candles_window: list[dict]) -> float | None:
+    """Computa score bruto V4 para um ponto (último candle da janela)."""
+    if len(candles_window) < 21:
+        return None
+
+    closes  = [c["close"]  for c in candles_window[:21]]
+    highs   = [c["high"]   for c in candles_window[:5]]
+    volumes = [c["volume"] for c in candles_window[:21]]
+
+    # M1 — Momentum
+    momentum = (closes[0] - closes[-1]) / closes[-1] if closes[-1] > 0 else 0
+    m1 = min(max((momentum + 0.05) / 0.10, 0.0), 1.0)
+
+    # M2 — Estrutura
+    m2 = 1.0 if (highs[0] > highs[1] > highs[2]) else 0.4
+
+    # M3 — Volume
+    avg_v = sum(volumes[:5]) / 5 if volumes else 1.0
+    m3 = min(volumes[0] / avg_v, 2.0) / 2.0 if avg_v > 0 else 0.5
+
+    # M4 — Regime (simplificado)
+    sma5 = sum(closes[:5]) / 5
+    sma20 = sum(closes[:20]) / 20
+    m4 = 0.85 if sma5 > sma20 else 0.45
+
+    return m1 * 0.3 + m2 * 0.3 + m3 * 0.2 + m4 * 0.2
+
+
+def fit_platt_on_period(candles: list[dict], forward: int = 5,
+                        fee: float = 0.005) -> tuple[float, float, int, float]:
+    """
+    Calibra coeficientes Platt em um período de treino.
+    Retorna (A, B, n_samples, win_rate).
+    """
+    scores, labels = [], []
+    n = len(candles)
+
+    for i in range(20, n - forward):
+        window = list(reversed(candles[max(0, i-20):i+1]))
+        score  = score_raw(window)
+        if score is None or score < 0.3:
+            continue
+
+        entry = candles[i]["close"]
+        exit_ = candles[i + forward]["close"]
+        net   = (exit_ - entry) / entry - fee
+        labels.append(1 if net > 0 else 0)
+        scores.append(score)
+
+    if len(scores) < 10:
+        return PLATT_A_INIT, PLATT_B_INIT, 0, 0.0
+
+    # Gradiente descendente
+    scores_arr = np.array(scores, dtype=np.float64)
+    labels_arr = np.array(labels, dtype=np.float64)
+    A, B = PLATT_A_INIT, PLATT_B_INIT
+
+    for _ in range(1000):
+        p     = 1.0 / (1.0 + np.exp(-(A * scores_arr + B)))
+        p     = np.clip(p, 1e-7, 1 - 1e-7)
+        error = p - labels_arr
+        A    -= 0.1 * float(np.mean(error * scores_arr))
+        B    -= 0.1 * float(np.mean(error))
+
+    win_rate = float(np.mean(labels_arr))
+    return float(A), float(B), len(scores), win_rate
+
+
+# ── Métricas de resultado ─────────────────────────────────────────────────────
+
+def compute_sharpe(returns: list[float]) -> float:
+    if len(returns) < 2:
+        return 0.0
+    mean = statistics.mean(returns)
+    std  = statistics.stdev(returns)
+    return (mean / std) * math.sqrt(252) if std > 0 else 0.0
+
+
+def compute_max_dd(pnls: list[float]) -> float:
+    equity, peak, max_dd = 0.0, 0.0, 0.0
+    for p in pnls:
+        equity += p
+        peak    = max(peak, equity)
+        dd      = (peak - equity) / peak if peak > 0 else 0.0
+        max_dd  = max(max_dd, dd)
+    return max_dd
+
+
+# ── Walk-Forward engine ───────────────────────────────────────────────────────
+
+class WalkForwardResult:
+    def __init__(self) -> None:
+        self.folds: list[dict] = []
+
+    def add(self, fold: dict) -> None:
+        self.folds.append(fold)
+
+    def summary(self) -> dict:
+        valid = [f for f in self.folds if f["oos_trades"] >= 3]
+        if not valid:
+            return {"valid_folds": 0, "message": "Nenhum fold com trades suficientes"}
+
+        oos_wr   = [f["oos_win_rate"]    for f in valid]
+        oos_exp  = [f["oos_expectancy"]  for f in valid]
+        oos_pf   = [f["oos_pf"]          for f in valid]
+        oos_sh   = [f["oos_sharpe"]      for f in valid]
+        oos_dd   = [f["oos_max_dd"]      for f in valid]
+        oos_ret  = [f["oos_return"]      for f in valid]
+
+        # Stability: consistência dos retornos OOS
+        stability = 1.0 - statistics.stdev(oos_ret) / (abs(statistics.mean(oos_ret)) + 1e-6) \
+                    if len(oos_ret) > 1 else 0.5
+
+        return {
+            "valid_folds":     len(valid),
+            "total_folds":     len(self.folds),
+            "avg_win_rate":    round(statistics.mean(oos_wr),  4),
+            "avg_expectancy":  round(statistics.mean(oos_exp), 4),
+            "avg_pf":          round(statistics.mean(oos_pf),  4),
+            "avg_sharpe":      round(statistics.mean(oos_sh),  3),
+            "avg_max_dd":      round(statistics.mean(oos_dd),  4),
+            "avg_oos_return":  round(statistics.mean(oos_ret), 4),
+            "stability_score": round(max(0, min(1, stability)), 4),
+            "best_A": valid[-1]["platt_a"],   # fold mais recente
+            "best_B": valid[-1]["platt_b"],
+        }
+
+
+async def run_fold_backtest(
+    symbol: str,
+    test_candles: list[Candle],
+    platt_a: float,
+    platt_b: float,
+    initial_capital: float = 10000.0,
+) -> dict:
+    """Cria estratégia com coeficientes do fold e roda backtest."""
+
+    class CalibratedStrategy(V4MomentumStrategy):
+        """Strategy com Platt coefficients injetados para este fold."""
+        def __init__(self):
+            super().__init__(symbols=[symbol])
+            # Override com coeficientes do fold
+            from src.strategies.ml.inference import PlattCalibrator
+            self._platt = PlattCalibrator.__new__(PlattCalibrator)
+            self._platt._A       = platt_a
+            self._platt._B       = platt_b
+            self._platt._loaded  = True
+            self._platt._regime_thresholds = {}
+
+    strategy = CalibratedStrategy()
+    engine   = BacktestEngine(
+        strategy=strategy,
+        symbol=symbol,
+        initial_capital=initial_capital,
+        position_size_pct=0.08,   # 8% por trade (CHOP sizing)
+        seed=42,
+    )
+
+    if len(test_candles) < 25:
+        return {"trades": 0, "win_rate": 0, "expectancy": 0,
+                "pf": 0, "sharpe": 0, "max_dd": 0, "return": 0}
+
+    result = await engine.run(test_candles, warmup=20)
+
+    pnls    = [t.pnl for t in result.trades]
+    returns = [t.pnl_pct for t in result.trades]
+
+    return {
+        "trades":     result.total_trades,
+        "win_rate":   round(result.win_rate, 4),
+        "expectancy": round(result.expectancy, 4),
+        "pf":         round(result.profit_factor, 3),
+        "sharpe":     round(compute_sharpe(returns), 3),
+        "max_dd":     round(compute_max_dd(pnls), 4),
+        "return":     round(result.total_return_pct, 4),
+    }
+
+
+async def walk_forward(
+    symbol: str,
+    all_candles: list[dict],
+    train_months: int = 6,
+    test_months:  int = 2,
+    initial_capital: float = 10000.0,
+    forward_candles: int = 5,
+) -> WalkForwardResult:
+    """
+    Executa WFO com janela expandida.
+    Para cada fold: treina Platt no período IS, testa backtest no OOS.
+    """
+    wfo = WalkForwardResult()
+    if not all_candles:
+        return wfo
+
+    # Determina os limites de tempo
+    start_ts = all_candles[0]["ts"]
+    end_ts   = all_candles[-1]["ts"]
+
+    train_ms = train_months * 30 * 24 * 3_600_000
+    test_ms  = test_months  * 30 * 24 * 3_600_000
+
+    fold_num    = 0
+    test_start  = start_ts + train_ms
+
+    while test_start + test_ms <= end_ts:
+        fold_num  += 1
+        test_end   = test_start + test_ms
+
+        # Partição IS (treino) e OOS (teste)
+        train_data = [c for c in all_candles if c["ts"] < test_start]
+        test_data  = [c for c in all_candles if test_start <= c["ts"] < test_end]
+
+        if len(train_data) < 100 or len(test_data) < 50:
+            test_start += test_ms
+            continue
+
+        train_start_dt = datetime.fromtimestamp(train_data[0]["ts"]/1000, tz=UTC)
+        train_end_dt   = datetime.fromtimestamp(train_data[-1]["ts"]/1000, tz=UTC)
+        test_start_dt  = datetime.fromtimestamp(test_data[0]["ts"]/1000, tz=UTC)
+        test_end_dt    = datetime.fromtimestamp(test_data[-1]["ts"]/1000, tz=UTC)
+
+        log.info("Fold %2d │ IS: %s→%s (%d candles) │ OOS: %s→%s (%d candles)",
+                 fold_num,
+                 train_start_dt.strftime("%Y-%m"),
+                 train_end_dt.strftime("%Y-%m"),
+                 len(train_data),
+                 test_start_dt.strftime("%Y-%m"),
+                 test_end_dt.strftime("%Y-%m"),
+                 len(test_data))
+
+        # 1. Calibra Platt no IS
+        A, B, n_samples, is_wr = fit_platt_on_period(
+            train_data, forward=forward_candles
+        )
+
+        # 2. Backtest no OOS com os coeficientes calibrados
+        test_candles_obj = to_candle_objects(test_data, symbol)
+        oos = await run_fold_backtest(symbol, test_candles_obj, A, B, initial_capital)
+
+        fold = {
+            "fold":           fold_num,
+            "is_start":       train_start_dt.strftime("%Y-%m-%d"),
+            "is_end":         train_end_dt.strftime("%Y-%m-%d"),
+            "oos_start":      test_start_dt.strftime("%Y-%m-%d"),
+            "oos_end":        test_end_dt.strftime("%Y-%m-%d"),
+            "is_n_samples":   n_samples,
+            "is_win_rate":    round(is_wr, 4),
+            "platt_a":        round(A, 6),
+            "platt_b":        round(B, 6),
+            "oos_trades":     oos["trades"],
+            "oos_win_rate":   oos["win_rate"],
+            "oos_expectancy": oos["expectancy"],
+            "oos_pf":         oos["pf"],
+            "oos_sharpe":     oos["sharpe"],
+            "oos_max_dd":     oos["max_dd"],
+            "oos_return":     oos["return"],
+            "valid":          oos["trades"] >= 3,
+        }
+        wfo.add(fold)
+
+        # Avança para o próximo fold
+        test_start += test_ms
+
+    return wfo
+
+
+# ── Report ─────────────────────────────────────────────────────────────────────
+
+def print_report(wfo: WalkForwardResult, symbol: str) -> None:
+    summary = wfo.summary()
+
+    log.info("")
+    log.info("═" * 100)
+    log.info("  CCTBv5 Walk-Forward Results — %s", symbol)
+    log.info("═" * 100)
+
+    # Header da tabela
+    log.info("  %-4s │ %-12s │ %-12s │ %-8s %-8s %-8s │ %-6s %-6s %-6s %-7s %-6s %s",
+             "Fold", "IS", "OOS", "IS_Samp", "IS_WR", "Platt A",
+             "Trades", "WinR", "Exp", "PF", "Sharpe", "OOS Ret")
+    log.info("  " + "─" * 98)
+
+    for f in wfo.folds:
+        valid_mark = "✓" if f["valid"] else "✗"
+        log.info(
+            "  %2d%s  │ %s → %s │ %s → %s │ %7d  %5.1f%%  %7.4f │ "
+            "%5d  %5.1f%%  %+6.2f  %5.2f  %6.2f  %+6.2f%%",
+            f["fold"], valid_mark,
+            f["is_start"][:7], f["is_end"][:7],
+            f["oos_start"][:7], f["oos_end"][:7],
+            f["is_n_samples"], f["is_win_rate"]*100, f["platt_a"],
+            f["oos_trades"],    f["oos_win_rate"]*100, f["oos_expectancy"],
+            f["oos_pf"],        f["oos_sharpe"],       f["oos_return"]*100,
+        )
+
+    log.info("  " + "─" * 98)
+    log.info("")
+
+    if "message" in summary:
+        log.info("  %s", summary["message"])
+        return
+
+    # Resumo OOS
+    log.info("  RESUMO OOS (%d/%d folds válidos):",
+             summary["valid_folds"], summary["total_folds"])
+    log.info("  Win Rate médio    : %.1f%%", summary["avg_win_rate"] * 100)
+    log.info("  Expectancy médio  : %+.2f", summary["avg_expectancy"])
+    log.info("  Profit Factor     : %.2f",  summary["avg_pf"])
+    log.info("  Sharpe OOS médio  : %.2f",  summary["avg_sharpe"])
+    log.info("  Max DD OOS médio  : %.1f%%", summary["avg_max_dd"] * 100)
+    log.info("  Retorno OOS médio : %+.2f%%", summary["avg_oos_return"] * 100)
+    log.info("  Stability Score   : %.3f  (1.0=perfeito, >0.5 aceitável)",
+             summary["stability_score"])
+    log.info("")
+
+    # Interpretação
+    log.info("  INTERPRETAÇÃO:")
+    valid = [f for f in wfo.folds if f["valid"]]
+    if summary["avg_oos_return"] > 0:
+        log.info("  ✓ Retorno OOS positivo em média — estratégia tem edge real")
+    else:
+        log.info("  ✗ Retorno OOS negativo — rever thresholds ou scoring")
+
+    if summary["avg_pf"] > 1.2:
+        log.info("  ✓ Profit Factor > 1.2 — edge estatístico presente")
+    else:
+        log.info("  ✗ Profit Factor baixo — poucos trades ou edge fraco")
+
+    if summary["stability_score"] > 0.5:
+        log.info("  ✓ Performance estável entre folds — não overfitado")
+    else:
+        log.info("  ✗ Alta variância entre folds — possível overfitting")
+
+    # Coeficientes recomendados
+    log.info("")
+    log.info("  COEFICIENTES RECOMENDADOS (fold mais recente válido):")
+    log.info("  platt_a = %.6f  (atual: %.6f)", summary["best_A"], PLATT_A_INIT)
+    log.info("  platt_b = %.6f  (atual: %.6f)", summary["best_B"], PLATT_B_INIT)
+    log.info("═" * 100)
+
+
+def save_results(wfo: WalkForwardResult, symbol: str, output_path: Path) -> None:
+    """Salva resultados em JSON."""
+    output_path.mkdir(parents=True, exist_ok=True)
+    fname = output_path / f"wfo_{symbol.replace('-','_')}_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.json"
+    data = {
+        "symbol":    symbol,
+        "run_at":    datetime.now(UTC).isoformat(),
+        "summary":   wfo.summary(),
+        "folds":     wfo.folds,
+    }
+    fname.write_text(json.dumps(data, indent=2))
+    log.info("Resultados salvos em: %s", fname)
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+async def main_async(args: argparse.Namespace) -> None:
+    symbols = args.symbols if args.symbols else ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
+
+    start_dt = datetime.strptime(args.start, "%Y-%m-%d").replace(tzinfo=UTC)
+    end_dt   = datetime.now(UTC) if not args.end else \
+               datetime.strptime(args.end, "%Y-%m-%d").replace(tzinfo=UTC)
+
+    log.info("Walk-Forward CCTBv5")
+    log.info("Período   : %s → %s", args.start, end_dt.strftime("%Y-%m-%d"))
+    log.info("Símbolos  : %s", ", ".join(symbols))
+    log.info("Treino    : %d meses  │  Teste: %d meses  │  Step: %d meses",
+             args.train_months, args.test_months, args.test_months)
+    log.info("")
+
+    all_results: dict[str, WalkForwardResult] = {}
+
+    for symbol in symbols:
+        log.info("── %s ──────────────────────────────────────", symbol)
+        raw = fetch_candles(symbol, start_dt, end_dt, use_cache=not args.no_cache)
+
+        if len(raw) < 200:
+            log.warning("%s: candles insuficientes (%d) — ignorando", symbol, len(raw))
+            continue
+
+        wfo = await walk_forward(
+            symbol=symbol,
+            all_candles=raw,
+            train_months=args.train_months,
+            test_months=args.test_months,
+            initial_capital=args.capital,
+        )
+
+        all_results[symbol] = wfo
+        print_report(wfo, symbol)
+
+        if not args.dry_run:
+            save_results(wfo, symbol, OUTPUT_DIR)
+
+    # Se um único símbolo e resultado positivo → oferece atualizar calibration
+    if len(all_results) == 1 and not args.dry_run:
+        sym    = list(all_results.keys())[0]
+        result = all_results[sym]
+        s      = result.summary()
+        if s.get("valid_folds", 0) > 0 and s.get("avg_oos_return", 0) > 0:
+            log.info("")
+            log.info("Para aplicar os coeficientes recomendados:")
+            log.info("  python scripts/recalibrate.py --start %s", args.start)
+            log.info("  (ou edite manualmente data/models/calibration_coef.json)")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Walk-Forward Optimization CCTBv5")
+    parser.add_argument("--symbols",       nargs="+", default=None)
+    parser.add_argument("--start",         default="2024-01-01",
+                        help="Início do período (YYYY-MM-DD)")
+    parser.add_argument("--end",           default=None)
+    parser.add_argument("--train-months",  type=int,   default=6)
+    parser.add_argument("--test-months",   type=int,   default=2)
+    parser.add_argument("--capital",       type=float, default=10000.0)
+    parser.add_argument("--no-cache",      action="store_true")
+    parser.add_argument("--dry-run",       action="store_true",
+                        help="Não salva arquivos")
+    args = parser.parse_args()
+    asyncio.run(main_async(args))
+
+
+if __name__ == "__main__":
+    main()

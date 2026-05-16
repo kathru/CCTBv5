@@ -90,41 +90,70 @@
     .o { color: var(--orange);}
 
     /* ── Crypto cards ────────────────────────────────────── */
-    .crypto-card { position: relative; }
-    .crypto-top  { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-    .crypto-name { font-size: 0.95rem; font-weight: 700; }
-    .crypto-sub  { font-size: 0.68rem; color: var(--muted); }
-    .crypto-price { text-align: right; }
-    .crypto-price .price { font-size: 1.4rem; font-weight: 700; }
-    .crypto-price .price-change { font-size: 0.7rem; margin-top: 2px; }
-
-    .action-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-    .action-pill {
-      padding: 3px 12px; border-radius: 6px; font-size: 0.72rem;
-      font-weight: 700; letter-spacing: 0.5px; min-width: 60px; text-align: center;
+    .crypto-card {
+      position: relative; overflow: hidden;
+      background: linear-gradient(145deg, #111827 0%, #0d1520 100%);
+      border: 1px solid var(--border);
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .action-buy    { background:#064e3b; color:var(--green); border:1px solid #065f46; }
-    .action-sell   { background:#450a0a; color:var(--red);   border:1px solid #7f1d1d; }
-    .action-hold   { background:#1f2937; color:var(--muted); border:1px solid #374151; }
-    .action-wait   { background:#451a03; color:var(--yellow);border:1px solid #78350f; }
-    .action-panic  { background:#450a0a; color:var(--red);   border:1px solid #991b1b; }
+    .crypto-card:hover { border-color: #374151; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
 
-    /* Score progress bar */
-    .score-track { flex: 1; height: 5px; background: #1f2937; border-radius: 3px; position: relative; }
-    .score-fill  { height: 100%; border-radius: 3px; transition: width 0.5s; }
-    .score-thresh { position: absolute; top: -3px; width: 2px; height: 11px; background: rgba(255,255,255,0.3); border-radius: 1px; }
-    .score-label { font-size: 0.68rem; color: var(--muted); white-space: nowrap; }
+    /* Coin icon */
+    .coin-icon {
+      width: 42px; height: 42px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; font-weight: 900; flex-shrink: 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    }
+    .coin-btc  { background: linear-gradient(135deg, #f97316, #ea580c); color:#fff; }
+    .coin-eth  { background: linear-gradient(135deg, #6366f1, #4338ca); color:#fff; }
+    .coin-sol  { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color:#fff; }
 
-    .crypto-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
-    .metric { background: #0d1520; border-radius: 6px; padding: 6px 8px; }
-    .metric-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 2px; }
-    .metric-value { font-size: 0.82rem; font-weight: 600; }
-    .metric-sub   { font-size: 0.6rem; color: var(--muted); }
+    .crypto-top  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; }
+    .crypto-info { display: flex; align-items: center; gap: 10px; }
+    .crypto-name { font-size: 1rem; font-weight: 700; letter-spacing: 0.3px; }
+    .crypto-sub  { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+    .crypto-price-block { text-align: right; }
+    .crypto-price-main  { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.5px; line-height:1; }
+    .crypto-price-usd   { font-size: 0.68rem; color: var(--muted); margin-top: 3px; }
 
-    .sl-tp-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-top: 8px; }
-    .sl-tp-box { background:#0d1520; border-radius:6px; padding:5px 8px; text-align:center; }
-    .sl-tp-label { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); }
-    .sl-tp-val   { font-size:0.78rem; font-weight:700; }
+    /* Action bar */
+    .action-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .action-pill {
+      padding: 5px 14px; border-radius: 8px; font-size: 0.72rem;
+      font-weight: 800; letter-spacing: 1px; min-width: 72px; text-align: center;
+      text-transform: uppercase; flex-shrink: 0;
+    }
+    .action-buy   { background: linear-gradient(135deg,#064e3b,#065f46); color:#34d399; border:1px solid #059669; box-shadow:0 0 8px rgba(16,185,129,0.2); }
+    .action-sell  { background: linear-gradient(135deg,#450a0a,#7f1d1d); color:#fca5a5; border:1px solid #b91c1c; box-shadow:0 0 8px rgba(239,68,68,0.2); }
+    .action-hold  { background:#1f2937; color:var(--muted); border:1px solid #374151; }
+    .action-wait  { background: linear-gradient(135deg,#451a03,#78350f); color:#fcd34d; border:1px solid #b45309; }
+    .action-panic { background: linear-gradient(135deg,#450a0a,#7f1d1d); color:#fca5a5; border:1px solid #991b1b; animation:pulse-red 1s infinite; }
+    @keyframes pulse-red { 0%,100%{box-shadow:0 0 0 rgba(239,68,68,0)} 50%{box-shadow:0 0 12px rgba(239,68,68,0.5)} }
+
+    /* Score bar */
+    .score-track { flex: 1; height: 6px; background: #1a2233; border-radius: 10px; position: relative; overflow: visible; }
+    .score-fill  { height: 100%; border-radius: 10px; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+    .score-thresh {
+      position: absolute; top: -4px; width: 3px; height: 14px;
+      background: rgba(255,255,255,0.25); border-radius: 2px;
+      box-shadow: 0 0 4px rgba(255,255,255,0.1);
+    }
+    .score-pct { font-size: 0.72rem; font-weight: 700; white-space: nowrap; min-width: 32px; text-align: right; }
+
+    /* Data row */
+    .data-row { display: flex; align-items: center; gap: 6px; font-size: 0.65rem; color: var(--muted); margin-bottom: 10px; flex-wrap: wrap; }
+    .data-row .sep { color: #374151; }
+    .data-row .tag { background:#1a2233; padding:2px 6px; border-radius:4px; font-size:0.62rem; }
+
+    /* SL / TP boxes */
+    .sl-tp-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 4px; }
+    .sl-box { background: linear-gradient(135deg, rgba(127,29,29,0.5), rgba(69,10,10,0.7)); border:1px solid rgba(185,28,28,0.3); border-radius: 10px; padding: 8px 10px; text-align:center; }
+    .en-box { background: linear-gradient(135deg, rgba(30,58,95,0.5), rgba(23,37,84,0.7)); border:1px solid rgba(59,130,246,0.3); border-radius: 10px; padding: 8px 10px; text-align:center; }
+    .tp-box { background: linear-gradient(135deg, rgba(6,78,59,0.5), rgba(4,47,46,0.7)); border:1px solid rgba(16,185,129,0.3); border-radius: 10px; padding: 8px 10px; text-align:center; }
+    .slt-label { font-size:0.57rem; text-transform:uppercase; letter-spacing:1px; opacity:0.7; margin-bottom:4px; }
+    .slt-pct   { font-size:0.62rem; font-weight:600; opacity:0.8; margin-bottom:2px; }
+    .slt-val   { font-size:0.82rem; font-weight:800; letter-spacing:-0.3px; }
 
     /* ── Motor Probabilístico ────────────────────────────── */
     .motor-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
@@ -542,59 +571,66 @@ function buildCryptoCards(prices, symData, exits) {
     const name = sym.replace('-USDT','');
     const icon = name==='BTC'?'₿':name==='ETH'?'Ξ':'◎';
 
+    const coinCls = `coin-${name.toLowerCase()}`;
+    const regimeShort = regime.replace('MEAN REVERTING','MR').replace('VOLATILITY','VOL').replace('CORRELATION','CORR');
+    const atrPct = price>0 ? (atr_est/price*100).toFixed(1)+'%' : '–';
+    const evText = d.ev!=null ? (d.ev>=0?'+':'')+( d.ev*100).toFixed(2)+'%' : '+0.00%';
+    const evCls  = d.ev>0?'g':d.ev<0?'r':'m';
+    const trailingTag = hasPos && ep.trailing ? '<span class="tag" style="color:var(--green)">trailing ON</span>' : '';
+
     return `
     <div class="card crypto-card">
+      <!-- Top: icon + name + price -->
       <div class="crypto-top">
-        <div>
-          <div class="crypto-name">${icon} ${name}</div>
-          <div class="crypto-sub">${sym} · OKX</div>
+        <div class="crypto-info">
+          <div class="coin-icon ${coinCls}">${icon}</div>
+          <div>
+            <div class="crypto-name">${name}</div>
+            <div class="crypto-sub">${sym} · OKX Paper</div>
+          </div>
         </div>
-        <div class="crypto-price">
-          <div class="price">${price>0?usd(price,2):'<span style="color:var(--muted)">–</span>'}</div>
+        <div class="crypto-price-block">
+          <div class="crypto-price-main">${price>0?usd(price,2):'<span style="color:var(--muted);font-size:1rem">aguardando...</span>'}</div>
+          ${price>0?`<div class="crypto-price-usd">Score <span style="color:${scoreColor};font-weight:700">${(cal*100).toFixed(0)}%</span> · thr ${(thr*100).toFixed(0)}%</div>`:''}
         </div>
       </div>
 
+      <!-- Action + score bar -->
       <div class="action-row">
         <div class="action-pill ${action.cls}">${action.label}</div>
         <div class="score-track">
           <div class="score-fill" style="width:${scorePct.toFixed(1)}%;background:${scoreColor}"></div>
           <div class="score-thresh" style="left:${thrPct.toFixed(1)}%"></div>
         </div>
-        <div class="score-label">${(cal*100).toFixed(0)}%</div>
+        <div class="score-pct" style="color:${scoreColor}">${(scorePct).toFixed(0)}%</div>
       </div>
 
-      <div class="crypto-metrics">
-        <div class="metric">
-          <div class="metric-label">Regime</div>
-          <div class="metric-value" style="font-size:0.68rem;color:var(--muted)">${regime||'–'}</div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">Score</div>
-          <div class="metric-value" style="color:${scoreColor}">${(score*100).toFixed(0)}%</div>
-          <div class="metric-sub">thr: ${(thr*100).toFixed(0)}%</div>
-        </div>
-        <div class="metric">
-          <div class="metric-label">ATR est.</div>
-          <div class="metric-value">${usd(atr_est,0)}</div>
-          <div class="metric-sub">~1%/hora</div>
-        </div>
+      <!-- Data row -->
+      <div class="data-row">
+        <span style="color:var(--muted);font-size:0.62rem">${regimeShort||'–'}</span>
+        <span class="sep">·</span>
+        <span>EV <span class="${evCls}" style="font-weight:600">${evText}</span></span>
+        <span class="sep">·</span>
+        <span>ATR ~${atrPct}</span>
+        ${trailingTag}
       </div>
 
+      <!-- SL / Entrada / TP -->
       <div class="sl-tp-row">
-        <div class="sl-tp-box">
-          <div class="sl-tp-label">Stop Loss</div>
-          <div class="sl-tp-val r">${sl?usd(sl,2):'–'}</div>
-          <div style="font-size:0.58rem;color:var(--muted)">${slPct}</div>
+        <div class="sl-box">
+          <div class="slt-label" style="color:#fca5a5">Stop Loss</div>
+          <div class="slt-pct" style="color:#fca5a5">${slPct}</div>
+          <div class="slt-val" style="color:#f87171">${sl?usd(sl,2):'–'}</div>
         </div>
-        <div class="sl-tp-box">
-          <div class="sl-tp-label">Entrada</div>
-          <div class="sl-tp-val b">${hasPos?usd(ep.entry_price,2):'–'}</div>
-          <div style="font-size:0.58rem;color:var(--muted)">${hasPos?'posição ativa':'sem posição'}</div>
+        <div class="en-box">
+          <div class="slt-label" style="color:#93c5fd">Entrada</div>
+          <div class="slt-pct" style="color:#93c5fd">${hasPos?'ativa':'–'}</div>
+          <div class="slt-val" style="color:#60a5fa">${hasPos?usd(ep.entry_price,2):'sem posição'}</div>
         </div>
-        <div class="sl-tp-box">
-          <div class="sl-tp-label">Take Profit</div>
-          <div class="sl-tp-val g">${tp?usd(tp,2):'–'}</div>
-          <div style="font-size:0.58rem;color:var(--muted)">${tpPct}</div>
+        <div class="tp-box">
+          <div class="slt-label" style="color:#6ee7b7">Take Profit</div>
+          <div class="slt-pct" style="color:#6ee7b7">+${tpPct}</div>
+          <div class="slt-val" style="color:#34d399">${tp?usd(tp,2):'–'}</div>
         </div>
       </div>
     </div>`;

@@ -33,6 +33,16 @@ async def get_calibration() -> dict:
         return {"available": False}
 
 
+@router.get("/funnel")
+async def get_signal_funnel(window: int = Query(default=0, description="Minutos (0=todos)")) -> dict:  # noqa: ARG001
+    """Funil de filtragem: onde cada sinal é bloqueado."""
+    return {
+        "all_time": signal_audit_log.funnel(window_minutes=None),
+        "last_1h":  signal_audit_log.funnel(window_minutes=60),
+        "last_6h":  signal_audit_log.funnel(window_minutes=360),
+    }
+
+
 @router.get("/symbols")
 async def get_symbol_analysis() -> dict:
     """Análise mais recente por símbolo (regime, score, threshold, factors)."""

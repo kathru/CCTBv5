@@ -107,6 +107,74 @@ class SignalAuditLog:
                 s["signals"] += 1
         return by_sym
 
+    def funnel(self, window_minutes: int | None = None) -> dict:
+        """
+        Funil de filtragem: mostra onde cada sinal é bloqueado.
+
+        window_minutes=None → todos os dados históricos (contadores)
+        window_minutes=60   → apenas últimas 60 min (a partir das entries)
+        """
+        # Ordem lógica do funil (mais cedo para mais tarde no pipeline)
+        FUNNEL_ORDER = [
+            ("NO_CANDLES",     "Sem candles",          "var(--muted)"),
+            ("REGIME_BLOCKED", "Regime bloqueado",     "var(--red)"),
+            ("SCORE_LOW",      "Score baixo",          "var(--yellow)"),
+            ("EV_LOW",         "EV negativo",          "var(--orange)"),
+            ("RISK_BLOCKED",   "Risk Engine",          "var(--red)"),
+            ("GATE_CLOSED",    "Gate fechado",         "var(--red)"),
+            ("DIRECTION_FLAT", "Direção plana",        "var(--muted)"),
+            ("SIGNAL",         "Sinal executado",      "var(--green)"),
+        ]
+
+        if window_minutes is None:
+            # Usa contadores acumulados (toda a sessão)
+            counts = dict(self._counters)
+        else:
+            # Filtra entries pela janela de tempo
+            cutoff = datetime.now(UTC).timestamp() - window_minutes * 60
+            counts: dict[str, int] = {}
+            for e in self._entries:
+                if e.timestamp.timestamp() >= cutoff:
+                    counts[e.result] = counts.get(e.result, 0) + 1
+
+        total = sum(counts.values()) or 1
+        signals = counts.get("SIGNAL", 0)
+        blocked = total - signals
+
+        steps = []
+        for result_key, label, color in FUNNEL_ORDER:
+            n = counts.get(result_key, 0)
+            if n == 0 and result_key not in ("SIGNAL",):
+                continue  # omite etapas sem ocorrências
+            steps.append({
+                "result":  result_key,
+                "label":   label,
+                "color":   color,
+                "count":   n,
+                "pct":     round(100 * n / total, 1),
+                "bar_pct": round(100 * n / total, 1),
+            })
+
+        # Por símbolo
+        by_sym: dict[str, dict] = {}
+        entries_src = self._entries if window_minutes is None else [
+            e for e in self._entries
+            if e.timestamp.timestamp() >= (datetime.now(UTC).timestamp() - (window_minutes or 0) * 60)
+        ]
+        for e in entries_src:
+            s = by_sym.setdefault(e.symbol, {})
+            s[e.result] = s.get(e.result, 0) + 1
+
+        return {
+            "total":        total,
+            "signals":      signals,
+            "blocked":      blocked,
+            "execution_rate": round(100 * signals / total, 2),
+            "window_minutes": window_minutes,
+            "steps":        steps,
+            "by_symbol":    by_sym,
+        }
+
 
 # ── Singleton global ──────────────────────────────────────────────────────────
 signal_audit_log = SignalAuditLog()

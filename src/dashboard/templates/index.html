@@ -719,6 +719,38 @@
 
 </div>
 
+<!-- ══ FUNIL DE FILTRAGEM ══════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--orange)"></div>Funil de Filtragem<span class="cnt" id="funnel-exec-rate"></span></div>
+<div class="card">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+    <div style="font-size:0.72rem;font-weight:700;color:var(--muted)">Onde os sinais são bloqueados</div>
+    <div style="display:flex;gap:4px;margin-left:auto;">
+      <button class="chart-btn active" id="fn-btn-all" onclick="setFunnelWindow('all_time','fn-btn-all')">Total</button>
+      <button class="chart-btn"        id="fn-btn-6h"  onclick="setFunnelWindow('last_6h','fn-btn-6h')">6h</button>
+      <button class="chart-btn"        id="fn-btn-1h"  onclick="setFunnelWindow('last_1h','fn-btn-1h')">1h</button>
+    </div>
+  </div>
+  <div class="grid g11" style="gap:16px;">
+    <!-- Funil principal -->
+    <div>
+      <div id="funnel-steps" style="display:flex;flex-direction:column;gap:7px;">
+        <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando avaliações...</div>
+      </div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);">
+        <span>cada barra = % do total avaliado</span>
+        <span id="funnel-window-label">desde o início</span>
+      </div>
+    </div>
+    <!-- Por símbolo -->
+    <div>
+      <div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Por Ativo</div>
+      <div id="funnel-by-symbol" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">–</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ QUANTITATIVE ANALYTICS ══════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Quantitative Analytics<span class="cnt" id="quant-trades"></span></div>
 
@@ -1290,6 +1322,101 @@ function wdItem(idS,idD,alive,detail){
   document.getElementById(idD).textContent=detail||'–';
 }
 
+// ── Signal Funnel ─────────────────────────────────────────────
+let _funnelData = null;
+let _funnelWindow = 'all_time';
+
+function setFunnelWindow(w, btnId){
+  _funnelWindow = w;
+  document.querySelectorAll('#fn-btn-all,#fn-btn-6h,#fn-btn-1h').forEach(b=>b.classList.remove('active'));
+  document.getElementById(btnId)?.classList.add('active');
+  if(_funnelData) renderFunnel(_funnelData);
+}
+
+function renderFunnel(data){
+  _funnelData = data;
+  const f = data[_funnelWindow] || data['all_time'];
+  if(!f) return;
+
+  // Taxa de execução no header
+  const rateEl = document.getElementById('funnel-exec-rate');
+  const allTime = data['all_time'] || f;
+  if(rateEl){
+    const rate = allTime.execution_rate || 0;
+    const col = rate>5?'var(--green)':rate>1?'var(--yellow)':'var(--red)';
+    rateEl.innerHTML = ` — taxa de execução: <span style="color:${col};font-weight:800">${rate.toFixed(1)}%</span> (${allTime.signals||0} sinais / ${(allTime.total||0).toLocaleString('pt-BR')} aval.)`;
+  }
+
+  // Label de janela
+  const lblEl = document.getElementById('funnel-window-label');
+  if(lblEl) lblEl.textContent = _funnelWindow==='all_time'?'desde o início':_funnelWindow==='last_6h'?'últimas 6 horas':'última 1 hora';
+
+  // Steps do funil
+  const stepsEl = document.getElementById('funnel-steps');
+  if(!stepsEl) return;
+  const steps = f.steps || [];
+  if(!steps.length){ stepsEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Sem dados ainda</div>'; return; }
+
+  const maxPct = Math.max(...steps.map(s=>s.pct), 1);
+  const isSignal = s => s.result === 'SIGNAL';
+
+  stepsEl.innerHTML = steps.map(s=>{
+    const barW = (s.pct / maxPct * 100).toFixed(1);
+    const col = s.color || 'var(--muted)';
+    const isSig = isSignal(s);
+    const border = isSig ? `border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.05);border-radius:8px;padding:4px 8px;margin-top:4px;` : '';
+    return`<div style="${border}display:grid;grid-template-columns:140px 1fr 52px 60px;align-items:center;gap:10px;">
+      <span style="font-size:0.65rem;color:${isSig?'var(--green)':'var(--text)'};font-weight:${isSig?'800':'500'}">${s.label}</span>
+      <div style="height:${isSig?'10':'6'}px;background:#0d1520;border-radius:10px;overflow:hidden;">
+        <div style="height:100%;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s;${isSig?'box-shadow:0 0 8px rgba(16,185,129,0.4)':''}"></div>
+      </div>
+      <span style="font-size:0.72rem;font-weight:800;color:${col};text-align:right">${s.count.toLocaleString('pt-BR')}</span>
+      <span style="font-size:0.65rem;color:${col};text-align:right">${s.pct}%</span>
+    </div>`;
+  }).join('');
+
+  // Por símbolo
+  const symEl = document.getElementById('funnel-by-symbol');
+  if(!symEl) return;
+  const bySym = f.by_symbol || {};
+  const syms = Object.keys(bySym);
+  if(!syms.length){ symEl.innerHTML='<div class="m" style="font-size:0.72rem">–</div>'; return; }
+
+  const RESULT_COLORS = {
+    'SIGNAL':'var(--green)', 'REGIME_BLOCKED':'var(--red)',
+    'SCORE_LOW':'var(--yellow)', 'EV_LOW':'var(--orange)',
+    'RISK_BLOCKED':'var(--red)', 'NO_CANDLES':'var(--muted)',
+    'DIRECTION_FLAT':'var(--muted)', 'GATE_CLOSED':'var(--red)',
+  };
+  const RESULT_LABELS = {
+    'SIGNAL':'sig', 'REGIME_BLOCKED':'regime', 'SCORE_LOW':'score',
+    'EV_LOW':'EV', 'RISK_BLOCKED':'risk', 'NO_CANDLES':'sem dados',
+    'DIRECTION_FLAT':'plano', 'GATE_CLOSED':'gate',
+  };
+
+  symEl.innerHTML = syms.map(sym=>{
+    const d = bySym[sym];
+    const tot = Object.values(d).reduce((a,b)=>a+b,0) || 1;
+    const sig = d['SIGNAL'] || 0;
+    const rate = (sig/tot*100).toFixed(0);
+    const name = sym.replace('-USDT','');
+    const chips = Object.entries(d).sort((a,b)=>b[1]-a[1]).map(([r,n])=>{
+      const col = RESULT_COLORS[r]||'var(--muted)';
+      const lbl = RESULT_LABELS[r]||r;
+      return`<span style="font-size:0.58rem;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,0.04);border:1px solid ${col}22;color:${col}">${lbl} ${n}</span>`;
+    }).join('');
+    const rateCls = sig>0?'g':'r';
+    return`<div style="padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+        <span style="font-size:0.75rem;font-weight:700;color:var(--text)">${name}</span>
+        <span class="${rateCls}" style="font-size:0.65rem;font-weight:700">${rate}% exec.</span>
+        <span class="m" style="font-size:0.6rem">${tot} aval.</span>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">${chips}</div>
+    </div>`;
+  }).join('');
+}
+
 // ── Feature Governance ────────────────────────────────────────
 function psiColor(psi){
   if(psi==null) return 'var(--muted)';
@@ -1524,12 +1651,12 @@ function renderWfo(data){
 }
 
 async function updateAll(){
-  const [health,version,system,portfolio,perf,prices,sym,exits,log,wd,pos,oOpen,oRec,calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo]=await Promise.all([
+  const [health,version,system,portfolio,perf,prices,sym,exits,log,funnel,wd,pos,oOpen,oRec,calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo]=await Promise.all([
     fetchJSON('/health'),fetchJSON('/version'),fetchJSON('/api/metrics/system'),
     fetchJSON('/api/portfolio/summary'),fetchJSON('/api/metrics/performance'),
     fetchJSON('/api/metrics/prices'),fetchJSON('/api/signals/symbols'),
     fetchJSON('/api/portfolio/exits'),fetchJSON('/api/signals/log?limit=30'),
-    fetchJSON('/api/watchdog/status'),fetchJSON('/api/positions/open'),
+    fetchJSON('/api/signals/funnel'),fetchJSON('/api/watchdog/status'),fetchJSON('/api/positions/open'),
     fetchJSON('/api/orders/open'),fetchJSON('/api/orders/recent?limit=15'),
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
@@ -1834,6 +1961,9 @@ async function updateAll(){
       }).join('');
     }
   }
+
+  // Funnel
+  if(funnel) renderFunnel(funnel);
 
   // Feature Governance
   renderGovernance(govStatus, govDrift, govLive, govSchema);

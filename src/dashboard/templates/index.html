@@ -153,7 +153,7 @@
     .clabel .ico { width:14px; height:14px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.65rem; }
 
     /* ══ KPI CARDS ════════════════════════════════════════════ */
-    .kpi-card { border-radius: 12px; padding: 14px 16px; border: 1px solid var(--border); position:relative; overflow:hidden; }
+    .kpi-card { border-radius: 12px; padding: 16px 18px; border: 1px solid var(--border); position:relative; overflow:hidden; }
     .kpi-card::after { content:''; position:absolute; top:-20px; right:-20px; width:70px; height:70px; border-radius:50%; opacity:0.06; }
     .kpi-blue  { background:linear-gradient(135deg,#0d1d35,#0f1623); border-color:rgba(59,130,246,0.2); }
     .kpi-blue::after  { background:var(--blue); }
@@ -464,43 +464,36 @@
 <!-- ══ KPI STRIP ══════════════════════════════════════════════ -->
 <div class="grid g7">
   <div class="kpi-card kpi-blue">
-    <div class="kpi-icon kpi-icon-blue">💼</div>
     <div class="clabel">Portfolio Total</div>
     <div class="kpi-val b" id="kpi-portfolio">–</div>
     <div class="kpi-sub">Inicial: <b id="kpi-initial">–</b></div>
   </div>
   <div class="kpi-card kpi-green">
-    <div class="kpi-icon kpi-icon-green">📈</div>
     <div class="clabel">P&L Realizado</div>
     <div class="kpi-val" id="kpi-rpnl">–</div>
     <div class="kpi-sub">Diário: <b id="kpi-dpnl">–</b></div>
   </div>
   <div class="kpi-card kpi-gray">
-    <div class="kpi-icon" style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.2)">🔮</div>
     <div class="clabel">P&L Não Realizado</div>
     <div class="kpi-val" id="kpi-upnl">–</div>
     <div class="kpi-sub">Drawdown: <b id="kpi-dd" class="r">–</b></div>
   </div>
   <div class="kpi-card kpi-blue">
-    <div class="kpi-icon kpi-icon-blue">💰</div>
     <div class="clabel">Saldo Disponível</div>
     <div class="kpi-val" id="kpi-cash">–</div>
     <div class="kpi-sub">Exposição: <b id="kpi-exp">–</b></div>
   </div>
   <div class="kpi-card kpi-yellow">
-    <div class="kpi-icon kpi-icon-yellow">🔄</div>
     <div class="clabel">Trades</div>
     <div class="kpi-val" id="kpi-trades">–</div>
     <div class="kpi-sub">Volume: <b id="kpi-vol">–</b></div>
   </div>
   <div class="kpi-card kpi-red">
-    <div class="kpi-icon kpi-icon-red">⚡</div>
     <div class="clabel">Taxas Pagas</div>
     <div class="kpi-val r" id="kpi-fees">–</div>
     <div class="kpi-sub">P&L fills: <b id="kpi-pnl-fills">–</b></div>
   </div>
   <div class="kpi-card kpi-green">
-    <div class="kpi-icon kpi-icon-green">🎯</div>
     <div class="clabel">Retorno Total</div>
     <div class="kpi-val" id="kpi-return">–</div>
     <div class="kpi-sub">Posições: <b id="kpi-pos">–</b></div>
@@ -732,43 +725,36 @@
 <!-- Row 1: métricas core -->
 <div class="grid g7">
   <div class="kpi-card kpi-blue">
-    <div class="kpi-icon kpi-icon-blue">📊</div>
     <div class="clabel">Sharpe Ratio</div>
     <div class="kpi-val" id="q-sharpe">–</div>
     <div class="kpi-sub">Anualizado · <b>>1.0</b> bom</div>
   </div>
   <div class="kpi-card kpi-purple">
-    <div class="kpi-icon" style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.2)">🎯</div>
     <div class="clabel">Sortino Ratio</div>
     <div class="kpi-val" id="q-sortino">–</div>
     <div class="kpi-sub">Downside · <b>>2.0</b> excelente</div>
   </div>
   <div class="kpi-card kpi-yellow">
-    <div class="kpi-icon kpi-icon-yellow">⚖️</div>
     <div class="clabel">Calmar Ratio</div>
     <div class="kpi-val" id="q-calmar">–</div>
     <div class="kpi-sub">Retorno/DrawDown · <b>>0.5</b> ok</div>
   </div>
   <div class="kpi-card kpi-green">
-    <div class="kpi-icon kpi-icon-green">🎲</div>
     <div class="clabel">Hit Rate</div>
     <div class="kpi-val" id="q-hitrate">–</div>
     <div class="kpi-sub">Win/Total · <b>>55%</b> saudável</div>
   </div>
   <div class="kpi-card kpi-blue">
-    <div class="kpi-icon kpi-icon-blue">💡</div>
     <div class="clabel">Expectancy</div>
     <div class="kpi-val" id="q-expectancy">–</div>
     <div class="kpi-sub">E[lucro] por trade</div>
   </div>
   <div class="kpi-card kpi-green">
-    <div class="kpi-icon kpi-icon-green">📈</div>
     <div class="clabel">Profit Factor</div>
     <div class="kpi-val" id="q-pf">–</div>
     <div class="kpi-sub">Gross profit/loss · <b>>1.5</b> ok</div>
   </div>
   <div class="kpi-card kpi-blue">
-    <div class="kpi-icon kpi-icon-blue">📐</div>
     <div class="clabel">Stability R²</div>
     <div class="kpi-val" id="q-stability">–</div>
     <div class="kpi-sub">Equity curve · <b>>0.7</b> estável</div>

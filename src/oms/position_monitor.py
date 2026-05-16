@@ -49,7 +49,7 @@ PARTIAL_EXIT_R   = 1.5   # sai 50% em +1.5R
 PARTIAL_EXIT_PCT = 0.50  # fracção da posição a vender
 
 # Phase D — Regimes que forçam saída imediata
-EXIT_REGIMES = {"PANIC_LIQUIDATION", "LIQUIDITY_VACUUM"}
+EXIT_REGIMES = {"PANIC_LIQUIDATION"}  # LIQUIDITY_VACUUM removido (N/A para BTC/ETH/SOL)
 
 # Timeout adaptativo por regime (horas)
 TIMEOUT_HOURS: dict[str, int] = {
@@ -480,9 +480,7 @@ def _detect_regime(candles: list[Candle]) -> str:
     atr_5 = sum(h - l for h, l in zip(highs[:5], lows[:5])) / 5
     rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
 
-    if rel_atr < 0.010:
-        return "LIQUIDITY_VACUUM"
-    if rel_atr > 0.030:
+    if rel_atr > 0.030:   # volatilidade extrema — único caso de saída forçada
         return "HIGH_CORRELATION_RISK"
 
     return "MEAN_REVERTING_CHOP"

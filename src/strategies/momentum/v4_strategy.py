@@ -100,7 +100,7 @@ class V4MomentumStrategy(BaseStrategy):
         hardcoded = self.REGIME_THRESHOLDS.get(regime, 0.65)
         threshold = self._platt.get_regime_threshold(regime, hardcoded)
 
-        if regime in {"PANIC_LIQUIDATION", "LIQUIDITY_VACUUM"}:
+        if regime in {"PANIC_LIQUIDATION"}:
             _log("REGIME_BLOCKED",
                  f"Regime bloqueado: {regime}",
                  regime=regime, threshold=threshold)
@@ -196,14 +196,14 @@ class V4MomentumStrategy(BaseStrategy):
                 return "TREND_EXHAUSTION"
             return "VOLATILITY_COMPRESSION"
 
+        # BTC/ETH/SOL são sempre líquidos — LIQUIDITY_VACUUM não se aplica.
+        # Diferencia apenas pelo nível de volatilidade:
         highs = [c.high for c in ctx.candles_1h[:10]]
         lows  = [c.low  for c in ctx.candles_1h[:10]]
         atr_5 = sum(h - l for h, l in zip(highs[:5], lows[:5])) / 5
         rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
 
-        if rel_atr < 0.010:   # 1% — era 0.5% (muito sensível, causava bloqueio total)
-            return "LIQUIDITY_VACUUM"
-        if rel_atr > 0.030:   # 3% — era 2.5%
+        if rel_atr > 0.030:   # volatilidade extrema (>3% range/hora)
             return "HIGH_CORRELATION_RISK"
 
         return "MEAN_REVERTING_CHOP"

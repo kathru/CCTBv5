@@ -11,6 +11,7 @@ router = APIRouter(prefix="/api/governance", tags=["governance"])
 
 _ROOT         = Path(__file__).parent.parent.parent.parent
 _MODELS_DIR   = _ROOT / "data" / "models"
+_WFO_DIR      = _ROOT / "data" / "wfo"
 
 
 @router.get("/status")
@@ -56,7 +57,7 @@ async def get_wfo_results() -> dict:
     symbols = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
     results = {}
     for sym in symbols:
-        path = _MODELS_DIR / f"wfo_{sym.replace('-','_')}_latest.json"
+        path = _WFO_DIR / f"wfo_{sym.replace('-','_')}_latest.json"
         if path.exists():
             try:
                 results[sym] = json.loads(path.read_text())

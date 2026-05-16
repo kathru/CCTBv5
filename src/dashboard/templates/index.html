@@ -296,10 +296,13 @@
     .wd-dot.bad { background:var(--red);   box-shadow:0 0 5px rgba(239,68,68,0.5); }
 
     /* ══ COUNTDOWN ═══════════════════════════════════════════ */
-    .hdr-countdown { display:flex; align-items:center; gap:6px; font-size:0.68rem; }
-    .hdr-countdown .cd-label { color:var(--muted); }
-    .hdr-countdown .cd-val   { color:var(--blue); font-weight:800; font-size:0.78rem; font-variant-numeric:tabular-nums; }
-    .hdr-cycle { font-size:0.62rem; color:var(--muted); }
+    .hdr-cycle-block { display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
+    .hdr-cycle-num   { font-size:0.75rem; font-weight:800; color:var(--text); line-height:1; }
+    .hdr-cycle-num span:first-child { color:var(--blue); }
+    .hdr-cycle-total { font-size:0.6rem; color:var(--muted); font-weight:400; }
+    .hdr-cycle-cd    { font-size:0.6rem; color:var(--muted); }
+    .cd-val          { color:var(--blue); font-weight:700; font-variant-numeric:tabular-nums; }
+    .hdr-cycle       { font-size:0.62rem; color:var(--muted); }
 
     /* ══ SIGNAL FEED REDESIGN ═════════════════════════════════ */
     .feed-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
@@ -432,9 +435,9 @@
       <div class="hdr-info-sub">Última atualização</div>
     </div>
     <div class="hdr-sep"></div>
-    <div class="hdr-countdown">
-      <span class="cd-label">próximo ciclo</span>
-      <span class="cd-val" id="hdr-countdown">–</span>
+    <div class="hdr-cycle-block">
+      <div class="hdr-cycle-num">ciclo <span id="hdr-cycle-num">–</span><span class="hdr-cycle-total">/96</span></div>
+      <div class="hdr-cycle-cd">próximo <span id="hdr-countdown" class="cd-val">–</span></div>
     </div>
     <div class="hdr-sep"></div>
     <div class="status-pill" id="status-pill">
@@ -783,15 +786,22 @@ const _portfolioHistory = { labels:[], values:[], maxPoints:288 };
 let _chartWindow = 15; // points to show
 let _portfolioChart = null, _donutChart = null, _cycleCount = 0;
 
-// ── Countdown timer (15s poll cycle) ──────────────────────
+// ── Ciclos de 15 minutos (96 ciclos/dia, estilo CCTBv4) ────
 function startCountdown(){
-  const el=document.getElementById('hdr-countdown');
+  const cdEl=document.getElementById('hdr-countdown');
+  const cnEl=document.getElementById('hdr-cycle-num');
   setInterval(()=>{
-    const now=new Date(), sec=now.getSeconds(), ms=now.getMilliseconds();
-    const rem=15-((sec%15))-(ms/1000);
-    const s=Math.max(0,rem).toFixed(1);
-    el.textContent=parseFloat(s)<1?`0.${s.split('.')[1]}`:(parseInt(s)+':'+s.split('.')[1].padStart(1,'0'));
-  },100);
+    const now=new Date();
+    const totalMin=now.getHours()*60+now.getMinutes();
+    const cycleNum=Math.floor(totalMin/15)+1;          // 1..96
+    const minInCycle=totalMin%15;
+    const secInCycle=minInCycle*60+now.getSeconds();
+    const remSec=15*60-secInCycle;
+    const remMin=Math.floor(remSec/60);
+    const remS=remSec%60;
+    if(cnEl) cnEl.textContent=cycleNum;
+    if(cdEl) cdEl.textContent=remMin+':'+(remS<10?'0':'')+remS;
+  },1000);
 }
 
 // ── Chart window ───────────────────────────────────────────

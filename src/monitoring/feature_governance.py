@@ -31,7 +31,9 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_PATH = Path("data") / "models" / "feature_schema.json"
+_ROOT         = Path(__file__).parent.parent.parent   # raiz do projeto
+SCHEMA_PATH   = _ROOT / "data" / "models" / "feature_schema.json"
+BASELINE_PATH = _ROOT / "data" / "models" / "feature_baseline.json"
 
 # ── 1. Feature Schema (Versionamento) ────────────────────────────────────────
 
@@ -316,6 +318,36 @@ class DriftMonitor:
             {k: v.n for k, v in feature_stats.items()},
         )
 
+    def load_baseline_from_file(self, path: Path = BASELINE_PATH) -> bool:
+        """
+        Carrega baseline de distribuição do arquivo JSON gerado por feature_analysis.py.
+        Retorna True se carregado com sucesso.
+        """
+        if not path.exists():
+            logger.debug("Baseline não encontrado em %s", path)
+            return False
+        try:
+            data = json.loads(path.read_text())
+            features_raw = data.get("features", {})
+            baseline: dict[str, FeatureStats] = {}
+            for name, s in features_raw.items():
+                baseline[name] = FeatureStats(
+                    mean=s["mean"], std=s["std"],
+                    p10=s["p10"],   p25=s["p25"],
+                    p50=s["p50"],   p75=s["p75"],
+                    p90=s["p90"],   n=s["n"],
+                )
+            self.set_baseline(baseline)
+            logger.info(
+                "Baseline carregado de %s (schema=%s, n=%d, computed_at=%s)",
+                path, data.get("schema_version","?"),
+                data.get("n_samples", 0), data.get("computed_at","?"),
+            )
+            return True
+        except Exception as exc:
+            logger.error("Erro ao carregar baseline: %s", exc)
+            return False
+
     def record(self, features: dict[str, float]) -> None:
         """Registra uma observação ao vivo."""
         for name, value in features.items():
@@ -529,6 +561,8 @@ class FeatureGovernance:
         self.leakage  = LeakageGuard()
         self.drift    = DriftMonitor()
         self._feature_history: deque = deque(maxlen=10000)
+        # Auto-load baseline gerado por feature_analysis.py (se disponível)
+        self.drift.load_baseline_from_file()
 
     def record_live(self, symbol: str, features: dict[str, float]) -> None:
         """Registra features ao vivo para monitoramento de drift."""

@@ -726,12 +726,14 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
       <div class="clabel" style="margin:0">Evolução do Portfolio</div>
       <div style="display:flex;gap:4px;">
-        <button class="chart-btn active" onclick="setChartWindow(15,'1h')"  id="btn-1h" >1h</button>
-        <button class="chart-btn"        onclick="setChartWindow(72,'6h')"  id="btn-6h" >6h</button>
-        <button class="chart-btn"        onclick="setChartWindow(288,'1d')" id="btn-1d" >1d</button>
+        <button class="chart-btn active" onclick="setChartWindow(60,'1h')"   id="btn-1h">1h</button>
+        <button class="chart-btn"        onclick="setChartWindow(360,'6h')"  id="btn-6h">6h</button>
+        <button class="chart-btn"        onclick="setChartWindow(1440,'1d')" id="btn-1d">1d</button>
       </div>
     </div>
-    <canvas id="portfolio-chart" height="140"></canvas>
+    <div style="position:relative;height:160px;">
+      <canvas id="portfolio-chart"></canvas>
+    </div>
   </div>
 
   <!-- Distribuição -->
@@ -785,8 +787,9 @@
 const API='', REFRESH_MS=600000;
 
 // ── Portfolio chart data (in-session memory) ───────────────
-const _portfolioHistory = { labels:[], values:[], maxPoints:288 };
-let _chartWindow = 15; // points to show
+// Sampling: 1 ponto por minuto → maxPoints=1440 (24h)
+const _portfolioHistory = { labels:[], values:[], maxPoints:1440 };
+let _chartWindow = 60;  // default: 1h = 60 pontos (1/min)
 let _portfolioChart = null, _donutChart = null, _cycleCount = 0;
 
 // ── Ciclos de 15 minutos (96 ciclos/dia, estilo CCTBv4) ────
@@ -815,38 +818,81 @@ function setChartWindow(pts,btnId){
   updatePortfolioChart();
 }
 
+// ── Sampling independente a cada 60s ───────────────────────
+async function samplePortfolio(){
+  const d=await fetchJSON('/api/portfolio/summary');
+  if(d&&d.total_value&&d.total_value>0){
+    pushPortfolioValue(d.total_value);
+    updatePortfolioChart();
+    updateDonut(d, _c.prices);
+  }
+}
+
+function startPortfolioSampling(){
+  samplePortfolio(); // amostra imediata
+  setInterval(samplePortfolio, 60000); // depois a cada 1 minuto
+}
+
 // ── Portfolio line chart ───────────────────────────────────
 function initPortfolioChart(){
-  const ctx=document.getElementById('portfolio-chart').getContext('2d');
+  const canvas=document.getElementById('portfolio-chart');
+  if(!canvas||typeof Chart==='undefined') return;
+  const ctx=canvas.getContext('2d');
   _portfolioChart=new Chart(ctx,{
     type:'line',
     data:{ labels:[], datasets:[{
       label:'Portfolio',data:[],
-      borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.06)',
-      borderWidth:2,pointRadius:0,pointHoverRadius:4,
-      fill:true,tension:0.4,
+      borderColor:'#3b82f6',
+      backgroundColor:(ctx)=>{
+        const g=ctx.chart.ctx.createLinearGradient(0,0,0,ctx.chart.height);
+        g.addColorStop(0,'rgba(59,130,246,0.18)');
+        g.addColorStop(1,'rgba(59,130,246,0.01)');
+        return g;
+      },
+      borderWidth:2.5,pointRadius:0,pointHoverRadius:5,
+      pointHoverBackgroundColor:'#3b82f6',
+      fill:true,tension:0.35,
     }]},
     options:{
       responsive:true,maintainAspectRatio:false,
-      animation:{duration:400},
-      plugins:{legend:{display:false},tooltip:{
-        mode:'index',intersect:false,
-        backgroundColor:'#0f1623',borderColor:'#1e2a3a',borderWidth:1,
-        titleColor:'#6b7280',bodyColor:'#e2e8f0',
-        callbacks:{label:ctx=>'$'+ctx.raw.toLocaleString('pt-BR',{minimumFractionDigits:2})}
-      }},
+      animation:{duration:300},
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#0f1623',borderColor:'#1e2a3a',borderWidth:1,
+          titleColor:'#6b7280',titleFont:{family:'Inter',size:10},
+          bodyColor:'#e2e8f0',bodyFont:{family:'Inter',size:12,weight:'700'},
+          padding:10,
+          callbacks:{
+            title:items=>items[0].label,
+            label:item=>' $'+parseFloat(item.raw).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}),
+          }
+        }
+      },
       scales:{
-        x:{grid:{color:'rgba(30,42,58,0.5)'},ticks:{color:'#5a6a7e',font:{size:10},maxTicksLimit:6}},
-        y:{grid:{color:'rgba(30,42,58,0.5)'},ticks:{color:'#5a6a7e',font:{size:10},callback:v=>'$'+v.toLocaleString('pt-BR',{minimumFractionDigits:0})}},
+        x:{
+          grid:{color:'rgba(30,42,58,0.4)',drawTicks:false},
+          border:{display:false},
+          ticks:{color:'#4a5568',font:{family:'Inter',size:10},maxTicksLimit:7,maxRotation:0},
+        },
+        y:{
+          grid:{color:'rgba(30,42,58,0.4)',drawTicks:false},
+          border:{display:false},
+          ticks:{color:'#4a5568',font:{family:'Inter',size:10},
+            callback:v=>'$'+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})},
+          position:'right',
+        },
       }
     }
   });
 }
 
 function pushPortfolioValue(value){
-  const ts=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  if(!value||value<=0) return;
+  const ts=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   _portfolioHistory.labels.push(ts);
-  _portfolioHistory.values.push(value);
+  _portfolioHistory.values.push(parseFloat(value));
   if(_portfolioHistory.labels.length>_portfolioHistory.maxPoints){
     _portfolioHistory.labels.shift(); _portfolioHistory.values.shift();
   }
@@ -854,13 +900,34 @@ function pushPortfolioValue(value){
 
 function updatePortfolioChart(){
   if(!_portfolioChart) return;
-  const n=Math.min(_chartWindow,_portfolioHistory.labels.length);
-  const labels=_portfolioHistory.labels.slice(-n);
-  const values=_portfolioHistory.values.slice(-n);
+  const hist=_portfolioHistory;
+  if(!hist.values.length){
+    // Sem dados ainda — mostra estado vazio limpo
+    _portfolioChart.data.labels=[];
+    _portfolioChart.data.datasets[0].data=[];
+    delete _portfolioChart.options.scales.y.min;
+    delete _portfolioChart.options.scales.y.max;
+    _portfolioChart.update('none');
+    return;
+  }
+  const n=Math.min(_chartWindow,hist.labels.length);
+  const labels=hist.labels.slice(-n);
+  const values=hist.values.slice(-n);
   _portfolioChart.data.labels=labels;
   _portfolioChart.data.datasets[0].data=values;
-  const min=Math.min(...values)*0.9995, max=Math.max(...values)*1.0005;
-  _portfolioChart.options.scales.y.min=min; _portfolioChart.options.scales.y.max=max;
+
+  // Escala Y: padding de 0.1% acima e abaixo, mínimo 0.5 de range
+  const minV=Math.min(...values), maxV=Math.max(...values);
+  const range=Math.max(maxV-minV, minV*0.005, 0.5);
+  const pad=range*0.15;
+  _portfolioChart.options.scales.y.min=minV-pad;
+  _portfolioChart.options.scales.y.max=maxV+pad;
+
+  // Cor da linha: verde se subiu, vermelho se caiu, azul se igual
+  const first=values[0], last=values[values.length-1];
+  const lineColor=last>first?'#10b981':last<first?'#ef4444':'#3b82f6';
+  _portfolioChart.data.datasets[0].borderColor=lineColor;
+
   _portfolioChart.update('none');
 }
 
@@ -1274,12 +1341,8 @@ async function updateAll(){
 
   document.getElementById('last-update').textContent=new Date().toLocaleTimeString('pt-BR');
 
-  // Portfolio chart
-  if(portfolio&&portfolio.total_value){
-    pushPortfolioValue(portfolio.total_value);
-    updatePortfolioChart();
-    updateDonut(portfolio,_c.prices);
-  }
+  // Donut (portfolio distribution)
+  if(portfolio&&portfolio.total_value) updateDonut(portfolio,_c.prices);
 
   // Signal feed v2
   if(log){
@@ -1294,10 +1357,11 @@ async function updateAll(){
   document.getElementById('trade-history').innerHTML=buildTradeHistory(allOrders);
 }
 
-// Init charts + countdown
+// Init charts + countdown + sampling
 initPortfolioChart();
 initDonutChart();
 startCountdown();
+startPortfolioSampling(); // amostra portfolio a cada 60s independente do refresh
 
 updateAll();
 setInterval(updateAll, REFRESH_MS);

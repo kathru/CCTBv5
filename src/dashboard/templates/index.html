@@ -715,6 +715,108 @@
 
 </div>
 
+<!-- ══ QUANTITATIVE ANALYTICS ══════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Quantitative Analytics<span class="cnt" id="quant-trades"></span></div>
+
+<!-- Row 1: métricas core -->
+<div class="grid g7">
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-icon kpi-icon-blue">📊</div>
+    <div class="clabel">Sharpe Ratio</div>
+    <div class="kpi-val" id="q-sharpe">–</div>
+    <div class="kpi-sub">Anualizado · <b>>1.0</b> bom</div>
+  </div>
+  <div class="kpi-card kpi-purple">
+    <div class="kpi-icon" style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.2)">🎯</div>
+    <div class="clabel">Sortino Ratio</div>
+    <div class="kpi-val" id="q-sortino">–</div>
+    <div class="kpi-sub">Downside · <b>>2.0</b> excelente</div>
+  </div>
+  <div class="kpi-card kpi-yellow">
+    <div class="kpi-icon kpi-icon-yellow">⚖️</div>
+    <div class="clabel">Calmar Ratio</div>
+    <div class="kpi-val" id="q-calmar">–</div>
+    <div class="kpi-sub">Retorno/DrawDown · <b>>0.5</b> ok</div>
+  </div>
+  <div class="kpi-card kpi-green">
+    <div class="kpi-icon kpi-icon-green">🎲</div>
+    <div class="clabel">Hit Rate</div>
+    <div class="kpi-val" id="q-hitrate">–</div>
+    <div class="kpi-sub">Win/Total · <b>>55%</b> saudável</div>
+  </div>
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-icon kpi-icon-blue">💡</div>
+    <div class="clabel">Expectancy</div>
+    <div class="kpi-val" id="q-expectancy">–</div>
+    <div class="kpi-sub">E[lucro] por trade</div>
+  </div>
+  <div class="kpi-card kpi-green">
+    <div class="kpi-icon kpi-icon-green">📈</div>
+    <div class="clabel">Profit Factor</div>
+    <div class="kpi-val" id="q-pf">–</div>
+    <div class="kpi-sub">Gross profit/loss · <b>>1.5</b> ok</div>
+  </div>
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-icon kpi-icon-blue">📐</div>
+    <div class="clabel">Stability R²</div>
+    <div class="kpi-val" id="q-stability">–</div>
+    <div class="kpi-sub">Equity curve · <b>>0.7</b> estável</div>
+  </div>
+</div>
+
+<!-- Row 2: drawdown + win/loss + regime -->
+<div class="grid g13">
+
+  <!-- Drawdown & Win/Loss detail -->
+  <div class="card">
+    <div class="clabel">Drawdown & Distribuição</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div class="calib-item">
+        <div class="calib-val r" id="q-maxdd">–</div>
+        <div class="calib-label">Max Drawdown</div>
+      </div>
+      <div class="calib-item">
+        <div class="calib-val y" id="q-dd-dur">–</div>
+        <div class="calib-label">DD Duration (trades)</div>
+      </div>
+      <div class="calib-item">
+        <div class="calib-val" id="q-dd-streak">–</div>
+        <div class="calib-label">Losses seguidos</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="calib-item">
+        <div class="calib-val g" id="q-avgwin">–</div>
+        <div class="calib-label">Avg Win</div>
+      </div>
+      <div class="calib-item">
+        <div class="calib-val r" id="q-avgloss">–</div>
+        <div class="calib-label">Avg Loss</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <div style="font-size:0.62rem;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.8px">Win/Loss ratio</div>
+      <div style="height:8px;border-radius:20px;overflow:hidden;display:flex;">
+        <div id="ql-win"  style="background:linear-gradient(90deg,var(--green),#059669);transition:flex 0.5s;flex:0"></div>
+        <div id="ql-loss" style="background:linear-gradient(90deg,#dc2626,var(--red));transition:flex 0.5s;flex:1"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);margin-top:3px;">
+        <span id="ql-win-lbl">0 wins</span>
+        <span id="ql-loss-lbl">0 losses</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Regime Breakdown -->
+  <div class="card">
+    <div class="clabel">Regime Breakdown</div>
+    <div id="regime-breakdown" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;">
+      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando avaliações...</div>
+    </div>
+  </div>
+
+</div>
+
 <!-- ══ GRÁFICOS ════════════════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Evolução & Distribuição</div>
 <div class="grid g21">
@@ -1125,14 +1227,14 @@ function wdItem(idS,idD,alive,detail){
 }
 
 async function updateAll(){
-  const [health,version,system,portfolio,perf,prices,sym,exits,log,wd,pos,oOpen,oRec,calib]=await Promise.all([
+  const [health,version,system,portfolio,perf,prices,sym,exits,log,wd,pos,oOpen,oRec,calib,quant]=await Promise.all([
     fetchJSON('/health'),fetchJSON('/version'),fetchJSON('/api/metrics/system'),
     fetchJSON('/api/portfolio/summary'),fetchJSON('/api/metrics/performance'),
     fetchJSON('/api/metrics/prices'),fetchJSON('/api/signals/symbols'),
     fetchJSON('/api/portfolio/exits'),fetchJSON('/api/signals/log?limit=30'),
     fetchJSON('/api/watchdog/status'),fetchJSON('/api/positions/open'),
     fetchJSON('/api/orders/open'),fetchJSON('/api/orders/recent?limit=15'),
-    fetchJSON('/api/signals/calibration'),
+    fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
   ]);
 
   // Header
@@ -1338,6 +1440,65 @@ async function updateAll(){
   }).join(''):'<tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr>';
 
   document.getElementById('last-update').textContent=new Date().toLocaleTimeString('pt-BR');
+
+  // Quantitative Analytics
+  if(quant){
+    const q=quant;
+    const na='<span class="m" style="font-size:0.9rem">N/A</span>';
+    const minOk=q.n_trades>=q.min_trades_req;
+
+    document.getElementById('quant-trades').textContent=`(${q.n_trades} trades)`;
+
+    function qval(v,cls,suffix=''){
+      if(v==null)return na;
+      return`<span class="${cls}">${typeof v==='number'?v.toFixed(2):v}${suffix}</span>`;
+    }
+    function qcls(v,good,warn){
+      if(v==null)return'm';
+      return v>=good?'g':v>=warn?'y':'r';
+    }
+
+    document.getElementById('q-sharpe').innerHTML    = qval(q.sharpe,   qcls(q.sharpe,  1.5,0.5));
+    document.getElementById('q-sortino').innerHTML   = qval(q.sortino,  qcls(q.sortino, 2.0,1.0));
+    document.getElementById('q-calmar').innerHTML    = qval(q.calmar,   qcls(q.calmar,  1.0,0.5));
+    document.getElementById('q-hitrate').innerHTML   = q.hit_rate!=null ? qval(q.hit_rate*100, qcls(q.hit_rate,0.55,0.4),'%') : na;
+    document.getElementById('q-expectancy').innerHTML= q.expectancy!=null ? `<span class="${qcls(q.expectancy,0,0)}">$${q.expectancy.toFixed(2)}</span>` : na;
+    document.getElementById('q-pf').innerHTML        = qval(q.profit_factor, qcls(q.profit_factor,1.5,1.0));
+    document.getElementById('q-stability').innerHTML = qval(q.stability_r2,  qcls(q.stability_r2,0.7,0.4));
+
+    document.getElementById('q-maxdd').innerHTML    = q.max_drawdown_pct!=null?`-${(q.max_drawdown_pct*100).toFixed(2)}%`:na;
+    document.getElementById('q-dd-dur').textContent  = q.max_dd_duration_trades!=null?q.max_dd_duration_trades+' trades':'–';
+    document.getElementById('q-dd-streak').textContent= q.current_dd_streak!=null?(q.current_dd_streak>0?q.current_dd_streak+' 🔴':'0 ✅'):'–';
+    document.getElementById('q-avgwin').innerHTML   = q.avg_win!=null?`+$${q.avg_win.toFixed(2)}`:na;
+    document.getElementById('q-avgloss').innerHTML  = q.avg_loss!=null?`$${q.avg_loss.toFixed(2)}`:na;
+
+    // Win/Loss bar
+    document.getElementById('ql-win').style.flex  = q.n_wins   ||0;
+    document.getElementById('ql-loss').style.flex = q.n_losses ||1;
+    document.getElementById('ql-win-lbl').textContent  = q.n_wins+' wins';
+    document.getElementById('ql-loss-lbl').textContent = q.n_losses+' losses';
+
+    // Regime breakdown
+    const rb=q.regime_breakdown||{};
+    const rbEl=document.getElementById('regime-breakdown');
+    const regimeEntries=Object.entries(rb).sort((a,b)=>b[1].total-a[1].total);
+    if(!regimeEntries.length){
+      rbEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando avaliações...</div>';
+    } else {
+      const maxTotal=Math.max(...regimeEntries.map(([,v])=>v.total));
+      rbEl.innerHTML=regimeEntries.map(([r,v])=>{
+        const pct=maxTotal>0?(v.total/maxTotal*100).toFixed(0):0;
+        const rShort=r.replace(/_/g,' ').replace('MEAN REVERTING','MR').replace('VOLATILITY','VOL').replace('CORRELATION','CORR').replace('HIGH ','');
+        const rCls=r.includes('EXPANSION')?'var(--green)':r.includes('PANIC')?'var(--red)':r.includes('CHOP')?'var(--yellow)':r.includes('CORR')?'var(--orange)':'var(--blue)';
+        return`<div style="display:grid;grid-template-columns:130px 1fr 40px 60px;align-items:center;gap:8px;padding:4px 0;">
+          <span style="font-size:0.65rem;color:var(--muted)">${rShort}</span>
+          <div style="height:5px;background:#0d1520;border-radius:10px;overflow:hidden;"><div style="height:5px;width:${pct}%;background:${rCls};border-radius:10px;transition:width 0.5s"></div></div>
+          <span style="font-size:0.62rem;color:var(--muted);text-align:right">${v.total}</span>
+          <span style="font-size:0.62rem;font-weight:700;text-align:right;color:${rCls}">${(v.signal_rate*100).toFixed(0)}% sig</span>
+        </div>`;
+      }).join('');
+    }
+  }
 
   // Donut (portfolio distribution)
   if(portfolio&&portfolio.total_value) updateDonut(portfolio,_c.prices);

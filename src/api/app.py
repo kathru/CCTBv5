@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from ..core.config import settings
 from ..core.version import get_version, get_version_info
 from ..persistence import Cache, Database
-from .routers import metrics, orders, portfolio, positions, signals, watchdog
+from .routers import analytics, metrics, orders, portfolio, positions, signals, watchdog
 
 DASHBOARD_DIR = Path(__file__).parent.parent / "dashboard"
 
@@ -65,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(metrics.router)
     app.include_router(portfolio.router)
     app.include_router(signals.router)
+    app.include_router(analytics.router)
     app.include_router(watchdog.router)
 
     # Initialize watchdog placeholders (populated by trading engine)

@@ -8,149 +8,350 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', monospace; background: #0d1117; color: #e6edf3; min-height: 100vh; }
 
+    /* ── Header ─────────────────────────────────────────── */
     header {
       background: #161b22;
       border-bottom: 1px solid #30363d;
-      padding: 12px 24px;
+      padding: 10px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
     }
-    header h1 { font-size: 1.1rem; color: #58a6ff; letter-spacing: 1px; }
+    header h1 { font-size: 1rem; color: #58a6ff; letter-spacing: 1px; }
     #title-desktop { display: inline; }
     #title-mobile  { display: none; }
     @media (max-width: 600px) {
       #title-desktop { display: none; }
       #title-mobile  { display: inline; }
     }
-    #status-badge {
-      font-size: 0.75rem;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-weight: bold;
+    .header-right { display: flex; align-items: center; gap: 12px; font-size: 0.72rem; }
+    #mode-badge {
+      padding: 2px 8px; border-radius: 20px; font-weight: bold; font-size: 0.68rem;
     }
-    .status-ok      { background: #1a4731; color: #3fb950; }
-    .status-degraded{ background: #4a2306; color: #f78166; }
-    .status-unknown { background: #2d2d2d; color: #8b949e; }
+    .mode-paper { background: #1f3a5f; color: #58a6ff; }
+    .mode-live  { background: #3d1f1f; color: #f85149; }
+    #status-badge {
+      padding: 3px 10px; border-radius: 20px; font-weight: bold; font-size: 0.72rem;
+    }
+    .status-ok       { background: #1a4731; color: #3fb950; }
+    .status-degraded { background: #4a2306; color: #f78166; }
+    .status-unknown  { background: #2d2d2d; color: #8b949e; }
+    #last-update { color: #484f58; }
 
-    main { padding: 20px 24px; display: grid; gap: 20px; max-width: 1400px; margin: 0 auto; }
+    /* ── Layout ─────────────────────────────────────────── */
+    main { padding: 16px 20px; display: grid; gap: 16px; max-width: 1600px; margin: 0 auto; }
 
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
 
+    @media (max-width: 1100px) { .grid-5 { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 800px)  {
+      .grid-5, .grid-4, .grid-3, .grid-2, .grid-2-1 { grid-template-columns: 1fr; }
+    }
+
+    /* ── Cards ───────────────────────────────────────────── */
     .card {
       background: #161b22;
       border: 1px solid #30363d;
       border-radius: 8px;
-      padding: 16px;
+      padding: 14px 16px;
     }
-    .card h3 {
-      font-size: 0.7rem;
+    .card-title {
+      font-size: 0.65rem;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 1.2px;
       color: #8b949e;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
-    .metric-value {
-      font-size: 2rem;
-      font-weight: bold;
-      color: #e6edf3;
+    .kpi-value {
+      font-size: 1.7rem;
+      font-weight: 700;
+      line-height: 1.1;
     }
-    .metric-sub { font-size: 0.75rem; color: #8b949e; margin-top: 4px; }
+    .kpi-sub {
+      font-size: 0.72rem;
+      color: #8b949e;
+      margin-top: 4px;
+    }
+    .kpi-sub b { color: #e6edf3; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-    th { text-align: left; padding: 8px 12px; color: #8b949e; font-weight: normal;
-         border-bottom: 1px solid #21262d; font-size: 0.72rem; text-transform: uppercase; }
-    td { padding: 8px 12px; border-bottom: 1px solid #21262d; }
+    /* ── Colors ──────────────────────────────────────────── */
+    .green  { color: #3fb950; }
+    .red    { color: #f85149; }
+    .blue   { color: #58a6ff; }
+    .yellow { color: #d29922; }
+    .gray   { color: #8b949e; }
+    .pos    { color: #3fb950; }
+    .neg    { color: #f85149; }
+    .neutral{ color: #e6edf3; }
+
+    /* ── Section label ───────────────────────────────────── */
+    .section-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #484f58;
+      border-bottom: 1px solid #21262d;
+      padding-bottom: 6px;
+    }
+
+    /* ── Watchdogs ───────────────────────────────────────── */
+    .wd-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .wd-item { display: flex; flex-direction: column; gap: 3px; }
+    .wd-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #8b949e; }
+    .wd-status { font-size: 0.85rem; font-weight: 600; }
+    .wd-detail { font-size: 0.68rem; color: #8b949e; }
+    .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; }
+    .dot-green  { background: #3fb950; }
+    .dot-yellow { background: #d29922; }
+    .dot-red    { background: #f85149; }
+
+    /* ── Tables ──────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    th {
+      text-align: left; padding: 6px 10px;
+      font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px;
+      color: #8b949e; border-bottom: 1px solid #21262d;
+      white-space: nowrap;
+    }
+    td { padding: 7px 10px; border-bottom: 1px solid #161b22; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
     tr:hover td { background: #1c2128; }
+    .empty-row td { color: #484f58; text-align: center; padding: 20px; }
 
-    .pill {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.7rem;
-      font-weight: bold;
-    }
+    /* ── Pills ───────────────────────────────────────────── */
+    .pill { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 600; }
     .pill-buy      { background: #1a4731; color: #3fb950; }
-    .pill-sell     { background: #4a2306; color: #f78166; }
-    .pill-submitted{ background: #1b3050; color: #58a6ff; }
+    .pill-sell     { background: #4a2306; color: #f85149; }
+    .pill-long     { background: #1a4731; color: #3fb950; }
+    .pill-short    { background: #4a2306; color: #f85149; }
     .pill-filled   { background: #1a4731; color: #3fb950; }
+    .pill-submitted{ background: #1f3a5f; color: #58a6ff; }
+    .pill-pending  { background: #2d2d2d; color: #e6edf3; }
     .pill-cancelled{ background: #2d2d2d; color: #8b949e; }
+    .pill-rejected { background: #4a2306; color: #f85149; }
+    .pill-paper    { background: #1f3a5f; color: #58a6ff; }
+    .pill-live     { background: #3d1f1f; color: #f85149; }
     .pill-open     { background: #1a4731; color: #3fb950; }
     .pill-closed   { background: #2d2d2d; color: #8b949e; }
 
-    .price-row { display: flex; justify-content: space-between; align-items: center;
-                 padding: 6px 0; border-bottom: 1px solid #21262d; }
-    .price-row:last-child { border-bottom: none; }
-    .price-symbol { font-weight: bold; color: #58a6ff; }
-    .price-value  { font-size: 1.1rem; }
+    /* ── Risk bars ───────────────────────────────────────── */
+    .bar-wrap { margin-top: 6px; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 0.68rem; color: #8b949e; margin-bottom: 3px; }
+    .bar-track { background: #21262d; border-radius: 4px; height: 5px; }
+    .bar-fill  { height: 5px; border-radius: 4px; transition: width 0.5s; }
+    .bar-ok      { background: #3fb950; }
+    .bar-warn    { background: #d29922; }
+    .bar-danger  { background: #f85149; }
 
-    .last-update { font-size: 0.7rem; color: #484f58; text-align: right; margin-top: 8px; }
-    .empty-state  { color: #484f58; font-size: 0.85rem; padding: 16px 0; }
+    /* ── Prices ──────────────────────────────────────────── */
+    .price-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid #21262d;
+      font-size: 0.85rem;
+    }
+    .price-row:last-child { border-bottom: none; }
+    .price-symbol { color: #58a6ff; font-weight: 600; }
+    .price-value  { font-size: 1rem; font-weight: 700; }
   </style>
 </head>
 <body>
 
 <header>
   <h1>⚡ <span id="title-desktop">Claude Code Trading Bot v…</span><span id="title-mobile">CCTB v.…</span></h1>
-  <div style="display:flex;align-items:center;gap:16px;">
-    <span id="last-update" style="font-size:0.75rem;color:#484f58;"></span>
+  <div class="header-right">
+    <span id="mode-badge" class="mode-paper">PAPER</span>
+    <span id="last-update">–</span>
     <span id="status-badge" class="status-unknown">–</span>
   </div>
 </header>
 
 <main>
 
-  <!-- Row 1: KPI cards -->
-  <div class="grid-3">
+  <!-- ── Seção: Portfolio ─────────────────────────────── -->
+  <div class="section-label">📊 Portfolio</div>
+
+  <div class="grid-5">
     <div class="card">
-      <h3>Sistema</h3>
-      <div class="metric-value" id="system-status">–</div>
-      <div class="metric-sub">Estado operacional</div>
+      <div class="card-title">Capital Inicial</div>
+      <div class="kpi-value blue" id="initial-capital">–</div>
+      <div class="kpi-sub">Saldo de referência</div>
     </div>
     <div class="card">
-      <h3>Posições abertas</h3>
-      <div class="metric-value" id="open-positions-count">–</div>
-      <div class="metric-sub">Ativos no momento</div>
+      <div class="card-title">Valor Atual</div>
+      <div class="kpi-value" id="total-value">–</div>
+      <div class="kpi-sub">Retorno: <b id="total-return-pct">–</b></div>
     </div>
     <div class="card">
-      <h3>Ordens abertas</h3>
-      <div class="metric-value" id="open-orders-count">–</div>
-      <div class="metric-sub">Aguardando execução</div>
+      <div class="card-title">Saldo Disponível</div>
+      <div class="kpi-value" id="cash-available">–</div>
+      <div class="kpi-sub">Exposição: <b id="exposure-pct">–</b></div>
+    </div>
+    <div class="card">
+      <div class="card-title">P&L Realizado</div>
+      <div class="kpi-value" id="realized-pnl">–</div>
+      <div class="kpi-sub">P&L Diário: <b id="daily-pnl">–</b></div>
+    </div>
+    <div class="card">
+      <div class="card-title">P&L Não Realizado</div>
+      <div class="kpi-value" id="unrealized-pnl">–</div>
+      <div class="kpi-sub">Drawdown: <b id="drawdown-pct">–</b></div>
     </div>
   </div>
 
-  <!-- Row 1b: Watchdogs -->
-  <div class="card">
-    <h3>Watchdogs</h3>
-    <div id="watchdog-container" style="display:flex;gap:24px;flex-wrap:wrap;">
-      <div class="empty-state">Aguardando dados...</div>
+  <!-- ── Seção: Performance ─────────────────────────── -->
+  <div class="section-label">📈 Performance & Atividade</div>
+
+  <div class="grid-4">
+    <div class="card">
+      <div class="card-title">Total de Trades</div>
+      <div class="kpi-value" id="total-trades">–</div>
+      <div class="kpi-sub">Fills executados</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Volume Negociado</div>
+      <div class="kpi-value" id="total-volume">–</div>
+      <div class="kpi-sub">Valor total movimentado</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Taxas Pagas</div>
+      <div class="kpi-value red" id="total-fees">–</div>
+      <div class="kpi-sub">Round-trip fee: ~0.5%</div>
+    </div>
+    <div class="card">
+      <div class="card-title">P&L de Fills</div>
+      <div class="kpi-value" id="pnl-fills">–</div>
+      <div class="kpi-sub">Sells − Buys (fills)</div>
     </div>
   </div>
 
-  <!-- Row 2: Prices + Open Positions -->
+  <!-- ── Seção: Risco & Watchdogs ────────────────────── -->
+  <div class="section-label">🛡️ Risco & Watchdogs</div>
+
   <div class="grid-2">
+
+    <!-- Risco de portfolio -->
     <div class="card">
-      <h3>Preços (cache)</h3>
-      <div id="prices-container">
-        <div class="empty-state">Carregando...</div>
+      <div class="card-title">Risco de Portfolio</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;">
+        <div>
+          <div class="bar-label"><span>Beta</span><span id="beta-val">–</span></div>
+          <div class="bar-track"><div class="bar-fill bar-ok" id="beta-bar" style="width:0%"></div></div>
+          <div class="bar-label" style="margin-top:10px;"><span>Correlação</span><span id="corr-val">–</span></div>
+          <div class="bar-track"><div class="bar-fill bar-ok" id="corr-bar" style="width:0%"></div></div>
+        </div>
+        <div>
+          <div class="bar-label"><span>Concentração</span><span id="conc-val">–</span></div>
+          <div class="bar-track"><div class="bar-fill bar-ok" id="conc-bar" style="width:0%"></div></div>
+          <div class="bar-label" style="margin-top:10px;"><span>Exposição</span><span id="exp-val">–</span></div>
+          <div class="bar-track"><div class="bar-fill bar-ok" id="exp-bar" style="width:0%"></div></div>
+        </div>
       </div>
     </div>
+
+    <!-- Watchdogs -->
     <div class="card">
-      <h3>Posições abertas</h3>
-      <div id="positions-container">
-        <div class="empty-state">Nenhuma posição aberta</div>
+      <div class="card-title">Watchdogs</div>
+      <div class="wd-grid">
+        <div class="wd-item">
+          <div class="wd-label">WebSocket</div>
+          <div class="wd-status" id="wd-ws">–</div>
+          <div class="wd-detail" id="wd-ws-detail">–</div>
+        </div>
+        <div class="wd-item">
+          <div class="wd-label">Heartbeat</div>
+          <div class="wd-status" id="wd-hb">–</div>
+          <div class="wd-detail" id="wd-hb-detail">–</div>
+        </div>
+        <div class="wd-item">
+          <div class="wd-label">Recursos</div>
+          <div class="wd-status" id="wd-res">–</div>
+          <div class="wd-detail" id="wd-res-detail">–</div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Row 3: Open Orders -->
-  <div class="card">
-    <h3>Ordens abertas</h3>
-    <div id="orders-container">
-      <div class="empty-state">Nenhuma ordem aberta</div>
+  <!-- ── Seção: Mercado ──────────────────────────────── -->
+  <div class="section-label">💹 Mercado</div>
+
+  <div class="grid-3">
+    <div class="card" id="price-btc">
+      <div class="price-row">
+        <span class="price-symbol">BTC-USDT</span>
+        <span class="price-value" id="p-BTC-USDT">–</span>
+      </div>
     </div>
-    <div class="last-update" id="orders-update"></div>
+    <div class="card" id="price-eth">
+      <div class="price-row">
+        <span class="price-symbol">ETH-USDT</span>
+        <span class="price-value" id="p-ETH-USDT">–</span>
+      </div>
+    </div>
+    <div class="card" id="price-sol">
+      <div class="price-row">
+        <span class="price-symbol">SOL-USDT</span>
+        <span class="price-value" id="p-SOL-USDT">–</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Seção: Posições ─────────────────────────────── -->
+  <div class="section-label">📋 Posições Abertas <span id="pos-count" class="gray" style="font-size:0.75rem;margin-left:8px;"></span></div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Par</th>
+            <th>Lado</th>
+            <th>Qtd</th>
+            <th>Preço Médio</th>
+            <th>Preço Atual</th>
+            <th>Notional</th>
+            <th>P&L</th>
+            <th>P&L %</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="positions-body">
+          <tr class="empty-row"><td colspan="9">Nenhuma posição aberta</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Seção: Ordens ───────────────────────────────── -->
+  <div class="section-label">📑 Ordens Recentes <span id="ord-count" class="gray" style="font-size:0.75rem;margin-left:8px;"></span></div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Par</th>
+            <th>Lado</th>
+            <th>Status</th>
+            <th>Qtd</th>
+            <th>Preenchido</th>
+            <th>Preço Médio</th>
+            <th>Notional</th>
+            <th>Estratégia</th>
+            <th>Criado</th>
+          </tr>
+        </thead>
+        <tbody id="orders-body">
+          <tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="kpi-sub" id="orders-footer" style="margin-top:8px;text-align:right;"></div>
   </div>
 
 </main>
@@ -159,15 +360,7 @@
   const API = '';
   const REFRESH_MS = 10000;
 
-  function pill(text, cls) {
-    return `<span class="pill pill-${cls}">${text}</span>`;
-  }
-
-  function fmt(v) {
-    const n = parseFloat(v);
-    return isNaN(n) ? v : n.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 4});
-  }
-
+  // ── Helpers ──────────────────────────────────────────
   async function fetchJSON(url) {
     try {
       const r = await fetch(API + url);
@@ -179,6 +372,63 @@
     }
   }
 
+  function usd(v, decimals = 2) {
+    if (v == null || isNaN(v)) return '–';
+    const n = parseFloat(v);
+    return '$' + n.toLocaleString('pt-BR', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  }
+
+  function pct(v, decimals = 2) {
+    if (v == null || isNaN(v)) return '–';
+    return (parseFloat(v) * 100).toFixed(decimals) + '%';
+  }
+
+  function pnlClass(v) {
+    const n = parseFloat(v);
+    if (isNaN(n) || n === 0) return 'neutral';
+    return n > 0 ? 'pos' : 'neg';
+  }
+
+  function pnlStr(v, isUsd = true) {
+    const n = parseFloat(v);
+    if (isNaN(n)) return '–';
+    const sign = n > 0 ? '+' : '';
+    return isUsd
+      ? sign + usd(n)
+      : sign + (n * 100).toFixed(2) + '%';
+  }
+
+  function pill(text, cls) {
+    return `<span class="pill pill-${cls.toLowerCase()}">${text}</span>`;
+  }
+
+  function fmtDate(s) {
+    if (!s) return '–';
+    const d = new Date(s);
+    return d.toLocaleDateString('pt-BR', {month:'2-digit', day:'2-digit'})
+         + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+  }
+
+  function barColor(pct, warnAt, dangerAt) {
+    if (pct >= dangerAt) return 'bar-danger';
+    if (pct >= warnAt)   return 'bar-warn';
+    return 'bar-ok';
+  }
+
+  function setBar(id, valueRaw, maxValue, warnFrac = 0.7, dangerFrac = 0.9) {
+    const bar = document.getElementById(id);
+    if (!bar) return;
+    const frac = Math.min(valueRaw / maxValue, 1.0);
+    const pctW  = (frac * 100).toFixed(1);
+    bar.style.width = pctW + '%';
+    bar.className = 'bar-fill ' + barColor(frac, warnFrac, dangerFrac);
+  }
+
+  // ── Updaters ─────────────────────────────────────────
+
   async function updateHealth() {
     const data = await fetchJSON('/health');
     if (!data) return;
@@ -188,127 +438,7 @@
     badge.className = 'status-badge ' + (ok ? 'status-ok' : 'status-degraded');
   }
 
-  async function updateMetrics() {
-    const data = await fetchJSON('/api/metrics/system');
-    if (!data) return;
-    document.getElementById('system-status').textContent = data.system_status || '–';
-  }
-
-  async function updatePrices() {
-    const data = await fetchJSON('/api/metrics/prices');
-    if (!data) return;
-    const container = document.getElementById('prices-container');
-    const entries = Object.entries(data);
-    if (entries.length === 0) {
-      container.innerHTML = '<div class="empty-state">Aguardando dados de mercado...</div>';
-      return;
-    }
-    container.innerHTML = entries.map(([sym, price]) =>
-      `<div class="price-row">
-        <span class="price-symbol">${sym}</span>
-        <span class="price-value">$${fmt(price)}</span>
-      </div>`
-    ).join('');
-  }
-
-  async function updatePositions() {
-    const data = await fetchJSON('/api/positions/open');
-    const count = document.getElementById('open-positions-count');
-    const container = document.getElementById('positions-container');
-    if (!data) { count.textContent = '–'; return; }
-    count.textContent = data.length;
-    if (data.length === 0) {
-      container.innerHTML = '<div class="empty-state">Nenhuma posição aberta</div>';
-      return;
-    }
-    container.innerHTML = `
-      <table>
-        <tr><th>Par</th><th>Lado</th><th>Qtd</th><th>Preço médio</th><th>P&L</th><th>Status</th></tr>
-        ${data.map(p => `
-          <tr>
-            <td>${p.symbol || '–'}</td>
-            <td>${pill(p.side || '–', p.side === 'long' ? 'buy' : 'sell')}</td>
-            <td>${fmt(p.quantity)}</td>
-            <td>${fmt(p.avg_entry_price)}</td>
-            <td style="color:${parseFloat(p.unrealized_pnl) >= 0 ? '#3fb950' : '#f78166'}">
-              ${fmt(p.unrealized_pnl)}
-            </td>
-            <td>${pill(p.status || '–', p.status)}</td>
-          </tr>`).join('')}
-      </table>`;
-  }
-
-  async function updateOrders() {
-    const data = await fetchJSON('/api/orders/open');
-    const count = document.getElementById('open-orders-count');
-    const container = document.getElementById('orders-container');
-    const upd = document.getElementById('orders-update');
-    if (!data) { count.textContent = '–'; return; }
-    count.textContent = data.length;
-    upd.textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
-    if (data.length === 0) {
-      container.innerHTML = '<div class="empty-state">Nenhuma ordem aberta</div>';
-      return;
-    }
-    container.innerHTML = `
-      <table>
-        <tr><th>Par</th><th>Lado</th><th>Status</th><th>Qtd</th><th>Preenchido</th><th>Estratégia</th><th>Criado</th></tr>
-        ${data.map(o => `
-          <tr>
-            <td>${o.symbol}</td>
-            <td>${pill(o.side, o.side)}</td>
-            <td>${pill(o.status, o.status)}</td>
-            <td>${fmt(o.quantity)}</td>
-            <td>${fmt(o.filled_quantity)}</td>
-            <td style="color:#8b949e;font-size:0.75rem">${o.strategy_id}</td>
-            <td style="color:#484f58;font-size:0.75rem">${o.created_at?.slice(0,19) || '–'}</td>
-          </tr>`).join('')}
-      </table>`;
-  }
-
-  async function updateWatchdogs() {
-    const data = await fetchJSON('/api/watchdog/status');
-    const container = document.getElementById('watchdog-container');
-    if (!data || Object.keys(data).length === 0) {
-      container.innerHTML = '<div class="empty-state">Nenhum watchdog registrado</div>';
-      return;
-    }
-    const labels = { websocket: 'WebSocket', heartbeat: 'Heartbeat', resources: 'Recursos' };
-    container.innerHTML = Object.entries(data).map(([key, s]) => {
-      const alive = s.is_alive !== false;
-      const color = alive ? '#3fb950' : '#f78166';
-      const icon  = alive ? '●' : '✕';
-      const detail = key === 'websocket'
-        ? `${s.seconds_since_last_message ?? '–'}s | reconexões: ${s.reconnect_count ?? 0}`
-        : key === 'heartbeat'
-        ? `beats: ${s.beat_count ?? 0} | hangs: ${s.hang_count ?? 0}`
-        : `CPU: ${s.cpu_pct ?? 0}% | MEM: ${s.mem_pct ?? 0}%`;
-      return `<div style="min-width:160px;">
-        <div style="font-size:0.7rem;color:#8b949e;text-transform:uppercase;margin-bottom:4px">
-          ${labels[key] || key}
-        </div>
-        <div style="color:${color};font-size:1.1rem;font-weight:bold">${icon} ${alive ? 'OK' : 'ALERTA'}</div>
-        <div style="font-size:0.72rem;color:#484f58;margin-top:2px">${detail}</div>
-      </div>`;
-    }).join('');
-  }
-
-  async function refresh() {
-    document.getElementById('last-update').textContent =
-      'Atualizando...';
-    await Promise.all([
-      updateHealth(),
-      updateMetrics(),
-      updatePrices(),
-      updatePositions(),
-      updateOrders(),
-      updateWatchdogs(),
-    ]);
-    document.getElementById('last-update').textContent =
-      'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
-  }
-
-  async function loadVersion() {
+  async function updateVersion() {
     const data = await fetchJSON('/version');
     if (!data) return;
     document.getElementById('title-desktop').textContent = data.title_desktop;
@@ -316,10 +446,212 @@
     document.getElementById('page-title').textContent    = data.title_desktop;
   }
 
-  loadVersion();
+  async function updateMode() {
+    const data = await fetchJSON('/api/metrics/system');
+    if (!data) return;
+    const badge = document.getElementById('mode-badge');
+    const mode = (data.mode || 'paper').toLowerCase();
+    badge.textContent = mode.toUpperCase();
+    badge.className = mode === 'live' ? 'mode-live' : 'mode-paper';
+  }
+
+  async function updatePortfolio() {
+    const data = await fetchJSON('/api/portfolio/summary');
+    if (!data) return;
+
+    const ic = data.initial_capital || 0;
+    const tv = data.total_value     || ic;
+
+    // Capital strip
+    document.getElementById('initial-capital').textContent   = usd(ic);
+    const tvEl = document.getElementById('total-value');
+    tvEl.textContent  = usd(tv);
+    tvEl.className    = 'kpi-value ' + pnlClass(tv - ic);
+
+    document.getElementById('total-return-pct').textContent  = pnlStr(data.total_return_pct, false);
+    document.getElementById('total-return-pct').className    = pnlClass(data.total_return_pct);
+
+    document.getElementById('cash-available').textContent = usd(data.cash_available);
+    document.getElementById('exposure-pct').textContent   = pct(data.total_exposure_pct);
+
+    const rpnl = document.getElementById('realized-pnl');
+    rpnl.textContent = pnlStr(data.realized_pnl);
+    rpnl.className   = 'kpi-value ' + pnlClass(data.realized_pnl);
+    document.getElementById('daily-pnl').textContent  = pnlStr(data.daily_pnl);
+    document.getElementById('daily-pnl').className    = pnlClass(data.daily_pnl);
+
+    const upnl = document.getElementById('unrealized-pnl');
+    upnl.textContent = pnlStr(data.unrealized_pnl);
+    upnl.className   = 'kpi-value ' + pnlClass(data.unrealized_pnl);
+    document.getElementById('drawdown-pct').textContent = pnlStr(-(data.drawdown_pct || 0), false);
+    document.getElementById('drawdown-pct').className   = 'neg';
+
+    // Risk bars
+    const beta = data.portfolio_beta   || 0;
+    const corr = data.avg_correlation  || 0;
+    const conc = data.concentration_risk || 0;
+    const exp  = data.total_exposure_pct || 0;
+
+    document.getElementById('beta-val').textContent = beta.toFixed(2);
+    document.getElementById('corr-val').textContent = corr.toFixed(2);
+    document.getElementById('conc-val').textContent = (conc * 100).toFixed(1) + '%';
+    document.getElementById('exp-val').textContent  = (exp * 100).toFixed(1) + '%';
+
+    setBar('beta-bar', beta, 1.8);
+    setBar('corr-bar', corr, 1.0, 0.7, 0.85);
+    setBar('conc-bar', conc, 1.0, 0.4, 0.6);
+    setBar('exp-bar',  exp,  0.5, 0.7, 0.9);
+  }
+
+  async function updatePerformance() {
+    const data = await fetchJSON('/api/metrics/performance');
+    if (!data) return;
+
+    document.getElementById('total-trades').textContent = data.total_trades ?? '0';
+    document.getElementById('total-volume').textContent = usd(data.total_volume, 0);
+
+    const feesEl = document.getElementById('total-fees');
+    feesEl.textContent = usd(data.total_fees);
+
+    const pnlEl = document.getElementById('pnl-fills');
+    pnlEl.textContent = pnlStr(data.total_pnl);
+    pnlEl.className   = 'kpi-value ' + pnlClass(data.total_pnl);
+  }
+
+  async function updatePrices() {
+    const data = await fetchJSON('/api/metrics/prices');
+    if (!data) return;
+    for (const [sym, price] of Object.entries(data)) {
+      const el = document.getElementById('p-' + sym);
+      if (el) el.textContent = usd(price, 2);
+    }
+  }
+
+  async function updateWatchdogs() {
+    const data = await fetchJSON('/api/watchdog/status');
+    if (!data) return;
+
+    function wdStatus(alive, label, detail) {
+      const dot = alive ? 'dot-green' : 'dot-red';
+      const text = alive ? 'OK' : 'FALHOU';
+      document.getElementById('wd-' + label).innerHTML =
+        `<span class="dot ${dot}"></span>${text}`;
+      document.getElementById('wd-' + label + '-detail').textContent = detail || '–';
+    }
+
+    const ws  = data.websocket  || {};
+    const hb  = data.heartbeat  || {};
+    const res = data.resources  || {};
+
+    wdStatus(ws.alive  !== false,  'ws',
+      ws.seconds_since_last != null ? `${ws.seconds_since_last}s | reconexões: ${ws.reconnect_count ?? 0}` : '–');
+    wdStatus(hb.alive  !== false,  'hb',
+      hb.beats != null ? `beats: ${hb.beats} | hangs: ${hb.hangs ?? 0}` : '–');
+    wdStatus(res.alive !== false,  'res',
+      res.cpu_pct != null ? `CPU: ${res.cpu_pct}% | MEM: ${res.mem_pct}%` : 'psutil indisponível');
+  }
+
+  async function updatePositions() {
+    const data = await fetchJSON('/api/positions/open');
+    const tbody = document.getElementById('positions-body');
+    const countEl = document.getElementById('pos-count');
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Nenhuma posição aberta</td></tr>';
+      countEl.textContent = '(0)';
+      return;
+    }
+    countEl.textContent = `(${data.length})`;
+    tbody.innerHTML = data.map(p => {
+      const pnl     = parseFloat(p.unrealized_pnl || 0);
+      const entry   = parseFloat(p.avg_entry_price || 0);
+      const current = parseFloat(p.current_price  || 0);
+      const qty     = parseFloat(p.quantity || 0);
+      const notional = current * qty;
+      const pnlPct  = entry > 0 ? ((current - entry) / entry) : 0;
+      const side    = (p.side || '').toLowerCase();
+      return `<tr>
+        <td class="blue">${p.symbol || '–'}</td>
+        <td>${pill(side.toUpperCase(), side)}</td>
+        <td>${qty.toFixed(4)}</td>
+        <td>${usd(entry)}</td>
+        <td>${usd(current)}</td>
+        <td>${usd(notional, 0)}</td>
+        <td class="${pnlClass(pnl)}">${pnlStr(pnl)}</td>
+        <td class="${pnlClass(pnlPct)}">${pnlStr(pnlPct, false)}</td>
+        <td>${pill(p.status || 'OPEN', p.status || 'open')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function updateOrders() {
+    // Busca ordens abertas + recentes
+    const [open, recent] = await Promise.all([
+      fetchJSON('/api/orders/open'),
+      fetchJSON('/api/orders/recent?limit=20'),
+    ]);
+
+    // Merge: recentes primeiro, sem duplicatas
+    const seen = new Set();
+    const all  = [];
+    for (const o of [...(open || []), ...(recent || [])]) {
+      const id = o.client_order_id || o.exchange_order_id || JSON.stringify(o);
+      if (!seen.has(id)) { seen.add(id); all.push(o); }
+    }
+
+    const tbody  = document.getElementById('orders-body');
+    const footer = document.getElementById('orders-footer');
+    const countEl = document.getElementById('ord-count');
+    countEl.textContent = `(${all.length})`;
+
+    if (all.length === 0) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr>';
+      footer.textContent = '';
+      return;
+    }
+
+    tbody.innerHTML = all.map(o => {
+      const qty    = parseFloat(o.quantity     || 0);
+      const filled = parseFloat(o.filled_quantity || 0);
+      const price  = parseFloat(o.avg_fill_price  || 0);
+      const notional = filled > 0 && price > 0 ? filled * price : 0;
+      const side   = (o.side   || '').toLowerCase();
+      const status = (o.status || '').toLowerCase();
+      return `<tr>
+        <td class="blue">${o.symbol || '–'}</td>
+        <td>${pill(side.toUpperCase(), side)}</td>
+        <td>${pill(status.toUpperCase(), status)}</td>
+        <td>${qty.toFixed(4)}</td>
+        <td>${filled.toFixed(4)}</td>
+        <td>${price > 0 ? usd(price) : '–'}</td>
+        <td>${notional > 0 ? usd(notional, 0) : '–'}</td>
+        <td class="gray" style="font-size:0.72rem">${o.strategy_id || '–'}</td>
+        <td class="gray" style="font-size:0.72rem">${fmtDate(o.created_at)}</td>
+      </tr>`;
+    }).join('');
+    footer.textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`;
+  }
+
+  // ── Main refresh loop ─────────────────────────────────
+  async function refresh() {
+    document.getElementById('last-update').textContent = '↻';
+    await Promise.all([
+      updateHealth(),
+      updateMode(),
+      updatePortfolio(),
+      updatePerformance(),
+      updatePrices(),
+      updatePositions(),
+      updateOrders(),
+      updateWatchdogs(),
+    ]);
+    document.getElementById('last-update').textContent =
+      new Date().toLocaleTimeString('pt-BR');
+  }
+
+  // Versão carrega uma vez (muda só no deploy)
+  updateVersion();
   refresh();
   setInterval(refresh, REFRESH_MS);
 </script>
-
 </body>
 </html>

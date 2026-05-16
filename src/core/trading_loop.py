@@ -189,6 +189,7 @@ class TradingLoop:
             self._app_state.ws_watchdog = self._ws_watchdog
             self._app_state.heartbeat_watchdog = self._heartbeat
             self._app_state.resource_watchdog = self._resource_watchdog
+            self._app_state.portfolio = self._portfolio
 
         # Start all services
         await self._alert_listener.start()

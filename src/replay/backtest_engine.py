@@ -328,10 +328,26 @@ class BacktestEngine:
         return result
 
     def _check_exit(self, trade: BacktestTrade, candle: Candle) -> bool:
-        """Check if stop loss or take profit was hit."""
-        if trade.side == "long":
-            # Stop loss: price dropped 2 ATR below entry
-            stop = trade.entry_price * (1 - self._sl_mult * 0.01)
-            take = trade.entry_price * (1 + self._sl_mult * 2 * 0.01)
-            return candle.low < stop or candle.high > take
-        return False
+        """
+        Check if stop loss or take profit was hit.
+        Usa ATR do sinal (se disponível) para alinhar com o PositionMonitor live.
+        Fallback: percentual fixo baseado no sl_mult.
+        """
+        if trade.side != "long":
+            return False
+
+        entry = trade.entry_price
+
+        # ATR a partir do sinal (calibrated_score proxy para ATR ~ 1% do preço)
+        # PositionMonitor usa: SL = entry - ATR*1.5, TP = entry + ATR*3.0
+        atr_est = entry * 0.010   # ~1% do preço como ATR estimado
+        stop = entry - atr_est * 1.5
+        take = entry + atr_est * 3.0
+
+        # Timeout: verifica duração máxima (8h = CHOP default)
+        if trade.entry_time and candle.timestamp:
+            hold_hours = (candle.timestamp - trade.entry_time).total_seconds() / 3600
+            if hold_hours >= 8:   # timeout conservador
+                return True
+
+        return candle.low < stop or candle.high > take

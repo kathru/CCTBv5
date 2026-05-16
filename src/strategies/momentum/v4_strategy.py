@@ -269,30 +269,106 @@ class V4MomentumStrategy(BaseStrategy):
         # Regimes concordantes ou PANIC/BEAR confirmado
         return regime_1h
 
-    # ── Scoring ────────────────────────────────────────────────────────────────
+    # ── Scoring v2 (5 fatores, scoring contínuo) ─────────────────────────────
 
     def _score_signal(self, ctx: StrategyContext, regime: str) -> tuple[float, dict]:
-        closes = [c.close  for c in ctx.candles_1h[:20]]
-        highs  = [c.high   for c in ctx.candles_1h[:5]]
-        vols   = [c.volume for c in ctx.candles_1h[:5]]
+        """
+        Modelo de scoring melhorado com 5 fatores contínuos.
+        Baseado nos achados do Walk-Forward:
+          - M1 (antigo): binário demais, normalização rígida
+          - M2 (antigo): only higher-highs, 0.4/1.0 muito abrupto
+          Fix: scoring gradual, múltiplos horizontes, confirmação multi-candle.
 
-        # M1 — Momentum 20 candles (30%)
-        momentum = (closes[0] - closes[-1]) / closes[-1] if closes[-1] > 0 else 0
-        m1 = min(max((momentum + 0.05) / 0.10, 0.0), 1.0)
+        Fatores:
+          M1 Adaptive Momentum  (25%): média ponderada 5/10/20 candles
+          M2 Trend Consistency   (25%): % candles bullish + higher-highs E higher-lows
+          M3 Volume Confirmation (20%): volume crescente + confirmação direcional
+          M4 Regime Strength     (20%): distância SMA5-SMA20 normalizada
+          M5 Candle Structure    (10%): close no terço superior do range
+        """
+        closes = [c.close  for c in ctx.candles_1h[:21]]
+        highs  = [c.high   for c in ctx.candles_1h[:10]]
+        lows   = [c.low    for c in ctx.candles_1h[:10]]
+        opens  = [c.open   for c in ctx.candles_1h[:10]]
+        vols   = [c.volume for c in ctx.candles_1h[:20]]
 
-        # M2 — Estrutura: higher highs (30%)
-        m2 = 1.0 if (len(highs) >= 3 and highs[0] > highs[1] > highs[2]) else 0.4
+        # ── M1: Adaptive Momentum (25%) ──────────────────────
+        # Média ponderada de retornos em 3 horizontes
+        # Normaliza pelo ATR médio para ser robusto a volatilidade
+        atr_20 = sum(highs[i] - lows[i] for i in range(min(10, len(highs)))) / min(10, len(highs)) if highs else closes[0] * 0.01
+        norm   = max(atr_20 * 2, closes[0] * 0.005)   # evita divisão por zero
 
-        # M3 — Volume relativo (20%)
-        avg_v = sum(vols) / len(vols) if vols else 1.0
-        m3 = min(vols[0] / avg_v, 2.0) / 2.0 if avg_v > 0 else 0.5
+        r5  = (closes[0] - closes[5])  / closes[5]  if len(closes) > 5  and closes[5]  > 0 else 0
+        r10 = (closes[0] - closes[10]) / closes[10] if len(closes) > 10 and closes[10] > 0 else 0
+        r20 = (closes[0] - closes[20]) / closes[20] if len(closes) > 20 and closes[20] > 0 else 0
 
-        # M4 — Alinhamento de regime (20%) — penaliza BEAR/CHOP
-        m4 = REGIME_M4.get(regime, 0.45)
+        # Pesos: mais recente tem mais peso
+        momentum_weighted = (r5 * 0.5 + r10 * 0.3 + r20 * 0.2)
+        m1 = min(max((momentum_weighted / (norm / closes[0])) * 0.5 + 0.5, 0.0), 1.0)
 
-        score   = m1 * 0.3 + m2 * 0.3 + m3 * 0.2 + m4 * 0.2
-        factors = {"m1_momentum": round(m1,3), "m2_structure": round(m2,3),
-                   "m3_volume":   round(m3,3), "m4_regime":    round(m4,3)}
+        # ── M2: Trend Consistency (25%) ───────────────────────
+        # % de candles bullish nos últimos 5 + higher-highs E higher-lows
+        n = min(5, len(closes) - 1)
+        bullish_count = sum(1 for i in range(n) if closes[i] > opens[i]) if opens else 0
+        pct_bullish   = bullish_count / n if n > 0 else 0.5
+
+        # Higher-highs (gradual: conta quantos dos últimos 4 são crescentes)
+        hh_count = sum(1 for i in range(min(4, len(highs)-1)) if highs[i] > highs[i+1])
+        hl_count = sum(1 for i in range(min(4, len(lows)-1))  if lows[i]  > lows[i+1])
+        structure = (hh_count + hl_count) / 8   # 0.0 a 1.0
+
+        m2 = pct_bullish * 0.5 + structure * 0.5
+
+        # ── M3: Volume Confirmation (20%) ─────────────────────
+        # Volume atual vs média + tendência de volume + direção do candle
+        avg_vol_5  = sum(vols[:5])  / 5  if len(vols) >= 5  else vols[0] if vols else 1
+        avg_vol_20 = sum(vols[:20]) / 20 if len(vols) >= 20 else avg_vol_5
+
+        vol_ratio    = min(vols[0] / avg_vol_5, 3.0) / 3.0 if avg_vol_5 > 0 else 0.5
+        # Volume crescente? (últimas 3 barras têm volume maior que as 3 anteriores)
+        vol_trend = (sum(vols[:3]) / sum(vols[3:6])) if len(vols) >= 6 and sum(vols[3:6]) > 0 else 1.0
+        vol_trend = min(max(vol_trend, 0.3), 2.0)
+        vol_trend_score = (vol_trend - 0.3) / 1.7   # 0–1
+
+        # Confirmação direcional: candle atual bullish com volume alto
+        candle_confirm = 1.0 if (closes[0] > opens[0] and vols[0] > avg_vol_20) else 0.4
+
+        m3 = vol_ratio * 0.4 + vol_trend_score * 0.3 + candle_confirm * 0.3
+
+        # ── M4: Regime Strength (20%) ─────────────────────────
+        # Distância SMA5-SMA20 normalizada — captura força do trend
+        sma5  = sum(closes[:5])  / 5
+        sma20 = sum(closes[:20]) / 20 if len(closes) >= 20 else sma5
+        sma_distance = (sma5 - sma20) / sma20 if sma20 > 0 else 0
+
+        # Normaliza: 0% gap = 0.45 (neutro), +2% = 0.85, -2% = 0.05
+        m4_raw = min(max((sma_distance + 0.02) / 0.04, 0.0), 1.0)
+
+        # Blend com M4 fixo do regime (dá contexto macro)
+        m4_regime = REGIME_M4.get(regime, 0.45)
+        m4 = m4_raw * 0.6 + m4_regime * 0.4
+
+        # ── M5: Candle Structure (10%) ─────────────────────────
+        # Close no terço superior do range dos últimos 3 candles
+        candle_scores = []
+        for i in range(min(3, len(closes))):
+            rng = highs[i] - lows[i] if i < len(highs) else 0
+            if rng > 0:
+                pos = (closes[i] - lows[i]) / rng   # 0=low, 1=high
+                candle_scores.append(pos)
+        m5 = sum(candle_scores) / len(candle_scores) if candle_scores else 0.5
+
+        # ── Score final ────────────────────────────────────────
+        score = m1 * 0.25 + m2 * 0.25 + m3 * 0.20 + m4 * 0.20 + m5 * 0.10
+        score = round(min(max(score, 0.0), 1.0), 4)
+
+        factors = {
+            "m1_momentum":   round(m1, 3),
+            "m2_consistency":round(m2, 3),
+            "m3_volume":     round(m3, 3),
+            "m4_regime_str": round(m4, 3),
+            "m5_candle":     round(m5, 3),
+        }
         return score, factors
 
     def _calibrate(self, score: float) -> float:

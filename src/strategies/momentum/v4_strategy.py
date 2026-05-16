@@ -47,7 +47,7 @@ class V4MomentumStrategy(BaseStrategy):
         "TREND_EXPANSION":        0.56,
         "VOLATILITY_COMPRESSION": 0.60,
         "TREND_EXHAUSTION":       0.68,
-        "MEAN_REVERTING_CHOP":    0.72,
+        "MEAN_REVERTING_CHOP":    0.65,
         "HIGH_CORRELATION_RISK":  0.75,
         "PANIC_LIQUIDATION":      0.99,
         "LIQUIDITY_VACUUM":       0.99,

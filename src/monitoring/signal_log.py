@@ -18,7 +18,6 @@ Resultado de cada avaliação:
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Deque
 
 MAX_ENTRIES = 500
 
@@ -73,7 +72,7 @@ class SignalAuditLog:
     """
 
     def __init__(self, maxlen: int = MAX_ENTRIES) -> None:
-        self._entries: Deque[SignalAuditEntry] = deque(maxlen=maxlen)
+        self._entries: deque[SignalAuditEntry] = deque(maxlen=maxlen)
         self._counters: dict[str, int] = {}
         self._started_at: datetime = datetime.now(UTC)
 

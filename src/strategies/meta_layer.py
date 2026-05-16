@@ -21,7 +21,7 @@ Update frequency: per trade (online learning)
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import StrEnum
 
 logger = logging.getLogger(__name__)

@@ -17,7 +17,6 @@ Regimes e comportamento:
 """
 
 import logging
-import math
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -211,7 +210,7 @@ class V4MomentumStrategy(BaseStrategy):
         # ATR alto → correlação / volatilidade extrema
         highs  = [c.high for c in ctx.candles_1h[:5]]
         lows   = [c.low  for c in ctx.candles_1h[:5]]
-        atr_5  = sum(h - l for h, l in zip(highs, lows)) / 5
+        atr_5  = sum(hi - lo for hi, lo in zip(highs, lows, strict=True)) / 5
         rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
         if rel_atr > 0.030:
             return "HIGH_CORRELATION_RISK"

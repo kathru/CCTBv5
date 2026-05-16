@@ -1,12 +1,9 @@
-import pytest
+from datetime import UTC, datetime
+
 import numpy as np
-from datetime import datetime, UTC
-from pathlib import Path
 
 from src.core.models import Candle
-from src.strategies.ml.inference import (
-    PlattCalibrator, FeatureExtractor, MLInferenceEngine
-)
+from src.strategies.ml.inference import FeatureExtractor, MLInferenceEngine, PlattCalibrator
 
 
 def make_candles(n: int = 30) -> list[Candle]:

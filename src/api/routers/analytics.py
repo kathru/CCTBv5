@@ -21,6 +21,7 @@ import math
 import statistics
 from collections import defaultdict
 from datetime import UTC, datetime
+
 from fastapi import APIRouter, Request
 
 from ...monitoring.signal_log import signal_audit_log
@@ -170,22 +171,18 @@ async def get_quantitative(request: Request) -> dict:
     for p in pnls:
         equity.append(equity[-1] + p)
 
-    peak    = equity[0]
-    max_dd  = 0.0
-    dd_days = 0
+    peak       = equity[0]
+    max_dd     = 0.0
     cur_dd_dur = 0
     max_dd_dur = 0
-    in_dd   = False
 
     for val in equity[1:]:
         if val > peak:
-            peak    = val
-            in_dd   = False
+            peak       = val
             cur_dd_dur = 0
         else:
             dd = (peak - val) / peak if peak != 0 else 0
             max_dd = max(max_dd, dd)
-            in_dd  = True
             cur_dd_dur += 1
             max_dd_dur = max(max_dd_dur, cur_dd_dur)
 
@@ -221,7 +218,7 @@ async def get_quantitative(request: Request) -> dict:
         s["scores"].append(e.score)
         if e.result == "SIGNAL":
             s["signals"] += 1
-    for r, s in regime_stats.items():
+    for _r, s in regime_stats.items():
         s["avg_score"]  = round(sum(s["scores"]) / len(s["scores"]), 3) if s["scores"] else 0
         s["signal_rate"] = round(s["signals"] / s["total"], 3) if s["total"] else 0
         del s["scores"]

@@ -13,11 +13,9 @@ if portfolio-level risk is too high.
 """
 
 import logging
-import math
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from ..core.bus import EventBus
-from ..core.events import Topic
 from ..core.models import Position, PositionStatus
 from .state import PortfolioState
 

@@ -1,10 +1,10 @@
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, UTC
 
 from src.core.bus import EventBus
 from src.core.models import Position, PositionSide, PositionStatus
 from src.portfolio.engine import PortfolioEngine
-from src.portfolio.state import PortfolioState
 
 
 def make_position(symbol: str, quantity: float, entry: float) -> Position:

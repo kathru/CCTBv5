@@ -7,7 +7,7 @@ Read by strategies via StrategyContext injection.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 
 def _now() -> datetime:

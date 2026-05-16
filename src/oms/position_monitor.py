@@ -479,7 +479,7 @@ def _detect_regime(candles: list[Candle]) -> str:
 
     highs = [c.high for c in candles[:10]]
     lows  = [c.low  for c in candles[:10]]
-    atr_5 = sum(h - l for h, l in zip(highs[:5], lows[:5])) / 5
+    atr_5 = sum(hi - lo for hi, lo in zip(highs[:5], lows[:5], strict=True)) / 5
     rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
 
     # BEAR: preço atual abaixo de 10 candles atrás em > 2%

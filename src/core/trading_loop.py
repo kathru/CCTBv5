@@ -23,31 +23,31 @@ import asyncio
 import logging
 from pathlib import Path
 
+from ..alerts.discord import create_alert_channel
+from ..alerts.listener import AlertListener
+from ..exchange.okx.client import OKXClient
+from ..market.engine import MarketEngine
+from ..metrics.infra_metrics import InfraMetrics
+from ..oms.execution_router import ExecutionRouter
+from ..oms.order_manager import OrderManager
+from ..oms.position_monitor import PositionMonitor
+from ..persistence import Cache, Database
+from ..portfolio.engine import PortfolioEngine
+from ..recovery.boot import BootSequence
+from ..recovery.periodic_reconciler import PeriodicReconciler
+from ..risk.engine import RiskContext, RiskEngine
+from ..risk.kill_switch import KillSwitch
+from ..strategies.meta_layer import MetaStrategyLayer
+from ..strategies.ml.inference import MLInferenceEngine
+from ..strategies.momentum.v4_strategy import V4MomentumStrategy
+from ..strategies.runner import StrategyRunner
+from ..watchdog.heartbeat import HeartbeatWatchdog
+from ..watchdog.resource_watchdog import ResourceWatchdog
+from ..watchdog.websocket_watchdog import WebSocketWatchdog
 from .bus import EventBus
 from .config import settings
 from .events import SignalEvent, Topic
 from .events.risk_events import RiskAction
-from ..exchange.okx.client import OKXClient
-from ..market.engine import MarketEngine
-from ..oms.order_manager import OrderManager
-from ..oms.execution_router import ExecutionRouter
-from ..oms.position_monitor import PositionMonitor
-from ..risk.engine import RiskEngine, RiskContext
-from ..risk.kill_switch import KillSwitch
-from ..portfolio.engine import PortfolioEngine
-from ..strategies.runner import StrategyRunner
-from ..strategies.meta_layer import MetaStrategyLayer
-from ..strategies.momentum.v4_strategy import V4MomentumStrategy
-from ..strategies.ml.inference import MLInferenceEngine
-from ..recovery.boot import BootSequence
-from ..recovery.periodic_reconciler import PeriodicReconciler
-from ..watchdog.heartbeat import HeartbeatWatchdog
-from ..watchdog.websocket_watchdog import WebSocketWatchdog
-from ..watchdog.resource_watchdog import ResourceWatchdog
-from ..alerts.discord import create_alert_channel
-from ..alerts.listener import AlertListener
-from ..persistence import Database, Cache
-from ..metrics.infra_metrics import InfraMetrics
 
 logger = logging.getLogger(__name__)
 

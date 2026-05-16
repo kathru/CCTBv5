@@ -11,8 +11,8 @@ Examples:
   5.2.41  → v5, 2 tagged releases, 41 commits
 """
 
-import subprocess
 import logging
+import subprocess
 from pathlib import Path
 
 logger = logging.getLogger(__name__)

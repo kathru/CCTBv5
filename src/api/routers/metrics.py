@@ -2,8 +2,8 @@
 
 from fastapi import APIRouter, Request
 
-from ...core.version import get_version
 from ...core.config import settings
+from ...core.version import get_version
 from ...persistence.repositories.fills import FillRepository
 
 router = APIRouter(prefix="/api/metrics", tags=["metrics"])

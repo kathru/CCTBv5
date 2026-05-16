@@ -31,38 +31,75 @@
 
     /* ══ HEADER ══════════════════════════════════════════════ */
     header {
-      background: linear-gradient(180deg, #0d1525 0%, #0a1020 100%);
+      background: linear-gradient(180deg, #0c1628 0%, #080d16 100%);
       border-bottom: 1px solid var(--border);
-      padding: 0 22px;
-      height: 52px;
+      padding: 0 24px;
+      height: 62px;
       display: flex; align-items: center; justify-content: space-between;
       position: sticky; top: 0; z-index: 100;
-      backdrop-filter: blur(10px);
     }
-    .hdr-left  { display: flex; align-items: center; gap: 16px; }
-    .hdr-right { display: flex; align-items: center; gap: 12px; font-size: 0.7rem; color: var(--muted); }
-    .logo-wrap { display: flex; align-items: center; gap: 10px; }
-    .logo-icon { width: 28px; height: 28px; background: linear-gradient(135deg,#3b82f6,#6366f1); border-radius: 8px; display:flex; align-items:center; justify-content:center; font-size:1rem; box-shadow: 0 2px 10px rgba(59,130,246,0.3); }
-    .logo-text { font-size: 0.88rem; font-weight: 700; color: var(--text); letter-spacing: 0.3px; }
-    .logo-ver  { font-size: 0.65rem; color: var(--muted); font-weight: 400; margin-top: 1px; }
+    .hdr-left  { display: flex; align-items: center; gap: 18px; }
+    .hdr-right { display: flex; align-items: center; gap: 14px; }
+    .hdr-sep   { width:1px; height:22px; background:var(--border2); }
 
+    /* Logo */
+    .logo-wrap { display: flex; align-items: center; gap: 13px; }
+    .logo-icon {
+      width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+      background: linear-gradient(135deg, #d97706, #ea580c);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; font-weight: 900; color: #fff;
+      box-shadow: 0 2px 12px rgba(234,88,12,0.45), 0 0 0 1px rgba(255,255,255,0.06);
+    }
+    .logo-title { font-size: 1rem; font-weight: 800; color: var(--text); letter-spacing: -0.2px; white-space: nowrap; }
+    .logo-ver   {
+      font-size: 0.72rem; font-weight: 700; color: var(--blue);
+      background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25);
+      padding: 1px 7px; border-radius: 5px; margin-left: 6px;
+      vertical-align: middle; letter-spacing: 0.3px;
+    }
+    .logo-sub { font-size: 0.62rem; color: var(--muted); margin-top: 2px; letter-spacing: 0.3px; }
+
+    /* Header badges */
     .hbadge {
-      padding: 3px 10px; border-radius: 20px;
-      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
-      border: 1px solid transparent; transition: all 0.2s;
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 0.67rem; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+      border: 1px solid transparent; transition: all 0.2s; white-space: nowrap;
     }
-    .hbadge-blue   { background:rgba(59,130,246,0.15);  color:var(--blue);   border-color:rgba(59,130,246,0.3); }
-    .hbadge-red    { background:rgba(239,68,68,0.15);   color:var(--red);    border-color:rgba(239,68,68,0.3); }
-    .hbadge-green  { background:rgba(16,185,129,0.15);  color:var(--green);  border-color:rgba(16,185,129,0.3); }
-    .hbadge-yellow { background:rgba(245,158,11,0.15);  color:var(--yellow); border-color:rgba(245,158,11,0.3); }
-    .hbadge-gray   { background:rgba(90,106,126,0.15);  color:var(--muted);  border-color:rgba(90,106,126,0.3); }
+    .hbadge-blue   { background:rgba(59,130,246,0.12);  color:var(--blue);   border-color:rgba(59,130,246,0.3); }
+    .hbadge-red    { background:rgba(239,68,68,0.12);   color:var(--red);    border-color:rgba(239,68,68,0.3); }
+    .hbadge-green  { background:rgba(16,185,129,0.12);  color:var(--green);  border-color:rgba(16,185,129,0.3); box-shadow:0 0 8px rgba(16,185,129,0.15); }
+    .hbadge-yellow { background:rgba(245,158,11,0.12);  color:var(--yellow); border-color:rgba(245,158,11,0.3); }
+    .hbadge-gray   { background:rgba(90,106,126,0.08);  color:var(--muted);  border-color:rgba(90,106,126,0.2); }
 
-    .status-indicator { display:flex; align-items:center; gap:5px; }
-    .status-dot { width:7px; height:7px; border-radius:50%; background:var(--muted); flex-shrink:0; }
-    .status-dot.ok  { background:var(--green); box-shadow:0 0 6px rgba(16,185,129,0.6); animation:pulse-green 2s infinite; }
-    .status-dot.bad { background:var(--red);   box-shadow:0 0 6px rgba(239,68,68,0.6); }
-    @keyframes pulse-green { 0%,100%{opacity:1} 50%{opacity:0.6} }
-    .hdr-sep { width:1px; height:18px; background:var(--border2); }
+    /* Header regime — destaque especial */
+    .regime-badge {
+      display: flex; align-items: center; gap: 7px;
+      padding: 5px 14px; border-radius: 22px;
+      font-size: 0.7rem; font-weight: 800; letter-spacing: 0.5px;
+      border: 1px solid; transition: all 0.3s; cursor: default;
+    }
+    .regime-badge .rb-arrow { font-size: 0.75rem; opacity: 0.8; }
+    .rb-chop   { background:rgba(245,158,11,0.1);  color:var(--yellow); border-color:rgba(245,158,11,0.35); }
+    .rb-trend  { background:rgba(16,185,129,0.1);  color:var(--green);  border-color:rgba(16,185,129,0.35); box-shadow:0 0 10px rgba(16,185,129,0.1); }
+    .rb-panic  { background:rgba(239,68,68,0.12);  color:var(--red);    border-color:rgba(239,68,68,0.4);   box-shadow:0 0 10px rgba(239,68,68,0.15); animation:pulse-red 1.2s infinite; }
+    .rb-other  { background:rgba(59,130,246,0.08); color:var(--blue);   border-color:rgba(59,130,246,0.25); }
+
+    /* Header status / info */
+    .hdr-info { display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
+    .hdr-info-top { font-size:0.7rem; color:var(--text); font-weight:600; }
+    .hdr-info-sub { font-size:0.6rem; color:var(--muted); }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px;
+      background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25);
+      font-size: 0.67rem; font-weight: 700; color: var(--green);
+    }
+    .status-pill.bad { background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.25); color:var(--red); }
+    .status-dot { width:7px; height:7px; border-radius:50%; background:var(--green); flex-shrink:0; box-shadow:0 0 5px rgba(16,185,129,0.6); animation:pulse-green 2s infinite; }
+    .status-dot.bad { background:var(--red); box-shadow:0 0 5px rgba(239,68,68,0.6); animation:none; }
+    @keyframes pulse-green { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
     /* ══ LAYOUT ══════════════════════════════════════════════ */
     main { padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; max-width: 1700px; margin: 0 auto; }
@@ -283,22 +320,33 @@
 <header>
   <div class="hdr-left">
     <div class="logo-wrap">
-      <div class="logo-icon">⚡</div>
+      <div class="logo-icon">✳</div>
       <div>
-        <div class="logo-text" id="title-desktop">Claude Code Trading Bot</div>
-        <div class="logo-ver" id="hdr-version">v–.–.–</div>
+        <div>
+          <span class="logo-title" id="title-desktop">Claude Code Trading Bot</span>
+          <span class="logo-ver"   id="hdr-version">v–.–.–</span>
+        </div>
+        <div class="logo-sub" id="hdr-sub">OKX · Paper Mode</div>
       </div>
     </div>
+
     <div class="hdr-sep"></div>
-    <span id="hdr-mode"   class="hbadge hbadge-blue">PAPER</span>
-    <span id="hdr-regime" class="hbadge hbadge-gray">–</span>
+    <span id="hdr-mode" class="hbadge hbadge-blue">PAPER</span>
+    <div id="hdr-regime" class="regime-badge rb-other">
+      <span class="rb-arrow">⇄</span>
+      <span id="hdr-regime-txt">–</span>
+    </div>
   </div>
+
   <div class="hdr-right">
-    <span id="last-update">–</span>
+    <div class="hdr-info">
+      <div class="hdr-info-top" id="last-update">–</div>
+      <div class="hdr-info-sub">Última atualização</div>
+    </div>
     <div class="hdr-sep"></div>
-    <div class="status-indicator">
+    <div class="status-pill" id="status-pill">
       <div id="status-dot" class="status-dot"></div>
-      <span id="status-text">–</span>
+      <span id="status-text">Ativo</span>
     </div>
   </div>
 </header>
@@ -574,21 +622,32 @@ async function updateAll(){
     document.getElementById('page-title').textContent=version.title_desktop;
   }
   if(system){
-    const m=system.mode||'paper';
+    const m=(system.mode||'paper').toLowerCase();
     const mb=document.getElementById('hdr-mode');
-    mb.textContent=m.toUpperCase(); mb.className='hbadge '+(m==='live'?'hbadge-red':'hbadge-blue');
+    mb.textContent=m.toUpperCase();
+    mb.className='hbadge '+(m==='live'?'hbadge-red':'hbadge-blue');
+    document.getElementById('hdr-sub').textContent='OKX · '+(m==='live'?'Live Trading':'Paper Mode');
   }
   if(health){
     const ok=health.postgres&&health.redis;
-    document.getElementById('status-dot').className='status-dot '+(ok?'ok':'bad');
-    document.getElementById('status-text').textContent=ok?'Sistema OK':'Degradado';
+    document.getElementById('status-dot').className='status-dot'+(ok?'':' bad');
+    document.getElementById('status-text').textContent=ok?'Ativo':'Degradado';
+    document.getElementById('status-pill').className='status-pill'+(ok?'':' bad');
   }
   if(sym){
     Object.assign(_c.sym,sym);
-    const r=Object.values(sym)[0]?.regime||'–';
+    const r=Object.values(sym)[0]?.regime||'';
+    const rTxt=r.replace(/_/g,' ')||'–';
     const rb=document.getElementById('hdr-regime');
-    rb.textContent=r.replace(/_/g,' ');
-    rb.className='hbadge '+(r.includes('PANIC')?'hbadge-red':r.includes('TREND_E')?'hbadge-green':r.includes('EXPANSION')?'hbadge-green':'hbadge-gray');
+    const rtEl=document.getElementById('hdr-regime-txt');
+    rtEl.textContent=rTxt;
+    // Arrow + color by regime
+    const arrowEl=rb.querySelector('.rb-arrow');
+    if(r.includes('PANIC'))     { rb.className='regime-badge rb-panic'; arrowEl.textContent='⚠'; }
+    else if(r.includes('EXPANSION')) { rb.className='regime-badge rb-trend'; arrowEl.textContent='↗'; }
+    else if(r.includes('EXHAUSTION')){ rb.className='regime-badge rb-other'; arrowEl.textContent='↘'; }
+    else if(r.includes('CHOP'))      { rb.className='regime-badge rb-chop';  arrowEl.textContent='⇄'; }
+    else                             { rb.className='regime-badge rb-other'; arrowEl.textContent='→'; }
   }
 
   // KPIs

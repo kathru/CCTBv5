@@ -6,8 +6,8 @@
   <title id="page-title">CCTBv5</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -1358,13 +1358,18 @@ async function updateAll(){
 }
 
 // Init charts + countdown + sampling
-initPortfolioChart();
-initDonutChart();
-startCountdown();
-startPortfolioSampling(); // amostra portfolio a cada 60s independente do refresh
+// Chart.js carrega com defer — aguarda window.load para inicializar
+function init(){
+  initPortfolioChart();
+  initDonutChart();
+  startCountdown();
+  startPortfolioSampling();
+  updateAll();
+  setInterval(updateAll, REFRESH_MS);
+}
 
-updateAll();
-setInterval(updateAll, REFRESH_MS);
+if(document.readyState==='complete') init();
+else window.addEventListener('load', init);
 </script>
 </body>
 </html>

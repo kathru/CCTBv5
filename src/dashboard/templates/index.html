@@ -214,46 +214,71 @@
     .slt-val   { font-size:0.85rem; font-weight:800; letter-spacing:-0.3px; }
 
     /* ══ MOTOR PROBABILÍSTICO ════════════════════════════════ */
-    .motor-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; }
-    .motor-regime { font-size:1.1rem; font-weight:800; letter-spacing:-0.3px; }
-    .motor-sub    { font-size:0.65rem; color:var(--muted); margin-top:4px; }
+    .motor-regime-box { border-radius:10px; padding:12px 14px; margin-bottom:14px; background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.2); }
+    .motor-regime-box.rb-trend { background:rgba(16,185,129,0.06); border-color:rgba(16,185,129,0.2); }
+    .motor-regime-box.rb-panic { background:rgba(239,68,68,0.08);  border-color:rgba(239,68,68,0.3); }
+    .motor-regime-box.rb-other { background:rgba(59,130,246,0.06); border-color:rgba(59,130,246,0.15); }
+    .motor-regime-txt { font-size:1rem; font-weight:800; color:var(--yellow); letter-spacing:-0.2px; margin-bottom:8px; }
+    .motor-regime-box.rb-trend .motor-regime-txt { color:var(--green); }
+    .motor-regime-box.rb-panic .motor-regime-txt { color:var(--red); }
+    .motor-regime-box.rb-other .motor-regime-txt { color:var(--blue); }
+    .motor-sizing-row { display:flex; gap:14px; flex-wrap:wrap; font-size:0.62rem; color:rgba(255,255,255,0.4); }
+    .msr-val { color:rgba(255,255,255,0.72); font-weight:600; }
 
-    .risk-grid { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
-    .risk-row  { display:grid; grid-template-columns:130px 1fr 60px; align-items:center; gap:10px; }
-    .risk-label { font-size:0.68rem; color:var(--muted); }
-    .risk-track { height:5px; background:#0d1520; border-radius:10px; overflow:hidden; }
-    .risk-fill  { height:100%; border-radius:10px; transition:width 0.6s cubic-bezier(.4,0,.2,1); }
-    .risk-val   { font-size:0.72rem; font-weight:700; text-align:right; }
+    .mrisk-list { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+    .mrisk-top  { display:grid; grid-template-columns:1fr auto auto auto; align-items:baseline; gap:8px; margin-bottom:4px; }
+    .mrisk-name   { font-size:0.7rem; font-weight:600; }
+    .mrisk-limit  { font-size:0.6rem; color:var(--muted); }
+    .mrisk-val    { font-size:0.78rem; font-weight:800; text-align:right; min-width:44px; }
+    .mrisk-status { font-size:0.6rem; color:var(--muted); min-width:72px; text-align:right; }
+    .mrisk-track  { height:5px; background:#0d1520; border-radius:10px; overflow:hidden; }
+    .mrisk-fill   { height:5px; border-radius:10px; transition:width 0.6s cubic-bezier(.4,0,.2,1); }
 
-    .weights-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
-    .weight-chip { padding:4px 12px; border-radius:20px; font-size:0.63rem; background:rgba(255,255,255,0.04); border:1px solid var(--border2); display:flex; align-items:center; gap:5px; }
-    .weight-chip .wval { color:var(--blue); font-weight:700; }
+    .motor-adapt-row   { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+    .motor-adapt-label { font-size:0.62rem; color:var(--muted); }
+    .madapt-chip { padding:3px 10px; border-radius:20px; font-size:0.62rem; border:1px solid transparent; }
+    .madapt-chip b { font-weight:800; margin-left:3px; }
+    .madapt-blue   { background:rgba(59,130,246,0.1);  border-color:rgba(59,130,246,0.25);  color:var(--blue); }
+    .madapt-green  { background:rgba(16,185,129,0.1);  border-color:rgba(16,185,129,0.25);  color:var(--green); }
+    .madapt-yellow { background:rgba(245,158,11,0.1);  border-color:rgba(245,158,11,0.25);  color:var(--yellow); }
+    .madapt-purple { background:rgba(139,92,246,0.1);  border-color:rgba(139,92,246,0.25);  color:var(--purple); }
 
-    .thresh-row { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:16px; }
-    .thresh-box { padding:8px 4px; border-radius:10px; text-align:center; font-size:0.6rem; border:1px solid transparent; }
-    .thresh-box .tval { font-weight:800; font-size:0.68rem; display:block; margin-bottom:2px; }
+    .thresh-row { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:14px; }
+    .thresh-box { padding:9px 4px; border-radius:10px; text-align:center; border:1px solid transparent; }
+    .thresh-box .tval { font-weight:800; font-size:0.65rem; display:block; }
     .t-hold   { background:#0f1624; border-color:var(--border2); color:var(--muted); }
     .t-reduce { background:rgba(245,158,11,0.08); border-color:rgba(245,158,11,0.2); color:var(--yellow); }
-    .t-normal { background:rgba(59,130,246,0.08);  border-color:rgba(59,130,246,0.2);  color:var(--blue); }
-    .t-agg    { background:rgba(16,185,129,0.08);  border-color:rgba(16,185,129,0.2);  color:var(--green); }
+    .t-normal { background:rgba(59,130,246,0.08); border-color:rgba(59,130,246,0.2); color:var(--blue); }
+    .t-agg    { background:rgba(16,185,129,0.08); border-color:rgba(16,185,129,0.2); color:var(--green); }
 
-    .calib-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; padding-top:14px; border-top:1px solid var(--border); }
-    .calib-item { text-align:center; background:rgba(255,255,255,0.02); border-radius:10px; padding:10px 8px; border:1px solid var(--border); }
+    .calib-row  { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding-top:12px; border-top:1px solid var(--border); }
+    .calib-item { text-align:center; background:rgba(255,255,255,0.02); border-radius:10px; padding:9px 6px; border:1px solid var(--border); }
     .calib-val   { font-size:1rem; font-weight:800; margin-bottom:3px; }
     .calib-label { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); }
 
     /* ══ MARKET BREADTH ══════════════════════════════════════ */
-    .mb-score-wrap { text-align:center; padding:14px 0 18px; }
-    .mb-score-num  { font-size:3rem; font-weight:900; letter-spacing:-2px; line-height:1; }
-    .mb-score-pct  { font-size:1.2rem; }
-    .mb-score-lbl  { font-size:0.65rem; color:var(--muted); margin-top:6px; }
+    .mb-big-bar-wrap  { margin-bottom:4px; }
+    .mb-big-track     { height:10px; background:#0d1520; border-radius:10px; position:relative; overflow:visible; }
+    .mb-big-fill      { height:10px; border-radius:10px; transition:width 0.6s cubic-bezier(.4,0,.2,1); background:linear-gradient(90deg,var(--blue),#60a5fa); }
+    .mb-big-threshold { position:absolute; top:-4px; width:3px; height:18px; background:rgba(239,68,68,0.6); border-radius:2px; box-shadow:0 0 6px rgba(239,68,68,0.4); }
+    .mb-score-center  { display:flex; align-items:baseline; justify-content:center; gap:5px; padding:10px 0 0; }
+    .mb-score-big     { font-size:2.8rem; font-weight:900; letter-spacing:-2px; line-height:1; }
+    .mb-score-unit    { font-size:1.4rem; font-weight:700; color:var(--muted); }
+    .mb-score-word    { font-size:0.75rem; color:var(--muted); margin-left:4px; align-self:center; }
 
-    .mb-row  { display:grid; grid-template-columns:110px 1fr 54px; align-items:center; gap:8px; margin-bottom:8px; }
-    .mb-label { font-size:0.65rem; color:var(--muted); }
-    .mb-track { height:4px; background:#0d1520; border-radius:10px; overflow:hidden; }
-    .mb-fill  { height:4px; border-radius:10px; transition:width 0.5s; }
-    .mb-val   { font-size:0.7rem; font-weight:700; text-align:right; }
-    .mb-divider { border:none; border-top:1px solid var(--border); margin:12px 0; }
+    .mb-metrics    { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+    .mb-metric-row { display:grid; grid-template-columns:1fr 100px auto; align-items:center; gap:10px; }
+    .mb-metric-left   { display:flex; align-items:baseline; gap:6px; }
+    .mb-metric-name   { font-size:0.7rem; font-weight:500; }
+    .mb-metric-weight { font-size:0.58rem; color:var(--muted); }
+    .mb-metric-track  { height:5px; background:#0d1520; border-radius:10px; overflow:hidden; }
+    .mb-metric-fill   { height:5px; border-radius:10px; transition:width 0.5s; }
+    .mb-metric-right  { display:flex; align-items:baseline; gap:5px; justify-content:flex-end; }
+    .mb-metric-val    { font-size:0.78rem; font-weight:800; min-width:36px; text-align:right; }
+    .mb-metric-status { font-size:0.6rem; color:var(--muted); min-width:55px; text-align:right; }
+    .mb-threshold-labels { display:flex; justify-content:space-between; padding-top:10px; border-top:1px solid var(--border); font-size:0.62rem; }
+    .mb-tl-buy  { color:var(--green); font-weight:600; }
+    .mb-tl-sell { color:var(--red);   font-weight:600; }
 
     .dist-bar { height:7px; border-radius:20px; overflow:hidden; display:flex; margin-top:8px; }
     .dist-buy  { background:linear-gradient(90deg,var(--green),#059669); transition:flex 0.5s; }
@@ -474,40 +499,88 @@
 <!-- ══ MOTOR + BREADTH ═══════════════════════════════════════ -->
 <div class="grid g21">
 
-  <!-- Motor -->
+  <!-- Motor Probabilístico -->
   <div class="card">
-    <div class="clabel"><div class="ico" style="background:rgba(139,92,246,0.15)">🤖</div>Motor Probabilístico</div>
-    <div class="motor-header">
-      <div>
-        <div class="motor-regime" id="motor-regime">–</div>
-        <div class="motor-sub"   id="motor-sub">Aguardando dados...</div>
+    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:0.5px;margin-bottom:12px;">Motor Probabilístico</div>
+
+    <!-- Regime box (estilo CCTBv4) -->
+    <div id="motor-regime-box" class="motor-regime-box">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="motor-regime-txt" id="motor-regime">⇄ – — –</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:0.55rem;text-transform:uppercase;letter-spacing:1px;opacity:0.6">RISK ENGINE</span>
+          <span id="motor-badge" class="hbadge hbadge-gray" style="font-size:0.6rem">normal</span>
+        </div>
       </div>
-      <span id="motor-badge" class="hbadge hbadge-gray">normal</span>
+      <!-- Sizing row -->
+      <div class="motor-sizing-row">
+        <span>Sizing <span class="msr-val">Edge×Conf / Vol×Corr</span></span>
+        <span>Kelly <span class="msr-val" id="motor-kelly">–</span></span>
+        <span>SL <span class="msr-val" style="color:#f87171">ATR×regime</span></span>
+        <span>TP <span class="msr-val" style="color:#34d399">escalonado 1/2/3×</span></span>
+      </div>
     </div>
 
-    <div class="risk-grid">
-      <div class="risk-row"><div class="risk-label">Beta Portfolio</div><div class="risk-track"><div class="risk-fill" id="rb-beta" style="width:0"></div></div><div class="risk-val m" id="rv-beta">–</div></div>
-      <div class="risk-row"><div class="risk-label">Correlação Média</div><div class="risk-track"><div class="risk-fill" id="rb-corr" style="width:0"></div></div><div class="risk-val m" id="rv-corr">–</div></div>
-      <div class="risk-row"><div class="risk-label">Drawdown</div><div class="risk-track"><div class="risk-fill" id="rb-dd" style="width:0"></div></div><div class="risk-val m" id="rv-dd">–</div></div>
-      <div class="risk-row"><div class="risk-label">Exposição</div><div class="risk-track"><div class="risk-fill" id="rb-exp" style="width:0"></div></div><div class="risk-val m" id="rv-exp">–</div></div>
+    <!-- Métricas de risco estilo CCTBv4 -->
+    <div class="mrisk-list">
+      <div class="mrisk-item">
+        <div class="mrisk-top">
+          <span class="mrisk-name">Beta Portfolio</span>
+          <span class="mrisk-limit">limite 1.8</span>
+          <span class="mrisk-val" id="rv-beta">–</span>
+          <span class="mrisk-status" id="rs-beta">–</span>
+        </div>
+        <div class="mrisk-track"><div class="mrisk-fill" id="rb-beta" style="width:0"></div></div>
+      </div>
+      <div class="mrisk-item">
+        <div class="mrisk-top">
+          <span class="mrisk-name">Drawdown Diário</span>
+          <span class="mrisk-limit">limite 3%</span>
+          <span class="mrisk-val" id="rv-dd">–</span>
+          <span class="mrisk-status" id="rs-dd">–</span>
+        </div>
+        <div class="mrisk-track"><div class="mrisk-fill" id="rb-dd" style="width:0"></div></div>
+      </div>
+      <div class="mrisk-item">
+        <div class="mrisk-top">
+          <span class="mrisk-name">Win Rate (calibração)</span>
+          <span class="mrisk-limit">>40% saudável</span>
+          <span class="mrisk-val b" id="calib-wr">–</span>
+          <span class="mrisk-status" id="rs-wr">–</span>
+        </div>
+        <div class="mrisk-track"><div class="mrisk-fill" id="rb-wr" style="width:0;background:var(--blue)"></div></div>
+      </div>
+      <div class="mrisk-item">
+        <div class="mrisk-top">
+          <span class="mrisk-name">Exposição Total</span>
+          <span class="mrisk-limit">limite 50%</span>
+          <span class="mrisk-val" id="rv-exp">–</span>
+          <span class="mrisk-status" id="rs-exp">–</span>
+        </div>
+        <div class="mrisk-track"><div class="mrisk-fill" id="rb-exp" style="width:0"></div></div>
+      </div>
     </div>
 
-    <div class="weights-row">
-      <div class="weight-chip">Momentum <span class="wval" id="w-m1">–</span></div>
-      <div class="weight-chip">Estrutura <span class="wval" id="w-m2">–</span></div>
-      <div class="weight-chip">Volume   <span class="wval" id="w-m3">–</span></div>
-      <div class="weight-chip">Regime   <span class="wval" id="w-m4">–</span></div>
+    <!-- Pesos adaptativos -->
+    <div class="motor-adapt-row">
+      <span class="motor-adapt-label">Pesos adaptativos:</span>
+      <span class="madapt-chip madapt-blue">Momentum <b id="w-m1">–</b></span>
+      <span class="madapt-chip madapt-green">Estrutura <b id="w-m2">–</b></span>
+      <span class="madapt-chip madapt-yellow">Volume <b id="w-m3">–</b></span>
+      <span class="madapt-chip madapt-purple">Regime <b id="w-m4">–</b></span>
     </div>
 
+    <!-- Thresholds -->
     <div class="thresh-row">
-      <div class="thresh-box t-hold">  <span class="tval">&lt;56%</span>HOLD</div>
-      <div class="thresh-box t-reduce"><span class="tval">56–65%</span>REDUZIDO</div>
-      <div class="thresh-box t-normal"><span class="tval">65–75%</span>NORMAL</div>
-      <div class="thresh-box t-agg">   <span class="tval">75%+</span>AGRESSIVO</div>
+      <div class="thresh-box t-hold">  <span class="tval">&lt;56% HOLD</span></div>
+      <div class="thresh-box t-reduce"><span class="tval">56–65% REDUZIDO</span></div>
+      <div class="thresh-box t-normal"><span class="tval">65–75% NORMAL</span></div>
+      <div class="thresh-box t-agg">   <span class="tval">75%+ AGRESSIVO</span></div>
     </div>
 
+    <!-- Calibração -->
     <div class="calib-row">
-      <div class="calib-item"><div class="calib-val b" id="calib-wr">–</div><div class="calib-label">Win Rate</div></div>
+      <div class="calib-item"><div class="calib-val b" id="calib-wr2">–</div><div class="calib-label">Win Rate</div></div>
       <div class="calib-item"><div class="calib-val"   id="calib-n">–</div><div class="calib-label">Amostras</div></div>
       <div class="calib-item"><div class="calib-val m" id="calib-date">–</div><div class="calib-label">Calibrado em</div></div>
     </div>
@@ -516,27 +589,91 @@
   <!-- Market Breadth + Watchdogs -->
   <div style="display:flex;flex-direction:column;gap:12px;">
 
+    <!-- Market Breadth -->
     <div class="card" style="flex:1">
-      <div class="clabel"><div class="ico" style="background:rgba(59,130,246,0.15)">📊</div>Market Breadth</div>
-      <div class="mb-score-wrap">
-        <div class="mb-score-num" id="mb-score">–<span class="mb-score-pct">%</span></div>
-        <div class="mb-score-lbl" id="mb-lbl">score médio</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <span style="font-size:0.78rem;font-weight:700;color:var(--muted)">Market Breadth</span>
+        <span id="mb-overall-badge" class="hbadge hbadge-gray">–</span>
       </div>
-      <div class="mb-row"><div class="mb-label">Score médio</div><div class="mb-track"><div class="mb-fill" id="bb-avg" style="width:0;background:var(--blue)"></div></div><div class="mb-val" id="bv-avg">–</div></div>
-      <div class="mb-row"><div class="mb-label">Taxa de sinais</div><div class="mb-track"><div class="mb-fill" id="bb-rate" style="width:0;background:var(--green)"></div></div><div class="mb-val" id="bv-rate">–</div></div>
-      <div class="mb-row"><div class="mb-label">Aval./minuto</div><div class="mb-track"><div class="mb-fill" id="bb-epm" style="width:0;background:var(--purple)"></div></div><div class="mb-val" id="bv-epm">–</div></div>
-      <hr class="mb-divider">
-      <div style="font-size:0.6rem;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.8px">Distribuição de resultados</div>
-      <div class="dist-bar"><div class="dist-buy" id="ds-buy" style="flex:0"></div><div class="dist-rej" id="ds-rej" style="flex:1"></div></div>
-      <div class="dist-lbls"><span id="ds-buy-lbl">0% sinais</span><span id="ds-rej-lbl">100% rejeitados</span></div>
+
+      <!-- Score bar grande -->
+      <div class="mb-big-bar-wrap">
+        <div class="mb-big-track">
+          <div class="mb-big-fill" id="mb-big-fill" style="width:0"></div>
+          <div class="mb-big-threshold" style="left:40%"></div>
+        </div>
+      </div>
+
+      <!-- Score grande centralizado -->
+      <div class="mb-score-center">
+        <span class="mb-score-big" id="mb-score">–</span>
+        <span class="mb-score-unit">%</span>
+        <span class="mb-score-word" id="mb-score-word">score</span>
+      </div>
+      <div style="font-size:0.6rem;color:var(--muted);text-align:center;margin-bottom:14px;">linha vermelha = limite de bloqueio (40%)</div>
+
+      <!-- 4 métricas com peso -->
+      <div class="mb-metrics">
+        <div class="mb-metric-row">
+          <div class="mb-metric-left">
+            <span class="mb-metric-name">Score Médio</span>
+            <span class="mb-metric-weight">50%</span>
+          </div>
+          <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-score" style="width:0;background:var(--blue)"></div></div>
+          <div class="mb-metric-right">
+            <span class="mb-metric-val" id="mbv-score">–</span>
+            <span class="mb-metric-status" id="mbs-score">–</span>
+          </div>
+        </div>
+        <div class="mb-metric-row">
+          <div class="mb-metric-left">
+            <span class="mb-metric-name">Taxa de Sinais</span>
+            <span class="mb-metric-weight">25%</span>
+          </div>
+          <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-rate" style="width:0;background:var(--green)"></div></div>
+          <div class="mb-metric-right">
+            <span class="mb-metric-val" id="mbv-rate">–</span>
+            <span class="mb-metric-status" id="mbs-rate">–</span>
+          </div>
+        </div>
+        <div class="mb-metric-row">
+          <div class="mb-metric-left">
+            <span class="mb-metric-name">Regime Atual</span>
+            <span class="mb-metric-weight">15%</span>
+          </div>
+          <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-regime" style="width:0;background:var(--yellow)"></div></div>
+          <div class="mb-metric-right">
+            <span class="mb-metric-val" id="mbv-regime" style="font-size:0.65rem">–</span>
+            <span class="mb-metric-status" id="mbs-regime">–</span>
+          </div>
+        </div>
+        <div class="mb-metric-row">
+          <div class="mb-metric-left">
+            <span class="mb-metric-name">Avaliações/min</span>
+            <span class="mb-metric-weight">10%</span>
+          </div>
+          <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-epm" style="width:0;background:var(--purple)"></div></div>
+          <div class="mb-metric-right">
+            <span class="mb-metric-val" id="mbv-epm">–</span>
+            <span class="mb-metric-status" id="mbs-epm">–</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Threshold labels -->
+      <div class="mb-threshold-labels">
+        <span class="mb-tl-buy">≥40% compras liberadas</span>
+        <span class="mb-tl-sell">&lt;40% compras bloqueadas</span>
+      </div>
     </div>
 
+    <!-- Watchdogs -->
     <div class="card">
       <div class="clabel"><div class="ico" style="background:rgba(16,185,129,0.15)">🛡️</div>Watchdogs</div>
       <div class="wd-grid">
         <div class="wd-item"><div class="wd-name">WebSocket</div><div class="wd-status" id="wd-ws">–</div><div class="wd-detail" id="wd-ws-d">–</div></div>
         <div class="wd-item"><div class="wd-name">Heartbeat</div><div class="wd-status" id="wd-hb">–</div><div class="wd-detail" id="wd-hb-d">–</div></div>
-        <div class="wd-item"><div class="wd-name">Recursos</div> <div class="wd-status" id="wd-res">–</div><div class="wd-detail" id="wd-res-d">–</div></div>
+        <div class="wd-item"><div class="wd-name">Recursos</div><div class="wd-status"  id="wd-res">–</div><div class="wd-detail" id="wd-res-d">–</div></div>
       </div>
     </div>
 
@@ -967,12 +1104,19 @@ async function updateAll(){
     document.getElementById('kpi-exp').textContent=pct(portfolio.total_exposure_pct);
     document.getElementById('kpi-return').innerHTML=colored(portfolio.total_return_pct,false);
     document.getElementById('kpi-pos').textContent=portfolio.open_position_count+' posições';
-    // Motor bars
-    const bt=portfolio.portfolio_beta||0,co=portfolio.avg_correlation||0,dd=portfolio.drawdown_pct||0,ex=portfolio.total_exposure_pct||0;
-    bar('rb-beta',bt,1.8); document.getElementById('rv-beta').textContent=bt.toFixed(2);
-    bar('rb-corr',co,1.0); document.getElementById('rv-corr').textContent=co.toFixed(2);
-    bar('rb-dd',dd,0.1,0.5,0.8); document.getElementById('rv-dd').textContent=pct(dd);
-    bar('rb-exp',ex,0.5); document.getElementById('rv-exp').textContent=pct(ex);
+    // Motor risk bars (mrisk)
+    const bt=portfolio.portfolio_beta||0,dd=portfolio.drawdown_pct||0,ex=portfolio.total_exposure_pct||0;
+    function mbar(fillId,val,max,w=0.6,d=0.85){
+      const el=document.getElementById(fillId);if(!el)return;
+      const f=Math.min(val/max,1);el.style.width=(f*100).toFixed(1)+'%';
+      el.style.background=f>=d?'var(--red)':f>=w?'var(--yellow)':'var(--green)';
+    }
+    mbar('rb-beta',bt,1.8); document.getElementById('rv-beta').textContent=bt.toFixed(2);
+    document.getElementById('rs-beta').textContent=bt<0.9?'controlado':bt<1.4?'moderado':'elevado';
+    mbar('rb-dd',dd,0.03,0.5,0.8); document.getElementById('rv-dd').textContent=(dd*100).toFixed(2)+'%';
+    document.getElementById('rs-dd').textContent=dd<0.01?'baixo':dd<0.02?'moderado':'alto';
+    mbar('rb-exp',ex,0.5); document.getElementById('rv-exp').textContent=(ex*100).toFixed(1)+'%';
+    document.getElementById('rs-exp').textContent=ex<0.2?'baixo':ex<0.4?'moderado':'alto';
   }
   if(perf){
     document.getElementById('kpi-trades').textContent=perf.total_trades||0;
@@ -986,28 +1130,51 @@ async function updateAll(){
   if(exits?.plans) Object.assign(_c.exits,exits.plans);
   buildCards(_c.prices,_c.sym,_c.exits);
 
-  // Motor
+  // Motor Probabilístico
   if(sym&&Object.keys(sym).length){
     const latest=Object.values(sym)[0]||{};
     const rg=(latest.regime||'AGUARDANDO').replace(/_/g,' ');
-    document.getElementById('motor-regime').textContent=rg;
-    const sub={'TREND EXPANSION':'Mercado em expansão — modo agressivo','MEAN REVERTING CHOP':'Mercado lateral — modo conservador','TREND EXHAUSTION':'Tendência esgotada — modo defensivo','VOLATILITY COMPRESSION':'Compressão de volatilidade — aguardando rompimento','HIGH CORRELATION RISK':'Alta correlação — reduzir exposição','PANIC LIQUIDATION':'Pânico detectado — proteger capital'};
-    document.getElementById('motor-sub').textContent=sub[rg]||'Analisando condições...';
+    const subMap={'TREND EXPANSION':'Operação Agressiva','MEAN REVERTING CHOP':'Operação Conservadora','TREND EXHAUSTION':'Operação Defensiva','VOLATILITY COMPRESSION':'Aguardando Rompimento','HIGH CORRELATION RISK':'Reduzir Exposição','PANIC LIQUIDATION':'Proteger Capital'};
+    const subTxt=subMap[rg]||'Analisando...';
+    // Regime box
+    const box=document.getElementById('motor-regime-box');
+    let boxCls='motor-regime-box', arrow='⇄';
+    if(rg.includes('EXPANSION')){ boxCls+=' rb-trend'; arrow='↗'; }
+    else if(rg.includes('EXHAUSTION')){ boxCls+=' rb-other'; arrow='↘'; }
+    else if(rg.includes('PANIC')){ boxCls+=' rb-panic'; arrow='⚠'; }
+    else if(rg.includes('CHOP')){ arrow='⇄'; }
+    box.className=boxCls;
+    document.getElementById('motor-regime').textContent=`${arrow} ${rg} — ${subTxt}`;
     const mb=document.getElementById('motor-badge');
     mb.textContent=latest.result==='SIGNAL'?'sinal':'normal';
     mb.className='hbadge '+(latest.result==='SIGNAL'?'hbadge-green':'hbadge-gray');
+    // Factors
     const f=latest.factors||{};
-    document.getElementById('w-m1').textContent=(f.m1_momentum||f.momentum||0).toFixed(2);
-    document.getElementById('w-m2').textContent=(f.m2_structure||f.structure||0).toFixed(2);
-    document.getElementById('w-m3').textContent=(f.m3_volume||f.volume||0).toFixed(2);
-    document.getElementById('w-m4').textContent=(f.m4_regime||f.regime||0).toFixed(2);
+    const m1=(f.m1_momentum||f.momentum||0),m2=(f.m2_structure||f.structure||0),m3=(f.m3_volume||f.volume||0),m4=(f.m4_regime||f.regime||0);
+    document.getElementById('w-m1').textContent=(m1*30).toFixed(0)+'%';
+    document.getElementById('w-m2').textContent=(m2*30).toFixed(0)+'%';
+    document.getElementById('w-m3').textContent=(m3*20).toFixed(0)+'%';
+    document.getElementById('w-m4').textContent=(m4*20).toFixed(0)+'%';
+    // Kelly hint
+    const kelly=(latest.calibrated||0)*0.25;
+    document.getElementById('motor-kelly').textContent=kelly>0?(kelly*100).toFixed(0)+'% parcial':'–';
   }
+  // Motor risk bars (from portfolio)
+  // rb-beta, rb-dd, rb-wr, rb-exp already set above in portfolio section
+
   if(calib?.available){
+    const wr=calib.win_rate!=null?(calib.win_rate*100).toFixed(1)+'%':'–';
+    document.getElementById('calib-wr').textContent=wr;
+    document.getElementById('calib-wr2').textContent=wr;
     document.getElementById('calib-n').textContent=(calib.n||0).toLocaleString('pt-BR');
-    document.getElementById('calib-wr').textContent=calib.win_rate!=null?(calib.win_rate*100).toFixed(1)+'%':'–';
     const d=calib.calibrated_at?new Date(calib.calibrated_at):null;
     document.getElementById('calib-date').textContent=d?d.toLocaleDateString('pt-BR'):'–';
-    if(calib.period_start){const ms=document.getElementById('motor-sub');if(ms.textContent==='Analisando condições...')ms.textContent=`Calibrado ${calib.period_start}→${calib.period_end} · A=${(calib.platt_a||0).toFixed(3)}`;}
+    // Win rate bar
+    const wrN=(calib.win_rate||0)*100;
+    const wrBar=document.getElementById('rb-wr');
+    if(wrBar){ wrBar.style.width=Math.min(wrN/100*100,100)+'%'; wrBar.style.background=wrN>=40?'var(--green)':wrN>=25?'var(--yellow)':'var(--red)'; }
+    const wrStat=document.getElementById('rs-wr');
+    if(wrStat) wrStat.textContent=wrN>=40?'saudável':wrN>=25?'moderado':'abaixo do esperado';
   }
 
   // Market Breadth
@@ -1017,25 +1184,43 @@ async function updateAll(){
     const entries=log.entries||[];
     const scores=entries.map(e=>e.score).filter(Boolean);
     const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0;
-    const avgPct=(avg*100).toFixed(0);
-    document.getElementById('mb-score').innerHTML=avgPct+'<span class="mb-score-pct">%</span>';
-    document.getElementById('mb-score').className='mb-score-num '+(avg>=0.65?'g':avg>=0.5?'y':'r');
-    document.getElementById('mb-lbl').textContent=`score médio · ${entries.length} avaliações recentes`;
-    document.getElementById('bb-avg').style.width=avgPct+'%'; document.getElementById('bv-avg').textContent=avgPct+'%';
-    document.getElementById('bb-rate').style.width=rate+'%'; document.getElementById('bv-rate').textContent=rate.toFixed(1)+'%';
-    const eN=Math.min(epm/10,1)*100;
-    document.getElementById('bb-epm').style.width=eN+'%'; document.getElementById('bv-epm').textContent=epm.toFixed(1)+'/min';
-    document.getElementById('ds-buy').style.flex=signals; document.getElementById('ds-rej').style.flex=Math.max(total-signals,0);
-    document.getElementById('ds-buy-lbl').textContent=rate.toFixed(1)+'% sinais';
-    document.getElementById('ds-rej-lbl').textContent=(100-rate).toFixed(1)+'% rejeitados';
-    document.getElementById('feed-stats').textContent=`${s.total_evaluations||0} aval · ${rate}% sinais · ${epm.toFixed(1)}/min · ${(s.uptime_minutes||0).toFixed(0)}min uptime`;
+    const avgPct=Math.round(avg*100);
+
+    // Big bar
+    const bigFill=document.getElementById('mb-big-fill');
+    if(bigFill){ bigFill.style.width=avgPct+'%'; bigFill.style.background=avgPct>=65?'linear-gradient(90deg,var(--green),#34d399)':avgPct>=40?'linear-gradient(90deg,var(--blue),#60a5fa)':'linear-gradient(90deg,var(--red),#f87171)'; }
+
+    // Score central
+    const mbS=document.getElementById('mb-score');
+    if(mbS){ mbS.textContent=avgPct; mbS.className='mb-score-big '+(avgPct>=65?'g':avgPct>=40?'y':'r'); }
+    const mbW=document.getElementById('mb-score-word');
+    if(mbW) mbW.textContent=avgPct>=65?'excelente':avgPct>=40?'moderado':'fraco';
+
+    // Overall badge
+    const mbBadge=document.getElementById('mb-overall-badge');
+    if(mbBadge){ mbBadge.textContent=avgPct>=65?'FORTE':avgPct>=40?'MODERADO':'FRACO'; mbBadge.className='hbadge '+(avgPct>=65?'hbadge-green':avgPct>=40?'hbadge-yellow':'hbadge-red'); }
+
+    // 4 metrics
+    function mbMetric(fillId,valId,statId,value,maxVal,color,statusFn){
+      const f=document.getElementById(fillId); if(f){ f.style.width=Math.min(value/maxVal,1)*100+'%'; f.style.background=color; }
+      const v=document.getElementById(valId); if(v) v.textContent=value.toFixed(1)+'%';
+      const st=document.getElementById(statId); if(st) st.textContent=statusFn(value);
+    }
+    mbMetric('mbf-score','mbv-score','mbs-score',avgPct,100,'var(--blue)',v=>v>=65?'forte':v>=40?'moderado':'fraco');
+    mbMetric('mbf-rate','mbv-rate','mbs-rate',rate,100,'var(--green)',v=>v>5?'ativo':v>0?'baixo':'inativo');
+    // Regime score (100=trend, 50=chop, 0=panic)
+    const latestEntry=entries[0]||{};
+    const rScore=latestEntry.regime?.includes('EXPANSION')?85:latestEntry.regime?.includes('CHOP')?40:latestEntry.regime?.includes('PANIC')?5:50;
+    mbMetric('mbf-regime','mbv-regime','mbs-regime',rScore,100,'var(--yellow)',v=>v>=70?'expansão':v>=40?'lateral':'risco');
+    document.getElementById('mbv-regime').textContent=(latestEntry.regime||'–').replace(/_/g,' ').toLowerCase();
+    mbMetric('mbf-epm','mbv-epm','mbs-epm',Math.min(epm,10),10,'var(--purple)',v=>v>=3?'ativo':v>=1?'baixo':'inativo');
+    document.getElementById('mbv-epm').textContent=epm.toFixed(1)+'/min';
+
+    // Feed stats
+    document.getElementById('feed-stats').textContent=`${s.total_evaluations||0} aval · ${rate}% sinais · ${epm.toFixed(1)}/min · uptime ${(s.uptime_minutes||0).toFixed(0)}min`;
     // Feed
     const feedEl=document.getElementById('signal-feed');
-    feedEl.innerHTML=entries.length?entries.slice(0,25).map(e=>{
-      const t=new Date(e.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      const det=e.result==='SIGNAL'?`prob=${(e.calibrated*100).toFixed(0)}% EV=${(e.ev*100).toFixed(1)}% ${e.direction}`:e.detail;
-      return`<div class="feed-entry"><span class="feed-time">${t}</span><span class="feed-sym b">${e.symbol.replace('-USDT','')}</span><span class="feed-result fr-${e.result}">${e.icon} ${e.result==='SIGNAL'?'SINAL':e.result.replace('_',' ')}</span><span class="feed-detail" title="${e.detail}">${det}</span></div>`;
-    }).join(''):'<div class="m" style="padding:16px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>';
+    feedEl.innerHTML=entries.length?buildSignalFeed(entries):'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>';
   }
 
   // Watchdogs

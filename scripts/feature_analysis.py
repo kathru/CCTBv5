@@ -33,9 +33,8 @@ logging.basicConfig(
 )
 log = logging.getLogger("feature_analysis")
 
-from src.monitoring.feature_governance import (
+from src.monitoring.feature_governance import (  # noqa: E402
     CURRENT_SCHEMA,
-    FeatureGovernance,
     FeatureImportance,
     FeatureStats,
     LeakageGuard,
@@ -136,7 +135,8 @@ def main() -> None:
     violations = LeakageGuard.validate_schema(CURRENT_SCHEMA)
     if violations:
         log.error("  VIOLAÇÕES:")
-        for v in violations: log.error("    - %s", v)
+        for v in violations:
+            log.error("    - %s", v)
     else:
         log.info("  Schema v%s: VÁLIDO — sem violações de leakage ou peso",
                  CURRENT_SCHEMA.version)

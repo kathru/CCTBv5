@@ -179,9 +179,6 @@ class LeakageGuard:
         Valida que uma feature computada no candle_index não usa dados futuros.
         Retorna (is_safe, reason).
         """
-        # O índice do último candle permitido para features
-        max_allowed_index = candle_index - 1
-
         # Regra 1: feature não pode usar candles além do índice atual
         if candle_index + forward_candles >= total_candles:
             return False, f"Sem espaço para label forward: {candle_index} + {forward_candles} >= {total_candles}"
@@ -425,7 +422,6 @@ class FeatureImportance:
             return {}
 
         feature_names = list(features_list[0].keys())
-        n = len(features_list)
 
         # ── Baseline: acurácia com score original ──────────────
         def predict_win(f: dict) -> float:
@@ -441,7 +437,7 @@ class FeatureImportance:
             """Acurácia simples: score > median → prediz win."""
             scores = [predict_win(f) for f in feat_list]
             median = sorted(scores)[len(scores)//2]
-            correct = sum(1 for s, l in zip(scores, lbls, strict=False) if (s > median) == (l == 1))
+            correct = sum(1 for s, lbl in zip(scores, lbls, strict=False) if (s > median) == (lbl == 1))
             return correct / len(lbls)
 
         baseline_acc = accuracy(features_list, labels)
@@ -453,9 +449,12 @@ class FeatureImportance:
                 return 0.0
             r_vals = sorted(range(n_), key=lambda i: vals[i])
             r_lbls = sorted(range(n_), key=lambda i: lbls[i])
-            rank_v = [0] * n_; rank_l = [0] * n_
-            for rank, idx in enumerate(r_vals): rank_v[idx] = rank
-            for rank, idx in enumerate(r_lbls): rank_l[idx] = rank
+            rank_v = [0] * n_
+            rank_l = [0] * n_
+            for rank, idx in enumerate(r_vals):
+                rank_v[idx] = rank
+            for rank, idx in enumerate(r_lbls):
+                rank_l[idx] = rank
             d2 = sum((rank_v[i] - rank_l[i])**2 for i in range(n_))
             return 1 - 6 * d2 / (n_ * (n_**2 - 1))
 

@@ -150,6 +150,40 @@
     .bar-danger  { background: #f85149; }
 
     /* ── Prices ──────────────────────────────────────────── */
+    /* ── Monitor de posição nos cards ───────────────────── */
+    .monitor-block { border-top: 1px solid #21262d; padding-top: 10px; }
+    .monitor-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 3px 0; font-size: 0.78rem;
+    }
+    .monitor-label { color: #8b949e; font-size: 0.72rem; }
+    .monitor-val   { font-weight: 700; font-size: 0.88rem; }
+    .monitor-footer {
+      display: flex; justify-content: space-between;
+      margin-top: 8px; font-size: 0.68rem; color: #8b949e;
+    }
+
+    /* Barra de progresso SL ←→ TP */
+    .monitor-progress { margin: 10px 0 6px; }
+    .prog-track {
+      position: relative; height: 6px; background: #21262d;
+      border-radius: 4px; margin-bottom: 4px;
+    }
+    .prog-fill {
+      position: absolute; left: 0; top: 0; height: 6px;
+      border-radius: 4px; background: #3fb950; transition: width 0.5s;
+    }
+    .prog-marker {
+      position: absolute; top: -3px; width: 12px; height: 12px;
+      background: #58a6ff; border: 2px solid #0d1117;
+      border-radius: 50%; transform: translateX(-50%);
+      transition: left 0.5s;
+    }
+    .prog-labels {
+      display: flex; justify-content: space-between;
+      font-size: 0.65rem; color: #8b949e;
+    }
+
     .price-row {
       display: flex; justify-content: space-between; align-items: center;
       padding: 8px 0; border-bottom: 1px solid #21262d;
@@ -278,27 +312,127 @@
   </div>
 
   <!-- ── Seção: Mercado ──────────────────────────────── -->
-  <div class="section-label">💹 Mercado</div>
+  <div class="section-label">💹 Mercado & Monitoramento</div>
 
   <div class="grid-3">
-    <div class="card" id="price-btc">
-      <div class="price-row">
+
+    <!-- BTC -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <span class="price-symbol">BTC-USDT</span>
         <span class="price-value" id="p-BTC-USDT">–</span>
       </div>
+      <div id="monitor-BTC-USDT" class="monitor-block" style="display:none;">
+        <div class="monitor-row">
+          <span class="monitor-label">🔴 Stop Loss</span>
+          <span class="monitor-val red" id="sl-BTC-USDT">–</span>
+        </div>
+        <div class="monitor-row">
+          <span class="monitor-label">🟢 Take Profit</span>
+          <span class="monitor-val green" id="tp-BTC-USDT">–</span>
+        </div>
+        <div class="monitor-row" id="trail-row-BTC-USDT" style="display:none;">
+          <span class="monitor-label">⬆️ Trailing Stop</span>
+          <span class="monitor-val yellow" id="trail-BTC-USDT">–</span>
+        </div>
+        <div class="monitor-progress" id="prog-BTC-USDT">
+          <div class="prog-track">
+            <div class="prog-fill" id="progfill-BTC-USDT"></div>
+            <div class="prog-marker" id="progmark-BTC-USDT"></div>
+          </div>
+          <div class="prog-labels">
+            <span class="red" id="prog-sl-label-BTC-USDT">SL</span>
+            <span class="gray">Entrada</span>
+            <span class="green" id="prog-tp-label-BTC-USDT">TP</span>
+          </div>
+        </div>
+        <div class="monitor-footer">
+          <span id="regime-BTC-USDT" class="gray">–</span>
+          <span id="timeout-BTC-USDT" class="gray">–</span>
+          <span id="partial-BTC-USDT" class="gray">–</span>
+        </div>
+      </div>
+      <div id="no-monitor-BTC-USDT" class="gray" style="font-size:0.72rem;margin-top:6px;">Sem posição ativa</div>
     </div>
-    <div class="card" id="price-eth">
-      <div class="price-row">
+
+    <!-- ETH -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <span class="price-symbol">ETH-USDT</span>
         <span class="price-value" id="p-ETH-USDT">–</span>
       </div>
+      <div id="monitor-ETH-USDT" class="monitor-block" style="display:none;">
+        <div class="monitor-row">
+          <span class="monitor-label">🔴 Stop Loss</span>
+          <span class="monitor-val red" id="sl-ETH-USDT">–</span>
+        </div>
+        <div class="monitor-row">
+          <span class="monitor-label">🟢 Take Profit</span>
+          <span class="monitor-val green" id="tp-ETH-USDT">–</span>
+        </div>
+        <div class="monitor-row" id="trail-row-ETH-USDT" style="display:none;">
+          <span class="monitor-label">⬆️ Trailing Stop</span>
+          <span class="monitor-val yellow" id="trail-ETH-USDT">–</span>
+        </div>
+        <div class="monitor-progress" id="prog-ETH-USDT">
+          <div class="prog-track">
+            <div class="prog-fill" id="progfill-ETH-USDT"></div>
+            <div class="prog-marker" id="progmark-ETH-USDT"></div>
+          </div>
+          <div class="prog-labels">
+            <span class="red" id="prog-sl-label-ETH-USDT">SL</span>
+            <span class="gray">Entrada</span>
+            <span class="green" id="prog-tp-label-ETH-USDT">TP</span>
+          </div>
+        </div>
+        <div class="monitor-footer">
+          <span id="regime-ETH-USDT" class="gray">–</span>
+          <span id="timeout-ETH-USDT" class="gray">–</span>
+          <span id="partial-ETH-USDT" class="gray">–</span>
+        </div>
+      </div>
+      <div id="no-monitor-ETH-USDT" class="gray" style="font-size:0.72rem;margin-top:6px;">Sem posição ativa</div>
     </div>
-    <div class="card" id="price-sol">
-      <div class="price-row">
+
+    <!-- SOL -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <span class="price-symbol">SOL-USDT</span>
         <span class="price-value" id="p-SOL-USDT">–</span>
       </div>
+      <div id="monitor-SOL-USDT" class="monitor-block" style="display:none;">
+        <div class="monitor-row">
+          <span class="monitor-label">🔴 Stop Loss</span>
+          <span class="monitor-val red" id="sl-SOL-USDT">–</span>
+        </div>
+        <div class="monitor-row">
+          <span class="monitor-label">🟢 Take Profit</span>
+          <span class="monitor-val green" id="tp-SOL-USDT">–</span>
+        </div>
+        <div class="monitor-row" id="trail-row-SOL-USDT" style="display:none;">
+          <span class="monitor-label">⬆️ Trailing Stop</span>
+          <span class="monitor-val yellow" id="trail-SOL-USDT">–</span>
+        </div>
+        <div class="monitor-progress" id="prog-SOL-USDT">
+          <div class="prog-track">
+            <div class="prog-fill" id="progfill-SOL-USDT"></div>
+            <div class="prog-marker" id="progmark-SOL-USDT"></div>
+          </div>
+          <div class="prog-labels">
+            <span class="red" id="prog-sl-label-SOL-USDT">SL</span>
+            <span class="gray">Entrada</span>
+            <span class="green" id="prog-tp-label-SOL-USDT">TP</span>
+          </div>
+        </div>
+        <div class="monitor-footer">
+          <span id="regime-SOL-USDT" class="gray">–</span>
+          <span id="timeout-SOL-USDT" class="gray">–</span>
+          <span id="partial-SOL-USDT" class="gray">–</span>
+        </div>
+      </div>
+      <div id="no-monitor-SOL-USDT" class="gray" style="font-size:0.72rem;margin-top:6px;">Sem posição ativa</div>
     </div>
+
   </div>
 
   <!-- ── Seção: Planos de Saída ─────────────────────── -->
@@ -548,6 +682,7 @@
     const data = await fetchJSON('/api/metrics/prices');
     if (!data) return;
     for (const [sym, price] of Object.entries(data)) {
+      _priceCache[sym] = price;
       const el = document.getElementById('p-' + sym);
       if (el) el.textContent = usd(price, 2);
     }
@@ -577,32 +712,92 @@
       res.cpu_pct != null ? `CPU: ${res.cpu_pct}% | MEM: ${res.mem_pct}%` : 'psutil indisponível');
   }
 
+  const SYMBOLS = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT'];
+
+  function updateSymbolCard(sym, plan, currentPrice) {
+    const hasPlan = plan != null;
+    document.getElementById('monitor-' + sym).style.display    = hasPlan ? '' : 'none';
+    document.getElementById('no-monitor-' + sym).style.display = hasPlan ? 'none' : '';
+    if (!hasPlan) return;
+
+    const sl    = plan.stop_loss;
+    const tp    = plan.take_profit;
+    const entry = plan.entry_price;
+    const price = currentPrice || entry;
+
+    // Preços
+    document.getElementById('sl-' + sym).textContent = usd(sl);
+    document.getElementById('tp-' + sym).textContent = usd(tp);
+
+    // Trailing
+    const trailRow = document.getElementById('trail-row-' + sym);
+    if (plan.trailing) {
+      trailRow.style.display = '';
+      document.getElementById('trail-' + sym).textContent = usd(sl); // sl já é o trailing quando ativo
+    } else {
+      trailRow.style.display = 'none';
+    }
+
+    // Barra de progresso: SL=0% … Entry=meio … TP=100%
+    const range   = tp - sl;
+    if (range > 0) {
+      const pricePct = Math.min(Math.max((price - sl) / range, 0), 1) * 100;
+      const entryPct = Math.min(Math.max((entry - sl) / range, 0), 1) * 100;
+
+      // Cor da barra: verde se acima da entrada, vermelha se abaixo
+      const fill = document.getElementById('progfill-' + sym);
+      fill.style.width      = pricePct.toFixed(1) + '%';
+      fill.style.background = price >= entry ? '#3fb950' : '#f85149';
+
+      document.getElementById('progmark-' + sym).style.left = pricePct.toFixed(1) + '%';
+    }
+
+    // Rodapé
+    const timeout = new Date(plan.timeout_at);
+    const hoursLeft = ((timeout - new Date()) / 3600000).toFixed(1);
+    const timeoutStr = hoursLeft > 0 ? `⏱ ${hoursLeft}h` : '⏱ EXPIRADO';
+    const regimeShort = (plan.regime || '').replace(/_/g, ' ').toLowerCase();
+    const partialStr = plan.partial_done ? '✓ parcial' : '50% em +1.5R';
+
+    document.getElementById('regime-' + sym).textContent  = regimeShort;
+    document.getElementById('timeout-' + sym).textContent = timeoutStr;
+    document.getElementById('partial-' + sym).textContent = partialStr;
+  }
+
+  // Cache de preços para usar nos cards
+  const _priceCache = {};
+
   async function updateExitPlans() {
     const data = await fetchJSON('/api/portfolio/exits');
     const tbody   = document.getElementById('exits-body');
     const countEl = document.getElementById('exit-count');
-    if (!data || !data.plans || Object.keys(data.plans).length === 0) {
+    const plans   = (data && data.plans) ? data.plans : {};
+
+    // Atualiza cards individuais de crypto
+    for (const sym of SYMBOLS) {
+      updateSymbolCard(sym, plans[sym] || null, _priceCache[sym] || null);
+    }
+
+    if (Object.keys(plans).length === 0) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="9">Nenhuma posição monitorada</td></tr>';
       countEl.textContent = '(0)';
       return;
     }
-    const plans = data.plans;
     countEl.textContent = `(${Object.keys(plans).length})`;
     tbody.innerHTML = Object.entries(plans).map(([sym, p]) => {
       const timeout = new Date(p.timeout_at);
-      const now = new Date();
-      const hoursLeft = ((timeout - now) / 3600000).toFixed(1);
+      const hoursLeft = ((timeout - new Date()) / 3600000).toFixed(1);
       const timeoutStr = hoursLeft > 0 ? `${hoursLeft}h` : '<span class="red">EXPIRADO</span>';
       return `<tr>
         <td class="blue">${sym}</td>
         <td>${usd(p.entry_price)}</td>
         <td class="red">${usd(p.stop_loss)}</td>
         <td class="green">${usd(p.take_profit)}</td>
-        <td>${p.trailing ? `<span class="green">ON</span>` : '<span class="gray">off</span>'}</td>
+        <td>${p.trailing ? '<span class="green">ON</span>' : '<span class="gray">off</span>'}</td>
         <td>${p.partial_done ? '<span class="green">✓ feito</span>' : '<span class="gray">pendente</span>'}</td>
-        <td class="gray" style="font-size:0.72rem">${p.regime || '–'}</td>
+        <td class="gray" style="font-size:0.72rem">${(p.regime||'–').replace(/_/g,' ').toLowerCase()}</td>
         <td>${timeoutStr}</td>
-        <td>${(p.qty_remaining || 0).toFixed(4)}</td>
+        <td>${(p.qty_remaining||0).toFixed(4)}</td>
       </tr>`;
     }).join('');
   }

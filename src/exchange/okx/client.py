@@ -56,7 +56,11 @@ class OKXClient:
 
     def _http(self) -> httpx.AsyncClient:
         if self._client is None:
-            raise RuntimeError("Use OKXClient as async context manager")
+            self._client = httpx.AsyncClient(
+                base_url=OKX_BASE,
+                timeout=10.0,
+                headers={"Content-Type": "application/json"},
+            )
         return self._client
 
     # ── Public endpoints ──────────────────────────────────────

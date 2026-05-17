@@ -521,12 +521,41 @@
           <span id="motor-badge" class="hbadge hbadge-gray" style="font-size:0.6rem">normal</span>
         </div>
       </div>
-      <!-- Sizing row -->
-      <div class="motor-sizing-row">
-        <span>Sizing <span class="msr-val">Edge×Conf / Vol×Corr</span></span>
-        <span>Kelly <span class="msr-val" id="motor-kelly">–</span></span>
-        <span>SL <span class="msr-val" style="color:#f87171">ATR×regime</span></span>
-        <span>TP <span class="msr-val" style="color:#34d399">escalonado 1/2/3×</span></span>
+      <!-- Sizing detail -->
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px;">
+        <!-- Kelly bar -->
+        <div style="display:grid;grid-template-columns:80px 1fr 48px 70px;align-items:center;gap:8px;">
+          <span style="font-size:0.6rem;color:rgba(255,255,255,0.5)">Kelly score</span>
+          <div style="position:relative;height:6px;background:#0d1520;border-radius:10px;">
+            <div id="motor-kelly-fill" style="height:6px;border-radius:10px;background:var(--blue);transition:width 0.5s;width:0%"></div>
+            <div id="motor-kelly-cap-line" style="position:absolute;top:-3px;width:2px;height:12px;background:rgba(255,255,255,0.3);border-radius:2px;left:8%"></div>
+          </div>
+          <span style="font-size:0.72rem;font-weight:800;color:var(--blue);text-align:right" id="motor-kelly-val">–</span>
+          <span style="font-size:0.6rem;color:rgba(255,255,255,0.35)" id="motor-kelly-cap-lbl">cap –%</span>
+        </div>
+        <!-- Notional + SL/TP -->
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:7px;padding:4px 10px;text-align:center;">
+            <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.8px">Notional est.</div>
+            <div style="font-size:0.82rem;font-weight:800;color:var(--blue)" id="motor-notional">–</div>
+          </div>
+          <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:7px;padding:4px 10px;text-align:center;">
+            <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.8px">Stop Loss</div>
+            <div style="font-size:0.82rem;font-weight:800;color:var(--red)" id="motor-sl">–1.5%</div>
+          </div>
+          <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:7px;padding:4px 10px;text-align:center;">
+            <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.8px">Take Profit</div>
+            <div style="font-size:0.82rem;font-weight:800;color:var(--green)" id="motor-tp">+3.0%</div>
+          </div>
+          <div style="flex:1;min-width:100px;">
+            <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);margin-bottom:2px">Score atual</div>
+            <div style="height:4px;background:#0d1520;border-radius:10px;position:relative;">
+              <div id="motor-score-fill" style="height:4px;border-radius:10px;background:var(--red);transition:width 0.5s;width:0%"></div>
+              <div style="position:absolute;top:-2px;left:56%;width:2px;height:8px;background:rgba(255,255,255,0.25);border-radius:2px;" title="threshold 56%"></div>
+            </div>
+            <div style="font-size:0.6rem;color:rgba(255,255,255,0.4);margin-top:2px"><span id="motor-score-now">–</span> / thr <span id="motor-score-thr">56%</span></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -570,21 +599,52 @@
       </div>
     </div>
 
-    <!-- Pesos adaptativos -->
-    <div class="motor-adapt-row">
-      <span class="motor-adapt-label">Pesos adaptativos:</span>
-      <span class="madapt-chip madapt-blue">Momentum <b id="w-m1">–</b></span>
-      <span class="madapt-chip madapt-green">Estrutura <b id="w-m2">–</b></span>
-      <span class="madapt-chip madapt-yellow">Volume <b id="w-m3">–</b></span>
-      <span class="madapt-chip madapt-purple">Regime <b id="w-m4">–</b></span>
+    <!-- Pesos adaptativos — barras por fator -->
+    <div style="margin-bottom:12px;">
+      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Fatores do Score</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:grid;grid-template-columns:82px 1fr 36px 44px;align-items:center;gap:8px;">
+          <span style="font-size:0.62rem;color:var(--text)">Momentum</span>
+          <div style="height:5px;background:#0d1520;border-radius:10px;overflow:hidden;"><div id="wb-m1" style="height:5px;border-radius:10px;background:#3b82f6;transition:width 0.5s;width:0%"></div></div>
+          <span style="font-size:0.65rem;font-weight:700;color:#3b82f6;text-align:right" id="w-m1">–</span>
+          <span style="font-size:0.58rem;color:var(--muted)">peso 25%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:82px 1fr 36px 44px;align-items:center;gap:8px;">
+          <span style="font-size:0.62rem;color:var(--text)">Estrutura</span>
+          <div style="height:5px;background:#0d1520;border-radius:10px;overflow:hidden;"><div id="wb-m2" style="height:5px;border-radius:10px;background:#10b981;transition:width 0.5s;width:0%"></div></div>
+          <span style="font-size:0.65rem;font-weight:700;color:#10b981;text-align:right" id="w-m2">–</span>
+          <span style="font-size:0.58rem;color:var(--muted)">peso 25%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:82px 1fr 36px 44px;align-items:center;gap:8px;">
+          <span style="font-size:0.62rem;color:var(--text)">Volume</span>
+          <div style="height:5px;background:#0d1520;border-radius:10px;overflow:hidden;"><div id="wb-m3" style="height:5px;border-radius:10px;background:#f59e0b;transition:width 0.5s;width:0%"></div></div>
+          <span style="font-size:0.65rem;font-weight:700;color:#f59e0b;text-align:right" id="w-m3">–</span>
+          <span style="font-size:0.58rem;color:var(--muted)">peso 20%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:82px 1fr 36px 44px;align-items:center;gap:8px;">
+          <span style="font-size:0.62rem;color:var(--text)">Regime</span>
+          <div style="height:5px;background:#0d1520;border-radius:10px;overflow:hidden;"><div id="wb-m4" style="height:5px;border-radius:10px;background:#8b5cf6;transition:width 0.5s;width:0%"></div></div>
+          <span style="font-size:0.65rem;font-weight:700;color:#8b5cf6;text-align:right" id="w-m4">–</span>
+          <span style="font-size:0.58rem;color:var(--muted)">peso 20%</span>
+        </div>
+        <div style="display:grid;grid-template-columns:82px 1fr 36px 44px;align-items:center;gap:8px;">
+          <span style="font-size:0.62rem;color:var(--text)">Candle</span>
+          <div style="height:5px;background:#0d1520;border-radius:10px;overflow:hidden;"><div id="wb-m5" style="height:5px;border-radius:10px;background:#f97316;transition:width 0.5s;width:0%"></div></div>
+          <span style="font-size:0.65rem;font-weight:700;color:#f97316;text-align:right" id="w-m5">–</span>
+          <span style="font-size:0.58rem;color:var(--muted)">peso 10%</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Thresholds -->
-    <div class="thresh-row">
-      <div class="thresh-box t-hold">  <span class="tval">&lt;56% HOLD</span></div>
-      <div class="thresh-box t-reduce"><span class="tval">56–65% REDUZIDO</span></div>
-      <div class="thresh-box t-normal"><span class="tval">65–75% NORMAL</span></div>
-      <div class="thresh-box t-agg">   <span class="tval">75%+ AGRESSIVO</span></div>
+    <!-- Thresholds — com destaque na zona atual -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">Zona de operação (score atual)</div>
+      <div class="thresh-row" id="thresh-row">
+        <div class="thresh-box t-hold"   id="tz-hold">  <span class="tval">&lt;56%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">HOLD</div></div>
+        <div class="thresh-box t-reduce" id="tz-reduce"><span class="tval">56–65%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">REDUZIDO ½×</div></div>
+        <div class="thresh-box t-normal" id="tz-normal"><span class="tval">65–75%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">NORMAL 1×</div></div>
+        <div class="thresh-box t-agg"    id="tz-agg">   <span class="tval">75%+</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">AGRESSIVO 1.5×</div></div>
+      </div>
     </div>
 
     <!-- Calibração -->
@@ -621,12 +681,12 @@
       </div>
       <div style="font-size:0.6rem;color:var(--muted);text-align:center;margin-bottom:14px;">linha vermelha = limite de bloqueio (40%)</div>
 
-      <!-- 4 métricas com peso -->
+      <!-- 4 métricas com peso e contribuição -->
       <div class="mb-metrics">
         <div class="mb-metric-row">
           <div class="mb-metric-left">
             <span class="mb-metric-name">Score Médio</span>
-            <span class="mb-metric-weight">50%</span>
+            <span class="mb-metric-weight" title="Peso no Breadth total">50%</span>
           </div>
           <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-score" style="width:0;background:var(--blue)"></div></div>
           <div class="mb-metric-right">
@@ -634,10 +694,11 @@
             <span class="mb-metric-status" id="mbs-score">–</span>
           </div>
         </div>
+        <div style="font-size:0.58rem;color:var(--muted);padding:0 0 6px 0;margin-top:-4px;">Média dos scores brutos de BTC+ETH+SOL nas últimas avaliações</div>
         <div class="mb-metric-row">
           <div class="mb-metric-left">
             <span class="mb-metric-name">Taxa de Sinais</span>
-            <span class="mb-metric-weight">25%</span>
+            <span class="mb-metric-weight" title="Peso no Breadth total">25%</span>
           </div>
           <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-rate" style="width:0;background:var(--green)"></div></div>
           <div class="mb-metric-right">
@@ -645,10 +706,11 @@
             <span class="mb-metric-status" id="mbs-rate">–</span>
           </div>
         </div>
+        <div style="font-size:0.58rem;color:var(--muted);padding:0 0 6px 0;margin-top:-4px;">% de avaliações que geraram sinal BUY recentemente</div>
         <div class="mb-metric-row">
           <div class="mb-metric-left">
             <span class="mb-metric-name">Regime Atual</span>
-            <span class="mb-metric-weight">15%</span>
+            <span class="mb-metric-weight" title="Peso no Breadth total">15%</span>
           </div>
           <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-regime" style="width:0;background:var(--yellow)"></div></div>
           <div class="mb-metric-right">
@@ -656,10 +718,11 @@
             <span class="mb-metric-status" id="mbs-regime">–</span>
           </div>
         </div>
+        <div style="font-size:0.58rem;color:var(--muted);padding:0 0 6px 0;margin-top:-4px;">EXPANSION=85 · CHOP=40 · BEAR=15 · PANIC=5</div>
         <div class="mb-metric-row">
           <div class="mb-metric-left">
             <span class="mb-metric-name">Avaliações/min</span>
-            <span class="mb-metric-weight">10%</span>
+            <span class="mb-metric-weight" title="Peso no Breadth total">10%</span>
           </div>
           <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-epm" style="width:0;background:var(--purple)"></div></div>
           <div class="mb-metric-right">
@@ -667,12 +730,13 @@
             <span class="mb-metric-status" id="mbs-epm">–</span>
           </div>
         </div>
+        <div style="font-size:0.58rem;color:var(--muted);padding:0 0 2px 0;margin-top:-4px;">Saudável ≥3/min · meta 1 aval por ativo por ciclo de 15s</div>
       </div>
 
-      <!-- Threshold labels -->
-      <div class="mb-threshold-labels">
-        <span class="mb-tl-buy">≥40% compras liberadas</span>
-        <span class="mb-tl-sell">&lt;40% compras bloqueadas</span>
+      <!-- Gate status -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;margin-top:8px;" id="mb-gate-box">
+        <span style="font-size:0.65rem;font-weight:700" id="mb-gate-txt">–</span>
+        <span style="font-size:0.6rem;color:var(--muted)">Breadth <span id="mb-gate-score">–</span> / mín 40%</span>
       </div>
     </div>
 
@@ -1789,23 +1853,81 @@ async function updateAll(){
       mb.textContent='normal'; mb.className='hbadge hbadge-green';  // verde = sem alertas
     }
 
-    // Fix 3: Pesos adaptativos — nomes dos fatores v2 atualizados
+    // Fatores do score (barras)
     const f=latest.factors||{};
-    // Contribuição real = fator × peso (mostra quanto cada um contribui para o score)
     const m1=f.m1_momentum   ||f.momentum  ||0;
     const m2=f.m2_consistency||f.m2_structure||f.structure||0;
     const m3=f.m3_volume     ||f.volume    ||0;
     const m4=f.m4_regime_str ||f.m4_regime ||f.regime   ||0;
     const m5=f.m5_candle     ||0;
-    // Exibe o valor do fator (0-1) como percentual — quanto está ativado
-    document.getElementById('w-m1').textContent=(m1*100).toFixed(0)+'%';
-    document.getElementById('w-m2').textContent=(m2*100).toFixed(0)+'%';
-    document.getElementById('w-m3').textContent=(m3*100).toFixed(0)+'%';
-    document.getElementById('w-m4').textContent=(m4*100).toFixed(0)+'%';
+    const factors={m1,m2,m3,m4,m5};
+    ['m1','m2','m3','m4','m5'].forEach(k=>{
+      const v=factors[k],pct=(v*100).toFixed(0)+'%';
+      const wEl=document.getElementById('w-'+k);
+      const bEl=document.getElementById('wb-'+k);
+      if(wEl) wEl.textContent=pct;
+      if(bEl) bEl.style.width=(v*100).toFixed(1)+'%';
+    });
 
-    // Kelly hint
-    const kelly=(latest.calibrated||0)*0.25;
-    document.getElementById('motor-kelly').textContent=kelly>0?(kelly*100).toFixed(0)+'% parcial':'–';
+    // Kelly bar + notional
+    const KELLY_CAP={
+      'TREND EXPANSION':0.12,'VOLATILITY COMPRESSION':0.08,
+      'MEAN REVERTING CHOP':0.06,'HIGH CORRELATION RISK':0.04,
+      'TREND EXHAUSTION':0.06,'BEAR TREND':0,'PANIC LIQUIDATION':0,
+    };
+    const rawKelly=(latest.calibrated||0)*0.25;
+    const cap=KELLY_CAP[rg]??0.08;
+    const effKelly=Math.min(rawKelly,cap);
+    const tv=portfolio?.total_value||0;
+    const notional=tv*effKelly;
+
+    const kFill=document.getElementById('motor-kelly-fill');
+    const kCap=document.getElementById('motor-kelly-cap-line');
+    const kVal=document.getElementById('motor-kelly-val');
+    const kCapLbl=document.getElementById('motor-kelly-cap-lbl');
+    if(kFill) kFill.style.width=(rawKelly*100).toFixed(1)+'%';
+    if(kCap)  kCap.style.left=(cap*100).toFixed(1)+'%';
+    if(kVal)  kVal.textContent=(effKelly*100).toFixed(1)+'%';
+    if(kCapLbl) kCapLbl.textContent='cap '+(cap*100).toFixed(0)+'%';
+    const notEl=document.getElementById('motor-notional');
+    if(notEl) notEl.textContent=notional>0?'~'+usd(notional,0):'–';
+
+    // Score atual + SL/TP reference
+    const rawScore=(latest.score||0)*100;
+    const thr=(latest.threshold||0.56)*100;
+    const sFill=document.getElementById('motor-score-fill');
+    const sNow=document.getElementById('motor-score-now');
+    const sThr=document.getElementById('motor-score-thr');
+    if(sFill){
+      const col=rawScore>=thr?'var(--green)':rawScore>=thr*0.85?'var(--yellow)':'var(--red)';
+      sFill.style.width=Math.min(rawScore,100).toFixed(1)+'%';
+      sFill.style.background=col;
+    }
+    if(sNow) sNow.textContent=rawScore.toFixed(0)+'%';
+    if(sThr) sThr.textContent=thr.toFixed(0)+'%';
+
+    // SL/TP — valores de referência baseados no primeiro preço disponível
+    const firstPrice=Object.values(_c.prices||{})[0]||0;
+    const slEl=document.getElementById('motor-sl');
+    const tpEl=document.getElementById('motor-tp');
+    if(slEl) slEl.textContent=firstPrice>0?`-1.5% / ${usd(firstPrice*0.985)}`:`-1.5%`;
+    if(tpEl) tpEl.textContent=firstPrice>0?`+3.0% / ${usd(firstPrice*1.030)}`:`+3.0%`;
+
+    // Threshold zone highlight
+    const zones=[
+      {id:'tz-hold',  min:0,  max:56},
+      {id:'tz-reduce',min:56, max:65},
+      {id:'tz-normal',min:65, max:75},
+      {id:'tz-agg',   min:75, max:100},
+    ];
+    zones.forEach(z=>{
+      const el=document.getElementById(z.id); if(!el) return;
+      const active=rawScore>=z.min&&rawScore<z.max;
+      el.style.boxShadow=active?'0 0 0 2px rgba(255,255,255,0.35)':'';
+      el.style.opacity=active?'1':'0.55';
+      if(active) el.style.transform='scale(1.04)';
+      else el.style.transform='';
+    });
   }
   // Motor risk bars (from portfolio)
   // rb-beta, rb-dd, rb-wr, rb-exp already set above in portfolio section
@@ -1864,6 +1986,18 @@ async function updateAll(){
     mbMetric('mbf-epm','mbv-epm','mbs-epm',Math.min(epm,10),10,'var(--purple)',v=>v>=3?'ativo':v>=1?'baixo':'inativo');
     document.getElementById('mbv-epm').textContent=epm.toFixed(1)+'/min';
 
+    // Gate status box
+    const gateBox=document.getElementById('mb-gate-box');
+    const gateTxt=document.getElementById('mb-gate-txt');
+    const gateScore=document.getElementById('mb-gate-score');
+    if(gateBox&&gateTxt&&gateScore){
+      const open=avgPct>=40;
+      gateBox.style.background=open?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)';
+      gateBox.style.border=`1px solid ${open?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`;
+      gateTxt.style.color=open?'var(--green)':'var(--red)';
+      gateTxt.textContent=open?'✓ Compras liberadas — Breadth acima do mínimo':'✗ Compras bloqueadas — Breadth abaixo do mínimo';
+      gateScore.textContent=avgPct+'%';
+    }
     // Feed stats
     document.getElementById('feed-stats').textContent=`${s.total_evaluations||0} aval · ${rate}% sinais · ${epm.toFixed(1)}/min · uptime ${(s.uptime_minutes||0).toFixed(0)}min`;
     // Feed

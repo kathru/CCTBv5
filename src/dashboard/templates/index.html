@@ -1264,7 +1264,7 @@ function buildSignalFeed(entries){
       <div class="sfeed-top">
         <div class="trade-pill ${actCls}" style="min-width:52px;font-size:0.62rem">${actTxt}</div>
         <span class="b" style="font-weight:700;font-size:0.78rem">${sym}</span>
-        <span class="m" style="font-size:0.62rem">V4</span>
+        <span class="m" style="font-size:0.62rem">${(e.strategy_id||'momentum_v2').replace('momentum_','m').toUpperCase()}</span>
         <span class="sfeed-ts">${t}</span>
       </div>
       <div class="sfeed-tags">
@@ -1294,7 +1294,7 @@ function buildTradeHistory(orders){
       <div class="trade-pill ${side==='buy'?'tp-buy':'tp-sell'}">${side.toUpperCase()}</div>
       <div>
         <div class="trade-sym">${o.symbol||'–'}</div>
-        <div class="trade-meta"><span class="strat">${o.strategy_id||'V4'}</span> · ${qty.toFixed(4)} un · fee –</div>
+        <div class="trade-meta"><span class="strat">${(o.strategy_id||'momentum_v2').replace('momentum_','m').toUpperCase()}</span> · ${qty.toFixed(4)} un · fee –</div>
       </div>
       <div class="trade-right">
         <div class="trade-pnl ${pnlCls}">${pnlStr!=='–'?pnlStr:usd(-notional)}</div>

@@ -303,7 +303,7 @@ class OrderManager:
             quantity=quantity,
             strategy_id=signal.strategy_id,
             signal_id=event.event_id,
-            mode=OrderMode.PASSIVE_LIMIT,
+            mode=OrderMode.MARKET,
         )
 
         await self._register(order)
@@ -331,7 +331,7 @@ class OrderManager:
             quantity=round(quantity, 8),
             strategy_id=strategy_id,
             signal_id=f"exit_{reason}_{uuid.uuid4().hex[:8]}",
-            mode=OrderMode.PASSIVE_LIMIT,
+            mode=OrderMode.MARKET,
         )
         await self._register(order)
         try:

@@ -24,6 +24,7 @@ from typing import Protocol
 
 from ..core.bus import EventBus
 from ..core.events import ReconciliationEvent, SystemStatusEvent, Topic
+from ..core.events.order_events import OrderFilledEvent
 from ..core.events.system_events import SystemStatus
 from ..core.models import Order, OrderStatus
 from ..persistence.postgres import Database
@@ -84,6 +85,7 @@ class BootReconciler:
         self._db = db
         self._exchange = exchange
         self._order_repo = OrderRepository(db)
+        self._pending_fills: list[Order] = []
 
     async def run(
         self,
@@ -118,6 +120,15 @@ class BootReconciler:
         )
 
         logger.info("BootReconciler complete: %s", report.summary)
+
+        # Propagate any fills detected during reconciliation
+        for filled_order in self._pending_fills:
+            await self._bus.publish(Topic.FILL, OrderFilledEvent(order=filled_order))
+            logger.info(
+                "BootReconciler: published fill event for coid=%s symbol=%s price=%.2f",
+                filled_order.client_order_id, filled_order.symbol, filled_order.avg_fill_price or 0,
+            )
+        self._pending_fills.clear()
 
         # Emit result event
         await self._bus.publish(
@@ -222,6 +233,7 @@ class BootReconciler:
             order.filled_quantity = float(remote.get("filled_qty", order.quantity))
             order.avg_fill_price = float(remote.get("avg_px", 0))
             logger.info("Reconciled FILLED coid=%s", order.client_order_id)
+            self._pending_fills.append(order)
             return True
 
         if remote_status == "cancelled" and order.is_open:

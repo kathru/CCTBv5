@@ -59,10 +59,10 @@ if ($LASTEXITCODE -ne 0) { Write-Fail "git push falhou"; exit 1 }
 Write-Ok "Push feito"
 
 # ── 3. Calcular versão ─────────────────────────────────────────────────────────
-# Y = número de tags (deploys estruturais baseados na memória)
-# Z = commits desde a última tag (commits do ciclo Y atual)
-$GIT_MINOR = (git tag | Measure-Object -Line).Lines
-$LAST_TAG  = git describe --tags --abbrev=0 2>$null
+# Y = número de tags fase/* (fases estruturais da memória.md)
+# Z = commits desde a última tag fase/* (reseta a cada nova fase)
+$GIT_MINOR = (git tag -l 'fase/*' | Measure-Object -Line).Lines
+$LAST_TAG  = git tag -l 'fase/*' | Select-Object -Last 1
 if ($LAST_TAG) {
     $GIT_PATCH = git rev-list --count "$LAST_TAG..HEAD"
 } else {
@@ -91,8 +91,8 @@ if (-not $LocalOnly) {
 set -e
 cd ~/CCTBv5
 git pull
-export GIT_MINOR=$(git tag | wc -l | tr -d ' ')
-LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+export GIT_MINOR=$(git tag -l 'fase/*' | wc -l | tr -d ' ')
+LAST_TAG=$(git tag -l 'fase/*' | tail -1)
 if [ -n "$LAST_TAG" ]; then
   export GIT_PATCH=$(git rev-list --count "$LAST_TAG..HEAD" | tr -d ' ')
 else

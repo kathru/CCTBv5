@@ -259,14 +259,15 @@
     .calib-label { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); }
 
     /* ══ MARKET BREADTH ══════════════════════════════════════ */
-    .mb-big-bar-wrap  { margin-bottom:4px; }
-    .mb-big-track     { height:15px; background:#0d1520; border-radius:7px; position:relative; overflow:visible; }
-    .mb-big-fill      { height:15px; border-radius:7px; transition:width 0.6s cubic-bezier(.4,0,.2,1); background:linear-gradient(90deg,var(--blue),#60a5fa); }
-    .mb-big-threshold { position:absolute; top:-3px; width:3px; height:21px; background:rgba(239,68,68,0.6); border-radius:2px; box-shadow:0 0 6px rgba(239,68,68,0.4); }
-    .mb-score-center  { display:flex; align-items:baseline; justify-content:center; gap:5px; padding:10px 0 0; }
-    .mb-score-big     { font-size:2.8rem; font-weight:900; letter-spacing:-2px; line-height:1; }
-    .mb-score-unit    { font-size:1.4rem; font-weight:700; color:var(--muted); }
-    .mb-score-word    { font-size:0.75rem; color:var(--muted); margin-left:4px; align-self:center; }
+    .mb-big-bar-wrap  { margin-bottom:10px; }
+    .mb-big-track     { height:28px; background:rgba(255,255,255,0.06); border-radius:9px; position:relative; overflow:hidden; }
+    .mb-big-fill      { position:relative; height:100%; border-radius:9px; transition:width 0.6s cubic-bezier(.4,0,.2,1); }
+    .mb-big-threshold { position:absolute; top:0; bottom:0; width:2px; background:rgba(239,68,68,0.7); border-radius:0; box-shadow:0 0 6px rgba(239,68,68,0.5); z-index:2; }
+    .mb-big-label     { position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:0.78rem; font-weight:800; color:rgba(255,255,255,0.9); pointer-events:none; }
+    .mb-score-center  { display:none; }
+    .mb-score-big     { display:none; }
+    .mb-score-unit    { display:none; }
+    .mb-score-word    { display:none; }
 
     .mb-metrics    { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
     .mb-metric-row { display:grid; grid-template-columns:1fr 100px auto; align-items:center; gap:10px; }
@@ -642,18 +643,13 @@
       <!-- Score bar grande -->
       <div class="mb-big-bar-wrap">
         <div class="mb-big-track">
-          <div class="mb-big-fill" id="mb-big-fill" style="width:0"></div>
+          <div class="mb-big-fill" id="mb-big-fill" style="width:0">
+            <div class="mb-big-label" id="mb-big-label">–%</div>
+          </div>
           <div class="mb-big-threshold" style="left:40%"></div>
         </div>
       </div>
-
-      <!-- Score grande centralizado -->
-      <div class="mb-score-center">
-        <span class="mb-score-big" id="mb-score">–</span>
-        <span class="mb-score-unit">%</span>
-        <span class="mb-score-word" id="mb-score-word">score</span>
-      </div>
-      <div style="font-size:0.6rem;color:var(--muted);text-align:center;margin-bottom:14px;">linha vermelha = limite de bloqueio (40%)</div>
+      <div style="font-size:0.58rem;color:var(--muted);text-align:right;margin-bottom:12px;">linha vermelha = limite de bloqueio (40%)</div>
 
       <!-- 4 métricas com peso e contribuição -->
       <div class="mb-metrics">
@@ -1640,7 +1636,7 @@ function renderImportance(data){
         <span style="font-size:0.65rem;color:var(--text);font-weight:600">${k}</span>
         <div style="position:relative;height:15px;background:#0d1520;border-radius:7px;overflow:visible;">
           <div style="position:absolute;top:0;left:0;height:15px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
-          <div style="position:absolute;top:-3px;left:${schBarW}%;width:2px;height:14px;background:rgba(255,255,255,0.3);border-radius:2px;" title="Schema weight"></div>
+          <div style="position:absolute;top:-3px;bottom:-3px;left:${schBarW}%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;" title="Schema weight"></div>
         </div>
         <span style="font-size:0.68rem;font-weight:800;color:${col};text-align:right">${(relImp*100).toFixed(0)}%</span>
         <span style="font-size:0.6rem;color:${alignCol};text-align:right">${deltaSign}${delta}% <span style="opacity:0.6">(sch ${(schW*100).toFixed(0)}%)</span></span>
@@ -1965,15 +1961,12 @@ async function updateAll(){
     const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0;
     const avgPct=Math.round(avg*100);
 
-    // Big bar
+    // Big bar com label interno e cor dinâmica
     const bigFill=document.getElementById('mb-big-fill');
-    if(bigFill){ bigFill.style.width=avgPct+'%'; bigFill.style.background=avgPct>=65?'linear-gradient(90deg,var(--green),#34d399)':avgPct>=40?'linear-gradient(90deg,var(--blue),#60a5fa)':'linear-gradient(90deg,var(--red),#f87171)'; }
-
-    // Score central
-    const mbS=document.getElementById('mb-score');
-    if(mbS){ mbS.textContent=avgPct; mbS.className='mb-score-big '+(avgPct>=65?'g':avgPct>=40?'y':'r'); }
-    const mbW=document.getElementById('mb-score-word');
-    if(mbW) mbW.textContent=avgPct>=65?'excelente':avgPct>=40?'moderado':'fraco';
+    const bigLabel=document.getElementById('mb-big-label');
+    const barCol=avgPct>=65?'linear-gradient(90deg,#059669,#34d399)':avgPct>=40?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#dc2626,#f87171)';
+    if(bigFill){ bigFill.style.width=avgPct+'%'; bigFill.style.background=barCol; }
+    if(bigLabel){ bigLabel.textContent=avgPct+'%'; }
 
     // Overall badge
     const mbBadge=document.getElementById('mb-overall-badge');

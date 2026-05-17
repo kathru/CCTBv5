@@ -65,8 +65,10 @@ async def test_backtest_requires_minimum_candles():
 
 
 def test_simulated_fill_engine_partial_fills():
-    engine = SimulatedFillEngine(passive_fill_prob=1.0, seed=42)
-    candle = make_candles(1)[0]
+    engine = SimulatedFillEngine(seed=42)
+    candles = make_candles(2)
+    signal_candle     = candles[0]   # candle N — onde o sinal foi gerado
+    execution_candle  = candles[1]   # candle N+1 — onde a ordem executa
 
     from src.core.models import Signal, SignalDirection
     signal = Signal(
@@ -83,7 +85,10 @@ def test_simulated_fill_engine_partial_fills():
         timeframe="1H",
     )
 
-    trade = engine.simulate_entry(signal, candle, capital=10000.0, position_size_pct=0.10)
+    trade = engine.simulate_entry(
+        signal, execution_candle, signal_candle,
+        capital=10000.0, position_size_pct=0.10,
+    )
     assert trade is not None
     assert 0.0 < trade.fill_ratio <= 1.0
     assert trade.entry_price > 0

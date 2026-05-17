@@ -9,11 +9,11 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:       #080d16;
-      --surface:  #0f1623;
-      --surface2: #111827;
-      --border:   #1e2a3a;
-      --border2:  #243447;
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --surface2: #161b22;
+      --border:   #30363d;
+      --border2:  #3d444d;
       --text:     #e2e8f0;
       --muted:    #5a6a7e;
       --green:    #10b981;
@@ -140,18 +140,13 @@
 
     /* ══ BASE CARD ════════════════════════════════════════════ */
     .card {
-      background: linear-gradient(145deg, var(--surface) 0%, var(--surface2) 100%);
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 14px; padding: 16px 18px;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      border-radius: 12px; padding: 16px 18px;
+      transition: border-color 0.2s;
       position: relative; overflow: hidden;
     }
-    .card::before {
-      content:''; position:absolute; inset:0; border-radius:14px;
-      background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 60%);
-      pointer-events: none;
-    }
-    .card:hover { border-color: var(--border2); box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+    .card:hover { border-color: var(--border2); }
     .card-sm { padding: 12px 14px; border-radius: 12px; }
 
     .clabel { font-size:0.58rem; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); margin-bottom:6px; display:flex; align-items:center; gap:5px; }

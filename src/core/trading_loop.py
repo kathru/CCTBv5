@@ -439,9 +439,10 @@ class TradingLoop:
         """
         if not settings.okx_paper_trading:
             return
+        import datetime as _dt
+
         from ..core.events import OrderFilledEvent
         from .models import OrderStatus
-        import datetime as _dt
         open_orders = self._oms.get_open_orders()
         for order in open_orders:
             eid = order.exchange_order_id or ""
@@ -483,7 +484,7 @@ class TradingLoop:
                             order.filled_quantity, order.avg_fill_price,
                         )
                         await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.debug("Fill check timeout eid=%s", eid)
                 except Exception as exc:
                     logger.debug("Fill check failed eid=%s: %s", eid, exc)

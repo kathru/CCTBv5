@@ -309,6 +309,19 @@ class TradingLoop:
         """
         signal = event.signal
 
+        # Bloqueia nova entrada se já há posição ou ordem aberta no símbolo
+        open_orders = self._oms.get_open_orders()
+        already_open = any(o.symbol == signal.symbol for o in open_orders)
+        if not already_open:
+            existing_plans = getattr(self._position_monitor, '_plans', {})
+            already_open = signal.symbol in existing_plans
+
+        if already_open:
+            logger.debug(
+                "Sinal ignorado — posição/ordem já aberta para %s", signal.symbol
+            )
+            return
+
         # 1. Avaliação de risco
         portfolio_value = self._portfolio.state.total_value or 10000.0
         risk_ctx = RiskContext(
@@ -450,9 +463,12 @@ class TradingLoop:
                 await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
 
             elif eid:
-                # OKX demo path — query real status
+                # OKX demo path — query real status (timeout 5s para não bloquear o loop)
                 try:
-                    remote = await self._okx.get_order_status(eid, symbol=order.symbol)
+                    remote = await asyncio.wait_for(
+                        self._okx.get_order_status(eid, symbol=order.symbol),
+                        timeout=5.0,
+                    )
                     if remote.get("status") == "filled":
                         order.status          = OrderStatus.FILLED
                         order.filled_quantity = float(remote.get("filled_qty") or order.quantity)
@@ -467,6 +483,8 @@ class TradingLoop:
                             order.filled_quantity, order.avg_fill_price,
                         )
                         await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
+                except asyncio.TimeoutError:
+                    logger.debug("Fill check timeout eid=%s", eid)
                 except Exception as exc:
                     logger.debug("Fill check failed eid=%s: %s", eid, exc)
 

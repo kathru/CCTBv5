@@ -3,7 +3,7 @@
   "symbol": "BTC-USDT",
   "n_samples": 11974,
   "win_rate": 0.2424,
-  "computed_at": "2026-05-16T14:37:38.539567+00:00",
+  "computed_at": "2026-05-17T16:32:33.156310+00:00",
   "features": {
     "m3_volume": {
       "spearman_corr": 0.0095,

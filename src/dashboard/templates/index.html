@@ -55,22 +55,13 @@
     }
     .logo-title { font-size: 1rem; font-weight: 800; color: var(--text); letter-spacing: -0.2px; white-space: nowrap; }
     .hdr-short-title { display: none; }
-    /* Mobile: esconde elementos desnecessários */
     @media (max-width: 700px) {
-      .hdr-full-title       { display: none; }
-      .hdr-short-title      { display: inline; }
-      .logo-sub             { display: none; }
-      .logo-ver             { display: none; }
-      .hdr-info             { display: none; }
-      .hdr-sep              { display: none; }
-      .hdr-left .regime-badge   { display: none; }  /* esconde regime da esquerda */
-      #hdr-regime-right     { display: flex; }      /* mostra regime da direita */
-      .hdr-sep-right        { display: none; }
-    }
-    /* Desktop: esconde o regime duplicado da direita */
-    @media (min-width: 701px) {
-      #hdr-regime-right     { display: none; }
-      .hdr-sep-right        { display: none; }
+      .hdr-full-title  { display: none; }
+      .hdr-short-title { display: inline; }
+      .logo-sub        { display: none; }
+      .logo-ver        { display: none; }
+      .hdr-info        { display: none; }
+      .hdr-sep         { display: none; }
     }
     .logo-ver   {
       font-size: 0.72rem; font-weight: 700; color: var(--blue);
@@ -443,11 +434,6 @@
       </div>
     </div>
 
-    <div class="hdr-sep"></div>
-    <div id="hdr-regime" class="regime-badge rb-other">
-      <span class="rb-arrow">⇄</span>
-      <span id="hdr-regime-txt">–</span>
-    </div>
   </div>
 
   <div class="hdr-right">
@@ -461,12 +447,11 @@
       <div class="hdr-cycle-cd">próximo <span id="hdr-countdown" class="cd-val">–</span></div>
     </div>
     <div class="hdr-sep"></div>
-    <!-- Regime badge duplicado — visível em desktop (à direita) e mobile -->
-    <div id="hdr-regime-right" class="regime-badge rb-other">
-      <span class="rb-arrow-r">⇄</span>
-      <span id="hdr-regime-txt-r">–</span>
+    <div id="hdr-regime" class="regime-badge rb-other">
+      <span class="rb-arrow">⇄</span>
+      <span id="hdr-regime-txt">–</span>
     </div>
-    <div class="hdr-sep hdr-sep-right"></div>
+    <div class="hdr-sep"></div>
     <div class="status-pill" id="status-pill">
       <div id="status-dot" class="status-dot"></div>
       <span id="status-text">Ativo</span>
@@ -1723,18 +1708,9 @@ async function updateAll(){
     else if(r.includes('CHOP'))        { cls='regime-badge rb-chop';  arrow='⇄'; }
     else if(r.includes('CORRELATION')) { cls='regime-badge rb-other'; arrow='⚡'; }
     else if(r.includes('COMPRESS'))    { cls='regime-badge rb-trend'; arrow='→'; }
-    // Badge esquerda (desktop)
     rtEl.textContent = label;
     rb.className = cls;
     rb.querySelector('.rb-arrow').textContent = arrow;
-    // Badge direita (mobile) — sincroniza
-    const rbR = document.getElementById('hdr-regime-right');
-    const rtR = document.getElementById('hdr-regime-txt-r');
-    if(rbR && rtR){
-      rtR.textContent = label;
-      rbR.className = cls;
-      rbR.querySelector('.rb-arrow-r').textContent = arrow;
-    }
   }
 
   // KPIs

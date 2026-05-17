@@ -118,7 +118,7 @@
     @keyframes pulse-green { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
     /* ══ LAYOUT ══════════════════════════════════════════════ */
-    main { padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; max-width: 1700px; margin: 0 auto; }
+    main { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; max-width: 1700px; margin: 0 auto; }
 
     .grid { display: grid; gap: 12px; }
     .g7  { grid-template-columns: repeat(7,1fr); }
@@ -190,27 +190,27 @@
     .coin-sol  { background:linear-gradient(135deg,#a78bfa,#6d28d9); color:#fff; box-shadow:0 4px 12px rgba(139,92,246,0.35); }
 
     /* pill actions */
-    .action-pill { padding:4px 12px; border-radius:7px; font-size:0.68rem; font-weight:800; letter-spacing:0.8px; text-align:center; text-transform:uppercase; flex-shrink:0; }
+    .action-pill { padding:5px 14px; border-radius:7px; font-size:0.68rem; font-weight:800; letter-spacing:0.8px; text-align:center; text-transform:uppercase; flex-shrink:0; }
     .ap-buy   { background:rgba(16,185,129,0.15);  color:#34d399; border:1px solid rgba(16,185,129,0.35); }
     .ap-sell  { background:rgba(239,68,68,0.15);   color:#fca5a5; border:1px solid rgba(239,68,68,0.35); }
-    .ap-hold  { background:rgba(255,255,255,0.04); color:#4b5563; border:1px solid rgba(255,255,255,0.06); }
+    .ap-hold  { background:rgba(255,255,255,0.05); color:#6b7280; border:1px solid rgba(255,255,255,0.10); }
     .ap-wait  { background:rgba(245,158,11,0.12);  color:#fcd34d; border:1px solid rgba(245,158,11,0.3); }
     .ap-panic { background:rgba(239,68,68,0.18);   color:#fca5a5; border:1px solid rgba(239,68,68,0.45); animation:pulse-red 1.2s infinite; }
     @keyframes pulse-red { 0%,100%{box-shadow:0 0 0 rgba(239,68,68,0)} 50%{box-shadow:0 0 14px rgba(239,68,68,0.35)} }
 
-    .score-track  { flex:1; height:15px; background:rgba(255,255,255,0.06); border-radius:7px; position:relative; overflow:visible; }
-    .score-fill   { height:100%; border-radius:7px; transition:width 0.6s cubic-bezier(.4,0,.2,1); }
-    .score-thresh { position:absolute; top:-2px; width:2px; height:19px; background:rgba(255,255,255,0.3); border-radius:2px; }
-    .score-pct    { font-size:0.7rem; font-weight:700; white-space:nowrap; min-width:28px; text-align:right; }
+    /* score bar — full width with inline % label */
+    .score-wrap   { position:relative; flex:1; height:18px; background:rgba(255,255,255,0.07); border-radius:9px; overflow:hidden; }
+    .score-fill   { height:100%; border-radius:9px; transition:width 0.6s cubic-bezier(.4,0,.2,1); }
+    .score-thresh { position:absolute; top:0; bottom:0; width:2px; background:rgba(255,255,255,0.25); }
+    .score-label  { position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:0.68rem; font-weight:800; color:rgba(255,255,255,0.9); pointer-events:none; }
 
     /* SL/TP boxes */
-    .sl-tp-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
-    .sl-box { background:rgba(239,68,68,0.07);   border:1px solid rgba(239,68,68,0.16);  border-radius:9px; padding:8px 10px; text-align:center; }
-    .en-box { background:rgba(59,130,246,0.07);  border:1px solid rgba(59,130,246,0.16); border-radius:9px; padding:8px 10px; text-align:center; }
-    .tp-box { background:rgba(16,185,129,0.07);  border:1px solid rgba(16,185,129,0.16); border-radius:9px; padding:8px 10px; text-align:center; }
-    .slt-label { font-size:0.52rem; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.35); margin-bottom:3px; }
-    .slt-pct   { font-size:0.62rem; font-weight:600; margin-bottom:2px; }
-    .slt-val   { font-size:0.82rem; font-weight:800; letter-spacing:-0.3px; }
+    .sl-tp-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:12px; }
+    .sl-box { background:rgba(239,68,68,0.10);   border:1px solid rgba(239,68,68,0.22);  border-radius:9px; padding:9px 10px; text-align:center; }
+    .en-box { background:rgba(59,130,246,0.08);  border:1px solid rgba(59,130,246,0.20); border-radius:9px; padding:9px 10px; text-align:center; }
+    .tp-box { background:rgba(16,185,129,0.10);  border:1px solid rgba(16,185,129,0.22); border-radius:9px; padding:9px 10px; text-align:center; }
+    .slt-label { font-size:0.52rem; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.35); margin-bottom:4px; }
+    .slt-val   { font-size:0.88rem; font-weight:800; letter-spacing:-0.3px; }
 
     /* ══ MOTOR PROBABILÍSTICO ════════════════════════════════ */
     .motor-regime-box { border-radius:10px; padding:12px 14px; margin-bottom:14px; background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.2); }
@@ -1330,39 +1330,36 @@ function buildCards(prices,sym,exits){
     const enPctCol=enPct!=null?(enPct>0?'#10b981':enPct<0?'#ef4444':'#6b7280'):'#6b7280';
     const isBuy=act.l==='BUY', isSell=act.l==='SELL';
 
-    return`<div class="card crypto-card" style="padding:16px 18px;background:#161b22;">
+    return`<div class="card crypto-card" style="padding:18px 20px;background:#161b22;">
 
       <!-- Row 1: coin identity + price -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="display:flex;align-items:center;gap:11px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:12px;">
           <div class="coin-icon ${coinCls}">${icon}</div>
           <div>
-            <div style="font-size:0.95rem;font-weight:800;letter-spacing:-0.2px;line-height:1.1">${fullName}</div>
-            <div style="margin-top:4px;">${regimeBadge(d.regime||'')}</div>
+            <div style="font-size:1.0rem;font-weight:800;letter-spacing:-0.3px;line-height:1.2">${fullName}</div>
+            <div style="font-size:0.6rem;color:#4b5563;margin-top:2px;">${s.replace('-','-')}</div>
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:1.4rem;font-weight:900;letter-spacing:-1px;line-height:1">${p>0?usd(p,2):'–'}</div>
-          <div style="font-size:0.6rem;color:#4b5563;margin-top:3px;display:flex;align-items:center;gap:5px;justify-content:flex-end;">
-            <span>Score <b style="color:${sCol}">${sPct.toFixed(0)}%</b></span>
-            <span style="color:#1f2937">·</span>
-            <span>thr <b style="color:#4b5563">${(thr*100).toFixed(0)}%</b></span>
-          </div>
+          <div style="font-size:1.5rem;font-weight:900;letter-spacing:-1px;line-height:1">${p>0?usd(p,2):'–'}</div>
+          <div style="font-size:0.6rem;color:#4b5563;margin-top:3px;">thr ${(thr*100).toFixed(0)}%</div>
         </div>
       </div>
 
-      <!-- Row 2: action + score bar + regime -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <!-- Row 2: action + score bar (full width) + regime badge -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <div class="action-pill ${act.c}">${act.l}</div>
-        <div class="score-track" style="height:15px;">
-          <div class="score-fill" style="width:${sPct.toFixed(1)}%;background:${sCol};${isBuy?'box-shadow:0 0 10px '+sCol+',0 0 20px '+sCol+'40':''}"></div>
+        <div class="score-wrap">
+          <div class="score-fill" style="width:${sPct.toFixed(1)}%;background:${sCol};${isBuy?'box-shadow:0 0 8px '+sCol+'80':''}"></div>
           <div class="score-thresh" style="left:${tPct.toFixed(1)}%"></div>
+          <div class="score-label">${sPct.toFixed(0)}%</div>
         </div>
-        <div class="score-pct" style="color:${sCol};font-size:0.75rem;font-weight:800">${sPct.toFixed(0)}%</div>
+        ${regimeBadge(d.regime||'')}
       </div>
 
       <!-- Row 3: meta info -->
-      <div style="display:flex;align-items:center;gap:6px;font-size:0.6rem;color:#374151;margin-bottom:12px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:6px;font-size:0.6rem;color:#4b5563;margin-bottom:0px;flex-wrap:wrap;">
         ${hasPos?`<span style="color:#10b981;font-weight:600">● posição ativa</span><span>·</span>`:''}
         <span>EV <span class="${evCls}" style="font-weight:600">${ev}</span></span>
         <span>·</span>
@@ -1373,15 +1370,15 @@ function buildCards(prices,sym,exits){
       <!-- Row 4: SL / Entry / TP -->
       <div class="sl-tp-row">
         <div class="sl-box">
-          <div class="slt-label" style="color:rgba(248,113,113,0.5)">Stop Loss (${slPct}%)</div>
+          <div class="slt-label">SL (${slPct}%)</div>
           <div class="slt-val" style="color:#f87171">${sl?usd(sl,2):'–'}</div>
         </div>
         <div class="en-box">
-          <div class="slt-label" style="color:rgba(147,197,253,0.5)">${hasPos?`Entrada (${enPctStr})`:'Entrada'}</div>
+          <div class="slt-label">${hasPos?`Entrada (${enPctStr})`:'Entrada'}</div>
           <div class="slt-val" style="color:#60a5fa">${hasPos?usd(ep.entry_price,2):'–'}</div>
         </div>
         <div class="tp-box">
-          <div class="slt-label" style="color:rgba(110,231,183,0.5)">Take Profit (+${tpPct}%)</div>
+          <div class="slt-label">TP (+${tpPct}%)</div>
           <div class="slt-val" style="color:#34d399">${tp?usd(tp,2):'–'}</div>
         </div>
       </div>

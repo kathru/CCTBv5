@@ -58,18 +58,23 @@
     @media (max-width: 700px) {
       .hdr-full-title  { display: none; }
       .hdr-short-title { display: inline; }
-      .logo-sub        { display: none; }
-      .logo-ver        { display: inline; }
+      .logo-sub        { display: flex; }
+      .hdr-full-title  { display: none !important; }
+      .hdr-sub-sep     { display: none; }
       .hdr-info        { display: none; }
       .hdr-sep         { display: none; }
     }
     .logo-ver   {
-      font-size: 0.72rem; font-weight: 700; color: var(--blue);
+      font-size: 0.68rem; font-weight: 700; color: var(--blue);
       background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25);
-      padding: 1px 7px; border-radius: 5px; margin-left: 6px;
+      padding: 1px 7px; border-radius: 5px;
       vertical-align: middle; letter-spacing: 0.3px;
     }
-    .logo-sub { font-size: 0.62rem; color: var(--muted); margin-top: 2px; letter-spacing: 0.3px; }
+    .logo-sub {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 0.62rem; color: var(--muted); margin-top: 3px; letter-spacing: 0.3px;
+    }
+    .hdr-sub-sep { color: var(--border2); }
 
     /* Header badges */
     .hbadge {
@@ -423,14 +428,15 @@
     <div class="logo-wrap">
       <div class="logo-icon">✳</div>
       <div>
-        <div>
-          <span class="logo-title">
-            <span class="hdr-full-title" id="title-desktop">Claude Code Trading Bot</span>
-            <span class="hdr-short-title">CCTB</span>
-          </span>
-          <span class="logo-ver" id="hdr-version">v–.–.–</span>
+        <div class="logo-title">
+          <span class="hdr-full-title" id="title-desktop">Claude Code Trading Bot</span>
+          <span class="hdr-short-title">CCTB</span>
         </div>
-        <div class="logo-sub" id="hdr-sub">OKX · Paper Mode</div>
+        <div class="logo-sub" id="hdr-sub">
+          <span class="logo-ver" id="hdr-version">v–.–.–</span>
+          <span class="hdr-sub-sep hdr-full-title"> · </span>
+          <span class="hdr-full-title">OKX · Paper Mode</span>
+        </div>
       </div>
     </div>
 

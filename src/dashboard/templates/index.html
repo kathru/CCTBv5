@@ -311,19 +311,11 @@
     .wd-dot.bad { background:var(--red);   box-shadow:0 0 5px rgba(239,68,68,0.5); }
 
     /* ══ COUNTDOWN ═══════════════════════════════════════════ */
-    .hdr-cycle-block { display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
-    .hdr-cycle-num   { font-size:0.75rem; font-weight:800; color:var(--text); line-height:1; }
-    .hdr-cycle-num span:first-child { color:var(--blue); }
-    .hdr-cycle-total { font-size:0.6rem; color:var(--muted); font-weight:400; }
-    .hdr-cycle-cd    { font-size:0.6rem; color:var(--muted); }
-    .cd-val          { color:var(--blue); font-weight:700; font-variant-numeric:tabular-nums; }
-    .hdr-cycle       { font-size:0.62rem; color:var(--muted); }
 
     /* ══ SIGNAL FEED REDESIGN ═════════════════════════════════ */
     .feed-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
     .feed-live { display:flex; align-items:center; gap:6px; font-size:0.65rem; color:var(--green); }
     .feed-live .dot-live { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 5px rgba(16,185,129,0.6); animation:pulse-green 1.5s infinite; }
-    .feed-cycle { font-size:0.62rem; color:var(--muted); }
 
     /* ══ SIGNAL FEED ══════════════════════════════════════════ */
     .feed-wrap { max-height:200px; overflow-y:auto; }
@@ -443,11 +435,6 @@
   </div>
 
   <div class="hdr-right">
-    <div class="hdr-cycle-block">
-      <div class="hdr-cycle-num">ciclo <span id="hdr-cycle-num">–</span><span class="hdr-cycle-total">/96</span></div>
-      <div class="hdr-cycle-cd">próximo <span id="hdr-countdown" class="cd-val">–</span></div>
-    </div>
-    <div class="hdr-sep"></div>
     <div id="hdr-regime" class="regime-badge rb-other">
       <span class="rb-arrow">⇄</span>
       <span id="hdr-regime-txt">–</span>
@@ -1051,25 +1038,7 @@ const API='', REFRESH_MS=600000;
 // Sampling: 1 ponto por minuto → maxPoints=1440 (24h)
 const _portfolioHistory = { labels:[], values:[], maxPoints:1440 };
 let _chartWindow = 60;  // default: 1h = 60 pontos (1/min)
-let _portfolioChart = null, _donutChart = null, _cycleCount = 0;
-
-// ── Ciclos de 15 minutos (96 ciclos/dia, estilo CCTBv4) ────
-function startCountdown(){
-  const cdEl=document.getElementById('hdr-countdown');
-  const cnEl=document.getElementById('hdr-cycle-num');
-  setInterval(()=>{
-    const now=new Date();
-    const totalMin=now.getHours()*60+now.getMinutes();
-    const cycleNum=Math.floor(totalMin/15)+1;          // 1..96
-    const minInCycle=totalMin%15;
-    const secInCycle=minInCycle*60+now.getSeconds();
-    const remSec=15*60-secInCycle;
-    const remMin=Math.floor(remSec/60);
-    const remS=remSec%60;
-    if(cnEl) cnEl.textContent=cycleNum;
-    if(cdEl) cdEl.textContent=remMin+':'+(remS<10?'0':'')+remS;
-  },1000);
-}
+let _portfolioChart = null, _donutChart = null;
 
 // ── Chart window ───────────────────────────────────────────
 function setChartWindow(pts,btnId){
@@ -2131,12 +2100,9 @@ async function updateAll(){
   document.getElementById('trade-history').innerHTML=buildTradeHistory(allOrders);
 }
 
-// Init charts + countdown + sampling
-// Chart.js carrega com defer — aguarda window.load para inicializar
 function init(){
   initPortfolioChart();
   initDonutChart();
-  startCountdown();
   startPortfolioSampling();
   updateAll();
   setInterval(updateAll, REFRESH_MS);

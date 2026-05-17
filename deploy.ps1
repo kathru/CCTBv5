@@ -59,8 +59,15 @@ if ($LASTEXITCODE -ne 0) { Write-Fail "git push falhou"; exit 1 }
 Write-Ok "Push feito"
 
 # ── 3. Calcular versão ─────────────────────────────────────────────────────────
+# Y = número de tags (deploys estruturais baseados na memória)
+# Z = commits desde a última tag (commits do ciclo Y atual)
 $GIT_MINOR = (git tag | Measure-Object -Line).Lines
-$GIT_PATCH = git rev-list --count HEAD
+$LAST_TAG  = git describe --tags --abbrev=0 2>$null
+if ($LAST_TAG) {
+    $GIT_PATCH = git rev-list --count "$LAST_TAG..HEAD"
+} else {
+    $GIT_PATCH = git rev-list --count HEAD
+}
 $VERSION   = "5.$GIT_MINOR.$GIT_PATCH"
 Write-Host ""
 Write-Host "  Versão: v$VERSION" -ForegroundColor Yellow
@@ -85,7 +92,12 @@ set -e
 cd ~/CCTBv5
 git pull
 export GIT_MINOR=$(git tag | wc -l | tr -d ' ')
-export GIT_PATCH=$(git rev-list --count HEAD | tr -d ' ')
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ -n "$LAST_TAG" ]; then
+  export GIT_PATCH=$(git rev-list --count "$LAST_TAG..HEAD" | tr -d ' ')
+else
+  export GIT_PATCH=$(git rev-list --count HEAD | tr -d ' ')
+fi
 echo "Versao: 5.$GIT_MINOR.$GIT_PATCH"
 sudo -E docker compose up -d --build cctb
 echo "Oracle OK"

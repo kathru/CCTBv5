@@ -61,8 +61,8 @@ Write-Ok "Push feito"
 # ── 3. Calcular versão ─────────────────────────────────────────────────────────
 # Y = número de tags fase/* (fases estruturais da memória.md)
 # Z = commits desde a última tag fase/* (reseta a cada nova fase)
-$GIT_MINOR = (git tag -l 'fase/*' | Measure-Object -Line).Lines
-$LAST_TAG  = git tag -l 'fase/*' | Select-Object -Last 1
+$GIT_MINOR = (git tag | Where-Object { $_ -like 'fase/*' } | Measure-Object -Line).Lines
+$LAST_TAG  = git tag | Where-Object { $_ -like 'fase/*' } | Select-Object -Last 1
 if ($LAST_TAG) {
     $GIT_PATCH = git rev-list --count "$LAST_TAG..HEAD"
 } else {

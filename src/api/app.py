@@ -91,7 +91,7 @@ def create_app() -> FastAPI:
         ks_status = ks.state.value if ks and ks.is_armed else "ok"
         infra_ok = db_ok and cache_ok
         return {
-            "status": "suspended" if ks_armed else ("ok" if infra_ok else "degraded"),
+            "status": "ok" if infra_ok else "degraded",  # infra only
             "version": get_version(),
             "postgres": db_ok,
             "redis": cache_ok,

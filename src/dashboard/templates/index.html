@@ -1907,7 +1907,8 @@ async function updateAll(){
     return`<tr><td class="b">${o.symbol||'–'}</td><td>${pill(si.toUpperCase(),si)}</td><td>${pill(st.toUpperCase(),st)}</td><td>${q.toFixed(4)}</td><td>${f.toFixed(4)}</td><td>${px>0?usd(px):'–'}</td><td>${n>0?usd(n,0):'–'}</td><td class="m" style="font-size:0.65rem">${o.strategy_id||'–'}</td><td class="m" style="font-size:0.65rem">${dt(o.created_at)}</td></tr>`;
   }).join(''):'<tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr>';
 
-  document.getElementById('last-update').textContent=new Date().toLocaleTimeString('pt-BR');
+  const luEl=document.getElementById('last-update');
+  if(luEl) luEl.textContent=new Date().toLocaleTimeString('pt-BR');
 
   // Quantitative Analytics
   if(quant){

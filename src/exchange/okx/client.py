@@ -104,7 +104,7 @@ class OKXClient:
         path = "/api/v5/account/balance"
         headers = build_headers(
             self._api_key, self._secret_key, self._passphrase,
-            "GET", path,
+            "GET", path, paper=self._paper,
         )
         resp = await self._http().get(path, headers=headers)
         resp.raise_for_status()
@@ -119,7 +119,11 @@ class OKXClient:
         price: float | None,
         client_order_id: str,
     ) -> str:
-        """Place an order. Returns exchange_order_id."""
+        """Place an order. Returns exchange_order_id.
+
+        In paper trading mode, sends to OKX simulated trading environment
+        via x-simulated-trading: 1 header — real API, no real money.
+        """
         path = "/api/v5/trade/order"
         body_dict = {
             "instId": symbol,
@@ -135,17 +139,16 @@ class OKXClient:
         body = json.dumps(body_dict)
         headers = build_headers(
             self._api_key, self._secret_key, self._passphrase,
-            "POST", path, body,
+            "POST", path, body, paper=self._paper,
         )
         if self._paper:
-            logger.info(
-                "[PAPER] Would place order: %s", body_dict
-            )
-            return f"PAPER-{client_order_id}"
+            logger.info("[PAPER] Placing order on OKX simulated env: %s", body_dict)
 
         resp = await self._http().post(path, content=body, headers=headers)
         resp.raise_for_status()
         data = resp.json()
+        if data.get("code") != "0":
+            raise ValueError(f"OKX order rejected: {data.get('msg')} data={data}")
         return data["data"][0]["ordId"]
 
     async def cancel_order(
@@ -158,12 +161,8 @@ class OKXClient:
         body = json.dumps({"instId": symbol, "ordId": exchange_order_id})
         headers = build_headers(
             self._api_key, self._secret_key, self._passphrase,
-            "POST", path, body,
+            "POST", path, body, paper=self._paper,
         )
-        if self._paper:
-            logger.info("[PAPER] Would cancel order: %s", exchange_order_id)
-            return True
-
         resp = await self._http().post(path, content=body, headers=headers)
         resp.raise_for_status()
         return resp.json().get("code") == "0"
@@ -173,7 +172,7 @@ class OKXClient:
         path = "/api/v5/trade/order"
         headers = build_headers(
             self._api_key, self._secret_key, self._passphrase,
-            "GET", path,
+            "GET", path, paper=self._paper,
         )
         resp = await self._http().get(
             path,
@@ -183,8 +182,7 @@ class OKXClient:
         resp.raise_for_status()
         rows = resp.json().get("data", [])
         if not rows:
-            # Order not found on exchange (e.g. paper trading rejected silently)
-            # Treat as cancelled so reconciler can close the gate cleanly
+            # Order not found on exchange — treat as cancelled
             return {"status": "cancelled", "filled_qty": 0.0, "avg_px": 0.0}
         data = rows[0]
         return {
@@ -198,7 +196,7 @@ class OKXClient:
         path = "/api/v5/account/positions"
         headers = build_headers(
             self._api_key, self._secret_key, self._passphrase,
-            "GET", path,
+            "GET", path, paper=self._paper,
         )
         resp = await self._http().get(path, headers=headers)
         resp.raise_for_status()

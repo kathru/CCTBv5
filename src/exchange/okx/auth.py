@@ -43,14 +43,22 @@ def build_headers(
     method: str,
     path: str,
     body: str = "",
+    paper: bool = False,
 ) -> dict[str, str]:
-    """Build authenticated headers for an OKX API request."""
+    """Build authenticated headers for an OKX API request.
+
+    When paper=True, adds x-simulated-trading: 1 to route requests
+    to OKX's paper trading environment (same endpoints, no real money).
+    """
     timestamp = _utc_now()
     signature = sign(timestamp, method, path, body, secret_key)
-    return {
+    headers = {
         "OK-ACCESS-KEY": api_key,
         "OK-ACCESS-SIGN": signature,
         "OK-ACCESS-TIMESTAMP": timestamp,
         "OK-ACCESS-PASSPHRASE": passphrase,
         "Content-Type": "application/json",
     }
+    if paper:
+        headers["x-simulated-trading"] = "1"
+    return headers

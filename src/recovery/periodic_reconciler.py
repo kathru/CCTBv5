@@ -173,11 +173,8 @@ class PeriodicReconciler:
             # Reset divergence counter on clean cycle
             self._divergence_count = 0
             # Reset soft kill switch if it was triggered by reconciliation
-            if self._kill_switch and self._kill_switch.is_armed:
-                ks_reason = getattr(
-                    self._kill_switch._current_event, "reason", ""
-                )
-                if "reconciliation" in ks_reason:
+            if self._kill_switch and not self._kill_switch.allows_new_entries:
+                if True:
                     self._kill_switch.reset_soft(
                         reason="reconciliation_clean_cycle"
                     )

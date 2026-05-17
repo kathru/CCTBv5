@@ -87,17 +87,19 @@ def create_app() -> FastAPI:
         loop = app.state.trading_loop
         # Kill switch state
         ks = getattr(loop, "_kill_switch", None) if loop else None
-        ks_armed = ks.is_armed if ks else False
-        ks_status = ks.state.value if ks and ks.is_armed else "ok"
+        # allows_new_entries=False means kill switch fired (SOFT or HARD)
+        # is_armed means state==ARMED (normal/ready) — confusingly named
+        suspended = ks is not None and not ks.allows_new_entries
+        ks_status = ks.state.value if ks else "ok"
         infra_ok = db_ok and cache_ok
         return {
-            "status": "ok" if infra_ok else "degraded",  # infra only
+            "status": "ok" if infra_ok else "degraded",
             "version": get_version(),
             "postgres": db_ok,
             "redis": cache_ok,
             "trading_loop": loop is not None,
             "kill_switch": ks_status,
-            "suspended": ks_armed,
+            "suspended": suspended,
         }
 
     @app.get("/version")

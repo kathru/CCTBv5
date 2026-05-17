@@ -31,8 +31,8 @@ async def reset_kill_switch(request: Request) -> dict:
     if not ks:
         return {"ok": False, "message": "Kill switch não encontrado"}
 
-    if not ks.is_armed:
-        return {"ok": True, "message": "Kill switch já estava inativo"}
+    if ks.allows_new_entries:
+        return {"ok": True, "message": "Sistema já está ativo (sem kill switch)"}
 
     ks_reason = getattr(getattr(ks, "_current_event", None), "reason", "")
     reset_ok = ks.reset_soft(reason="manual_reset_api")

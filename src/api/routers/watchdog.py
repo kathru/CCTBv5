@@ -1,4 +1,4 @@
-"""Watchdog status endpoint — read-only."""
+"""Watchdog status + kill switch management."""
 from fastapi import APIRouter, Request
 
 router = APIRouter(prefix="/api/watchdog", tags=["watchdog"])
@@ -20,3 +20,30 @@ async def get_watchdog_status(request: Request) -> dict:
         result["resources"] = state.resource_watchdog.status()
 
     return result
+
+
+@router.post("/reset-kill-switch")
+async def reset_kill_switch(request: Request) -> dict:
+    """Manually reset soft kill switch when system is healthy."""
+    loop = request.app.state.trading_loop
+    ks = getattr(loop, "_kill_switch", None) if loop else None
+
+    if not ks:
+        return {"ok": False, "message": "Kill switch não encontrado"}
+
+    if not ks.is_armed:
+        return {"ok": True, "message": "Kill switch já estava inativo"}
+
+    ks_reason = getattr(getattr(ks, "_current_event", None), "reason", "")
+    reset_ok = ks.reset_soft(reason="manual_reset_api")
+
+    # Re-open OMS gate
+    oms = getattr(loop, "_oms", None)
+    if oms:
+        oms.open_gate()
+
+    return {
+        "ok": reset_ok,
+        "previous_reason": ks_reason,
+        "message": "Kill switch resetado manualmente" if reset_ok else "Falhou (pode ser HARD)",
+    }

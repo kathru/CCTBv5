@@ -172,6 +172,26 @@ class PeriodicReconciler:
                 )
             # Reset divergence counter on clean cycle
             self._divergence_count = 0
+            # Reset soft kill switch if it was triggered by reconciliation
+            if self._kill_switch and self._kill_switch.is_armed:
+                ks_reason = getattr(
+                    self._kill_switch._current_event, "reason", ""
+                )
+                if "reconciliation" in ks_reason:
+                    self._kill_switch.reset_soft(
+                        reason="reconciliation_clean_cycle"
+                    )
+                    logger.info(
+                        "PeriodicReconciler: kill switch reset — "
+                        "reconciliation clean"
+                    )
+                    await self._bus.publish(
+                        Topic.SYSTEM,
+                        SystemStatusEvent(
+                            status=SystemStatus.RUNNING,
+                            reason="reconciliation_clean_cycle",
+                        ),
+                    )
 
         # Emit reconciliation event for dashboard/alerts
         await self._bus.publish(

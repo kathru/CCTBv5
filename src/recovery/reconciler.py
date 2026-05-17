@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 class ExchangeStateProtocol(Protocol):
     """Minimum exchange interface needed for reconciliation."""
 
-    async def get_order_status(self, exchange_order_id: str) -> dict:
+    async def get_order_status(self, exchange_order_id: str, symbol: str | None = None) -> dict:
         """Returns {'status': str, 'filled_qty': float, 'avg_px': float}"""
         ...
 
@@ -154,15 +154,29 @@ class BootReconciler:
                 report.orders_fixed += 1
                 continue
 
+            # Paper trading orders have local PAPER-{uuid} exchange_ids
+            # that the real OKX API doesn't know about — skip reconciliation
+            if order.exchange_order_id.startswith("PAPER-"):
+                logger.debug(
+                    "Skipping reconciliation for paper order coid=%s",
+                    order.client_order_id,
+                )
+                order.status = OrderStatus.CANCELLED
+                await self._order_repo.save(order)
+                report.orders_fixed += 1
+                if order_manager:
+                    order_manager._orders[order.client_order_id] = order
+                continue
+
             try:
                 remote = await self._exchange.get_order_status(
-                    order.exchange_order_id
+                    order.exchange_order_id,
+                    symbol=order.symbol,
                 )
                 fixed = self._apply_remote_status(order, remote)
                 if fixed:
                     await self._order_repo.save(order)
                     report.orders_fixed += 1
-                    # Update OMS memory if provided
                     if order_manager:
                         order_manager._orders[order.client_order_id] = order
 

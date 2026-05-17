@@ -102,29 +102,29 @@ class MarketEngine:
         self._poll_count += 1
         self._last_poll = datetime.now(UTC)
 
-        async with self._okx as client:
-            for symbol in self._symbols:
-                # Fetch and publish ticker
+        client = self._okx
+        for symbol in self._symbols:
+            # Fetch and publish ticker
+            try:
+                ticker = await client.get_ticker(symbol)
+                await self._publish_ticker(ticker)
+            except Exception as exc:
+                logger.warning(
+                    "Ticker fetch failed symbol=%s error=%s", symbol, exc
+                )
+
+            # Fetch and publish candles per granularity
+            for gran in self._granularities:
                 try:
-                    ticker = await client.get_ticker(symbol)
-                    await self._publish_ticker(ticker)
+                    candles = await client.get_candles(
+                        symbol, granularity=gran, limit=100
+                    )
+                    await self._publish_candles(symbol, gran, candles)
                 except Exception as exc:
                     logger.warning(
-                        "Ticker fetch failed symbol=%s error=%s", symbol, exc
+                        "Candles fetch failed symbol=%s gran=%s error=%s",
+                        symbol, gran, exc,
                     )
-
-                # Fetch and publish candles per granularity
-                for gran in self._granularities:
-                    try:
-                        candles = await client.get_candles(
-                            symbol, granularity=gran, limit=100
-                        )
-                        await self._publish_candles(symbol, gran, candles)
-                    except Exception as exc:
-                        logger.warning(
-                            "Candles fetch failed symbol=%s gran=%s error=%s",
-                            symbol, gran, exc,
-                        )
 
     async def _publish_ticker(self, ticker: Ticker) -> None:
         # Update Redis price cache

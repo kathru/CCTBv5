@@ -53,6 +53,7 @@ class OKXClient:
     async def __aexit__(self, *args):
         if self._client:
             await self._client.aclose()
+            self._client = None
 
     def _http(self) -> httpx.AsyncClient:
         if self._client is None:

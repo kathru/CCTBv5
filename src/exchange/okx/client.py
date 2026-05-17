@@ -125,14 +125,20 @@ class OKXClient:
         via x-simulated-trading: 1 header — real API, no real money.
         """
         path = "/api/v5/trade/order"
+        # OKX clOrdId: alphanumeric only, max 32 chars — strip hyphens from UUID
+        cl_ord_id = client_order_id.replace("-", "")[:32]
         body_dict = {
             "instId": symbol,
             "tdMode": "cash",
             "side": side,
             "ordType": order_type,
             "sz": str(quantity),
-            "clOrdId": client_order_id,
+            "clOrdId": cl_ord_id,
         }
+        # For market buy orders, sz means quote currency (USDT) by default.
+        # Set tgtCcy=base_ccy so sz is interpreted as base currency (BTC/ETH/SOL).
+        if order_type == "market" and side == "buy":
+            body_dict["tgtCcy"] = "base_ccy"
         if price is not None:
             body_dict["px"] = str(price)
 
@@ -167,16 +173,25 @@ class OKXClient:
         resp.raise_for_status()
         return resp.json().get("code") == "0"
 
-    async def get_order_status(self, exchange_order_id: str) -> dict:
-        """Get order status from exchange (used by reconciler)."""
-        path = "/api/v5/trade/order"
+    async def get_order_status(self, exchange_order_id: str, symbol: str | None = None) -> dict:
+        """Get order status from exchange (used by reconciler).
+
+        OKX requires instId alongside ordId — pass symbol when available.
+        OKX GET auth: query string must be included in the signed path.
+        """
+        base_path = "/api/v5/trade/order"
+        params: dict = {"ordId": exchange_order_id}
+        if symbol:
+            params["instId"] = symbol
+        query = "&".join(f"{k}={v}" for k, v in params.items())
+        signed_path = f"{base_path}?{query}"
         headers = build_headers(
             self._api_key, self._secret_key, self._passphrase,
-            "GET", path, paper=self._paper,
+            "GET", signed_path, paper=self._paper,
         )
         resp = await self._http().get(
-            path,
-            params={"ordId": exchange_order_id},
+            base_path,
+            params=params,
             headers=headers,
         )
         resp.raise_for_status()

@@ -89,7 +89,8 @@ class Reconciler:
 
             try:
                 remote = await self._fetcher.get_order_status(
-                    order.exchange_order_id
+                    order.exchange_order_id,
+                    symbol=order.symbol,
                 )
                 divergence = self._check_divergence(order, remote)
                 if divergence:

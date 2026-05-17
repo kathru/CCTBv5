@@ -1675,9 +1675,12 @@ async function updateAll(){
     if(sub) sub.textContent='OKX · '+(m==='live'?'Live Trading':'Paper Mode');
   }
   if(health){
-    const ok=health.postgres&&health.redis;
+    const suspended=health.suspended||false;
+    const infraOk=health.postgres&&health.redis;
+    const ok=infraOk&&!suspended;
+    const label=suspended?'Suspenso':infraOk?'Ativo':'Degradado';
     document.getElementById('status-dot').className='status-dot'+(ok?'':' bad');
-    document.getElementById('status-text').textContent=ok?'Ativo':'Degradado';
+    document.getElementById('status-text').textContent=label;
     document.getElementById('status-pill').className='status-pill'+(ok?'':' bad');
   }
   if(sym){

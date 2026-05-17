@@ -85,12 +85,19 @@ def create_app() -> FastAPI:
         db_ok = db.is_connected
         cache_ok = await cache.ping()
         loop = app.state.trading_loop
+        # Kill switch state
+        ks = getattr(loop, "_kill_switch", None) if loop else None
+        ks_armed = ks.is_armed if ks else False
+        ks_status = ks.state.value if ks and ks.is_armed else "ok"
+        infra_ok = db_ok and cache_ok
         return {
-            "status": "ok" if db_ok and cache_ok else "degraded",
+            "status": "suspended" if ks_armed else ("ok" if infra_ok else "degraded"),
             "version": get_version(),
             "postgres": db_ok,
             "redis": cache_ok,
             "trading_loop": loop is not None,
+            "kill_switch": ks_status,
+            "suspended": ks_armed,
         }
 
     @app.get("/version")

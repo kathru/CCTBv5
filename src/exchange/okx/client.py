@@ -142,7 +142,8 @@ class OKXClient:
             "POST", path, body, paper=self._paper,
         )
         if self._paper:
-            logger.info("[PAPER] Placing order on OKX simulated env: %s", body_dict)
+            logger.info("[PAPER] Simulating order locally (no OKX demo key): %s", body_dict)
+            return f"PAPER-{client_order_id}"
 
         resp = await self._http().post(path, content=body, headers=headers)
         resp.raise_for_status()
@@ -163,6 +164,8 @@ class OKXClient:
             self._api_key, self._secret_key, self._passphrase,
             "POST", path, body, paper=self._paper,
         )
+        if self._paper:
+            return True
         resp = await self._http().post(path, content=body, headers=headers)
         resp.raise_for_status()
         return resp.json().get("code") == "0"

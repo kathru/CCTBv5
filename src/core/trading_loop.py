@@ -377,6 +377,40 @@ class TradingLoop:
                 ),
             )
 
+    # ── Paper fill simulator ──────────────────────────────────────────────────
+
+    async def _simulate_paper_fills(self) -> None:
+        """
+        Simula fills para ordens PAPER-xxx (paper trading local).
+        Preenche pelo preço atual do Redis cache — fill imediato.
+        Publica OrderFilledEvent para o PositionMonitor processar.
+        """
+        if not settings.okx_paper_trading:
+            return
+        open_orders = self._oms.get_open_orders()
+        for order in open_orders:
+            eid = order.exchange_order_id or ""
+            if not eid.startswith("PAPER-"):
+                continue
+            price = await self._cache.get_price(order.symbol)
+            if not price:
+                continue
+            from ..core.events import OrderFilledEvent
+            from .models import OrderStatus
+            order.status          = OrderStatus.FILLED
+            order.filled_quantity = order.quantity
+            order.avg_fill_price  = price
+            order.filled_at       = __import__('datetime').datetime.now(
+                __import__('datetime').timezone.utc
+            )
+            order.fees_paid       = round(price * order.quantity * 0.001, 6)
+            logger.info(
+                "[PAPER-FILL] order=%s symbol=%s qty=%s price=%s fee=%s",
+                order.client_order_id, order.symbol,
+                order.quantity, price, order.fees_paid,
+            )
+            await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
+
     # ── Main heartbeat loop ────────────────────────────────────────────────────
 
     async def _run_loop(self) -> None:
@@ -384,6 +418,9 @@ class TradingLoop:
             try:
                 self._heartbeat.beat()
                 self._infra_metrics.record_ws_message()
+
+                # Simula fills para ordens paper
+                await self._simulate_paper_fills()
 
                 # Atualiza portfolio value no runner
                 self._runner.update_portfolio_value(

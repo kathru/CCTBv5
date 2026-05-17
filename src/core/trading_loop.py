@@ -420,35 +420,55 @@ class TradingLoop:
 
     async def _simulate_paper_fills(self) -> None:
         """
-        Simula fills para ordens PAPER-xxx (paper trading local).
-        Preenche pelo preço atual do Redis cache — fill imediato.
-        Publica OrderFilledEvent para o PositionMonitor processar.
+        Detecta fills de ordens paper trading:
+          - PAPER-xxx: simulação local (sem credenciais demo) — usa preço do cache
+          - OKX demo IDs: verifica status real via OKX e propaga fill
         """
         if not settings.okx_paper_trading:
             return
+        from ..core.events import OrderFilledEvent
+        from .models import OrderStatus
+        import datetime as _dt
         open_orders = self._oms.get_open_orders()
         for order in open_orders:
             eid = order.exchange_order_id or ""
-            if not eid.startswith("PAPER-"):
-                continue
-            price = await self._cache.get_price(order.symbol)
-            if not price:
-                continue
-            from ..core.events import OrderFilledEvent
-            from .models import OrderStatus
-            order.status          = OrderStatus.FILLED
-            order.filled_quantity = order.quantity
-            order.avg_fill_price  = price
-            order.filled_at       = __import__('datetime').datetime.now(
-                __import__('datetime').timezone.utc
-            )
-            order.fees_paid       = round(price * order.quantity * 0.001, 6)
-            logger.info(
-                "[PAPER-FILL] order=%s symbol=%s qty=%s price=%s fee=%s",
-                order.client_order_id, order.symbol,
-                order.quantity, price, order.fees_paid,
-            )
-            await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
+
+            if eid.startswith("PAPER-"):
+                # Local simulation path (no demo credentials)
+                price = await self._cache.get_price(order.symbol)
+                if not price:
+                    continue
+                order.status          = OrderStatus.FILLED
+                order.filled_quantity = order.quantity
+                order.avg_fill_price  = price
+                order.filled_at       = _dt.datetime.now(_dt.timezone.utc)
+                order.fees_paid       = round(price * order.quantity * 0.001, 6)
+                logger.info(
+                    "[PAPER-FILL] order=%s symbol=%s qty=%s price=%s",
+                    order.client_order_id, order.symbol, order.quantity, price,
+                )
+                await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
+
+            elif eid:
+                # OKX demo path — query real status
+                try:
+                    remote = await self._okx.get_order_status(eid, symbol=order.symbol)
+                    if remote.get("status") == "filled":
+                        order.status          = OrderStatus.FILLED
+                        order.filled_quantity = float(remote.get("filled_qty") or order.quantity)
+                        order.avg_fill_price  = float(remote.get("avg_px") or 0)
+                        order.filled_at       = _dt.datetime.now(_dt.timezone.utc)
+                        order.fees_paid       = round(
+                            order.avg_fill_price * order.filled_quantity * 0.001, 6
+                        )
+                        logger.info(
+                            "[DEMO-FILL] order=%s symbol=%s qty=%s price=%s",
+                            order.client_order_id, order.symbol,
+                            order.filled_quantity, order.avg_fill_price,
+                        )
+                        await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
+                except Exception as exc:
+                    logger.debug("Fill check failed eid=%s: %s", eid, exc)
 
     # ── Main heartbeat loop ────────────────────────────────────────────────────
 

@@ -78,6 +78,15 @@ class Reconciler:
                 result.divergences.append(order.client_order_id)
                 continue
 
+            # Paper trading orders have a local PAPER-{uuid} exchange_id
+            # that the real OKX API doesn't know about — skip reconciliation
+            if order.exchange_order_id.startswith("PAPER-"):
+                logger.debug(
+                    "Skipping reconciliation for paper order coid=%s",
+                    order.client_order_id,
+                )
+                continue
+
             try:
                 remote = await self._fetcher.get_order_status(
                     order.exchange_order_id

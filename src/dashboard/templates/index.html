@@ -1373,18 +1373,15 @@ function buildCards(prices,sym,exits){
       <!-- Row 4: SL / Entry / TP -->
       <div class="sl-tp-row">
         <div class="sl-box">
-          <div class="slt-label" style="color:rgba(248,113,113,0.5)">Stop Loss</div>
-          <div class="slt-pct" style="color:#fca5a5">${slPct}%</div>
+          <div class="slt-label" style="color:rgba(248,113,113,0.5)">Stop Loss (${slPct}%)</div>
           <div class="slt-val" style="color:#f87171">${sl?usd(sl,2):'–'}</div>
         </div>
         <div class="en-box">
-          <div class="slt-label" style="color:rgba(147,197,253,0.5)">${hasPos?'Entrada':'–'}</div>
-          <div class="slt-pct" style="color:${enPctCol}">${enPctStr}</div>
-          <div class="slt-val" style="color:#60a5fa">${hasPos?usd(ep.entry_price,2):'sem posição'}</div>
+          <div class="slt-label" style="color:rgba(147,197,253,0.5)">${hasPos?`Entrada (${enPctStr})`:'Entrada'}</div>
+          <div class="slt-val" style="color:#60a5fa">${hasPos?usd(ep.entry_price,2):'–'}</div>
         </div>
         <div class="tp-box">
-          <div class="slt-label" style="color:rgba(110,231,183,0.5)">Take Profit</div>
-          <div class="slt-pct" style="color:#6ee7b7">+${tpPct}%</div>
+          <div class="slt-label" style="color:rgba(110,231,183,0.5)">Take Profit (+${tpPct}%)</div>
           <div class="slt-val" style="color:#34d399">${tp?usd(tp,2):'–'}</div>
         </div>
       </div>

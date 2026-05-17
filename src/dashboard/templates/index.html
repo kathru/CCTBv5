@@ -118,7 +118,10 @@
     @keyframes pulse-green { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
     /* ══ LAYOUT ══════════════════════════════════════════════ */
-    main { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; max-width: 1700px; margin: 0 auto; }
+    main { padding: 16px 12px; display: flex; flex-direction: column; gap: 14px; max-width: 1400px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+    @media (min-width: 640px)  { main { padding: 20px 16px; gap: 16px; } }
+    @media (min-width: 1024px) { main { padding: 24px 24px; gap: 18px; } }
+    @media (min-width: 1280px) { main { padding: 24px 32px; gap: 20px; } }
 
     .grid { display: grid; gap: 12px; }
     .g7  { grid-template-columns: repeat(7,1fr); }

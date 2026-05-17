@@ -1330,7 +1330,7 @@ function buildCards(prices,sym,exits){
     const enPctCol=enPct!=null?(enPct>0?'#10b981':enPct<0?'#ef4444':'#6b7280'):'#6b7280';
     const isBuy=act.l==='BUY', isSell=act.l==='SELL';
 
-    return`<div class="card crypto-card" style="padding:16px 18px;background:linear-gradient(160deg,#0d1829 0%,#0a1020 100%);">
+    return`<div class="card crypto-card" style="padding:16px 18px;background:#161b22;">
 
       <!-- Row 1: coin identity + price -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -1355,7 +1355,7 @@ function buildCards(prices,sym,exits){
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <div class="action-pill ${act.c}">${act.l}</div>
         <div class="score-track" style="height:15px;">
-          <div class="score-fill" style="width:${sPct.toFixed(1)}%;background:${sCol};height:6px;${isBuy?'box-shadow:0 0 10px '+sCol+',0 0 20px '+sCol+'40':''}"></div>
+          <div class="score-fill" style="width:${sPct.toFixed(1)}%;background:${sCol};${isBuy?'box-shadow:0 0 10px '+sCol+',0 0 20px '+sCol+'40':''}"></div>
           <div class="score-thresh" style="left:${tPct.toFixed(1)}%"></div>
         </div>
         <div class="score-pct" style="color:${sCol};font-size:0.75rem;font-weight:800">${sPct.toFixed(0)}%</div>

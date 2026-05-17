@@ -454,7 +454,7 @@ class TradingLoop:
                 order.status          = OrderStatus.FILLED
                 order.filled_quantity = order.quantity
                 order.avg_fill_price  = price
-                order.filled_at       = _dt.datetime.now(_dt.timezone.utc)
+                order.filled_at       = _dt.datetime.now(_dt.UTC)
                 order.fees_paid       = round(price * order.quantity * 0.001, 6)
                 logger.info(
                     "[PAPER-FILL] order=%s symbol=%s qty=%s price=%s",
@@ -473,7 +473,7 @@ class TradingLoop:
                         order.status          = OrderStatus.FILLED
                         order.filled_quantity = float(remote.get("filled_qty") or order.quantity)
                         order.avg_fill_price  = float(remote.get("avg_px") or 0)
-                        order.filled_at       = _dt.datetime.now(_dt.timezone.utc)
+                        order.filled_at       = _dt.datetime.now(_dt.UTC)
                         order.fees_paid       = round(
                             order.avg_fill_price * order.filled_quantity * 0.001, 6
                         )

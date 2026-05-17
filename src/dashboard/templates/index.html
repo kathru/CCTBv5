@@ -427,7 +427,7 @@
         <div class="logo-sub">
           <span class="logo-ver" id="hdr-version">v–.–.–</span>
           <span class="hdr-sub-sep hdr-full-title"> · </span>
-          <span class="hdr-full-title" id="hdr-sub">OKX · Paper Mode</span>
+          <span class="hdr-full-title" id="hdr-sub">USDT · OKX · Paper Mode</span>
         </div>
       </div>
     </div>
@@ -1297,54 +1297,99 @@ function action(result,cal,thr,regime){
   return{l:'HOLD',c:'ap-hold'};
 }
 
+function regimeBadge(regime){
+  const r=(regime||'').toUpperCase();
+  const labels={
+    'TREND_EXPANSION':'BULL','VOLATILITY_COMPRESSION':'COMPRESS',
+    'TREND_EXHAUSTION':'EXHAUST','MEAN_REVERTING_CHOP':'CHOP',
+    'HIGH_CORRELATION_RISK':'HIGH CORR','BEAR_TREND':'BEAR',
+    'PANIC_LIQUIDATION':'PANIC',
+  };
+  const lbl=labels[regime]||regime.replace(/_/g,' ');
+  let bg,color,border;
+  if(r.includes('EXPANSION'))   {bg='rgba(16,185,129,0.12)';color='#10b981';border='rgba(16,185,129,0.3)';}
+  else if(r.includes('COMPRESS')){bg='rgba(16,185,129,0.08)';color='#34d399';border='rgba(16,185,129,0.2)';}
+  else if(r.includes('EXHAUST')) {bg='rgba(59,130,246,0.10)';color='#60a5fa';border='rgba(59,130,246,0.25)';}
+  else if(r.includes('CHOP'))    {bg='rgba(245,158,11,0.10)';color='#f59e0b';border='rgba(245,158,11,0.3)';}
+  else if(r.includes('CORR'))    {bg='rgba(249,115,22,0.10)';color='#f97316';border='rgba(249,115,22,0.3)';}
+  else if(r.includes('BEAR'))    {bg='rgba(239,68,68,0.12)'; color='#f87171';border='rgba(239,68,68,0.35)';}
+  else if(r.includes('PANIC'))   {bg='rgba(239,68,68,0.18)'; color='#ef4444';border='rgba(239,68,68,0.5)';}
+  else                           {bg='rgba(90,106,126,0.10)';color='#5a6a7e';border='rgba(90,106,126,0.2)';}
+  return`<span style="background:${bg};color:${color};border:1px solid ${border};border-radius:6px;padding:2px 8px;font-size:0.6rem;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;white-space:nowrap">${lbl}</span>`;
+}
+
 function buildCards(prices,sym,exits){
   document.getElementById('crypto-row').innerHTML=SYMBOLS.map(s=>{
     const p=prices[s]||0, d=sym[s]||{}, ep=exits[s];
     const act=action(d.result,d.calibrated,d.threshold,d.regime);
-    const score=d.score||0, cal=d.calibrated||0, thr=d.threshold||0.72;
+    const score=d.score||0, thr=d.threshold||0.56;
     const sPct=Math.min(score*100,100), tPct=Math.min(thr*100,100);
     const sCol=score>=thr?'var(--green)':score>=thr*0.85?'var(--yellow)':'var(--red)';
     const name=s.replace('-USDT','');
     const icon=name==='BTC'?'₿':name==='ETH'?'Ξ':'◎';
     const coinCls=`coin-${name.toLowerCase()}`;
-    const reg=(d.regime||'').replace(/_/g,' ').replace('MEAN REVERTING','MR').replace('VOLATILITY','VOL');
     const ev=d.ev!=null?(d.ev>=0?'+':'')+(d.ev*100).toFixed(2)+'%':'+0.00%';
     const evCls=d.ev>0?'g':d.ev<0?'r':'m';
     const hasPos=!!ep;
     const sl=hasPos?ep.stop_loss:(p>0?p*0.985:null);
     const tp=hasPos?ep.take_profit:(p>0?p*1.030:null);
-    const slP=sl&&p?((sl-p)/p*100).toFixed(1)+'%':'–';
-    const tpP=tp&&p?((tp-p)/p*100).toFixed(1)+'%':'–';
-    const trail=hasPos&&ep.trailing?`<span class="data-tag" style="color:var(--green);border-color:rgba(16,185,129,0.3)">trailing ON</span>`:'';
-    return`<div class="card crypto-card">
-      <div class="crypto-top">
-        <div class="crypto-info">
-          <div class="coin-icon ${coinCls}">${icon}</div>
-          <div><div class="crypto-name">${name}</div><div class="crypto-sub">${s} · OKX</div></div>
+    const slP=sl&&p?((sl-p)/p*100).toFixed(1):'-1.5';
+    const tpP=tp&&p?((tp-p)/p*100).toFixed(1):'+3.0';
+    const actBuy=act.l==='BUY';
+    const posLabel=hasPos?`<span style="color:var(--green);font-size:0.65rem;font-weight:600">● posição ativa</span>`:`<span style="color:var(--muted);font-size:0.65rem">sem posição</span>`;
+
+    return`<div class="card crypto-card" style="padding:18px 20px;">
+
+      <!-- Top: coin + price -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="coin-icon ${coinCls}" style="width:42px;height:42px;font-size:1.1rem;">${icon}</div>
+          <div>
+            <div style="font-size:1.05rem;font-weight:800;letter-spacing:-0.3px;line-height:1">${name}</div>
+            <div style="margin-top:5px;">${regimeBadge(d.regime||'')}</div>
+          </div>
         </div>
-        <div class="crypto-price-block">
-          <div class="crypto-price-main">${p>0?usd(p,2):'<span style="color:var(--muted);font-size:1rem">–</span>'}</div>
-          ${p>0?`<div class="crypto-price-usd">Score <span style="color:${sCol};font-weight:700">${(cal*100).toFixed(0)}%</span> · thr ${(thr*100).toFixed(0)}%</div>`:''}
+        <div style="text-align:right;">
+          <div style="font-size:1.45rem;font-weight:900;letter-spacing:-0.8px;line-height:1">${p>0?usd(p,2):'–'}</div>
+          <div style="font-size:0.62rem;color:var(--muted);margin-top:4px;">EV <span class="${evCls}" style="font-weight:600">${ev}</span></div>
         </div>
       </div>
-      <div class="action-row">
-        <div class="action-pill ${act.c}">${act.l}</div>
-        <div class="score-track">
-          <div class="score-fill" style="width:${sPct.toFixed(1)}%;background:${sCol}"></div>
-          <div class="score-thresh" style="left:${tPct.toFixed(1)}%"></div>
+
+      <!-- Score bar -->
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="action-pill ${act.c}" style="padding:4px 12px;font-size:0.68rem;">${act.l}</div>
+            ${posLabel}
+          </div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span style="font-size:1rem;font-weight:900;color:${sCol}">${sPct.toFixed(0)}</span>
+            <span style="font-size:0.62rem;color:var(--muted)">/ thr ${(thr*100).toFixed(0)}%</span>
+          </div>
         </div>
-        <div class="score-pct" style="color:${sCol}">${sPct.toFixed(0)}%</div>
+        <div class="score-track" style="height:7px;">
+          <div class="score-fill" style="width:${sPct.toFixed(1)}%;background:${sCol};height:7px;${actBuy?'box-shadow:0 0 8px '+sCol:''}"></div>
+          <div class="score-thresh" style="left:${tPct.toFixed(1)}%;height:15px;top:-4px;width:2px;background:rgba(255,255,255,0.2);"></div>
+        </div>
       </div>
-      <div class="data-row">
-        <span style="font-size:0.62rem;color:var(--muted)">${reg||'–'}</span>
-        <span class="sep">·</span><span>EV <span class="${evCls}" style="font-weight:600">${ev}</span></span>
-        <span class="sep">·</span><span>ATR ~${p>0?(p*0.01/p*100).toFixed(1):'–'}%</span>
-        ${trail}
-      </div>
-      <div class="sl-tp-row">
-        <div class="sl-box"><div class="slt-label" style="color:#fca5a5">Stop Loss</div><div class="slt-pct" style="color:#fca5a5">${slP}</div><div class="slt-val" style="color:#f87171">${sl?usd(sl,2):'–'}</div></div>
-        <div class="en-box"><div class="slt-label" style="color:#93c5fd">Entrada</div><div class="slt-pct" style="color:#93c5fd">${hasPos?'ativa':'–'}</div><div class="slt-val" style="color:#60a5fa">${hasPos?usd(ep.entry_price,2):'sem posição'}</div></div>
-        <div class="tp-box"><div class="slt-label" style="color:#6ee7b7">Take Profit</div><div class="slt-pct" style="color:#6ee7b7">+${tpP}</div><div class="slt-val" style="color:#34d399">${tp?usd(tp,2):'–'}</div></div>
+
+      <!-- SL / Entry / TP -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div style="background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.18);border-radius:10px;padding:9px 10px;text-align:center;">
+          <div style="font-size:0.52rem;text-transform:uppercase;letter-spacing:1px;color:rgba(248,113,113,0.7);margin-bottom:4px;">Stop Loss</div>
+          <div style="font-size:0.68rem;font-weight:700;color:#fca5a5;margin-bottom:3px;">${slP}%</div>
+          <div style="font-size:0.8rem;font-weight:800;color:#f87171;">${sl?usd(sl,2):'–'}</div>
+        </div>
+        <div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.18);border-radius:10px;padding:9px 10px;text-align:center;">
+          <div style="font-size:0.52rem;text-transform:uppercase;letter-spacing:1px;color:rgba(147,197,253,0.7);margin-bottom:4px;">Entrada</div>
+          <div style="font-size:0.68rem;font-weight:700;color:#93c5fd;margin-bottom:3px;">${hasPos?'ativa':'–'}</div>
+          <div style="font-size:0.8rem;font-weight:800;color:#60a5fa;">${hasPos?usd(ep.entry_price,2):'–'}</div>
+        </div>
+        <div style="background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.18);border-radius:10px;padding:9px 10px;text-align:center;">
+          <div style="font-size:0.52rem;text-transform:uppercase;letter-spacing:1px;color:rgba(110,231,183,0.7);margin-bottom:4px;">Take Profit</div>
+          <div style="font-size:0.68rem;font-weight:700;color:#6ee7b7;margin-bottom:3px;">+${tpP}%</div>
+          <div style="font-size:0.8rem;font-weight:800;color:#34d399;">${tp?usd(tp,2):'–'}</div>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -1706,7 +1751,7 @@ async function updateAll(){
   if(system){
     const m=(system.mode||'paper').toLowerCase();
     const sub=document.getElementById('hdr-sub');
-    if(sub) sub.textContent='OKX · '+(m==='live'?'Live Trading':'Paper Mode');
+    if(sub) sub.textContent='USDT · OKX · '+(m==='live'?'Live Trading':'Paper Mode');
   }
   if(health){
     const suspended=health.suspended||false;

@@ -141,16 +141,15 @@ class OKXClient:
             self._api_key, self._secret_key, self._passphrase,
             "POST", path, body, paper=self._paper,
         )
-        if self._paper:
-            logger.info("[PAPER] Simulating order locally (no OKX demo key): %s", body_dict)
-            return f"PAPER-{client_order_id}"
-
         resp = await self._http().post(path, content=body, headers=headers)
         resp.raise_for_status()
         data = resp.json()
         if data.get("code") != "0":
             raise ValueError(f"OKX order rejected: {data.get('msg')} data={data}")
-        return data["data"][0]["ordId"]
+        order_id = data["data"][0]["ordId"]
+        if self._paper:
+            logger.info("[PAPER] Order placed on OKX simulated env ordId=%s", order_id)
+        return order_id
 
     async def cancel_order(
         self,
@@ -164,8 +163,6 @@ class OKXClient:
             self._api_key, self._secret_key, self._passphrase,
             "POST", path, body, paper=self._paper,
         )
-        if self._paper:
-            return True
         resp = await self._http().post(path, content=body, headers=headers)
         resp.raise_for_status()
         return resp.json().get("code") == "0"

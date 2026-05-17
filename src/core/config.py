@@ -15,11 +15,17 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
-    # OKX
+    # OKX — Live credentials
     okx_api_key: str = ""
     okx_secret_key: str = ""
     okx_passphrase: str = ""
     okx_paper_trading: bool = True
+
+    # OKX — Demo/Paper credentials (conta demo separada da OKX)
+    # Se preenchidas, usadas automaticamente quando okx_paper_trading=True
+    okx_demo_api_key: str = ""
+    okx_demo_secret_key: str = ""
+    okx_demo_passphrase: str = ""
 
     # Discord
     discord_webhook_url: str = ""

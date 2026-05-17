@@ -91,12 +91,19 @@ class TradingLoop:
         self._infra_metrics = InfraMetrics()
 
         # ── OKX client ────────────────────────────────────────
+        # Use demo credentials when in paper mode and demo keys are configured
+        _paper = settings.okx_paper_trading
+        _has_demo = bool(settings.okx_demo_api_key and settings.okx_demo_secret_key)
         self._okx = OKXClient(
-            api_key=settings.okx_api_key,
-            secret_key=settings.okx_secret_key,
-            passphrase=settings.okx_passphrase,
-            paper_trading=settings.okx_paper_trading,
+            api_key=settings.okx_demo_api_key if (_paper and _has_demo) else settings.okx_api_key,
+            secret_key=settings.okx_demo_secret_key if (_paper and _has_demo) else settings.okx_secret_key,
+            passphrase=settings.okx_demo_passphrase if (_paper and _has_demo) else settings.okx_passphrase,
+            paper_trading=_paper,
         )
+        if _paper and _has_demo:
+            logger.info("OKXClient: using DEMO credentials with x-simulated-trading=1")
+        elif _paper:
+            logger.info("OKXClient: paper mode — local simulation (no demo keys)")
 
         # ── Market Engine ─────────────────────────────────────
         self._market = MarketEngine(

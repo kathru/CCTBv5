@@ -1,7 +1,7 @@
 """
 Alert Listener — subscribes to bus events and sends alerts automatically.
 
-Listens to RISK and SYSTEM topics.
+Listens to RISK, SYSTEM, ORDER and FILL topics.
 Translates events into human-readable Discord alerts.
 
 Events that trigger alerts:
@@ -9,6 +9,8 @@ Events that trigger alerts:
   - RiskEvaluatedEvent    → WARNING (if action != NORMAL)
   - ReconciliationEvent   → WARNING (if divergences found)
   - SystemStatusEvent     → INFO/WARNING (on state changes)
+  - OrderFilledEvent      → INFO (trade executado)
+  - OrderRejectedEvent    → WARNING (ordem rejeitada)
 """
 
 import asyncio
@@ -17,6 +19,8 @@ import logging
 from ..core.bus import EventBus
 from ..core.events import (
     KillSwitchEvent,
+    OrderFilledEvent,
+    OrderRejectedEvent,
     ReconciliationEvent,
     RiskEvaluatedEvent,
     SystemStatusEvent,
@@ -45,13 +49,14 @@ class AlertListener:
             return
         self._running = True
 
-        # Subscribe to RISK and SYSTEM topics
-        risk_q = self._bus.subscribe(Topic.RISK)
+        risk_q   = self._bus.subscribe(Topic.RISK)
         system_q = self._bus.subscribe(Topic.SYSTEM)
+        fill_q   = self._bus.subscribe(Topic.FILL)
 
         self._tasks = [
-            asyncio.create_task(self._consume_risk(risk_q), name="alert_risk"),
+            asyncio.create_task(self._consume_risk(risk_q),     name="alert_risk"),
             asyncio.create_task(self._consume_system(system_q), name="alert_system"),
+            asyncio.create_task(self._consume_fills(fill_q),    name="alert_fills"),
         ]
         logger.info("AlertListener started")
 
@@ -63,6 +68,46 @@ class AlertListener:
                 await task
             except asyncio.CancelledError:
                 pass
+
+    async def _consume_fills(self, queue: asyncio.Queue) -> None:
+        while self._running:
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=1.0)
+
+                if isinstance(event, OrderFilledEvent) and event.order:
+                    o = event.order
+                    qty   = o.filled_quantity
+                    price = o.avg_fill_price
+                    notional = qty * price
+                    fee   = o.fees_paid
+                    side  = (o.side.value if hasattr(o.side, "value") else str(o.side)).upper()
+                    emoji = "🟢" if side == "BUY" else "🔴"
+                    await self._channel.info(
+                        title=f"{emoji} Trade Executado — {o.symbol}",
+                        message=(
+                            f"**{side}** {qty:.4f} @ ${price:,.2f}\n"
+                            f"Notional: ${notional:,.2f} | Fee: ${fee:.4f}"
+                        ),
+                        symbol=o.symbol,
+                        strategy=o.strategy_id or "–",
+                        order_id=o.client_order_id[:8] + "…",
+                    )
+
+                elif isinstance(event, OrderRejectedEvent) and event.order:
+                    o = event.order
+                    await self._channel.warning(
+                        title=f"⛔ Ordem Rejeitada — {o.symbol}",
+                        message=f"Motivo: {event.reason or 'desconhecido'}",
+                        symbol=o.symbol,
+                        order_id=o.client_order_id[:8] + "…",
+                    )
+
+            except TimeoutError:
+                continue
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.error("AlertListener fill error: %s", exc)
 
     async def _consume_risk(self, queue: asyncio.Queue) -> None:
         while self._running:

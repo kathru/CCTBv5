@@ -384,6 +384,38 @@ class TradingLoop:
                 ),
             )
 
+    # ── Resumo diário Discord ─────────────────────────────────────────────────
+
+    async def _maybe_send_daily_summary(self) -> None:
+        """Envia resumo diário do portfolio ao Discord uma vez por dia (~00:00 UTC)."""
+        from datetime import UTC, datetime
+        now = datetime.now(UTC)
+        if now.hour != 0 or now.minute > 14:
+            return
+        # Usa Redis para garantir envio único por dia
+        key = f"daily_summary:{now.strftime('%Y-%m-%d')}"
+        already_sent = await self._cache.get(key)
+        if already_sent:
+            return
+        await self._cache.set(key, "1", ttl=86400)
+
+        p = self._portfolio.state
+        pnl     = getattr(p, "realized_pnl", 0.0) or 0.0
+        dpnl    = getattr(p, "daily_pnl", 0.0) or 0.0
+        total   = getattr(p, "total_value", 0.0) or 0.0
+        dd      = getattr(p, "drawdown_pct", 0.0) or 0.0
+        ret     = getattr(p, "total_return_pct", 0.0) or 0.0
+        sign    = "+" if dpnl >= 0 else ""
+        emoji   = "📈" if dpnl >= 0 else "📉"
+        await self._alert_channel.info(
+            title=f"{emoji} Resumo Diário — {now.strftime('%d/%m/%Y')}",
+            message=(
+                f"P&L do dia: **{sign}${dpnl:,.2f}**\n"
+                f"P&L total: ${pnl:,.2f} | Retorno: {ret*100:+.2f}%\n"
+                f"Portfolio: ${total:,.2f} | Drawdown: {dd*100:.2f}%"
+            ),
+        )
+
     # ── Paper fill simulator ──────────────────────────────────────────────────
 
     async def _simulate_paper_fills(self) -> None:
@@ -428,6 +460,8 @@ class TradingLoop:
 
                 # Simula fills para ordens paper
                 await self._simulate_paper_fills()
+                # Resumo diário
+                await self._maybe_send_daily_summary()
 
                 # Atualiza portfolio value no runner
                 self._runner.update_portfolio_value(

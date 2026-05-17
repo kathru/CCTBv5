@@ -181,7 +181,12 @@ class OKXClient:
             headers=headers,
         )
         resp.raise_for_status()
-        data = resp.json()["data"][0]
+        rows = resp.json().get("data", [])
+        if not rows:
+            # Order not found on exchange (e.g. paper trading rejected silently)
+            # Treat as cancelled so reconciler can close the gate cleanly
+            return {"status": "cancelled", "filled_qty": 0.0, "avg_px": 0.0}
+        data = rows[0]
         return {
             "status": data.get("state", ""),
             "filled_qty": float(data.get("fillSz", 0)),

@@ -1,5 +1,5 @@
 from .base import BaseStrategy, StrategyContext
-from .momentum.v4_strategy import V4MomentumStrategy
+from .momentum.momentum_strategy import MomentumStrategy
 from .runner import StrategyRunner
 
-__all__ = ["BaseStrategy", "StrategyContext", "StrategyRunner", "V4MomentumStrategy"]
+__all__ = ["BaseStrategy", "StrategyContext", "StrategyRunner", "MomentumStrategy"]

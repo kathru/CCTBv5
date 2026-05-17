@@ -118,7 +118,7 @@ class FeatureSchema:
 # Schema atual (v2 = scoring model v2 com 5 fatores)
 CURRENT_SCHEMA = FeatureSchema(
     version="2.0.0",
-    model_id="v4_momentum_scoring_v2",
+    model_id="momentum_scoring_v2",
     created_at="2026-05-16",
     lookback_candles=21,
     notes="5 fatores contínuos. M2 substituiu higher-highs binário. M4 dinâmico.",

@@ -46,12 +46,12 @@ BASELINE_OUT    = ROOT / "data" / "models" / "feature_baseline.json"
 IMPORTANCE_OUT  = ROOT / "data" / "models" / "feature_importance.json"
 
 
-# ── Scoring v2 (espelho de v4_strategy._score_signal) ─────────────────────────
+# ── Scoring v2 (espelho de momentum_strategy._score_signal) ─────────────────────────
 
 def compute_features(candles_window: list[dict]) -> dict[str, float] | None:
     """
     Computa todas as features do modelo v2 para um ponto.
-    Idêntico a V4MomentumStrategy._score_signal().
+    Idêntico a MomentumStrategy._score_signal().
     """
     if len(candles_window) < 21:
         return None

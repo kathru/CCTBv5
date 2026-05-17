@@ -148,7 +148,7 @@ def load_cache(symbol: str, granularity: str) -> list[dict] | None:
     return None
 
 
-# ── V4 Signal Logic (espelho do v4_strategy.py) ───────────────────────────────
+# ── V4 Signal Logic (espelho do momentum_strategy.py) ───────────────────────────────
 
 REGIME_THRESHOLDS_ORIGINAL: dict[str, float] = {
     "TREND_EXPANSION":        0.56,
@@ -200,7 +200,7 @@ def detect_regime(closes: list[float], volumes: list[float]) -> str:
 
 def score_signal(closes: list[float], highs: list[float],
                  volumes: list[float], regime: str) -> tuple[float, dict]:
-    """Espelho exato de V4MomentumStrategy._score_signal."""
+    """Espelho exato de MomentumStrategy._score_signal."""
     # M1 — Momentum (30%)
     momentum = (closes[0] - closes[-1]) / closes[-1] if closes[-1] > 0 else 0
     m1 = min(max((momentum + 0.05) / 0.10, 0.0), 1.0)

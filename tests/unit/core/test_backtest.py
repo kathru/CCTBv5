@@ -4,7 +4,7 @@ import pytest
 
 from src.core.models import Candle
 from src.replay.backtest_engine import BacktestEngine, BacktestResult, SimulatedFillEngine
-from src.strategies.momentum.v4_strategy import V4MomentumStrategy
+from src.strategies.momentum.momentum_strategy import MomentumStrategy
 
 
 def make_candles(n: int = 50, trend: str = "up") -> list[Candle]:
@@ -29,7 +29,7 @@ def make_candles(n: int = 50, trend: str = "up") -> list[Candle]:
 
 @pytest.mark.asyncio
 async def test_backtest_runs_without_error():
-    strategy = V4MomentumStrategy(symbols=["BTC-USDT"], strategy_id="test")
+    strategy = MomentumStrategy(symbols=["BTC-USDT"], strategy_id="test")
     engine = BacktestEngine(
         strategy=strategy,
         symbol="BTC-USDT",
@@ -45,7 +45,7 @@ async def test_backtest_runs_without_error():
 
 @pytest.mark.asyncio
 async def test_backtest_result_has_valid_metrics():
-    strategy = V4MomentumStrategy(symbols=["BTC-USDT"])
+    strategy = MomentumStrategy(symbols=["BTC-USDT"])
     engine = BacktestEngine(strategy=strategy, symbol="BTC-USDT", seed=42)
     candles = make_candles(60, "up")
     result = await engine.run(candles, warmup=20)
@@ -58,7 +58,7 @@ async def test_backtest_result_has_valid_metrics():
 
 @pytest.mark.asyncio
 async def test_backtest_requires_minimum_candles():
-    strategy = V4MomentumStrategy(symbols=["BTC-USDT"])
+    strategy = MomentumStrategy(symbols=["BTC-USDT"])
     engine = BacktestEngine(strategy=strategy, symbol="BTC-USDT")
     with pytest.raises(ValueError):
         await engine.run(make_candles(5), warmup=20)

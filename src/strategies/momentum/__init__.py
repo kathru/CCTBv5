@@ -1,3 +1,3 @@
-from .v4_strategy import V4MomentumStrategy
+from .momentum_strategy import MomentumStrategy
 
-__all__ = ["V4MomentumStrategy"]
+__all__ = ["MomentumStrategy"]

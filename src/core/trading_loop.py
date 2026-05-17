@@ -39,7 +39,7 @@ from ..risk.engine import RiskContext, RiskEngine
 from ..risk.kill_switch import KillSwitch
 from ..strategies.meta_layer import MetaStrategyLayer
 from ..strategies.ml.inference import MLInferenceEngine
-from ..strategies.momentum.v4_strategy import V4MomentumStrategy
+from ..strategies.momentum.momentum_strategy import MomentumStrategy
 from ..strategies.runner import StrategyRunner
 from ..watchdog.heartbeat import HeartbeatWatchdog
 from ..watchdog.resource_watchdog import ResourceWatchdog
@@ -146,7 +146,7 @@ class TradingLoop:
             market=self._market,
             cache=self._cache,
         )
-        v4 = V4MomentumStrategy(symbols=SYMBOLS)
+        v4 = MomentumStrategy(symbols=SYMBOLS)
         self._runner.register(v4)
         self._meta.register(v4.strategy_id)
 

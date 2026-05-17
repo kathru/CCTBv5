@@ -4,7 +4,7 @@ import pytest
 
 from src.core.models import Candle, SignalDirection
 from src.strategies.base import BaseStrategy, StrategyContext
-from src.strategies.momentum.v4_strategy import V4MomentumStrategy
+from src.strategies.momentum.momentum_strategy import MomentumStrategy
 
 
 def make_candles(n: int = 30, trend: str = "up") -> list[Candle]:
@@ -47,17 +47,17 @@ def test_strategy_cannot_be_instantiated_directly():
 
 
 def test_strategy_has_correct_id():
-    s = V4MomentumStrategy(symbols=["BTC-USDT"], strategy_id="test_v4")
-    assert s.strategy_id == "test_v4"
+    s = MomentumStrategy(symbols=["BTC-USDT"], strategy_id="test_momentum")
+    assert s.strategy_id == "test_momentum"
 
 
 def test_strategy_starts_enabled():
-    s = V4MomentumStrategy(symbols=["BTC-USDT"])
+    s = MomentumStrategy(symbols=["BTC-USDT"])
     assert s.is_enabled is True
 
 
 def test_strategy_can_be_disabled():
-    s = V4MomentumStrategy(symbols=["BTC-USDT"])
+    s = MomentumStrategy(symbols=["BTC-USDT"])
     s.disable()
     assert s.is_enabled is False
     s.enable()
@@ -66,7 +66,7 @@ def test_strategy_can_be_disabled():
 
 @pytest.mark.asyncio
 async def test_strategy_returns_none_with_insufficient_candles():
-    s = V4MomentumStrategy(symbols=["BTC-USDT"])
+    s = MomentumStrategy(symbols=["BTC-USDT"])
     ctx = StrategyContext(
         symbol="BTC-USDT",
         candles_1h=[],    # empty — should return None
@@ -81,7 +81,7 @@ async def test_strategy_returns_none_with_insufficient_candles():
 @pytest.mark.asyncio
 async def test_strategy_returns_signal_or_none_on_uptrend():
     """Strategy must return Signal or None — never raises."""
-    s = V4MomentumStrategy(symbols=["BTC-USDT"])
+    s = MomentumStrategy(symbols=["BTC-USDT"])
     ctx = make_context("BTC-USDT", trend="up")
     result = await s.evaluate(ctx)
     # Must be Signal or None — never an exception
@@ -91,7 +91,7 @@ async def test_strategy_returns_signal_or_none_on_uptrend():
 @pytest.mark.asyncio
 async def test_signal_direction_is_valid():
     """Any signal returned must have a valid direction."""
-    s = V4MomentumStrategy(symbols=["BTC-USDT"])
+    s = MomentumStrategy(symbols=["BTC-USDT"])
     ctx = make_context("BTC-USDT", trend="up")
     result = await s.evaluate(ctx)
     if result is not None:
@@ -100,7 +100,7 @@ async def test_signal_direction_is_valid():
             SignalDirection.SHORT,
             SignalDirection.FLAT,
         }
-        assert result.strategy_id == "v4_momentum"
+        assert result.strategy_id == "momentum_v2"
         assert result.symbol == "BTC-USDT"
         assert 0.0 <= result.calibrated_score <= 1.0
         assert result.kelly_fraction <= 0.15   # cap enforced

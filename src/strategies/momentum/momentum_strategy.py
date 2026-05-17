@@ -69,13 +69,13 @@ REGIME_M4: dict[str, float] = {
 BLOCKED_REGIMES = {"BEAR_TREND", "PANIC_LIQUIDATION"}
 
 
-class V4MomentumStrategy(BaseStrategy):
+class MomentumStrategy(BaseStrategy):
 
     REGIME_THRESHOLDS = REGIME_THRESHOLDS
     MIN_EV_MULTIPLIER = 3.0
     ROUND_TRIP_FEE    = 0.005
 
-    def __init__(self, symbols: list[str], strategy_id: str = "v4_momentum") -> None:
+    def __init__(self, symbols: list[str], strategy_id: str = "momentum_v2") -> None:
         super().__init__(strategy_id=strategy_id, symbols=symbols)
         self._platt = PlattCalibrator(coef_path=MODELS_DIR / "calibration_coef.json")
 

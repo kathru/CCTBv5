@@ -44,7 +44,7 @@ load_dotenv(ROOT / ".env")
 
 from src.core.models import Candle
 from src.replay.backtest_engine import BacktestEngine
-from src.strategies.momentum.v4_strategy import V4MomentumStrategy
+from src.strategies.momentum.momentum_strategy import MomentumStrategy
 from src.strategies.ml.inference import PlattCalibrator
 from src.strategies.base import StrategyContext
 
@@ -153,7 +153,7 @@ def to_candle_objects(raw: list[dict], symbol: str) -> list[Candle]:
 def score_raw(candles_window: list[dict]) -> float | None:
     """
     Computa score bruto V4 v2 para um ponto.
-    DEVE ser idêntico ao _score_signal() em v4_strategy.py.
+    DEVE ser idêntico ao _score_signal() em momentum_strategy.py.
     """
     if len(candles_window) < 21:
         return None
@@ -317,7 +317,7 @@ async def run_fold_backtest(
 ) -> dict:
     """Cria estratégia com coeficientes do fold e roda backtest."""
 
-    class CalibratedStrategy(V4MomentumStrategy):
+    class CalibratedStrategy(MomentumStrategy):
         """Strategy com Platt coefficients injetados para este fold.
         No WFO, BEAR_TREND NÃO bloqueia — queremos medir performance em todos os regimes.
         """

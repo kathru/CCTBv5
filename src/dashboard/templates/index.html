@@ -1202,7 +1202,7 @@ function buildSignalFeed(entries){
   return entries.slice(0,30).map(e=>{
     const t=new Date(e.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     const sym=e.symbol.replace('-USDT','');
-    const scorePct=(e.score*100).toFixed(0)+'%';
+    const scorePct=(e.score*100).toFixed(1)+'%';
     const ev=e.ev!=null?(e.ev>=0?'+':'')+(e.ev*100).toFixed(4):'–';
     const evCls=e.ev>0.001?'pos':e.ev<-0.001?'neg':'neu';
     // Action pill
@@ -1339,7 +1339,7 @@ function buildCards(prices,sym,exits){
         </div>
         <div style="text-align:right;">
           <div style="font-size:1.5rem;font-weight:900;letter-spacing:-1px;line-height:1">${p>0?usd(p,2):'–'}</div>
-          <div style="font-size:0.6rem;color:#4b5563;margin-top:3px;">thr ${(thr*100).toFixed(0)}%</div>
+          <div style="font-size:0.6rem;color:#4b5563;margin-top:3px;">thr ${(thr*100).toFixed(1)}%</div>
         </div>
       </div>
 
@@ -1348,7 +1348,7 @@ function buildCards(prices,sym,exits){
         <div class="action-pill ${act.c}">${act.l}</div>
         <div class="score-wrap">
           <div class="score-fill" style="width:${sPct.toFixed(1)}%;background:${sCol};${isBuy?'box-shadow:0 0 8px '+sCol+'80':''}">
-            <div class="score-label">${sPct.toFixed(0)}%</div>
+            <div class="score-label">${sPct.toFixed(1)}%</div>
           </div>
           <div class="score-thresh" style="left:${tPct.toFixed(1)}%"></div>
         </div>
@@ -1867,7 +1867,7 @@ async function updateAll(){
     const m5=f.m5_candle     ||0;
     const factors={m1,m2,m3,m4,m5};
     ['m1','m2','m3','m4','m5'].forEach(k=>{
-      const v=factors[k],pct=(v*100).toFixed(0)+'%';
+      const v=factors[k],pct=(v*100).toFixed(1)+'%';
       const wEl=document.getElementById('w-'+k);
       const bEl=document.getElementById('wb-'+k);
       if(wEl) wEl.textContent=pct;
@@ -1908,8 +1908,8 @@ async function updateAll(){
       sFill.style.width=Math.min(rawScore,100).toFixed(1)+'%';
       sFill.style.background=col;
     }
-    if(sNow) sNow.textContent=rawScore.toFixed(0)+'%';
-    if(sThr) sThr.textContent=thr.toFixed(0)+'%';
+    if(sNow) sNow.textContent=rawScore.toFixed(1)+'%';
+    if(sThr) sThr.textContent=thr.toFixed(1)+'%';
     const sThrLine=document.getElementById('motor-score-thr-line');
     if(sThrLine) sThrLine.style.left=Math.min(thr,100).toFixed(1)+'%';
 
@@ -1921,14 +1921,14 @@ async function updateAll(){
     if(tpEl) tpEl.textContent=`+3.0%`;
 
     // Threshold zone highlight — first boundary = actual threshold (regime-dependent)
-    const thrInt=Math.round(thr);
+    const thrVal=parseFloat(thr.toFixed(1));
     const holdLbl=document.getElementById('tz-hold-lbl');
     const reduceLbl=document.getElementById('tz-reduce-lbl');
-    if(holdLbl)   holdLbl.textContent=`<${thrInt}%`;
-    if(reduceLbl) reduceLbl.textContent=`${thrInt}–65%`;
+    if(holdLbl)   holdLbl.textContent=`<${thrVal.toFixed(1)}%`;
+    if(reduceLbl) reduceLbl.textContent=`${thrVal.toFixed(1)}–65%`;
     const zones=[
-      {id:'tz-hold',  min:0,      max:thrInt},
-      {id:'tz-reduce',min:thrInt, max:65},
+      {id:'tz-hold',  min:0,       max:thrVal},
+      {id:'tz-reduce',min:thrVal,  max:65},
       {id:'tz-normal',min:65,     max:75},
       {id:'tz-agg',   min:75,     max:100},
     ];

@@ -1,0 +1,93 @@
+name: Daily Calibration
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 02:00 UTC todos os dias
+  workflow_dispatch:        # permite rodar manualmente pelo GitHub
+
+jobs:
+  calibrate:
+    name: Incremental Calibration
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # necessário para push do calibration_coef.json
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install numpy requests python-dotenv
+
+      # Restaura banco SQLite do cache entre runs
+      - name: Restore calibration DB
+        id: cache-db
+        uses: actions/cache@v4
+        with:
+          path: data/calibration.db
+          key: calibration-db-${{ runner.os }}
+          restore-keys: calibration-db-
+
+      # Se banco não existe, faz bootstrap a partir dos caches JSON já no repo
+      - name: Bootstrap DB from JSON cache (first run)
+        if: steps.cache-db.outputs.cache-hit != 'true'
+        run: |
+          echo "Banco não encontrado — bootstrap via cache JSON..."
+          python scripts/recalibrate.py --from-cache
+        env:
+          PYTHONPATH: .
+
+      # Roda calibração incremental
+      - name: Run incremental calibration
+        run: python scripts/recalibrate.py --incremental
+        env:
+          PYTHONPATH: .
+
+      # Persiste banco atualizado no cache
+      - name: Save calibration DB to cache
+        uses: actions/cache/save@v4
+        with:
+          path: data/calibration.db
+          key: calibration-db-${{ runner.os }}-${{ github.run_id }}
+
+      # Verifica se houve mudança no coeficiente
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet data/models/calibration_coef.json && \
+            echo "changed=false" >> $GITHUB_OUTPUT || \
+            echo "changed=true" >> $GITHUB_OUTPUT
+
+      # Commita e faz push se houve atualização
+      - name: Commit updated calibration
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/models/calibration_coef.json
+          git commit -m "chore: recalibração incremental $(date -u '+%Y-%m-%d')"
+          git push
+
+      # Deploy no Oracle via SSH
+      - name: Deploy to Oracle
+        if: steps.changes.outputs.changed == 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host:     ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key:      ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            cd ${{ secrets.ORACLE_PROJECT_PATH }}
+            git pull
+            sudo docker compose restart cctb
+            echo "Deploy concluído: $(date -u)"
+
+      - name: Skip deploy (no changes)
+        if: steps.changes.outputs.changed == 'false'
+        run: echo "Calibração sem mudanças — deploy ignorado."

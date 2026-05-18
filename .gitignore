@@ -8,3 +8,6 @@ __pycache__/
 logs/
 *.log
 data/historical/
+
+# Calibration DB (persistido via GitHub Actions cache, não no git)
+data/calibration.db

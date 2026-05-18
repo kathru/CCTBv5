@@ -38,7 +38,7 @@ Set-Location $PROJECT_DIR
 # ── 0. Git pull — sincroniza com remoto antes de qualquer coisa ───────────────
 Write-Step "Sincronizando com GitHub (git pull)..."
 git pull --rebase
-if ($LASTEXITCODE -ne 0) { Write-Fail "git pull falhou — resolva conflitos manualmente"; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Fail "git pull falhou - resolva conflitos manualmente"; exit 1 }
 Write-Ok "Repositório atualizado"
 
 # ── 1. Git status ──────────────────────────────────────────────────────────────
@@ -51,7 +51,8 @@ if ($status) {
     }
     Write-Step "Commitando alterações: '$msg'"
     git add -A
-    git commit -m "$msg`n`nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+    $coauthor = "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+    git commit -m "$msg`n`n$coauthor"
     if ($LASTEXITCODE -ne 0) { Write-Fail "git commit falhou"; exit 1 }
     Write-Ok "Commit feito"
 } else {

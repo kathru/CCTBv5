@@ -1520,6 +1520,7 @@ function renderGovernance(status, drift, live, schema){
         driftBadge.textContent=maxPsi<0.1?'ESTÁVEL':maxPsi<0.2?'ATENÇÃO':'DRIFT';
         driftBadge.className='hbadge '+(maxPsi<0.1?'hbadge-green':maxPsi<0.2?'hbadge-yellow':'hbadge-red');
       }
+      const FLABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'};
       driftEl.innerHTML=keys.map(k=>{
         const f=features[k];
         const psi=f.psi!=null?f.psi.toFixed(3):'–';
@@ -1527,7 +1528,7 @@ function renderGovernance(status, drift, live, schema){
         const lbl=psiLabel(f.psi);
         const barW=f.psi!=null?Math.min(f.psi/0.3*100,100).toFixed(0):0;
         return`<div style="display:grid;grid-template-columns:120px 1fr 44px 56px;align-items:center;gap:8px;">
-          <span style="font-size:0.65rem;color:var(--text);font-weight:600">${k}</span>
+          <span style="font-size:0.65rem;color:var(--text);font-weight:600">${FLABELS[k]||k}</span>
           <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;">
             <div style="height:15px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
           </div>
@@ -1558,7 +1559,7 @@ function renderGovernance(status, drift, live, schema){
         const n=s.n||0;
         return`<div style="display:grid;grid-template-columns:120px 1fr auto;align-items:center;gap:8px;padding:3px 0;">
           <div>
-            <span style="font-size:0.65rem;color:var(--text);font-weight:600">${k}</span>
+            <span style="font-size:0.65rem;color:var(--text);font-weight:600">${{'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'}[k]||k}</span>
             <span style="font-size:0.58rem;color:var(--muted);margin-left:5px">w:${w}</span>
           </div>
           <div style="font-size:0.6rem;color:var(--muted)">
@@ -1587,7 +1588,7 @@ function renderGovernance(status, drift, live, schema){
           const lb=f.lookback||0;
           const safe=f.leakage_safe;
           return`<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:7px 9px;text-align:center;">
-            <div style="font-size:0.65rem;font-weight:700;color:var(--text);margin-bottom:3px">${k.replace('_',' ')}</div>
+            <div style="font-size:0.65rem;font-weight:700;color:var(--text);margin-bottom:3px">${{'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'}[k]||k.replace('_',' ')}</div>
             <div style="font-size:1rem;font-weight:900;color:var(--blue)">${w}%</div>
             <div style="font-size:0.58rem;color:var(--muted);margin-top:2px">lb:${lb} · ${safe?'<span style="color:var(--green)">safe</span>':'<span style="color:var(--red)">⚠</span>'}</div>
           </div>`;

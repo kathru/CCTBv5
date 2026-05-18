@@ -35,13 +35,7 @@ function Write-Fail($text) {
 
 Set-Location $PROJECT_DIR
 
-# ── 0. Git pull — sincroniza com remoto antes de qualquer coisa ───────────────
-Write-Step "Sincronizando com GitHub (git pull)..."
-git pull --rebase
-if ($LASTEXITCODE -ne 0) { Write-Fail "git pull falhou - resolva conflitos manualmente"; exit 1 }
-Write-Ok "Repositório atualizado"
-
-# ── 1. Git status ──────────────────────────────────────────────────────────────
+# ── 0. Commit local primeiro (se houver mudanças) ─────────────────────────────
 Write-Step "Verificando git status..."
 $status = git status --porcelain
 if ($status) {
@@ -58,6 +52,13 @@ if ($status) {
 } else {
     Write-Host "  (nenhuma alteração para commitar)" -ForegroundColor Gray
 }
+
+# ── 2. Git push ────────────────────────────────────────────────────────────────
+# ── 1b. Pull remoto (após commit local, antes do push) ────────────────────────
+Write-Step "Sincronizando com GitHub (git pull)..."
+git pull --rebase
+if ($LASTEXITCODE -ne 0) { Write-Fail "git pull falhou - resolva conflitos manualmente"; exit 1 }
+Write-Ok "Repositorio atualizado"
 
 # ── 2. Git push ────────────────────────────────────────────────────────────────
 Write-Step "Pushing para GitHub..."

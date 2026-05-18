@@ -59,7 +59,7 @@ class OKXClient:
         if self._client is None:
             self._client = httpx.AsyncClient(
                 base_url=OKX_BASE,
-                timeout=10.0,
+                timeout=httpx.Timeout(connect=5.0, read=8.0, write=5.0, pool=5.0),
                 headers={"Content-Type": "application/json"},
             )
         return self._client

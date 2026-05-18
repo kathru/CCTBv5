@@ -88,11 +88,14 @@ class MarketEngine:
     async def _loop(self) -> None:
         while self._running:
             try:
-                await self._poll_cycle()
+                await asyncio.wait_for(self._poll_cycle(), timeout=30.0)
                 if self._on_poll_callback:
                     self._on_poll_callback()
             except asyncio.CancelledError:
                 break
+            except TimeoutError:
+                self._error_count += 1
+                logger.warning("MarketEngine poll timeout (>30s) — skipping cycle")
             except Exception as exc:
                 self._error_count += 1
                 logger.error("MarketEngine poll error: %s", exc, exc_info=True)

@@ -618,8 +618,8 @@
     <div style="margin-bottom:14px;">
       <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">Zona de operação (score atual)</div>
       <div class="thresh-row" id="thresh-row">
-        <div class="thresh-box t-hold"   id="tz-hold">  <span class="tval">&lt;56%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">HOLD</div></div>
-        <div class="thresh-box t-reduce" id="tz-reduce"><span class="tval">56–65%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">REDUZIDO ½×</div></div>
+        <div class="thresh-box t-hold"   id="tz-hold">  <span class="tval" id="tz-hold-lbl">&lt;56%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">HOLD</div></div>
+        <div class="thresh-box t-reduce" id="tz-reduce"><span class="tval" id="tz-reduce-lbl">56–65%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">REDUZIDO ½×</div></div>
         <div class="thresh-box t-normal" id="tz-normal"><span class="tval">65–75%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">NORMAL 1×</div></div>
         <div class="thresh-box t-agg"    id="tz-agg">   <span class="tval">75%+</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">AGRESSIVO 1.5×</div></div>
       </div>
@@ -1926,12 +1926,17 @@ async function updateAll(){
     if(slEl) slEl.textContent=`-1.5%`;
     if(tpEl) tpEl.textContent=`+3.0%`;
 
-    // Threshold zone highlight
+    // Threshold zone highlight — first boundary = actual threshold (regime-dependent)
+    const thrInt=Math.round(thr);
+    const holdLbl=document.getElementById('tz-hold-lbl');
+    const reduceLbl=document.getElementById('tz-reduce-lbl');
+    if(holdLbl)   holdLbl.textContent=`<${thrInt}%`;
+    if(reduceLbl) reduceLbl.textContent=`${thrInt}–65%`;
     const zones=[
-      {id:'tz-hold',  min:0,  max:56},
-      {id:'tz-reduce',min:56, max:65},
-      {id:'tz-normal',min:65, max:75},
-      {id:'tz-agg',   min:75, max:100},
+      {id:'tz-hold',  min:0,      max:thrInt},
+      {id:'tz-reduce',min:thrInt, max:65},
+      {id:'tz-normal',min:65,     max:75},
+      {id:'tz-agg',   min:75,     max:100},
     ];
     zones.forEach(z=>{
       const el=document.getElementById(z.id); if(!el) return;

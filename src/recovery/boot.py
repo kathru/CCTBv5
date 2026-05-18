@@ -20,6 +20,7 @@ from pathlib import Path
 from ..core.bus import EventBus
 from ..core.events import SystemStatusEvent, Topic
 from ..core.events.system_events import SystemStatus
+from ..monitoring.signal_log import signal_audit_log
 from ..persistence.cache import Cache
 from ..persistence.postgres import Database
 from .reconciler import BootReconciler, ExchangeStateProtocol
@@ -122,6 +123,9 @@ class BootSequence:
                     ),
                 )
                 return False
+
+            # Restore signal audit log from DB
+            await signal_audit_log.restore_from_db(self._db)
 
             # All good — open gate and start trading
             if self._order_manager:

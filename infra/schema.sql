@@ -107,3 +107,23 @@ CREATE TABLE IF NOT EXISTS risk_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_risk_events_time ON risk_events(timestamp DESC);
+
+-- ── Signal evaluations (feed de sinais persistente) ──────────
+CREATE TABLE IF NOT EXISTS signal_evaluations (
+    id          BIGSERIAL   PRIMARY KEY,
+    ts          TIMESTAMPTZ NOT NULL,
+    symbol      TEXT        NOT NULL,
+    regime      TEXT        NOT NULL,
+    score       NUMERIC     NOT NULL,
+    calibrated  NUMERIC     NOT NULL,
+    threshold   NUMERIC     NOT NULL,
+    ev          NUMERIC     NOT NULL,
+    direction   TEXT        NOT NULL,
+    result      TEXT        NOT NULL,
+    detail      TEXT        NOT NULL,
+    factors     JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_seval_ts     ON signal_evaluations(ts DESC);
+CREATE INDEX IF NOT EXISTS idx_seval_symbol ON signal_evaluations(symbol);
+CREATE INDEX IF NOT EXISTS idx_seval_result ON signal_evaluations(result);

@@ -1,27 +1,23 @@
 """
 Signal Audit Log — registra cada avaliação de sinal com resultado completo.
 
-Singleton acessível por qualquer estratégia. Ring buffer de 500 entradas.
-Exposto via GET /api/signals/log para o dashboard.
+Singleton acessível por qualquer estratégia. Ring buffer de 500 entradas em memória,
+persistido no PostgreSQL para sobreviver a restarts.
 
-Resultado de cada avaliação:
-  SIGNAL          → passou todos os filtros, sinal gerado
-  NO_CANDLES      → candles insuficientes
-  REGIME_BLOCKED  → regime PANIC ou VACUUM
-  SCORE_LOW       → score calibrado abaixo do threshold
-  EV_LOW          → expected value abaixo do mínimo
-  DIRECTION_FLAT  → sem direção clara (preço lateral)
-  GATE_CLOSED     → OMS gate fechado (reconciliação ou kill switch)
-  RISK_BLOCKED    → bloqueado pelo RiskEngine
+Exposto via GET /api/signals/log para o dashboard.
 """
 
+import asyncio
+import json
+import logging
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+logger = logging.getLogger(__name__)
+
 MAX_ENTRIES = 500
 
-# Ícones por resultado
 RESULT_ICON = {
     "SIGNAL":         "🟢",
     "NO_CANDLES":     "⚪",
@@ -39,14 +35,14 @@ class SignalAuditEntry:
     timestamp:   datetime
     symbol:      str
     regime:      str
-    score:       float        # score bruto (0–1)
-    calibrated:  float        # score calibrado (probabilidade)
-    threshold:   float        # threshold do regime
-    ev:          float        # expected value
-    direction:   str          # LONG | FLAT | N/A
-    result:      str          # ver constantes acima
-    detail:      str          # mensagem legível do motivo
-    factors:     dict = field(default_factory=dict)   # m1, m2, m3, m4
+    score:       float
+    calibrated:  float
+    threshold:   float
+    ev:          float
+    direction:   str
+    result:      str
+    detail:      str
+    factors:     dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -67,18 +63,91 @@ class SignalAuditEntry:
 
 class SignalAuditLog:
     """
-    Ring buffer thread-safe (asyncio single-thread) de avaliações de sinal.
-    Singleton — use `signal_audit_log` exportado abaixo.
+    Ring buffer de avaliações de sinal — persistido no PostgreSQL.
     """
 
     def __init__(self, maxlen: int = MAX_ENTRIES) -> None:
         self._entries: deque[SignalAuditEntry] = deque(maxlen=maxlen)
         self._counters: dict[str, int] = {}
         self._started_at: datetime = datetime.now(UTC)
+        self._db = None   # injetado via set_db() no boot
+
+    def set_db(self, db: object) -> None:
+        """Injeta o Database após inicialização assíncrona."""
+        self._db = db
 
     def record(self, entry: SignalAuditEntry) -> None:
-        self._entries.appendleft(entry)   # mais recente primeiro
+        self._entries.appendleft(entry)
         self._counters[entry.result] = self._counters.get(entry.result, 0) + 1
+        # Persiste no PostgreSQL sem bloquear
+        if self._db is not None:
+            asyncio.create_task(self._persist(entry))
+
+    async def _persist(self, entry: SignalAuditEntry) -> None:
+        try:
+            async with self._db.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO signal_evaluations
+                        (ts, symbol, regime, score, calibrated, threshold,
+                         ev, direction, result, detail, factors)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                    """,
+                    entry.timestamp,
+                    entry.symbol,
+                    entry.regime,
+                    entry.score,
+                    entry.calibrated,
+                    entry.threshold,
+                    entry.ev,
+                    entry.direction,
+                    entry.result,
+                    entry.detail,
+                    json.dumps({k: round(v, 4) for k, v in entry.factors.items()}),
+                )
+        except Exception as exc:
+            logger.debug("signal_log persist error: %s", exc)
+
+    async def restore_from_db(self, db: object) -> None:
+        """
+        Chamado no boot — carrega os últimos MAX_ENTRIES do PostgreSQL
+        para restaurar o histórico após restart.
+        """
+        self.set_db(db)
+        try:
+            async with db.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT ts, symbol, regime, score, calibrated, threshold,
+                           ev, direction, result, detail, factors
+                    FROM signal_evaluations
+                    ORDER BY ts DESC
+                    LIMIT $1
+                    """,
+                    MAX_ENTRIES,
+                )
+            loaded = 0
+            for row in reversed(rows):   # oldest-first para appendleft ficar certo
+                factors = json.loads(row["factors"]) if row["factors"] else {}
+                entry = SignalAuditEntry(
+                    timestamp=row["ts"],
+                    symbol=row["symbol"],
+                    regime=row["regime"],
+                    score=float(row["score"]),
+                    calibrated=float(row["calibrated"]),
+                    threshold=float(row["threshold"]),
+                    ev=float(row["ev"]),
+                    direction=row["direction"],
+                    result=row["result"],
+                    detail=row["detail"],
+                    factors=factors,
+                )
+                self._entries.appendleft(entry)
+                self._counters[entry.result] = self._counters.get(entry.result, 0) + 1
+                loaded += 1
+            logger.info("SignalAuditLog: %d entradas restauradas do PostgreSQL", loaded)
+        except Exception as exc:
+            logger.warning("SignalAuditLog: falha ao restaurar do DB: %s", exc)
 
     def recent(self, limit: int = 100) -> list[dict]:
         return [e.to_dict() for e in list(self._entries)[:limit]]
@@ -98,7 +167,6 @@ class SignalAuditLog:
         }
 
     def symbol_stats(self) -> dict:
-        """Contagem de sinais gerados por símbolo."""
         by_sym: dict[str, dict] = {}
         for e in self._entries:
             s = by_sym.setdefault(e.symbol, {"total": 0, "signals": 0})
@@ -108,29 +176,20 @@ class SignalAuditLog:
         return by_sym
 
     def funnel(self, window_minutes: int | None = None) -> dict:
-        """
-        Funil de filtragem: mostra onde cada sinal é bloqueado.
-
-        window_minutes=None → todos os dados históricos (contadores)
-        window_minutes=60   → apenas últimas 60 min (a partir das entries)
-        """
-        # Ordem lógica do funil (mais cedo para mais tarde no pipeline)
         FUNNEL_ORDER = [
-            ("NO_CANDLES",     "Sem candles",          "var(--muted)"),
-            ("REGIME_BLOCKED", "Regime bloqueado",     "var(--red)"),
-            ("SCORE_LOW",      "Score baixo",          "var(--yellow)"),
-            ("EV_LOW",         "EV negativo",          "var(--orange)"),
-            ("RISK_BLOCKED",   "Risk Engine",          "var(--red)"),
-            ("GATE_CLOSED",    "Gate fechado",         "var(--red)"),
-            ("DIRECTION_FLAT", "Direção plana",        "var(--muted)"),
-            ("SIGNAL",         "Sinal executado",      "var(--green)"),
+            ("NO_CANDLES",     "Sem candles",       "var(--muted)"),
+            ("REGIME_BLOCKED", "Regime bloqueado",  "var(--red)"),
+            ("SCORE_LOW",      "Score baixo",       "var(--yellow)"),
+            ("EV_LOW",         "EV negativo",       "var(--orange)"),
+            ("RISK_BLOCKED",   "Risk Engine",       "var(--red)"),
+            ("GATE_CLOSED",    "Gate fechado",      "var(--red)"),
+            ("DIRECTION_FLAT", "Direção plana",     "var(--muted)"),
+            ("SIGNAL",         "Sinal executado",   "var(--green)"),
         ]
 
         if window_minutes is None:
-            # Usa contadores acumulados (toda a sessão)
             counts = dict(self._counters)
         else:
-            # Filtra entries pela janela de tempo
             cutoff = datetime.now(UTC).timestamp() - window_minutes * 60
             counts: dict[str, int] = {}
             for e in self._entries:
@@ -139,13 +198,12 @@ class SignalAuditLog:
 
         total = sum(counts.values()) or 1
         signals = counts.get("SIGNAL", 0)
-        blocked = total - signals
 
         steps = []
         for result_key, label, color in FUNNEL_ORDER:
             n = counts.get(result_key, 0)
             if n == 0 and result_key not in ("SIGNAL",):
-                continue  # omite etapas sem ocorrências
+                continue
             steps.append({
                 "result":  result_key,
                 "label":   label,
@@ -155,7 +213,6 @@ class SignalAuditLog:
                 "bar_pct": round(100 * n / total, 1),
             })
 
-        # Por símbolo
         by_sym: dict[str, dict] = {}
         entries_src = self._entries if window_minutes is None else [
             e for e in self._entries
@@ -166,13 +223,13 @@ class SignalAuditLog:
             s[e.result] = s.get(e.result, 0) + 1
 
         return {
-            "total":        total,
-            "signals":      signals,
-            "blocked":      blocked,
-            "execution_rate": round(100 * signals / total, 2),
-            "window_minutes": window_minutes,
-            "steps":        steps,
-            "by_symbol":    by_sym,
+            "total":            total,
+            "signals":          signals,
+            "blocked":          total - signals,
+            "execution_rate":   round(100 * signals / total, 2),
+            "window_minutes":   window_minutes,
+            "steps":            steps,
+            "by_symbol":        by_sym,
         }
 
 

@@ -1,41 +1,41 @@
 {
   "schema_version": "2.0.0",
   "symbol": "BTC-USDT",
-  "n_samples": 11974,
-  "win_rate": 0.2424,
-  "computed_at": "2026-05-17T16:32:33.156310+00:00",
+  "n_samples": 20828,
+  "win_rate": 0.2582,
+  "computed_at": "2026-05-18T23:49:21.481876+00:00",
   "features": {
     "m3_volume": {
-      "spearman_corr": 0.0095,
-      "perm_importance": 0.0025,
-      "relative_importance": 0.9615,
+      "spearman_corr": 0.0206,
+      "perm_importance": 0.0041,
+      "relative_importance": 0.5694,
       "schema_weight": 0.2,
       "aligned": false
     },
     "m2_consistency": {
-      "spearman_corr": 0.026,
-      "perm_importance": 0.0001,
-      "relative_importance": 0.0385,
+      "spearman_corr": 0.008,
+      "perm_importance": 0.0012,
+      "relative_importance": 0.1667,
       "schema_weight": 0.25,
-      "aligned": false
-    },
-    "m5_candle": {
-      "spearman_corr": 0.0035,
-      "perm_importance": -0.0,
-      "relative_importance": -0.0,
-      "schema_weight": 0.1,
-      "aligned": false
+      "aligned": true
     },
     "m4_regime_str": {
-      "spearman_corr": -0.0505,
-      "perm_importance": -0.0035,
-      "relative_importance": 0.0,
+      "spearman_corr": -0.0472,
+      "perm_importance": 0.001,
+      "relative_importance": 0.1389,
       "schema_weight": 0.2,
-      "aligned": false
+      "aligned": true
+    },
+    "m5_candle": {
+      "spearman_corr": -0.037,
+      "perm_importance": 0.0009,
+      "relative_importance": 0.125,
+      "schema_weight": 0.1,
+      "aligned": true
     },
     "m1_momentum": {
-      "spearman_corr": -0.0279,
-      "perm_importance": -0.006,
+      "spearman_corr": -0.0412,
+      "perm_importance": -0.0034,
       "relative_importance": 0.0,
       "schema_weight": 0.25,
       "aligned": false

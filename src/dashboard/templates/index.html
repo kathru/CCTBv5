@@ -499,16 +499,17 @@
       <!-- Sizing detail -->
       <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px;">
         <!-- Kelly bar -->
-        <div style="display:grid;grid-template-columns:80px 1fr 48px 70px;align-items:center;gap:8px;">
+        <div style="display:grid;grid-template-columns:80px 1fr 70px;align-items:center;gap:8px;">
           <span style="font-size:0.6rem;color:rgba(255,255,255,0.5)">Kelly score</span>
-          <div style="position:relative;height:15px;background:#0d1520;border-radius:7px;">
-            <div id="motor-kelly-fill" style="height:15px;border-radius:7px;background:var(--blue);transition:width 0.5s;width:0%"></div>
-            <div id="motor-kelly-cap-line" style="position:absolute;top:-2px;width:2px;height:19px;background:rgba(255,255,255,0.3);border-radius:2px;left:8%"></div>
+          <div style="position:relative;height:18px;background:#0d1520;border-radius:9px;overflow:hidden;">
+            <div id="motor-kelly-fill" style="position:relative;height:100%;border-radius:9px;background:var(--blue);transition:width 0.5s;width:0%">
+              <span id="motor-kelly-val" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:0.68rem;font-weight:800;color:rgba(255,255,255,0.9);white-space:nowrap;">–</span>
+            </div>
+            <div id="motor-kelly-cap-line" style="position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;left:8%"></div>
           </div>
-          <span style="font-size:0.72rem;font-weight:800;color:var(--blue);text-align:right" id="motor-kelly-val">–</span>
-          <span style="font-size:0.6rem;color:rgba(255,255,255,0.35)" id="motor-kelly-cap-lbl">cap –%</span>
+          <span style="font-size:0.6rem;color:rgba(255,255,255,0.35);text-align:right" id="motor-kelly-cap-lbl">cap –%</span>
         </div>
-        <!-- Notional + SL/TP -->
+        <!-- Notional + SL/TP + Score atual -->
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:7px;padding:4px 10px;text-align:center;">
             <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.8px">Notional est.</div>
@@ -522,13 +523,15 @@
             <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.8px">Take Profit</div>
             <div style="font-size:0.82rem;font-weight:800;color:var(--green)" id="motor-tp">+3.0%</div>
           </div>
-          <div style="flex:1;min-width:100px;">
-            <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);margin-bottom:2px">Score atual</div>
-            <div style="height:15px;background:#0d1520;border-radius:7px;position:relative;">
-              <div id="motor-score-fill" style="height:15px;border-radius:7px;background:var(--red);transition:width 0.5s;width:0%"></div>
-              <div style="position:absolute;top:-3px;bottom:-3px;left:56%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;" title="threshold 56%"></div>
+          <div style="flex:1;min-width:120px;">
+            <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);margin-bottom:3px">Score atual</div>
+            <div style="height:18px;background:#0d1520;border-radius:9px;position:relative;overflow:hidden;">
+              <div id="motor-score-fill" style="position:relative;height:100%;border-radius:9px;background:var(--red);transition:width 0.5s;width:0%">
+                <span id="motor-score-now" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:0.68rem;font-weight:800;color:rgba(255,255,255,0.9);white-space:nowrap;">–</span>
+              </div>
+              <div id="motor-score-thr-line" style="position:absolute;top:0;bottom:0;left:56%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;"></div>
             </div>
-            <div style="font-size:0.6rem;color:rgba(255,255,255,0.4);margin-top:2px"><span id="motor-score-now">–</span> / thr <span id="motor-score-thr">56%</span></div>
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.3);margin-top:2px">thr <span id="motor-score-thr">56%</span></div>
           </div>
         </div>
       </div>
@@ -579,31 +582,31 @@
       <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Fatores do Score</div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <div style="display:grid;grid-template-columns:82px 1fr 36px 44px;align-items:center;gap:8px;">
-          <span style="font-size:0.62rem;color:var(--text)">Momentum</span>
+          <span style="font-size:0.62rem;color:var(--text)">Momentum (M1)</span>
           <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m1" style="height:15px;border-radius:7px;background:#3b82f6;transition:width 0.5s;width:0%"></div></div>
           <span style="font-size:0.65rem;font-weight:700;color:#3b82f6;text-align:right" id="w-m1">–</span>
           <span style="font-size:0.58rem;color:var(--muted)">peso 25%</span>
         </div>
         <div style="display:grid;grid-template-columns:82px 1fr 36px 44px;align-items:center;gap:8px;">
-          <span style="font-size:0.62rem;color:var(--text)">Estrutura</span>
+          <span style="font-size:0.62rem;color:var(--text)">Estrutura (M2)</span>
           <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m2" style="height:15px;border-radius:7px;background:#10b981;transition:width 0.5s;width:0%"></div></div>
           <span style="font-size:0.65rem;font-weight:700;color:#10b981;text-align:right" id="w-m2">–</span>
           <span style="font-size:0.58rem;color:var(--muted)">peso 25%</span>
         </div>
         <div style="display:grid;grid-template-columns:82px 1fr 36px 44px;align-items:center;gap:8px;">
-          <span style="font-size:0.62rem;color:var(--text)">Volume</span>
+          <span style="font-size:0.62rem;color:var(--text)">Volume (M3)</span>
           <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:15px;border-radius:7px;background:#f59e0b;transition:width 0.5s;width:0%"></div></div>
           <span style="font-size:0.65rem;font-weight:700;color:#f59e0b;text-align:right" id="w-m3">–</span>
           <span style="font-size:0.58rem;color:var(--muted)">peso 20%</span>
         </div>
         <div style="display:grid;grid-template-columns:82px 1fr 36px 44px;align-items:center;gap:8px;">
-          <span style="font-size:0.62rem;color:var(--text)">Regime</span>
+          <span style="font-size:0.62rem;color:var(--text)">Regime (M4)</span>
           <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m4" style="height:15px;border-radius:7px;background:#8b5cf6;transition:width 0.5s;width:0%"></div></div>
           <span style="font-size:0.65rem;font-weight:700;color:#8b5cf6;text-align:right" id="w-m4">–</span>
           <span style="font-size:0.58rem;color:var(--muted)">peso 20%</span>
         </div>
         <div style="display:grid;grid-template-columns:82px 1fr 36px 44px;align-items:center;gap:8px;">
-          <span style="font-size:0.62rem;color:var(--text)">Candle</span>
+          <span style="font-size:0.62rem;color:var(--text)">Candle (M5)</span>
           <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m5" style="height:15px;border-radius:7px;background:#f97316;transition:width 0.5s;width:0%"></div></div>
           <span style="font-size:0.65rem;font-weight:700;color:#f97316;text-align:right" id="w-m5">–</span>
           <span style="font-size:0.58rem;color:var(--muted)">peso 10%</span>
@@ -1618,8 +1621,10 @@ function renderImportance(data){
   const sorted=keys.sort((a,b)=>(feats[b].relative_importance||0)-(feats[a].relative_importance||0));
   const maxImp=Math.max(...sorted.map(k=>Math.max(feats[k].relative_importance||0,0)),0.01);
 
+  const FEAT_LABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'};
   el.innerHTML=sorted.map(k=>{
     const f=feats[k];
+    const label=FEAT_LABELS[k]||k;
     const relImp=f.relative_importance||0;
     const schW=f.schema_weight||0;
     const aligned=f.aligned;
@@ -1633,7 +1638,7 @@ function renderImportance(data){
     const deltaSign=delta>=0?'+':'';
     return`<div style="padding:2px 0;">
       <div style="display:grid;grid-template-columns:120px 1fr 52px 80px;align-items:center;gap:8px;margin-bottom:3px;">
-        <span style="font-size:0.65rem;color:var(--text);font-weight:600">${k}</span>
+        <span style="font-size:0.65rem;color:var(--text);font-weight:600">${label}</span>
         <div style="position:relative;height:15px;background:#0d1520;border-radius:7px;overflow:visible;">
           <div style="position:absolute;top:0;left:0;height:15px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
           <div style="position:absolute;top:-3px;bottom:-3px;left:${schBarW}%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;" title="Schema weight"></div>
@@ -1910,13 +1915,15 @@ async function updateAll(){
     }
     if(sNow) sNow.textContent=rawScore.toFixed(0)+'%';
     if(sThr) sThr.textContent=thr.toFixed(0)+'%';
+    const sThrLine=document.getElementById('motor-score-thr-line');
+    if(sThrLine) sThrLine.style.left=Math.min(thr,100).toFixed(1)+'%';
 
     // SL/TP — valores de referência baseados no primeiro preço disponível
     const firstPrice=Object.values(_c.prices||{})[0]||0;
     const slEl=document.getElementById('motor-sl');
     const tpEl=document.getElementById('motor-tp');
-    if(slEl) slEl.textContent=firstPrice>0?`-1.5% / ${usd(firstPrice*0.985)}`:`-1.5%`;
-    if(tpEl) tpEl.textContent=firstPrice>0?`+3.0% / ${usd(firstPrice*1.030)}`:`+3.0%`;
+    if(slEl) slEl.textContent=`-1.5%`;
+    if(tpEl) tpEl.textContent=`+3.0%`;
 
     // Threshold zone highlight
     const zones=[

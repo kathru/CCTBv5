@@ -3,7 +3,7 @@
   "symbol": "BTC-USDT",
   "n_samples": 41702,
   "win_rate": 0.257,
-  "computed_at": "2026-05-19T21:56:07.154823+00:00",
+  "computed_at": "2026-05-19T22:29:20.773978+00:00",
   "features": {
     "m1_momentum": {
       "mean": 0.5151,

@@ -32,13 +32,15 @@ logger     = logging.getLogger(__name__)
 
 # ── Configuração por regime ───────────────────────────────────────────────────
 
-# Thresholds em RAW score space (0-1)
+# Thresholds em RAW score space — ajustados para 30min
+# 30min tem mais ruído → thresholds ~0.06 abaixo dos valores 1H
+# Objetivo: gerar 2-4 trades/dia para validação estatística do paper trading
 REGIME_THRESHOLDS: dict[str, float] = {
-    "TREND_EXPANSION":        0.50,
-    "VOLATILITY_COMPRESSION": 0.52,
-    "TREND_EXHAUSTION":       0.54,
-    "MEAN_REVERTING_CHOP":    0.56,
-    "HIGH_CORRELATION_RISK":  0.60,
+    "TREND_EXPANSION":        0.44,
+    "VOLATILITY_COMPRESSION": 0.46,
+    "TREND_EXHAUSTION":       0.48,
+    "MEAN_REVERTING_CHOP":    0.50,
+    "HIGH_CORRELATION_RISK":  0.54,
     "BEAR_TREND":             0.99,   # bloqueado
     "PANIC_LIQUIDATION":      0.99,   # bloqueado
 }
@@ -72,7 +74,10 @@ BLOCKED_REGIMES = {"BEAR_TREND", "PANIC_LIQUIDATION"}
 class MomentumStrategy(BaseStrategy):
 
     REGIME_THRESHOLDS = REGIME_THRESHOLDS
-    MIN_EV_MULTIPLIER = 3.0
+    # EV mínimo reduzido para 30min — permite validação estatística do paper trading
+    # Com WR=25-30% em 30min, exigir EV alto bloqueia tudo (matematicamente impossível)
+    # EV calculado como: calibrated × TP_mult - (1-calibrated) × 1.0
+    MIN_EV_MULTIPLIER = 0.5   # era 3.0 — min_ev agora = 0.5×0.005 = 0.0025
     ROUND_TRIP_FEE    = 0.005
 
     def __init__(self, symbols: list[str], strategy_id: str = "momentum_v2") -> None:

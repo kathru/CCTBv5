@@ -114,23 +114,13 @@ class StrategyRunner:
                 except ValueError:
                     pass
 
-            if redis_ts and redis_ts >= last_closed_ts:
-                # Candle das última hora já foi avaliado — aguarda a próxima
-                self._last_candle_ts[symbol] = redis_ts
-                logger.info("StrategyRunner: %s — candle %s já avaliado, aguardando próxima hora",
-                            symbol, redis_ts.strftime("%Y-%m-%d %H:%M UTC"))
-            else:
-                # Candle das última hora ainda não foi avaliado — avalia no boot
-                self._last_candle_ts[symbol] = last_closed_ts - timedelta(hours=1)
-                logger.info("StrategyRunner: %s — avaliando candle perdido de %s",
-                            symbol, last_closed_ts.strftime("%Y-%m-%d %H:%M UTC"))
-                await self._evaluate_all(symbol)
-                # Registra como avaliado
-                self._last_candle_ts[symbol] = last_closed_ts
-                self._last_eval[symbol] = now
-                await self._cache.set(
-                    f"last_candle_ts:{symbol}", last_closed_ts.isoformat(), ttl=10800
-                )
+            # Usa o mais recente entre Redis e o candle calculado
+            # Nunca avalia no boot — sempre aguarda a próxima hora fechar
+            ts = max(redis_ts, last_closed_ts) if redis_ts else last_closed_ts
+            self._last_candle_ts[symbol] = ts
+            await self._cache.set(f"last_candle_ts:{symbol}", ts.isoformat(), ttl=10800)
+            logger.info("StrategyRunner: %s — aguardando próxima hora (seed: %s UTC)",
+                        symbol, ts.strftime("%Y-%m-%d %H:%M"))
 
     async def stop(self) -> None:
         self._running = False

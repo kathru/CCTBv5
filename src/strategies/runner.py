@@ -93,35 +93,40 @@ class StrategyRunner:
         """
         No boot, registra o timestamp do último candle 1H fechado para cada símbolo
         sem disparar avaliação. A próxima avaliação só ocorre quando uma nova hora fechar.
+
+        Calcula matematicamente: floor(now, 1H) - 1H
+        Não depende do MarketEngine ter dados ainda.
         """
-        symbols = set()
+        symbols: set[str] = set()
         for strategy in self._strategies.values():
             symbols.update(strategy.symbols)
 
+        # Timestamp do último candle 1H fechado = hora atual truncada - 1h
+        now = datetime.now(UTC)
+        last_closed_ts = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+
         for symbol in symbols:
-            # Tenta restaurar do Redis primeiro (restart rápido)
+            # Tenta restaurar do Redis primeiro (restart durante a mesma hora)
             cached = await self._cache.get(f"last_candle_ts:{symbol}")
             if cached:
                 try:
-                    self._last_candle_ts[symbol] = datetime.fromisoformat(cached)
-                    logger.info("StrategyRunner: %s — último candle restaurado do Redis: %s",
-                                symbol, cached[:16])
+                    redis_ts = datetime.fromisoformat(cached)
+                    # Usa o mais recente entre Redis e o calculado
+                    ts = max(redis_ts, last_closed_ts)
+                    self._last_candle_ts[symbol] = ts
+                    logger.info("StrategyRunner: %s — seed via Redis: %s (aguardando próxima hora)",
+                                symbol, ts.strftime("%Y-%m-%d %H:%M UTC"))
                     continue
                 except ValueError:
                     pass
 
-            # Sem Redis: usa o candle mais recente do MarketEngine
-            candles = self._market.get_candles(symbol, EVAL_GRANULARITY, limit=2)
-            if candles:
-                latest = candles[0]  # mais recente primeiro
-                ts = latest.timestamp.replace(tzinfo=UTC) \
-                    if latest.timestamp.tzinfo is None else latest.timestamp
-                self._last_candle_ts[symbol] = ts
-                await self._cache.set(
-                    f"last_candle_ts:{symbol}", ts.isoformat(), ttl=10800
-                )
-                logger.info("StrategyRunner: %s — aguardando próxima hora (última: %s)",
-                            symbol, ts.strftime("%Y-%m-%d %H:%M"))
+            # Sem Redis: usa o calculado matematicamente
+            self._last_candle_ts[symbol] = last_closed_ts
+            await self._cache.set(
+                f"last_candle_ts:{symbol}", last_closed_ts.isoformat(), ttl=10800
+            )
+            logger.info("StrategyRunner: %s — seed calculado: %s (aguardando próxima hora)",
+                        symbol, last_closed_ts.strftime("%Y-%m-%d %H:%M UTC"))
 
     async def stop(self) -> None:
         self._running = False

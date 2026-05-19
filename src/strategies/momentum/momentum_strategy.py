@@ -127,7 +127,7 @@ class MomentumStrategy(BaseStrategy):
             return None
 
         # ── Filtro 3: EV ─────────────────────────────────────
-        ev     = self._expected_value(calibrated)
+        ev     = self._expected_value(calibrated, regime)
         min_ev = self.MIN_EV_MULTIPLIER * self.ROUND_TRIP_FEE
         if ev < min_ev:
             _log("EV_LOW",
@@ -274,14 +274,11 @@ class MomentumStrategy(BaseStrategy):
 
     def _score_signal(self, ctx: StrategyContext, regime: str) -> tuple[float, dict]:
         """
-        Modelo de scoring melhorado com 5 fatores contínuos.
-        Baseado nos achados do Walk-Forward:
-          - M1 (antigo): binário demais, normalização rígida
-          - M2 (antigo): only higher-highs, 0.4/1.0 muito abrupto
-          Fix: scoring gradual, múltiplos horizontes, confirmação multi-candle.
+        Modelo de scoring com 5 fatores contínuos.
+        M1 usa retornos 30min (curto prazo) + 1H (médio prazo) para capturar moves intra-hora.
 
         Fatores:
-          M1 Adaptive Momentum  (25%): média ponderada 5/10/20 candles
+          M1 Adaptive Momentum  (25%): blend 30min + 1H (captura moves rápidos)
           M2 Trend Consistency   (25%): % candles bullish + higher-highs E higher-lows
           M3 Volume Confirmation (20%): volume crescente + confirmação direcional
           M4 Regime Strength     (20%): distância SMA5-SMA20 normalizada
@@ -293,18 +290,27 @@ class MomentumStrategy(BaseStrategy):
         opens  = [c.open   for c in ctx.candles_1h[:10]]
         vols   = [c.volume for c in ctx.candles_1h[:20]]
 
-        # ── M1: Adaptive Momentum (25%) ──────────────────────
-        # Média ponderada de retornos em 3 horizontes
-        # Normaliza pelo ATR médio para ser robusto a volatilidade
+        # ── M1: Adaptive Momentum (25%) — blend 30min + 1H ───
         atr_20 = sum(highs[i] - lows[i] for i in range(min(10, len(highs)))) / min(10, len(highs)) if highs else closes[0] * 0.01
-        norm   = max(atr_20 * 2, closes[0] * 0.005)   # evita divisão por zero
+        norm   = max(atr_20 * 2, closes[0] * 0.005)
 
+        # Horizonte 1H (médio prazo)
         r5  = (closes[0] - closes[5])  / closes[5]  if len(closes) > 5  and closes[5]  > 0 else 0
         r10 = (closes[0] - closes[10]) / closes[10] if len(closes) > 10 and closes[10] > 0 else 0
         r20 = (closes[0] - closes[20]) / closes[20] if len(closes) > 20 and closes[20] > 0 else 0
+        m1_1h = (r5 * 0.5 + r10 * 0.3 + r20 * 0.2)
 
-        # Pesos: mais recente tem mais peso
-        momentum_weighted = (r5 * 0.5 + r10 * 0.3 + r20 * 0.2)
+        # Horizonte 30min (curto prazo — captura moves intra-hora)
+        closes_30m = [c.close for c in ctx.candles_30m[:10]] if ctx.candles_30m else []
+        if len(closes_30m) >= 4:
+            r1_30 = (closes_30m[0] - closes_30m[1]) / closes_30m[1] if closes_30m[1] > 0 else 0
+            r2_30 = (closes_30m[0] - closes_30m[3]) / closes_30m[3] if closes_30m[3] > 0 else 0
+            m1_30m = r1_30 * 0.6 + r2_30 * 0.4
+        else:
+            m1_30m = m1_1h
+
+        # Blend: 60% peso 1H (tendência), 40% peso 30min (momentum recente)
+        momentum_weighted = m1_1h * 0.60 + m1_30m * 0.40
         m1 = min(max((momentum_weighted / (norm / closes[0])) * 0.5 + 0.5, 0.0), 1.0)
 
         # ── M2: Trend Consistency (25%) ───────────────────────
@@ -380,14 +386,41 @@ class MomentumStrategy(BaseStrategy):
     def _calibrate(self, score: float) -> float:
         return self._platt.calibrate(score)
 
-    def _expected_value(self, calibrated: float) -> float:
-        # Reward 3.0R (alinha com PositionMonitor: TP = entry + ATR*3.0)
-        # Risk  1.0R (SL = entry - ATR*1.5, R = ATR*1.5)
-        # EV positivo requer P > 1/(3+1) = 25% — alcançável com IS_WR real
-        return calibrated * 3.0 - (1 - calibrated) * 1.0
+    def _expected_value(self, calibrated: float, regime: str = "") -> float:
+        """
+        EV dinâmico alinhado com o TP real por regime (position_monitor.py).
+        Reward = TP_mult, Risk = 1.0 (SL relativo ao ATR normalizado).
+        """
+        tp_by_regime = {
+            "TREND_EXPANSION":        4.0,
+            "VOLATILITY_COMPRESSION": 3.0,
+            "TREND_EXHAUSTION":       2.5,
+            "MEAN_REVERTING_CHOP":    1.5,
+            "HIGH_CORRELATION_RISK":  2.0,
+        }
+        tp = tp_by_regime.get(regime, 3.0)
+        return calibrated * tp - (1 - calibrated) * 1.0
 
     def _direction(self, ctx: StrategyContext) -> SignalDirection:
-        if len(ctx.candles_1h) < 2:
+        """
+        Direção baseada na maioria dos últimos 3 candles 1H (menos binário).
+        Também considera momentum 30min recente para não bloquear moves rápidos.
+        """
+        if len(ctx.candles_1h) < 3:
             return SignalDirection.FLAT
-        closes = [c.close for c in ctx.candles_1h[:5]]
-        return SignalDirection.LONG if closes[0] > closes[1] else SignalDirection.FLAT
+
+        closes_1h = [c.close for c in ctx.candles_1h[:4]]
+        # Maioria dos últimos 3 candles 1H são bullish (close > close anterior)?
+        bullish_count = sum(1 for i in range(3) if closes_1h[i] > closes_1h[i + 1])
+
+        # Desempate via 30min recente
+        if bullish_count >= 2:
+            return SignalDirection.LONG
+
+        # Se 30min recente é fortemente bullish (último close > 2 closes atrás), aceita
+        if ctx.candles_30m and len(ctx.candles_30m) >= 3:
+            c30 = [c.close for c in ctx.candles_30m[:3]]
+            if c30[0] > c30[2] * 1.002:   # +0.2% nos últimos 2 candles 30min
+                return SignalDirection.LONG
+
+        return SignalDirection.FLAT

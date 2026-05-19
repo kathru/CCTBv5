@@ -206,8 +206,9 @@ class StrategyRunner:
                 )
 
     async def _build_context(self, symbol: str) -> StrategyContext:
-        candles_1h = self._market.get_candles(symbol, "1H")
-        candles_6h = self._market.get_candles(symbol, "6H")
+        candles_1h  = self._market.get_candles(symbol, "1H")
+        candles_6h  = self._market.get_candles(symbol, "6H")
+        candles_30m = self._market.get_candles(symbol, "30m")
 
         pos_data = await self._cache.get_position(symbol)
         open_positions = [pos_data] if pos_data else []
@@ -216,6 +217,7 @@ class StrategyRunner:
             symbol=symbol,
             candles_1h=candles_1h,
             candles_6h=candles_6h,
+            candles_30m=candles_30m,
             ticker=None,
             portfolio_value=self._portfolio_value,
             open_positions=open_positions,

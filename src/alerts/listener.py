@@ -32,17 +32,24 @@ from .base import AlertChannel
 
 logger = logging.getLogger(__name__)
 
+# Lados que representam abertura vs fechamento de posição
+_OPEN_SIDES  = {"buy",  "BUY",  "long",  "LONG"}
+_CLOSE_SIDES = {"sell", "SELL", "short", "SHORT"}
+
 
 class AlertListener:
     """
     Background task that converts bus events into Discord alerts.
     """
 
-    def __init__(self, bus: EventBus, channel: AlertChannel) -> None:
+    def __init__(self, bus: EventBus, channel: AlertChannel, cache=None) -> None:
         self._bus = bus
         self._channel = channel
+        self._cache = cache       # opcional — enriquece notificações com P&L e regime
         self._tasks: list[asyncio.Task] = []
         self._running = False
+        # Guarda dados de entrada para calcular P&L no fechamento
+        self._entry_data: dict[str, dict] = {}   # symbol → {price, qty, notional}
 
     async def start(self) -> None:
         if self._running:
@@ -75,23 +82,7 @@ class AlertListener:
                 event = await asyncio.wait_for(queue.get(), timeout=1.0)
 
                 if isinstance(event, OrderFilledEvent) and event.order:
-                    o = event.order
-                    qty   = o.filled_quantity
-                    price = o.avg_fill_price
-                    notional = qty * price
-                    fee   = o.fees_paid
-                    side  = (o.side.value if hasattr(o.side, "value") else str(o.side)).upper()
-                    emoji = "🟢" if side == "BUY" else "🔴"
-                    await self._channel.info(
-                        title=f"{emoji} Trade Executado — {o.symbol}",
-                        message=(
-                            f"**{side}** {qty:.4f} @ ${price:,.2f}\n"
-                            f"Notional: ${notional:,.2f} | Fee: ${fee:.4f}"
-                        ),
-                        symbol=o.symbol,
-                        strategy=o.strategy_id or "–",
-                        order_id=o.client_order_id[:8] + "…",
-                    )
+                    await self._handle_fill(event.order)
 
                 elif isinstance(event, OrderRejectedEvent) and event.order:
                     o = event.order
@@ -108,6 +99,73 @@ class AlertListener:
                 break
             except Exception as exc:
                 logger.error("AlertListener fill error: %s", exc)
+
+    async def _handle_fill(self, o) -> None:
+        """Envia notificação rica distinguindo entrada e saída, com P&L."""
+        qty      = o.filled_quantity or 0.0
+        price    = o.avg_fill_price  or 0.0
+        notional = qty * price
+        fee      = o.fees_paid or 0.0
+        side_raw = (o.side.value if hasattr(o.side, "value") else str(o.side))
+        is_open  = side_raw in _OPEN_SIDES
+
+        if is_open:
+            # ── Posição Aberta ───────────────────────────────────
+            self._entry_data[o.symbol] = {
+                "price": price, "qty": qty, "notional": notional,
+            }
+
+            # Tenta obter regime do cache (enriquece a mensagem)
+            regime = "–"
+            if self._cache:
+                try:
+                    pos = await self._cache.get_position(o.symbol)
+                    regime = (pos or {}).get("regime", "–")
+                except Exception:
+                    pass
+
+            fields = {
+                "Símbolo":   o.symbol,
+                "Quantidade": f"{qty:.6f}",
+                "Preço":     f"${price:,.2f}",
+                "Notional":  f"${notional:,.2f}",
+                "Fee":       f"${fee:.4f}",
+                "Regime":    regime,
+                "Estratégia": o.strategy_id or "–",
+            }
+            await self._channel.info(
+                title=f"🟢 Posição Aberta — {o.symbol}",
+                message=f"**COMPRA** de {qty:.6f} unidades @ ${price:,.2f}",
+                **fields,
+            )
+
+        else:
+            # ── Posição Fechada ──────────────────────────────────
+            entry = self._entry_data.pop(o.symbol, None)
+
+            pnl_usdt = 0.0
+            pnl_pct  = 0.0
+            if entry and entry["price"] > 0:
+                pnl_usdt = (price - entry["price"]) * qty - fee
+                pnl_pct  = pnl_usdt / entry["notional"] * 100 if entry["notional"] else 0.0
+
+            pnl_emoji = "🟢" if pnl_usdt >= 0 else "🔴"
+            pnl_str   = f"{pnl_emoji} ${pnl_usdt:+,.2f} ({pnl_pct:+.2f}%)"
+
+            fields = {
+                "Símbolo":   o.symbol,
+                "Quantidade": f"{qty:.6f}",
+                "Preço saída": f"${price:,.2f}",
+                "Preço entrada": f"${entry['price']:,.2f}" if entry else "–",
+                "P&L":       pnl_str,
+                "Fee":       f"${fee:.4f}",
+                "Estratégia": o.strategy_id or "–",
+            }
+            await self._channel.info(
+                title=f"🔔 Posição Fechada — {o.symbol}",
+                message=f"**VENDA** de {qty:.6f} @ ${price:,.2f}\nResultado: {pnl_str}",
+                **fields,
+            )
 
     async def _consume_risk(self, queue: asyncio.Queue) -> None:
         while self._running:

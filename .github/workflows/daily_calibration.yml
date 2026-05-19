@@ -43,9 +43,15 @@ jobs:
         env:
           PYTHONPATH: .
 
-      # Roda calibração incremental
+      # Roda calibração incremental (atualiza Platt com novos candles)
       - name: Run incremental calibration
         run: python scripts/recalibrate.py --incremental
+        env:
+          PYTHONPATH: .
+
+      # Roda WFO para validar edge OOS e atualizar coeficientes se aprovado
+      - name: Run Walk-Forward Optimization
+        run: python scripts/walk_forward.py --auto-apply
         env:
           PYTHONPATH: .
 
@@ -56,22 +62,28 @@ jobs:
           path: data/calibration.db
           key: calibration-db-${{ runner.os }}-${{ github.run_id }}
 
-      # Verifica se houve mudança no coeficiente
+      # Verifica se houve mudança nos modelos (calibração e/ou WFO)
       - name: Check for changes
         id: changes
         run: |
-          git diff --quiet data/models/calibration_coef.json && \
+          git diff --quiet data/models/ && \
             echo "changed=false" >> $GITHUB_OUTPUT || \
             echo "changed=true" >> $GITHUB_OUTPUT
 
       # Commita e faz push se houve atualização
-      - name: Commit updated calibration
+      - name: Commit updated models
         if: steps.changes.outputs.changed == 'true'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/models/calibration_coef.json
-          git commit -m "chore: recalibração incremental $(date -u '+%Y-%m-%d')"
+          git add data/models/
+          # Detecta se WFO atualizou coeficientes
+          if git diff --staged --quiet data/models/calibration_coef.json; then
+            MSG="chore: recalibração incremental $(date -u '+%Y-%m-%d')"
+          else
+            MSG="chore: recalibração + WFO auto-apply $(date -u '+%Y-%m-%d')"
+          fi
+          git commit -m "$MSG"
           git push
 
       # Deploy no Oracle via SSH

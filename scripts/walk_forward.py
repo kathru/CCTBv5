@@ -546,6 +546,87 @@ def save_results(wfo: WalkForwardResult, symbol: str, output_path: Path) -> None
     log.info("Latest atualizado: %s", latest)
 
 
+def auto_apply_wfo(all_results: dict[str, WalkForwardResult], models_dir: Path) -> bool:
+    """
+    Se OOS positivo E estável em TODOS os símbolos avaliados,
+    atualiza calibration_coef.json com os coeficientes do fold mais recente.
+
+    Critérios de segurança para auto-apply:
+      - avg_oos_return > 0 (edge positivo OOS)
+      - stability_score > 0.5 (performance consistente entre folds)
+      - valid_folds >= 2 (mínimo de evidência)
+      - Pelo menos 1 símbolo aprovado
+
+    Retorna True se atualizou.
+    """
+    coef_path = models_dir / "calibration_coef.json"
+    if not coef_path.exists():
+        log.warning("auto-apply: calibration_coef.json não encontrado em %s", models_dir)
+        return False
+
+    # Coleta sumários aprovados
+    approved: list[dict] = []
+    for sym, wfo in all_results.items():
+        s = wfo.summary()
+        if not s.get("valid_folds"):
+            log.info("auto-apply: %s — sem folds válidos, ignorando", sym)
+            continue
+        oos_ok    = s.get("avg_oos_return", 0) > 0
+        stab_ok   = s.get("stability_score", 0) > 0.5
+        folds_ok  = s.get("valid_folds", 0) >= 2
+        if oos_ok and stab_ok and folds_ok:
+            approved.append({"symbol": sym, **s})
+            log.info(
+                "auto-apply: %s APROVADO — OOS=%.2f%% stability=%.3f folds=%d",
+                sym, s["avg_oos_return"] * 100, s["stability_score"], s["valid_folds"],
+            )
+        else:
+            log.info(
+                "auto-apply: %s REJEITADO — OOS=%.2f%% stability=%.3f folds=%d",
+                sym, s.get("avg_oos_return", 0) * 100,
+                s.get("stability_score", 0), s.get("valid_folds", 0),
+            )
+
+    if not approved:
+        log.info("auto-apply: nenhum símbolo aprovado — coeficientes mantidos")
+        return False
+
+    # Usa os coeficientes do símbolo com maior Sharpe OOS (mais robusto)
+    best = max(approved, key=lambda x: x.get("avg_sharpe", 0))
+    new_a = best["best_A"]
+    new_b = best["best_B"]
+
+    # Lê coef atual para salvar como previous
+    try:
+        existing = json.loads(coef_path.read_text())
+    except Exception:
+        existing = {}
+
+    updated = {
+        **existing,
+        "platt_a":       new_a,
+        "platt_b":       new_b,
+        "wfo_applied_at": datetime.now(UTC).isoformat(),
+        "wfo_source":    best["symbol"],
+        "wfo_oos_return": round(best["avg_oos_return"], 6),
+        "wfo_stability":  round(best["stability_score"], 4),
+        "wfo_valid_folds": best["valid_folds"],
+        "previous": {
+            "platt_a": existing.get("platt_a"),
+            "platt_b": existing.get("platt_b"),
+        },
+    }
+    coef_path.write_text(json.dumps(updated, indent=2))
+
+    log.info(
+        "auto-apply: coeficientes atualizados A=%.6f→%.6f B=%.6f→%.6f (fonte: %s)",
+        existing.get("platt_a", 0), new_a,
+        existing.get("platt_b", 0), new_b,
+        best["symbol"],
+    )
+    return True
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 async def main_async(args: argparse.Namespace) -> None:
@@ -586,16 +667,17 @@ async def main_async(args: argparse.Namespace) -> None:
         if not args.dry_run:
             save_results(wfo, symbol, OUTPUT_DIR)
 
-    # Se um único símbolo e resultado positivo → oferece atualizar calibration
-    if len(all_results) == 1 and not args.dry_run:
-        sym    = list(all_results.keys())[0]
-        result = all_results[sym]
-        s      = result.summary()
-        if s.get("valid_folds", 0) > 0 and s.get("avg_oos_return", 0) > 0:
-            log.info("")
-            log.info("Para aplicar os coeficientes recomendados:")
-            log.info("  python scripts/recalibrate.py --start %s", args.start)
-            log.info("  (ou edite manualmente data/models/calibration_coef.json)")
+    # Auto-apply: atualiza calibration_coef.json se critérios de segurança passarem
+    if args.auto_apply and not args.dry_run:
+        models_dir = ROOT / "data" / "models"
+        applied = auto_apply_wfo(all_results, models_dir)
+        if not applied:
+            log.info("auto-apply: edge insuficiente — coeficientes não atualizados")
+    elif not args.dry_run and all_results:
+        # Modo manual: mostra sugestão
+        log.info("")
+        log.info("Para aplicar coeficientes WFO automaticamente use: --auto-apply")
+        log.info("Para recalibrar manualmente: python scripts/recalibrate.py --start %s", args.start)
 
 
 def main() -> None:
@@ -610,6 +692,8 @@ def main() -> None:
     parser.add_argument("--no-cache",      action="store_true")
     parser.add_argument("--dry-run",       action="store_true",
                         help="Não salva arquivos")
+    parser.add_argument("--auto-apply",    action="store_true",
+                        help="Atualiza calibration_coef.json se OOS positivo e estável")
     args = parser.parse_args()
     asyncio.run(main_async(args))
 

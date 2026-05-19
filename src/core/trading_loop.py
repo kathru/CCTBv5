@@ -155,6 +155,7 @@ class TradingLoop:
         self._alert_listener = AlertListener(
             bus=self._bus,
             channel=self._alert_channel,
+            cache=self._cache,
         )
 
         # ── Watchdogs ─────────────────────────────────────────

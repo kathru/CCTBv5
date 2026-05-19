@@ -151,7 +151,10 @@ class TradingLoop:
         self._meta.register(v4.strategy_id)
 
         # ── Alerts ────────────────────────────────────────────
-        self._alert_channel = create_alert_channel(settings.discord_webhook_url)
+        self._alert_channel = create_alert_channel(
+            settings.discord_webhook_url,
+            bot_name=f"CCTBv5 [{settings.bot_instance}]",
+        )
         self._alert_listener = AlertListener(
             bus=self._bus,
             channel=self._alert_channel,

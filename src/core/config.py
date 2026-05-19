@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     # Discord
     discord_webhook_url: str = ""
+    bot_instance: str = "localhost"   # identificador da instância (ex: "Oracle", "localhost")
 
     # News
     finnhub_token: str = ""

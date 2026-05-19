@@ -99,6 +99,8 @@ if (-not $LocalOnly) {
 set -e
 cd ~/CCTBv5
 git pull
+# Garante que BOT_INSTANCE identifica esta instância nos alertas Discord
+grep -q '^BOT_INSTANCE=' .env && sed -i 's/^BOT_INSTANCE=.*/BOT_INSTANCE=Oracle/' .env || echo 'BOT_INSTANCE=Oracle' >> .env
 export GIT_MINOR=$(git tag -l 'fase/*' | wc -l | tr -d ' ')
 LAST_TAG=$(git tag -l 'fase/*' | tail -1)
 if [ -n "$LAST_TAG" ]; then

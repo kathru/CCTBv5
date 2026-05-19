@@ -1012,7 +1012,11 @@
 </main>
 
 <script>
-const API='', REFRESH_MS=600000;
+const API='';
+const FAST_MS  = 30000;   // preços, sinais, posições, ordens — a cada 30s
+const SLOW_MS  = 600000;  // analytics, governance — a cada 10min
+const RETRY_MS = 4000;    // retry quando cards voltam vazios
+let _fastTimer=null, _slowTimer=null, _retryTimer=null;
 
 // ── Portfolio chart data (in-session memory) ───────────────
 // Sampling: 1 ponto por minuto → maxPoints=1440 (24h)
@@ -1746,19 +1750,48 @@ function renderWfo(data){
   }).join('<hr style="border-color:var(--border);margin:8px 0;">');
 }
 
+// Dados pesados que raramente mudam — atualizados a cada 10min
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null};
+
+async function updateSlow(){
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo]=await Promise.all([
+    fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
+    fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
+    fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
+    fetchJSON('/api/governance/importance'),fetchJSON('/api/governance/wfo'),
+  ]);
+  // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
+  if(calib)     _slowData.calib=calib;
+  if(quant)     _slowData.quant=quant;
+  if(govStatus) _slowData.govStatus=govStatus;
+  if(govDrift)  _slowData.govDrift=govDrift;
+  if(govLive)   _slowData.govLive=govLive;
+  if(govSchema) _slowData.govSchema=govSchema;
+  if(govImp)    _slowData.govImp=govImp;
+  if(govWfo)    _slowData.govWfo=govWfo;
+}
+
 async function updateAll(){
-  const [health,version,system,portfolio,perf,prices,sym,exits,log,funnel,wd,pos,oOpen,oRec,calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo]=await Promise.all([
+  // Fast data (sempre fresco)
+  const [health,version,system,portfolio,perf,prices,sym,exits,log,funnel,wd,pos,oOpen,oRec]=await Promise.all([
     fetchJSON('/health'),fetchJSON('/version'),fetchJSON('/api/metrics/system'),
     fetchJSON('/api/portfolio/summary'),fetchJSON('/api/metrics/performance'),
     fetchJSON('/api/metrics/prices'),fetchJSON('/api/signals/symbols'),
     fetchJSON('/api/portfolio/exits'),fetchJSON('/api/signals/log?limit=30'),
     fetchJSON('/api/signals/funnel'),fetchJSON('/api/watchdog/status'),fetchJSON('/api/positions/open'),
     fetchJSON('/api/orders/open'),fetchJSON('/api/orders/recent?limit=15'),
-    fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
-    fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
-    fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
-    fetchJSON('/api/governance/importance'),fetchJSON('/api/governance/wfo'),
   ]);
+
+  // Slow data vem do cache — atualizado em paralelo pelo loop lento
+  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo}=_slowData;
+
+  // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS
+  const hasPrices = prices && Object.keys(prices).length > 0;
+  const hasSym    = sym    && Object.keys(sym).length > 0;
+  if(!hasPrices || !hasSym){
+    clearTimeout(_retryTimer);
+    _retryTimer = setTimeout(updateAll, RETRY_MS);
+  }
 
   // Header
   if(version){
@@ -2178,8 +2211,14 @@ function init(){
   initPortfolioChart();
   initDonutChart();
   startPortfolioSampling();
+
+  // Carrega dados pesados uma vez e agenda loop lento
+  updateSlow();
+  _slowTimer = setInterval(updateSlow, SLOW_MS);
+
+  // Loop rápido: preços, sinais, posições
   updateAll();
-  setInterval(updateAll, REFRESH_MS);
+  _fastTimer = setInterval(updateAll, FAST_MS);
 }
 
 if(document.readyState==='complete') init();

@@ -127,14 +127,14 @@ class DiscordAlertChannel(AlertChannel):
         }
 
 
-def create_alert_channel(webhook_url: str = "") -> AlertChannel:
+def create_alert_channel(webhook_url: str = "", bot_name: str = "CCTBv5") -> AlertChannel:
     """
     Factory — returns DiscordAlertChannel if URL is set,
     otherwise NullAlertChannel.
     """
     if webhook_url:
-        logger.info("AlertChannel: Discord webhook configured")
-        return DiscordAlertChannel(webhook_url=webhook_url)
+        logger.info("AlertChannel: Discord webhook configured — bot_name=%s", bot_name)
+        return DiscordAlertChannel(webhook_url=webhook_url, bot_name=bot_name)
     else:
         logger.warning(
             "AlertChannel: DISCORD_WEBHOOK_URL not set — alerts silently discarded"

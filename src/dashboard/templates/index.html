@@ -978,30 +978,35 @@
 
 </div>
 
-<!-- Row 2: Feature Importance (largura total) -->
-<div class="card" style="margin-top:12px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <div class="clabel" style="margin:0">Feature Importance <span style="font-size:0.58rem;color:var(--muted)">(permutação)</span></div>
-    <span class="hbadge hbadge-gray" id="imp-computed-at">–</span>
-  </div>
-  <div id="imp-list" style="display:flex;flex-direction:column;gap:10px;">
-    <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/feature_analysis.py</div>
-  </div>
-  <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);">
-    <span id="imp-meta"></span>
-    <span>verde = alinhado com schema · vermelho = desalinhado</span>
-  </div>
-</div>
+<!-- Row 2: Feature Importance + WFO lado a lado (responsivo) -->
+<div class="grid g11" style="margin-top:0;">
 
-<!-- Row 3: WFO Results (largura total) -->
-<div class="card">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <div class="clabel" style="margin:0">Walk-Forward Optimization</div>
-    <span class="hbadge hbadge-gray" id="wfo-run-at">–</span>
+  <!-- Feature Importance -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="clabel" style="margin:0">Feature Importance <span style="font-size:0.58rem;color:var(--muted)">(permutação)</span></div>
+      <span class="hbadge hbadge-gray" id="imp-computed-at">–</span>
+    </div>
+    <div id="imp-list" style="display:flex;flex-direction:column;gap:10px;">
+      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/feature_analysis.py</div>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);">
+      <span id="imp-meta"></span>
+      <span>verde = alinhado · vermelho = desalinhado</span>
+    </div>
   </div>
-  <div id="wfo-content">
-    <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/walk_forward.py</div>
+
+  <!-- WFO Results -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="clabel" style="margin:0">Walk-Forward Optimization</div>
+      <span class="hbadge hbadge-gray" id="wfo-run-at">–</span>
+    </div>
+    <div id="wfo-content">
+      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/walk_forward.py</div>
+    </div>
   </div>
+
 </div>
 
 </main>

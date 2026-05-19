@@ -76,6 +76,11 @@ class StrategyRunner:
             return
         self._running = True
         self._queue = self._bus.subscribe(Topic.MARKET)
+
+        # Pré-popula last_candle_ts com o candle mais recente de cada símbolo
+        # sem avaliar — bot aguarda a PRÓXIMA hora fechar antes de agir
+        await self._seed_last_candle_ts()
+
         self._task = asyncio.create_task(
             self._consume(), name="strategy_runner"
         )
@@ -83,6 +88,40 @@ class StrategyRunner:
             "StrategyRunner started with %d strategies",
             len(self._strategies),
         )
+
+    async def _seed_last_candle_ts(self) -> None:
+        """
+        No boot, registra o timestamp do último candle 1H fechado para cada símbolo
+        sem disparar avaliação. A próxima avaliação só ocorre quando uma nova hora fechar.
+        """
+        symbols = set()
+        for strategy in self._strategies.values():
+            symbols.update(strategy.symbols)
+
+        for symbol in symbols:
+            # Tenta restaurar do Redis primeiro (restart rápido)
+            cached = await self._cache.get(f"last_candle_ts:{symbol}")
+            if cached:
+                try:
+                    self._last_candle_ts[symbol] = datetime.fromisoformat(cached)
+                    logger.info("StrategyRunner: %s — último candle restaurado do Redis: %s",
+                                symbol, cached[:16])
+                    continue
+                except ValueError:
+                    pass
+
+            # Sem Redis: usa o candle mais recente do MarketEngine
+            candles = self._market.get_candles(symbol, EVAL_GRANULARITY, limit=2)
+            if candles:
+                latest = candles[0]  # mais recente primeiro
+                ts = latest.timestamp.replace(tzinfo=UTC) \
+                    if latest.timestamp.tzinfo is None else latest.timestamp
+                self._last_candle_ts[symbol] = ts
+                await self._cache.set(
+                    f"last_candle_ts:{symbol}", ts.isoformat(), ttl=10800
+                )
+                logger.info("StrategyRunner: %s — aguardando próxima hora (última: %s)",
+                            symbol, ts.strftime("%Y-%m-%d %H:%M"))
 
     async def stop(self) -> None:
         self._running = False
@@ -121,23 +160,12 @@ class StrategyRunner:
                 if age > MAX_CANDLE_AGE:
                     continue
 
-                # Filtro 3: só avalia se o timestamp do candle for novo
-                # Verifica em memória primeiro, depois no Redis (sobrevive restart)
+                # Filtro 3: só avalia se o timestamp do candle for estritamente novo
                 last_ts = self._last_candle_ts.get(candle.symbol)
-                if last_ts is None:
-                    # Tenta restaurar do Redis
-                    cached = await self._cache.get(f"last_candle_ts:{candle.symbol}")
-                    if cached:
-                        try:
-                            last_ts = datetime.fromisoformat(cached)
-                            self._last_candle_ts[candle.symbol] = last_ts
-                        except ValueError:
-                            pass
-
                 if last_ts and candle_ts <= last_ts:
                     continue
 
-                # Novo candle — persiste no Redis (TTL 3h) e avalia
+                # Nova hora fechou — persiste no Redis e avalia
                 self._last_candle_ts[candle.symbol] = candle_ts
                 self._last_eval[candle.symbol] = now
                 await self._cache.set(

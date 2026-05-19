@@ -46,6 +46,8 @@ REGIME_MULT: dict[str, dict[str, float]] = {
     "TREND_EXHAUSTION":       {"sl": 1.5, "tp": 2.5},  # 1:1.7 — conservador
     "MEAN_REVERTING_CHOP":    {"sl": 1.0, "tp": 1.5},  # 1:1.5 — alvos curtos
     "HIGH_CORRELATION_RISK":  {"sl": 1.2, "tp": 2.0},  # 1:1.7 — risco controlado
+    "BEAR_TREND":             {"sl": 1.0, "tp": 1.0},  # não entra — saída imediata
+    "PANIC_LIQUIDATION":      {"sl": 1.0, "tp": 1.0},  # não entra — saída imediata
 }
 DEFAULT_SL_MULT = 1.5
 DEFAULT_TP_MULT = 3.0
@@ -58,6 +60,8 @@ REGIME_TRAIL_ACTIVATE: dict[str, float] = {
     "TREND_EXHAUSTION":       1.0,
     "MEAN_REVERTING_CHOP":    1.2,   # ativa mais tarde — evita whipsaw em lateral
     "HIGH_CORRELATION_RISK":  0.8,   # ativa cedo — protege em alta correlação
+    "BEAR_TREND":             0.5,   # saída imediata — trailing ativa na metade do 1R
+    "PANIC_LIQUIDATION":      0.3,   # saída imediata — trailing ativa muito cedo
 }
 TRAIL_ACTIVATE_R = 1.0   # fallback
 TRAIL_ATR_MULT   = 1.0   # distância do trailing = ATR × 1.0
@@ -70,6 +74,8 @@ REGIME_PARTIAL_EXIT: dict[str, float] = {
     "TREND_EXHAUSTION":       1.5,
     "MEAN_REVERTING_CHOP":    1.0,   # garante lucro cedo em lateral
     "HIGH_CORRELATION_RISK":  1.2,
+    "BEAR_TREND":             0.5,   # saída parcial imediata se ainda não saiu
+    "PANIC_LIQUIDATION":      0.3,   # saída parcial imediata — sai o mais rápido possível
 }
 PARTIAL_EXIT_R   = 1.5   # fallback
 PARTIAL_EXIT_PCT = 0.50  # fracção da posição a vender (50% sempre)

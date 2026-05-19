@@ -27,11 +27,11 @@ from .base import BaseStrategy, StrategyContext
 
 logger = logging.getLogger(__name__)
 
-# Só avalia candles com menos de 2 horas de idade
+# Só avalia candles 1H confirmados com menos de 2 horas de idade
 MAX_CANDLE_AGE = timedelta(hours=2)
 
-# Intervalo mínimo entre avaliações do mesmo símbolo (evita avaliar 1H + 6H = 2×)
-MIN_EVAL_INTERVAL = timedelta(minutes=55)
+# Granularidade alvo — só avalia eventos dessa granularidade
+EVAL_GRANULARITY = "1H"
 
 
 class StrategyRunner:
@@ -58,8 +58,10 @@ class StrategyRunner:
         self._signal_count = 0
         self._eval_count = 0
 
-        # Última avaliação por símbolo — evita avaliar múltiplas vezes no mesmo ciclo
-        self._last_eval: dict[str, datetime] = {}
+        # Último timestamp de candle 1H avaliado por símbolo
+        # Só reavalia quando o timestamp da vela mudar (novo fechamento de 1H)
+        self._last_candle_ts: dict[str, datetime] = {}
+        self._last_eval: dict[str, datetime] = {}  # mantido para status()
 
     def register(self, strategy: BaseStrategy) -> None:
         self._strategies[strategy.strategy_id] = strategy
@@ -107,19 +109,30 @@ class StrategyRunner:
 
                 now = datetime.now(UTC)
 
-                # Filtro 1: ignora candles históricos (mais de 2h de idade)
-                age = now - candle.timestamp.replace(tzinfo=UTC) \
+                # Filtro 1: só processa granularidade 1H
+                if getattr(event.candle, 'granularity', None) != EVAL_GRANULARITY:
+                    continue
+
+                # Filtro 2: ignora candles históricos (mais de 2h de idade)
+                candle_ts = candle.timestamp.replace(tzinfo=UTC) \
                     if candle.timestamp.tzinfo is None \
-                    else now - candle.timestamp
+                    else candle.timestamp
+                age = now - candle_ts
                 if age > MAX_CANDLE_AGE:
                     continue
 
-                # Filtro 2: intervalo mínimo entre avaliações do mesmo símbolo
-                last = self._last_eval.get(candle.symbol)
-                if last and (now - last) < MIN_EVAL_INTERVAL:
+                # Filtro 3: só avalia se o timestamp do candle for novo
+                # Garante exatamente 1 avaliação por fechamento de vela 1H
+                last_ts = self._last_candle_ts.get(candle.symbol)
+                if last_ts and candle_ts <= last_ts:
                     continue
 
+                self._last_candle_ts[candle.symbol] = candle_ts
                 self._last_eval[candle.symbol] = now
+                logger.info(
+                    "Nova vela 1H %s ts=%s — avaliando estratégia",
+                    candle.symbol, candle_ts.strftime("%Y-%m-%d %H:%M")
+                )
                 await self._evaluate_all(candle.symbol)
 
             except TimeoutError:

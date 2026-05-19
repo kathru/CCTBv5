@@ -1302,7 +1302,7 @@ const COIN_NAMES={
   'BTC-USDT':'Bitcoin','ETH-USDT':'Ethereum','SOL-USDT':'Solana',
 };
 
-function buildCards(prices,sym,exits){
+function buildCards(prices,sym,exits,recentOrders=[]){
   document.getElementById('crypto-row').innerHTML=SYMBOLS.map(s=>{
     const p=prices[s]||0, d=sym[s]||{}, ep=exits[s];
     const act=action(d.result,d.calibrated,d.threshold,d.regime);
@@ -1329,10 +1329,9 @@ function buildCards(prices,sym,exits){
     const chgStr=chg!=null?(chg>=0?'+':'')+chg.toFixed(2)+'%':'–';
     const chgCol=chg>0?'#10b981':chg<0?'#ef4444':'#6b7280';
     const chgArrow=chg>0?'▲':chg<0?'▼':'–';
-    // Contagem de trades do bot por símbolo
-    const symTrades=(_c.exits||[]).filter(t=>t.symbol===s);
-    const buyCount=symTrades.filter(t=>t.side==='buy'||t.direction==='long').length;
-    const sellCount=symTrades.filter(t=>t.side==='sell'||t.direction==='short').length;
+    // Contagem de ordens preenchidas por símbolo
+    const buyCount=(recentOrders||[]).filter(o=>o.symbol===s&&['buy','BUY'].includes(o.side)&&o.status==='filled').length;
+    const sellCount=(recentOrders||[]).filter(o=>o.symbol===s&&['sell','SELL'].includes(o.side)&&o.status==='filled').length;
 
     return`<div class="card crypto-card" style="padding:18px 20px;background:#161b22;">
 
@@ -1834,7 +1833,7 @@ async function updateAll(){
   // Crypto cards
   if(prices) Object.assign(_c.prices,prices);
   if(exits?.plans) Object.assign(_c.exits,exits.plans);
-  buildCards(_c.prices,_c.sym,_c.exits);
+  buildCards(_c.prices,_c.sym,_c.exits,[...(oOpen||[]),...(oRec||[])]);
 
   // Motor Probabilístico
   if(sym&&Object.keys(sym).length){

@@ -35,10 +35,20 @@ logger = logging.getLogger(__name__)
 
 # ── Constantes de saída ───────────────────────────────────────────────────────
 
-# Phase A — ATR multipliers
-SL_ATR_MULT   = 1.5   # stop loss  = entrada - ATR × 1.5
-TP_ATR_MULT   = 3.0   # take profit = entrada + ATR × 3.0  (ratio 2:1)
 ATR_PERIOD    = 14    # candles para calcular ATR
+
+# Phase A — Multiplicadores de ATR por regime
+# SL: distância do stop  |  TP: distância do alvo  |  Ratio TP/SL implícito
+REGIME_MULT: dict[str, dict[str, float]] = {
+    #                              SL    TP     ratio
+    "TREND_EXPANSION":        {"sl": 1.5, "tp": 4.0},  # 1:2.7 — deixa correr
+    "VOLATILITY_COMPRESSION": {"sl": 1.5, "tp": 3.0},  # 1:2.0 — padrão
+    "TREND_EXHAUSTION":       {"sl": 1.5, "tp": 2.5},  # 1:1.7 — conservador
+    "MEAN_REVERTING_CHOP":    {"sl": 1.0, "tp": 1.5},  # 1:1.5 — alvos curtos
+    "HIGH_CORRELATION_RISK":  {"sl": 1.2, "tp": 2.0},  # 1:1.7 — risco controlado
+}
+DEFAULT_SL_MULT = 1.5
+DEFAULT_TP_MULT = 3.0
 
 # Phase B — Trailing stop
 TRAIL_ACTIVATE_R = 1.0   # ativa trailing após +1R de ganho
@@ -91,9 +101,13 @@ class ExitPlan:
     qty_remaining:     float = 0.0   # quantidade que ainda está aberta
 
     def __post_init__(self) -> None:
-        r = self.atr * SL_ATR_MULT
-        self.stop_loss   = round(self.entry_price - r, 4)
-        self.take_profit = round(self.entry_price + r * (TP_ATR_MULT / SL_ATR_MULT), 4)
+        mults = REGIME_MULT.get(self.entry_regime, {})
+        sl_mult = mults.get("sl", DEFAULT_SL_MULT)
+        tp_mult = mults.get("tp", DEFAULT_TP_MULT)
+        sl_dist = self.atr * sl_mult
+        tp_dist = self.atr * tp_mult
+        self.stop_loss   = round(self.entry_price - sl_dist, 4)
+        self.take_profit = round(self.entry_price + tp_dist, 4)
         hours = TIMEOUT_HOURS.get(self.entry_regime, DEFAULT_TIMEOUT_HOURS)
         self.timeout_at  = self.entry_time + timedelta(hours=hours)
         self.qty_remaining = self.quantity

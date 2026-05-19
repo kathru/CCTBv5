@@ -1316,11 +1316,22 @@ function buildCards(prices,sym,exits,recentOrders=[]){
     const ev=d.ev!=null?(d.ev>=0?'+':'')+(d.ev*100).toFixed(4):'–';
     const evCls=d.ev>0.001?'g':d.ev<-0.001?'r':'m';
     const atr=p>0?'~1.0':'–';
+    // Multiplicadores SL/TP por regime (espelho de position_monitor.py)
+    const REGIME_MULT={
+      'TREND_EXPANSION':        {sl:1.5, tp:4.0},
+      'VOLATILITY_COMPRESSION': {sl:1.5, tp:3.0},
+      'TREND_EXHAUSTION':       {sl:1.5, tp:2.5},
+      'MEAN_REVERTING_CHOP':    {sl:1.0, tp:1.5},
+      'HIGH_CORRELATION_RISK':  {sl:1.2, tp:2.0},
+    };
+    const regMult=REGIME_MULT[d.regime||'']||{sl:1.5,tp:3.0};
+    // ATR estimado como 1% do preço (fallback sem posição)
+    const atrEst=p*0.01;
     const hasPos=!!ep;
-    const sl=hasPos?ep.stop_loss:(p>0?p*0.985:null);
-    const tp=hasPos?ep.take_profit:(p>0?p*1.030:null);
-    const slPct=sl&&p?(((sl-p)/p)*100).toFixed(1):'-1.5';
-    const tpPct=tp&&p?(((tp-p)/p)*100).toFixed(1):'+3.0';
+    const sl=hasPos?ep.stop_loss:(p>0?p-atrEst*regMult.sl:null);
+    const tp=hasPos?ep.take_profit:(p>0?p+atrEst*regMult.tp:null);
+    const slPct=sl&&p?(((sl-p)/p)*100).toFixed(1):(-regMult.sl).toFixed(1);
+    const tpPct=tp&&p?(((tp-p)/p)*100).toFixed(1):('+'+regMult.tp.toFixed(1));
     const enPct=hasPos&&ep.entry_price&&p?(((p-ep.entry_price)/ep.entry_price)*100):null;
     const enPctStr=enPct!=null?(enPct>=0?'+':'')+enPct.toFixed(2)+'%':'–';
     const enPctCol=enPct!=null?(enPct>0?'#10b981':enPct<0?'#ef4444':'#6b7280'):'#6b7280';
@@ -1928,12 +1939,20 @@ async function updateAll(){
     const sThrLine=document.getElementById('motor-score-thr-line');
     if(sThrLine) sThrLine.style.left=Math.min(thr,100).toFixed(1)+'%';
 
-    // SL/TP — valores de referência baseados no primeiro preço disponível
-    const firstPrice=Object.values(_c.prices||{})[0]||0;
+    // SL/TP dinâmicos por regime (espelho de position_monitor.py)
+    const MOTOR_REGIME_MULT={
+      'TREND EXPANSION':        {sl:1.5, tp:4.0},
+      'VOLATILITY COMPRESSION': {sl:1.5, tp:3.0},
+      'TREND EXHAUSTION':       {sl:1.5, tp:2.5},
+      'MEAN REVERTING CHOP':    {sl:1.0, tp:1.5},
+      'HIGH CORRELATION RISK':  {sl:1.2, tp:2.0},
+    };
+    const motorReg=(latest.regime||'').replace(/_/g,' ');
+    const motorMult=MOTOR_REGIME_MULT[motorReg]||{sl:1.5,tp:3.0};
     const slEl=document.getElementById('motor-sl');
     const tpEl=document.getElementById('motor-tp');
-    if(slEl) slEl.textContent=`-1.5%`;
-    if(tpEl) tpEl.textContent=`+3.0%`;
+    if(slEl) slEl.textContent=`-${motorMult.sl.toFixed(1)}% ATR`;
+    if(tpEl) tpEl.textContent=`+${motorMult.tp.toFixed(1)}% ATR`;
 
     // Threshold zone highlight — first boundary = actual threshold (regime-dependent)
     const thrVal=parseFloat(thr.toFixed(1));

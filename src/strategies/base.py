@@ -29,9 +29,9 @@ class StrategyContext:
     symbol: str
     candles_1h: list[Candle]
     candles_6h: list[Candle]
-    candles_30m: list[Candle] = field(default_factory=list)  # 30min para scoring intra-hora
     ticker: Ticker | None
     portfolio_value: float
+    candles_30m: list[Candle] = field(default_factory=list)  # 30min para scoring intra-hora
     open_positions: list[dict] = field(default_factory=list)
     extra: dict = field(default_factory=dict)   # regime, breadth, etc.
 

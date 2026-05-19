@@ -252,22 +252,26 @@ class MomentumStrategy(BaseStrategy):
 
     def _confirm_regime_mtf(self, ctx: StrategyContext, regime_1h: str) -> str:
         """
-        Confirma regime 1H com o contexto de 6H.
-        Regras:
-          - Se 6H concorda (mesma família) → regime_1h confirmado
-          - Se 6H diz BEAR mas 1H diz BULL → downgrade para CHOP
-          - Se 6H diz BULL mas 1H diz CHOP → pequeno upgrade (VOLATILITY_COMPRESSION)
-          - Se 6H diz BEAR e 1H diz CHOP   → upgrade para BEAR_TREND
-          - Sem candles 6H → usa só 1H (sem penalidade)
+        Confirma regime 1H com contexto 6H — ajustado para 30min.
+
+        Em modelo 30min o 6H representa 12 candles de avaliação.
+        Regras suavizadas para não bloquear excessivamente em 30min:
+          - 6H BULL + 1H BULL  → confirma (upgrade possível)
+          - 6H BULL + 1H CHOP  → VOLATILITY_COMPRESSION (upgrade leve)
+          - 6H BEAR + 1H BULL  → downgrade para CHOP (não bloqueia)
+          - 6H BEAR + 1H CHOP  → HIGH_CORRELATION_RISK (downgrade, mas NÃO BEAR_TREND)
+            ↑ Mudança chave: em 30min, 1H=CHOP+6H=BEAR não bloqueia — apenas penaliza sizing
+          - 6H BEAR + 1H BEAR  → BEAR_TREND (bloqueio confirmado por ambos)
+          - Sem 6H             → usa só 1H
         """
         if not ctx.candles_6h or len(ctx.candles_6h) < 5:
-            return regime_1h   # sem 6H, confia no 1H
+            return regime_1h
 
         closes_6h = [c.close for c in ctx.candles_6h[:10]]
         sma_fast_6h = sum(closes_6h[:3]) / 3
         sma_slow_6h = sum(closes_6h[:10]) / 10
 
-        # Tendência de 6H
+        # Tendência 6H — exige queda de 3% para confirmar BEAR (mais rigoroso)
         if sma_fast_6h > sma_slow_6h:
             trend_6h = "BULL"
         elif len(closes_6h) >= 5 and closes_6h[4] > 0:
@@ -276,28 +280,31 @@ class MomentumStrategy(BaseStrategy):
         else:
             trend_6h = "CHOP"
 
-        # Família do regime 1H
         family_1h = ("BULL" if regime_1h in {"TREND_EXPANSION", "VOLATILITY_COMPRESSION", "TREND_EXHAUSTION"}
                      else "BEAR" if regime_1h in {"BEAR_TREND", "PANIC_LIQUIDATION"}
                      else "CHOP")
 
-        # Regras de confirmação
-        if family_1h == "BULL" and trend_6h == "BEAR":
-            # 1H acha BULL mas 6H está em BEAR → sinal fraco, downgrade
-            logger.debug("MTF: 1H=%s (BULL) conflita com 6H BEAR → CHOP", regime_1h)
-            return "MEAN_REVERTING_CHOP"
-
-        if family_1h == "CHOP" and trend_6h == "BEAR":
-            # 1H lateral mas 6H em queda → confirma downtrend
-            logger.debug("MTF: 1H=CHOP + 6H BEAR → BEAR_TREND")
+        # 6H BEAR + 1H BEAR → bloqueio total (ambos confirmam downtrend)
+        if family_1h == "BEAR" and trend_6h == "BEAR":
+            logger.debug("MTF: 1H=BEAR + 6H=BEAR → BEAR_TREND confirmado")
             return "BEAR_TREND"
 
+        # 6H BEAR + 1H BULL → downgrade para CHOP (não bloqueia em 30min)
+        if family_1h == "BULL" and trend_6h == "BEAR":
+            logger.debug("MTF: 1H=%s (BULL) conflita 6H BEAR → CHOP (downgrade)", regime_1h)
+            return "MEAN_REVERTING_CHOP"
+
+        # 6H BEAR + 1H CHOP → HIGH_CORRELATION_RISK (penaliza sizing mas não bloqueia)
+        # Em 30min: não escalamos CHOP→BEAR_TREND pois o 6H pode estar em correção
+        if family_1h == "CHOP" and trend_6h == "BEAR":
+            logger.debug("MTF: 1H=CHOP + 6H=BEAR → HIGH_CORRELATION_RISK (não bloqueia)")
+            return "HIGH_CORRELATION_RISK"
+
+        # 6H BULL + 1H CHOP → consolidação antes de subida
         if family_1h == "CHOP" and trend_6h == "BULL":
-            # 1H lateral mas 6H em alta → pode ser consolidação antes de subida
-            logger.debug("MTF: 1H=CHOP + 6H BULL → VOLATILITY_COMPRESSION")
+            logger.debug("MTF: 1H=CHOP + 6H=BULL → VOLATILITY_COMPRESSION")
             return "VOLATILITY_COMPRESSION"
 
-        # Regimes concordantes ou PANIC/BEAR confirmado
         return regime_1h
 
     # ── Scoring v2 (5 fatores, scoring contínuo) ─────────────────────────────

@@ -122,13 +122,29 @@ class StrategyRunner:
                     continue
 
                 # Filtro 3: só avalia se o timestamp do candle for novo
-                # Garante exatamente 1 avaliação por fechamento de vela 1H
+                # Verifica em memória primeiro, depois no Redis (sobrevive restart)
                 last_ts = self._last_candle_ts.get(candle.symbol)
+                if last_ts is None:
+                    # Tenta restaurar do Redis
+                    cached = await self._cache.get(f"last_candle_ts:{candle.symbol}")
+                    if cached:
+                        try:
+                            last_ts = datetime.fromisoformat(cached)
+                            self._last_candle_ts[candle.symbol] = last_ts
+                        except ValueError:
+                            pass
+
                 if last_ts and candle_ts <= last_ts:
                     continue
 
+                # Novo candle — persiste no Redis (TTL 3h) e avalia
                 self._last_candle_ts[candle.symbol] = candle_ts
                 self._last_eval[candle.symbol] = now
+                await self._cache.set(
+                    f"last_candle_ts:{candle.symbol}",
+                    candle_ts.isoformat(),
+                    ttl=10800,  # 3 horas
+                )
                 logger.info(
                     "Nova vela 1H %s ts=%s — avaliando estratégia",
                     candle.symbol, candle_ts.strftime("%Y-%m-%d %H:%M")

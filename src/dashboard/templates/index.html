@@ -1677,32 +1677,24 @@ function renderWfo(data){
     const stabCls=s.stability_score>0.5?'g':s.stability_score>0.3?'y':'r';
     const name=sym.replace('-USDT','');
 
-    // Cards de folds — scroll horizontal, 3 visíveis
-    const foldsCards=folds.map(f=>{
+    // Tabela de folds — scroll vertical, 3 linhas visíveis (~99px)
+    const foldsHtml=folds.map(f=>{
       const vMark=f.valid?'✓':'✗';
       const vCol=f.valid?'var(--green)':'var(--red)';
       const oor=f.oos_return!=null?((f.oos_return>=0?'+':'')+(f.oos_return*100).toFixed(1)+'%'):'–';
-      const oWr=f.oos_win_rate!=null?(f.oos_win_rate*100).toFixed(1)+'%':'–';
+      const oWr=f.oos_win_rate!=null?(f.oos_win_rate*100).toFixed(0)+'%':'–';
       const rrCls=f.oos_return>0?'g':f.oos_return<0?'r':'m';
-      const pfVal=f.oos_pf!=null?f.oos_pf.toFixed(2):'–';
-      const pfCls2=f.oos_pf>1.2?'g':f.oos_pf>1.0?'y':'r';
-      const border=f.valid?'rgba(16,185,129,0.2)':'rgba(239,68,68,0.15)';
-      return`<div style="flex:0 0 calc(33.33% - 6px);min-width:0;background:rgba(255,255,255,0.03);border:1px solid ${border};border-radius:9px;padding:9px 10px;scroll-snap-align:start;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <span style="font-size:0.65rem;font-weight:800;color:${vCol}">Fold ${f.fold} ${vMark}</span>
-          <span style="font-size:0.58rem;color:var(--muted)">${(f.oos_start||'').slice(0,7)}</span>
-        </div>
-        <div style="font-size:1.0rem;font-weight:900;" class="${rrCls}">${oor}</div>
-        <div style="font-size:0.55rem;color:var(--muted);margin-bottom:6px;">retorno OOS</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;text-align:center;">
-          <div><div style="font-size:0.68rem;font-weight:700">${f.oos_trades||0}</div><div style="font-size:0.5rem;color:var(--muted)">trades</div></div>
-          <div><div style="font-size:0.68rem;font-weight:700">${oWr}</div><div style="font-size:0.5rem;color:var(--muted)">win rate</div></div>
-          <div><div style="font-size:0.68rem;font-weight:700" class="${pfCls2}">${pfVal}</div><div style="font-size:0.5rem;color:var(--muted)">PF</div></div>
-        </div>
-      </div>`;
+      return`<tr>
+        <td style="color:${vCol};font-weight:700">${f.fold}${vMark}</td>
+        <td class="m" style="font-size:0.6rem">${(f.oos_start||'').slice(0,7)}</td>
+        <td>${f.oos_trades||0}</td>
+        <td>${oWr}</td>
+        <td class="${rrCls}">${oor}</td>
+        <td class="m">${f.oos_pf!=null?f.oos_pf.toFixed(2):'–'}</td>
+      </tr>`;
     }).join('');
 
-    return`<div style="margin-bottom:16px;">
+    return`<div style="margin-bottom:14px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
         <span style="font-size:0.78rem;font-weight:800;color:var(--text)">${name}</span>
         <span style="font-size:0.62rem;color:var(--muted)">${validFolds.length}/${folds.length} folds válidos</span>
@@ -1713,8 +1705,13 @@ function renderWfo(data){
         <div class="calib-item"><div class="calib-val ${pfCls}">${pf}</div><div class="calib-label">Profit Factor</div></div>
         <div class="calib-item"><div class="calib-val ${stabCls}">${stab}</div><div class="calib-label">Stability</div></div>
       </div>
-      <div style="display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;">
-        ${foldsCards}
+      <div style="max-height:102px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;">
+        <table style="font-size:0.65rem;width:100%;">
+          <thead style="position:sticky;top:0;background:var(--surface);z-index:1;">
+            <tr><th>Fold</th><th>OOS Start</th><th>Trades</th><th>WR</th><th>Retorno</th><th>PF</th></tr>
+          </thead>
+          <tbody>${foldsHtml}</tbody>
+        </table>
       </div>
     </div>`;
   }).join('<hr style="border-color:var(--border);margin:8px 0;">');

@@ -70,14 +70,35 @@ REGIME_M4: dict[str, float] = {
 # Regimes que bloqueiam novas entradas
 BLOCKED_REGIMES = {"BEAR_TREND", "PANIC_LIQUIDATION"}
 
+# EV mínimo por regime — quanto mais favorável o regime, mais exigente
+# EXPANSION: mercado claro → exige EV positivo real
+# CHOP: mercado lateral → aceita EV quase zero (entry oportunista)
+REGIME_MIN_EV_MULT: dict[str, float] = {
+    "TREND_EXPANSION":        1.5,   # mercado favorável → mais seletivo
+    "VOLATILITY_COMPRESSION": 1.0,
+    "TREND_EXHAUSTION":       0.5,
+    "MEAN_REVERTING_CHOP":    0.2,   # mercado lateral → mais permissivo
+    "HIGH_CORRELATION_RISK":  0.3,
+    "BEAR_TREND":             0.0,
+    "PANIC_LIQUIDATION":      0.0,
+}
+
+# Threshold de momentum 30min para _direction (quão forte deve ser o move)
+# EXPANSION: qualquer alta conta (0.1%) | CHOP: exige move mais forte (0.3%)
+REGIME_DIRECTION_THRESH: dict[str, float] = {
+    "TREND_EXPANSION":        0.001,   # 0.1% — sensível em tendência clara
+    "VOLATILITY_COMPRESSION": 0.0015,
+    "TREND_EXHAUSTION":       0.002,   # 0.2% — padrão
+    "MEAN_REVERTING_CHOP":    0.003,   # 0.3% — exige move mais forte em lateral
+    "HIGH_CORRELATION_RISK":  0.004,   # 0.4% — muito seletivo em risco alto
+    "BEAR_TREND":             0.01,
+    "PANIC_LIQUIDATION":      0.01,
+}
+
 
 class MomentumStrategy(BaseStrategy):
 
     REGIME_THRESHOLDS = REGIME_THRESHOLDS
-    # EV mínimo reduzido para 30min — permite validação estatística do paper trading
-    # Com WR=25-30% em 30min, exigir EV alto bloqueia tudo (matematicamente impossível)
-    # EV calculado como: calibrated × TP_mult - (1-calibrated) × 1.0
-    MIN_EV_MULTIPLIER = 0.5   # era 3.0 — min_ev agora = 0.5×0.005 = 0.0025
     ROUND_TRIP_FEE    = 0.005
 
     def __init__(self, symbols: list[str], strategy_id: str = "momentum_v2") -> None:
@@ -134,9 +155,10 @@ class MomentumStrategy(BaseStrategy):
                  threshold=threshold, factors=factors)
             return None
 
-        # ── Filtro 3: EV ─────────────────────────────────────
+        # ── Filtro 3: EV dinâmico por regime ─────────────────
         ev     = self._expected_value(calibrated, regime)
-        min_ev = self.MIN_EV_MULTIPLIER * self.ROUND_TRIP_FEE
+        ev_mult = REGIME_MIN_EV_MULT.get(regime, 0.5)
+        min_ev = ev_mult * self.ROUND_TRIP_FEE
         if ev < min_ev:
             _log("EV_LOW",
                  f"EV {ev:.3f} < min {min_ev:.3f}",
@@ -144,8 +166,8 @@ class MomentumStrategy(BaseStrategy):
                  threshold=threshold, ev=ev, factors=factors)
             return None
 
-        # ── Filtro 4: Direção ────────────────────────────────
-        direction = self._direction(ctx)
+        # ── Filtro 4: Direção dinâmica por regime ────────────
+        direction = self._direction(ctx, regime)
         if direction == SignalDirection.FLAT:
             _log("DIRECTION_FLAT", "Preço lateralizado",
                  regime=regime, score=score, calibrated=calibrated,
@@ -419,26 +441,26 @@ class MomentumStrategy(BaseStrategy):
         tp = tp_by_regime.get(regime, 3.0)
         return calibrated * tp - (1 - calibrated) * 1.0
 
-    def _direction(self, ctx: StrategyContext) -> SignalDirection:
+    def _direction(self, ctx: StrategyContext, regime: str = "") -> SignalDirection:
         """
-        Direção baseada na maioria dos últimos 3 candles 1H (menos binário).
-        Também considera momentum 30min recente para não bloquear moves rápidos.
+        Direção dinâmica por regime:
+        - Maioria dos últimos 3 candles 1H bullish
+        - Fallback 30min com threshold ajustado ao regime (EXPANSION mais sensível, CHOP mais exigente)
         """
         if len(ctx.candles_1h) < 3:
             return SignalDirection.FLAT
 
         closes_1h = [c.close for c in ctx.candles_1h[:4]]
-        # Maioria dos últimos 3 candles 1H são bullish (close > close anterior)?
         bullish_count = sum(1 for i in range(3) if closes_1h[i] > closes_1h[i + 1])
 
-        # Desempate via 30min recente
         if bullish_count >= 2:
             return SignalDirection.LONG
 
-        # Se 30min recente é fortemente bullish (último close > 2 closes atrás), aceita
+        # Fallback 30min com threshold dinâmico por regime
         if ctx.candles_30m and len(ctx.candles_30m) >= 3:
             c30 = [c.close for c in ctx.candles_30m[:3]]
-            if c30[0] > c30[2] * 1.002:   # +0.2% nos últimos 2 candles 30min
+            thresh_30m = REGIME_DIRECTION_THRESH.get(regime, 0.002)
+            if c30[2] > 0 and (c30[0] - c30[2]) / c30[2] > thresh_30m:
                 return SignalDirection.LONG
 
         return SignalDirection.FLAT

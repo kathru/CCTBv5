@@ -50,13 +50,29 @@ REGIME_MULT: dict[str, dict[str, float]] = {
 DEFAULT_SL_MULT = 1.5
 DEFAULT_TP_MULT = 3.0
 
-# Phase B — Trailing stop
-TRAIL_ACTIVATE_R = 1.0   # ativa trailing após +1R de ganho
+# Phase B — Trailing stop dinâmico por regime
+# EXPANSION: ativa cedo (0.8R) pois trend pode durar | CHOP: ativa mais tarde (1.2R) para não sair cedo
+REGIME_TRAIL_ACTIVATE: dict[str, float] = {
+    "TREND_EXPANSION":        0.8,   # ativa cedo — trend pode se estender
+    "VOLATILITY_COMPRESSION": 1.0,
+    "TREND_EXHAUSTION":       1.0,
+    "MEAN_REVERTING_CHOP":    1.2,   # ativa mais tarde — evita whipsaw em lateral
+    "HIGH_CORRELATION_RISK":  0.8,   # ativa cedo — protege em alta correlação
+}
+TRAIL_ACTIVATE_R = 1.0   # fallback
 TRAIL_ATR_MULT   = 1.0   # distância do trailing = ATR × 1.0
 
-# Phase C — Saída parcial
-PARTIAL_EXIT_R   = 1.5   # sai 50% em +1.5R
-PARTIAL_EXIT_PCT = 0.50  # fracção da posição a vender
+# Phase C — Saída parcial dinâmica por regime
+# EXPANSION: sai mais tarde (2.0R) para deixar correr | CHOP: sai mais cedo (1.0R) para garantir lucro
+REGIME_PARTIAL_EXIT: dict[str, float] = {
+    "TREND_EXPANSION":        2.0,   # deixa correr mais
+    "VOLATILITY_COMPRESSION": 1.5,
+    "TREND_EXHAUSTION":       1.5,
+    "MEAN_REVERTING_CHOP":    1.0,   # garante lucro cedo em lateral
+    "HIGH_CORRELATION_RISK":  1.2,
+}
+PARTIAL_EXIT_R   = 1.5   # fallback
+PARTIAL_EXIT_PCT = 0.50  # fracção da posição a vender (50% sempre)
 
 # Phase D — Regimes que forçam saída imediata
 EXIT_REGIMES = {"PANIC_LIQUIDATION", "BEAR_TREND"}  # saída imediata nesses regimes
@@ -366,8 +382,9 @@ class PositionMonitor:
             )
             return
 
-        # ── Phase C — Saída parcial em +1.5R ─────────────────
-        if not plan.partial_done and price >= plan.price_at_r(PARTIAL_EXIT_R):
+        # ── Phase C — Saída parcial dinâmica por regime ───────
+        partial_r = REGIME_PARTIAL_EXIT.get(plan.entry_regime, PARTIAL_EXIT_R)
+        if not plan.partial_done and price >= plan.price_at_r(partial_r):
             qty_to_sell = round(plan.quantity * PARTIAL_EXIT_PCT, 8)
             await self._exit(
                 plan, price, qty_to_sell,
@@ -377,12 +394,13 @@ class PositionMonitor:
             plan.partial_done  = True
             plan.qty_remaining = round(plan.qty_remaining - qty_to_sell, 8)
             logger.info(
-                "%s: saída parcial %.4f unidades @ %.2f (+1.5R) — restante: %.4f",
-                symbol, qty_to_sell, price, plan.qty_remaining,
+                "%s: saída parcial %.4f unidades @ %.2f (+%.1fR, regime=%s) — restante: %.4f",
+                symbol, qty_to_sell, price, partial_r, plan.entry_regime, plan.qty_remaining,
             )
 
-        # ── Phase B — Ativa / atualiza trailing stop ──────────
-        if price >= plan.price_at_r(TRAIL_ACTIVATE_R):
+        # ── Phase B — Trailing stop dinâmico por regime ───────
+        trail_r = REGIME_TRAIL_ACTIVATE.get(plan.entry_regime, TRAIL_ACTIVATE_R)
+        if price >= plan.price_at_r(trail_r):
             new_trail = round(price - plan.atr * TRAIL_ATR_MULT, 4)
             if not plan.trailing_activated:
                 plan.trailing_stop      = new_trail

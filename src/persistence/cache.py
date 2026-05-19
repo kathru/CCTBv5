@@ -88,6 +88,15 @@ class Cache:
         raw = await self._r().get(f"{_PFX_PRICE}{symbol}")
         return float(raw) if raw else None
 
+    async def set_ticker(self, symbol: str, data: dict) -> None:
+        import json
+        await self._r().setex(f"ticker:{symbol}", _TTL_PRICE, json.dumps(data))
+
+    async def get_ticker(self, symbol: str) -> dict | None:
+        import json
+        raw = await self._r().get(f"ticker:{symbol}")
+        return json.loads(raw) if raw else None
+
     # ── Last fill ─────────────────────────────────────────────
 
     async def set_last_fill(self, symbol: str, data: dict) -> None:

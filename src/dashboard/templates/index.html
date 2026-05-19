@@ -1325,6 +1325,14 @@ function buildCards(prices,sym,exits){
     const enPctStr=enPct!=null?(enPct>=0?'+':'')+enPct.toFixed(2)+'%':'–';
     const enPctCol=enPct!=null?(enPct>0?'#10b981':enPct<0?'#ef4444':'#6b7280'):'#6b7280';
     const isBuy=act.l==='BUY', isSell=act.l==='SELL';
+    const chg=d.change_pct!=null?d.change_pct:null;
+    const chgStr=chg!=null?(chg>=0?'+':'')+chg.toFixed(2)+'%':'–';
+    const chgCol=chg>0?'#10b981':chg<0?'#ef4444':'#6b7280';
+    const chgArrow=chg>0?'▲':chg<0?'▼':'–';
+    // Contagem de trades do bot por símbolo
+    const symTrades=(_c.exits||[]).filter(t=>t.symbol===s);
+    const buyCount=symTrades.filter(t=>t.side==='buy'||t.direction==='long').length;
+    const sellCount=symTrades.filter(t=>t.side==='sell'||t.direction==='short').length;
 
     return`<div class="card crypto-card" style="padding:18px 20px;background:#161b22;">
 
@@ -1339,7 +1347,11 @@ function buildCards(prices,sym,exits){
         </div>
         <div style="text-align:right;">
           <div style="font-size:1.5rem;font-weight:900;letter-spacing:-1px;line-height:1">${p>0?usd(p,2):'–'}</div>
-          <div style="font-size:0.6rem;color:#4b5563;margin-top:3px;">thr ${(thr*100).toFixed(1)}%</div>
+          <div style="font-size:0.6rem;margin-top:3px;display:flex;align-items:center;gap:6px;justify-content:flex-end;">
+            <span style="color:${chgCol};font-weight:700">${chgArrow} ${chgStr}</span>
+            <span style="color:#374151">·</span>
+            <span style="color:#4b5563">▲ ${buyCount} ↓ ${sellCount}</span>
+          </div>
         </div>
       </div>
 

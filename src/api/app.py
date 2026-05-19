@@ -64,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(orders.router)
     app.include_router(metrics.router)
     app.include_router(portfolio.router)
+    signals.set_cache(cache)
     app.include_router(signals.router)
     app.include_router(analytics.router)
     app.include_router(governance.router)

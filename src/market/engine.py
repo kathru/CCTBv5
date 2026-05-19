@@ -132,6 +132,15 @@ class MarketEngine:
     async def _publish_ticker(self, ticker: Ticker) -> None:
         # Update Redis price cache
         await self._cache.set_price(ticker.symbol, ticker.last)
+        # Store extended ticker data for dashboard
+        change_pct = ((ticker.last - ticker.open_24h) / ticker.open_24h * 100) \
+            if ticker.open_24h > 0 else 0.0
+        await self._cache.set_ticker(ticker.symbol, {
+            "last":       ticker.last,
+            "open_24h":   ticker.open_24h,
+            "volume_24h": ticker.volume_24h,
+            "change_pct": round(change_pct, 2),
+        })
         # Publish to bus
         await self._bus.publish(Topic.MARKET, TickerEvent(ticker=ticker))
 

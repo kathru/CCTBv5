@@ -149,10 +149,15 @@ class MomentumStrategy(BaseStrategy):
         calibrated     = self._calibrate(score)
 
         if score < threshold:
+            # Calcula direção tentativa mesmo em SCORE_LOW (só para info no log)
+            try:
+                _dir_hint = self._direction(ctx, regime)
+            except Exception:
+                _dir_hint = "N/A"
             _log("SCORE_LOW",
                  f"Score {score:.3f} < thr {threshold:.3f} [{regime}]",
                  regime=regime, score=score, calibrated=calibrated,
-                 threshold=threshold, factors=factors)
+                 threshold=threshold, direction=_dir_hint, factors=factors)
             return None
 
         # ── Filtro 3: EV dinâmico por regime ─────────────────
@@ -426,8 +431,8 @@ class MomentumStrategy(BaseStrategy):
         # Registra features no drift monitor (nunca bloqueia o trading)
         try:
             governance.record_live(ctx.symbol, factors)
-        except Exception:
-            pass
+        except Exception as _gov_exc:
+            logger.warning("governance.record_live falhou: %s", _gov_exc)
         return score, factors
 
     def _calibrate(self, score: float) -> float:

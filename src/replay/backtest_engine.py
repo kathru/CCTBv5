@@ -448,10 +448,12 @@ class BacktestEngine:
 
             # ── 2. Avaliar novo sinal ─────────────────────────
             if open_trade is None:
+                candles_newest_first = list(reversed(history))
                 ctx = StrategyContext(
                     symbol=self._symbol,
-                    candles_1h=list(reversed(history)),   # newest first
+                    candles_1h=candles_newest_first,   # newest first
                     candles_6h=[],
+                    candles_30m=candles_newest_first,  # backtest usa mesmos candles
                     ticker=None,
                     portfolio_value=capital,
                 )

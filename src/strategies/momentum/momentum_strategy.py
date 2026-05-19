@@ -99,6 +99,9 @@ class MomentumStrategy(BaseStrategy):
         if len(ctx.candles_1h) < 20:
             _log("NO_CANDLES", f"Candles 1H insuficientes: {len(ctx.candles_1h)}/20")
             return None
+        if not ctx.candles_30m or len(ctx.candles_30m) < 4:
+            _log("NO_CANDLES", f"Candles 30m insuficientes: {len(ctx.candles_30m) if ctx.candles_30m else 0}/4")
+            return None
 
         # ── Camada 1: Detecção de regime 1H ─────────────────
         regime_1h = self._detect_regime_1h(ctx)
@@ -173,7 +176,7 @@ class MomentumStrategy(BaseStrategy):
             expected_value=ev,
             kelly_fraction=kelly,
             regime=regime,
-            timeframe="1H",
+            timeframe="30m",
             factors=factors,
         )
 
@@ -284,84 +287,94 @@ class MomentumStrategy(BaseStrategy):
           M4 Regime Strength     (20%): distância SMA5-SMA20 normalizada
           M5 Candle Structure    (10%): close no terço superior do range
         """
+        # Candles 1H (regime/tendência macro — SMA, ATR, M4)
         closes = [c.close  for c in ctx.candles_1h[:21]]
         highs  = [c.high   for c in ctx.candles_1h[:10]]
         lows   = [c.low    for c in ctx.candles_1h[:10]]
         opens  = [c.open   for c in ctx.candles_1h[:10]]
-        vols   = [c.volume for c in ctx.candles_1h[:20]]
+        vols_1h = [c.volume for c in ctx.candles_1h[:20]]
+
+        # Candles 30min (estrutura recente — M2, M3, M5)
+        c30 = ctx.candles_30m or []
+        highs_30m = [c.high   for c in c30[:10]]
+        lows_30m  = [c.low    for c in c30[:10]]
+        opens_30m = [c.open   for c in c30[:10]]
+        closes_30m = [c.close for c in c30[:10]]
+        vols_30m  = [c.volume for c in c30[:20]]
 
         # ── M1: Adaptive Momentum (25%) — blend 30min + 1H ───
         atr_20 = sum(highs[i] - lows[i] for i in range(min(10, len(highs)))) / min(10, len(highs)) if highs else closes[0] * 0.01
         norm   = max(atr_20 * 2, closes[0] * 0.005)
 
-        # Horizonte 1H (médio prazo)
+        # Horizonte 1H (médio prazo: 5h, 10h, 20h)
         r5  = (closes[0] - closes[5])  / closes[5]  if len(closes) > 5  and closes[5]  > 0 else 0
         r10 = (closes[0] - closes[10]) / closes[10] if len(closes) > 10 and closes[10] > 0 else 0
         r20 = (closes[0] - closes[20]) / closes[20] if len(closes) > 20 and closes[20] > 0 else 0
-        m1_1h = (r5 * 0.5 + r10 * 0.3 + r20 * 0.2)
+        m1_1h = r5 * 0.5 + r10 * 0.3 + r20 * 0.2
 
-        # Horizonte 30min (curto prazo — captura moves intra-hora)
-        closes_30m = [c.close for c in ctx.candles_30m[:10]] if ctx.candles_30m else []
+        # Horizonte 30min (curto prazo: 30min, 2h em candles 30m)
         if len(closes_30m) >= 4:
             r1_30 = (closes_30m[0] - closes_30m[1]) / closes_30m[1] if closes_30m[1] > 0 else 0
-            r2_30 = (closes_30m[0] - closes_30m[3]) / closes_30m[3] if closes_30m[3] > 0 else 0
-            m1_30m = r1_30 * 0.6 + r2_30 * 0.4
+            r4_30 = (closes_30m[0] - closes_30m[3]) / closes_30m[3] if closes_30m[3] > 0 else 0
+            m1_30m = r1_30 * 0.6 + r4_30 * 0.4
         else:
             m1_30m = m1_1h
 
-        # Blend: 60% peso 1H (tendência), 40% peso 30min (momentum recente)
         momentum_weighted = m1_1h * 0.60 + m1_30m * 0.40
         m1 = min(max((momentum_weighted / (norm / closes[0])) * 0.5 + 0.5, 0.0), 1.0)
 
-        # ── M2: Trend Consistency (25%) ───────────────────────
-        # % de candles bullish nos últimos 5 + higher-highs E higher-lows
-        n = min(5, len(closes) - 1)
-        bullish_count = sum(1 for i in range(n) if closes[i] > opens[i]) if opens else 0
+        # ── M2: Trend Consistency (25%) — usa candles 30min ──
+        # Bullish count nos últimos 6 candles 30m (= 3h)
+        src_opens  = opens_30m  if len(opens_30m)  >= 5 else opens
+        src_closes = closes_30m if len(closes_30m) >= 5 else closes
+        src_highs  = highs_30m  if len(highs_30m)  >= 5 else highs
+        src_lows   = lows_30m   if len(lows_30m)   >= 5 else lows
+
+        n = min(6, len(src_closes) - 1)
+        bullish_count = sum(1 for i in range(n) if src_closes[i] > src_opens[i])
         pct_bullish   = bullish_count / n if n > 0 else 0.5
 
-        # Higher-highs (gradual: conta quantos dos últimos 4 são crescentes)
-        hh_count = sum(1 for i in range(min(4, len(highs)-1)) if highs[i] > highs[i+1])
-        hl_count = sum(1 for i in range(min(4, len(lows)-1))  if lows[i]  > lows[i+1])
-        structure = (hh_count + hl_count) / 8   # 0.0 a 1.0
+        hh_count  = sum(1 for i in range(min(4, len(src_highs)-1)) if src_highs[i] > src_highs[i+1])
+        hl_count  = sum(1 for i in range(min(4, len(src_lows)-1))  if src_lows[i]  > src_lows[i+1])
+        structure = (hh_count + hl_count) / 8
 
         m2 = pct_bullish * 0.5 + structure * 0.5
 
-        # ── M3: Volume Confirmation (20%) ─────────────────────
-        # Volume atual vs média + tendência de volume + direção do candle
+        # ── M3: Volume Confirmation (20%) — usa volumes 30min ─
+        vols = vols_30m if len(vols_30m) >= 6 else vols_1h
         avg_vol_5  = sum(vols[:5])  / 5  if len(vols) >= 5  else vols[0] if vols else 1
         avg_vol_20 = sum(vols[:20]) / 20 if len(vols) >= 20 else avg_vol_5
 
-        vol_ratio    = min(vols[0] / avg_vol_5, 3.0) / 3.0 if avg_vol_5 > 0 else 0.5
-        # Volume crescente? (últimas 3 barras têm volume maior que as 3 anteriores)
+        vol_ratio = min(vols[0] / avg_vol_5, 3.0) / 3.0 if avg_vol_5 > 0 else 0.5
         vol_trend = (sum(vols[:3]) / sum(vols[3:6])) if len(vols) >= 6 and sum(vols[3:6]) > 0 else 1.0
         vol_trend = min(max(vol_trend, 0.3), 2.0)
-        vol_trend_score = (vol_trend - 0.3) / 1.7   # 0–1
+        vol_trend_score = (vol_trend - 0.3) / 1.7
 
-        # Confirmação direcional: candle atual bullish com volume alto
-        candle_confirm = 1.0 if (closes[0] > opens[0] and vols[0] > avg_vol_20) else 0.4
+        # Confirmação direcional com candle 30min mais recente
+        cur_close = src_closes[0] if src_closes else closes[0]
+        cur_open  = src_opens[0]  if src_opens  else opens[0]
+        candle_confirm = 1.0 if (cur_close > cur_open and vols[0] > avg_vol_20) else 0.4
 
         m3 = vol_ratio * 0.4 + vol_trend_score * 0.3 + candle_confirm * 0.3
 
-        # ── M4: Regime Strength (20%) ─────────────────────────
-        # Distância SMA5-SMA20 normalizada — captura força do trend
+        # ── M4: Regime Strength (20%) — mantém 1H (SMA macro) ─
         sma5  = sum(closes[:5])  / 5
         sma20 = sum(closes[:20]) / 20 if len(closes) >= 20 else sma5
         sma_distance = (sma5 - sma20) / sma20 if sma20 > 0 else 0
-
-        # Normaliza: 0% gap = 0.45 (neutro), +2% = 0.85, -2% = 0.05
-        m4_raw = min(max((sma_distance + 0.02) / 0.04, 0.0), 1.0)
-
-        # Blend com M4 fixo do regime (dá contexto macro)
+        m4_raw    = min(max((sma_distance + 0.02) / 0.04, 0.0), 1.0)
         m4_regime = REGIME_M4.get(regime, 0.45)
         m4 = m4_raw * 0.6 + m4_regime * 0.4
 
-        # ── M5: Candle Structure (10%) ─────────────────────────
-        # Close no terço superior do range dos últimos 3 candles
+        # ── M5: Candle Structure (10%) — usa candles 30min ────
+        # Close no terço superior do range dos 3 candles 30m mais recentes
+        m5_highs  = src_highs[:3]  if src_highs  else highs[:3]
+        m5_lows   = src_lows[:3]   if src_lows   else lows[:3]
+        m5_closes = src_closes[:3] if src_closes else closes[:3]
         candle_scores = []
-        for i in range(min(3, len(closes))):
-            rng = highs[i] - lows[i] if i < len(highs) else 0
+        for i in range(min(3, len(m5_closes))):
+            rng = m5_highs[i] - m5_lows[i] if i < len(m5_highs) else 0
             if rng > 0:
-                pos = (closes[i] - lows[i]) / rng   # 0=low, 1=high
+                pos = (m5_closes[i] - m5_lows[i]) / rng
                 candle_scores.append(pos)
         m5 = sum(candle_scores) / len(candle_scores) if candle_scores else 0.5
 

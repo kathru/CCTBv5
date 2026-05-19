@@ -1,17 +1,17 @@
 {
-  "platt_a": 0.29508,
-  "platt_b": -0.970874,
-  "n": 37449,
-  "win_rate": 0.31,
-  "calibrated_at": "2026-05-19T06:07:56.615156+00:00",
+  "platt_a": 0.247336,
+  "platt_b": -0.919773,
+  "n": 69547,
+  "win_rate": 0.3148,
+  "calibrated_at": "2026-05-19T11:17:27.968446+00:00",
   "period_end": "2026-05-19",
   "symbols": [
     "BTC-USDT",
     "ETH-USDT",
     "SOL-USDT"
   ],
-  "granularity": "1H",
-  "forward_candles": 5,
+  "granularity": "30m",
+  "forward_candles": 10,
   "regime_thresholds": {
     "HIGH_CORRELATION_RISK": 0.75,
     "MEAN_REVERTING_CHOP": 0.72,

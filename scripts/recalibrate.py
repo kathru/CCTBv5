@@ -53,8 +53,8 @@ CACHE_DIR  = ROOT / "data" / "cache"
 
 DEFAULT_SYMBOLS     = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
 DEFAULT_START       = "2024-01-01"
-DEFAULT_GRANULARITY = "1H"
-DEFAULT_FORWARD     = 5
+DEFAULT_GRANULARITY = "30m"
+DEFAULT_FORWARD     = 10   # 10 × 30min = 5h (mesma janela de avaliação)
 DEFAULT_FEE         = 0.005
 DEFAULT_MIN_SCORE   = 0.40
 
@@ -187,12 +187,11 @@ def db_clear(conn: sqlite3.Connection) -> None:
 # ── OKX Fetcher ───────────────────────────────────────────────────────────────
 
 OKX_BASE = "https://www.okx.com"
-GRAN_MS   = {"1H": 3_600_000, "4H": 14_400_000, "6H": 21_600_000, "1D": 86_400_000}
+GRAN_MS   = {"30m": 1_800_000, "1H": 3_600_000, "4H": 14_400_000, "6H": 21_600_000, "1D": 86_400_000}
 
 
 def fetch_candles_range(symbol: str, granularity: str,
                         start_dt: datetime, end_dt: datetime) -> list[dict]:
-    ms_per_candle = GRAN_MS.get(granularity, 3_600_000)
     start_ms = int(start_dt.timestamp() * 1000)
     end_ms   = int(end_dt.timestamp() * 1000)
     after_ms = end_ms
@@ -417,7 +416,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Recalibra o sistema de sinais CCTBv5")
     parser.add_argument("--symbols",     nargs="+", default=DEFAULT_SYMBOLS)
     parser.add_argument("--start",       default=DEFAULT_START, help="YYYY-MM-DD (só no rebuild)")
-    parser.add_argument("--gran",        default=DEFAULT_GRANULARITY, choices=["1H","4H","6H","1D"])
+    parser.add_argument("--gran",        default=DEFAULT_GRANULARITY, choices=["30m","1H","4H","6H","1D"])
     parser.add_argument("--forward",     type=int,   default=DEFAULT_FORWARD)
     parser.add_argument("--fee",         type=float, default=DEFAULT_FEE)
     parser.add_argument("--min-score",   type=float, default=DEFAULT_MIN_SCORE)

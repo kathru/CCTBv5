@@ -27,11 +27,11 @@ from .base import BaseStrategy, StrategyContext
 
 logger = logging.getLogger(__name__)
 
-# Só avalia candles 1H confirmados com menos de 2 horas de idade
-MAX_CANDLE_AGE = timedelta(hours=2)
+# Só avalia candles 30m confirmados com menos de 1 hora de idade
+MAX_CANDLE_AGE = timedelta(hours=1)
 
 # Granularidade alvo — só avalia eventos dessa granularidade
-EVAL_GRANULARITY = "1H"
+EVAL_GRANULARITY = "30m"
 
 
 class StrategyRunner:
@@ -101,9 +101,10 @@ class StrategyRunner:
         for strategy in self._strategies.values():
             symbols.update(strategy.symbols)
 
-        # Timestamp do último candle 1H fechado = hora atual truncada - 1h
+        # Timestamp do último candle 30m fechado = minuto atual truncado a 30min - 30min
         now = datetime.now(UTC)
-        last_closed_ts = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
+        half = 0 if now.minute < 30 else 30
+        last_closed_ts = now.replace(minute=half, second=0, microsecond=0) - timedelta(minutes=30)
 
         for symbol in symbols:
             redis_ts: datetime | None = None
@@ -173,7 +174,7 @@ class StrategyRunner:
                     ttl=10800,  # 3 horas
                 )
                 logger.info(
-                    "Nova vela 1H %s ts=%s — avaliando estratégia",
+                    "Nova vela 30m %s ts=%s — avaliando estratégia",
                     candle.symbol, candle_ts.strftime("%Y-%m-%d %H:%M")
                 )
                 await self._evaluate_all(candle.symbol)

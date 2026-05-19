@@ -29,7 +29,7 @@ import math
 import statistics
 import sys
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -44,9 +44,8 @@ load_dotenv(ROOT / ".env")
 
 from src.core.models import Candle
 from src.replay.backtest_engine import BacktestEngine
-from src.strategies.momentum.momentum_strategy import MomentumStrategy
 from src.strategies.ml.inference import PlattCalibrator
-from src.strategies.base import StrategyContext
+from src.strategies.momentum.momentum_strategy import MomentumStrategy
 
 logging.basicConfig(
     level=logging.WARNING,   # silencia logs da estratégia durante backtest
@@ -60,7 +59,7 @@ log.setLevel(logging.INFO)
 CACHE_DIR   = ROOT / "data" / "cache"
 OUTPUT_DIR  = ROOT / "data" / "wfo"
 OKX_BASE    = "https://www.okx.com"
-GRAN_MS     = {"1H": 3_600_000}
+GRAN_MS     = {"30m": 1_800_000, "1H": 3_600_000}
 DEFAULT_FEE = 0.005   # round-trip 0.5%
 
 PLATT_A_INIT = 0.378188
@@ -71,8 +70,10 @@ PLATT_B_INIT = -1.075301
 
 def fetch_candles(symbol: str, start_dt: datetime, end_dt: datetime,
                   use_cache: bool = True) -> list[dict]:
-    """Baixa candles 1H da OKX ou usa cache local."""
-    cache_file = CACHE_DIR / f"{symbol.replace('-','_')}_1H.json"
+    """Baixa candles 30m da OKX ou usa cache local (fallback 1H)."""
+    cache_file = CACHE_DIR / f"{symbol.replace('-','_')}_30m.json"
+    if not cache_file.exists():
+        cache_file = CACHE_DIR / f"{symbol.replace('-','_')}_1H.json"
 
     if use_cache and cache_file.exists():
         all_candles = json.loads(cache_file.read_text())
@@ -95,7 +96,7 @@ def fetch_candles(symbol: str, start_dt: datetime, end_dt: datetime,
 
     while True:
         url = (f"{OKX_BASE}/api/v5/market/history-candles"
-               f"?instId={symbol}&bar=1H&limit=100&after={after_ms}")
+               f"?instId={symbol}&bar=30m&limit=100&after={after_ms}")
         try:
             resp = requests.get(url, timeout=15)
             resp.raise_for_status()
@@ -139,7 +140,7 @@ def to_candle_objects(raw: list[dict], symbol: str) -> list[Candle]:
     for r in raw:
         result.append(Candle(
             symbol=symbol,
-            granularity="1H",
+            granularity="30m",
             timestamp=datetime.fromtimestamp(r["ts"] / 1000, tz=UTC),
             open=r["open"], high=r["high"], low=r["low"],
             close=r["close"], volume=r["volume"],
@@ -323,7 +324,6 @@ async def run_fold_backtest(
         """
         def __init__(self):
             super().__init__(symbols=[symbol])
-            from src.strategies.ml.inference import PlattCalibrator
             self._platt = PlattCalibrator.__new__(PlattCalibrator)
             self._platt._A       = platt_a
             self._platt._B       = platt_b
@@ -369,7 +369,7 @@ async def walk_forward(
     train_months: int = 6,
     test_months:  int = 2,
     initial_capital: float = 10000.0,
-    forward_candles: int = 5,
+    forward_candles: int = 10,  # 10×30min = 5h
 ) -> WalkForwardResult:
     """
     Executa WFO com janela expandida.

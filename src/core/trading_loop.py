@@ -111,7 +111,7 @@ class TradingLoop:
             okx=self._okx,
             cache=self._cache,
             symbols=SYMBOLS,
-            granularities=["1H", "6H"],
+            granularities=["30m", "1H", "6H"],
             poll_interval=15,
         )
 

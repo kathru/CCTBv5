@@ -499,15 +499,15 @@
       <!-- Sizing detail -->
       <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px;">
         <!-- Kelly bar -->
-        <div style="display:grid;grid-template-columns:80px 1fr 70px;align-items:center;gap:8px;">
-          <span style="font-size:0.6rem;color:rgba(255,255,255,0.5)">Kelly score</span>
+        <div>
+          <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);margin-bottom:3px">Kelly score</div>
           <div style="position:relative;height:18px;background:#0d1520;border-radius:9px;overflow:hidden;">
             <div id="motor-kelly-fill" style="position:relative;height:100%;border-radius:9px;background:var(--blue);transition:width 0.5s;width:0%">
               <span id="motor-kelly-val" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:0.68rem;font-weight:800;color:rgba(255,255,255,0.9);white-space:nowrap;">–</span>
             </div>
             <div id="motor-kelly-cap-line" style="position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;left:8%"></div>
           </div>
-          <span style="font-size:0.6rem;color:rgba(255,255,255,0.35);text-align:right" id="motor-kelly-cap-lbl">cap –%</span>
+          <div style="font-size:0.55rem;color:rgba(255,255,255,0.3);margin-top:2px">cap <span id="motor-kelly-cap-lbl">–%</span></div>
         </div>
         <!-- Notional + SL/TP + Score atual -->
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -1919,7 +1919,7 @@ async function updateAll(){
     if(kFill) kFill.style.width=(rawKelly*100).toFixed(1)+'%';
     if(kCap)  kCap.style.left=(cap*100).toFixed(1)+'%';
     if(kVal)  kVal.textContent=(effKelly*100).toFixed(1)+'%';
-    if(kCapLbl) kCapLbl.textContent='cap '+(cap*100).toFixed(0)+'%';
+    if(kCapLbl) kCapLbl.textContent=(cap*100).toFixed(0)+'%';
     const notEl=document.getElementById('motor-notional');
     if(notEl) notEl.textContent=notional>0?'~'+usd(notional,0):'–';
 

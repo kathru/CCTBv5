@@ -46,7 +46,12 @@ jobs:
 
       # Roda calibração incremental (atualiza Platt com novos candles)
       - name: Run incremental calibration
-        run: python scripts/recalibrate.py --incremental
+        run: |
+          echo "Python: $(python --version)"
+          echo "Working dir: $(pwd)"
+          echo "DB exists: $(test -f data/calibration.db && echo YES || echo NO)"
+          echo "Cache dir: $(ls data/cache/ 2>/dev/null | head -5)"
+          python scripts/recalibrate.py --incremental
         env:
           PYTHONPATH: .
 

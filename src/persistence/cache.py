@@ -28,7 +28,7 @@ _PFX_STATUS   = "system:status"
 _PFX_FILL     = "lastfill:"
 
 _TTL_POSITION = 60   # seconds
-_TTL_PRICE    = 10
+_TTL_PRICE    = 60   # 60s — cobre gap entre polls de 15s com folga
 _TTL_FILL     = 300
 
 

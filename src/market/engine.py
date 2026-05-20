@@ -108,9 +108,11 @@ class MarketEngine:
         client = self._okx
         for symbol in self._symbols:
             # Fetch and publish ticker
+            ticker_ok = False
             try:
                 ticker = await client.get_ticker(symbol)
                 await self._publish_ticker(ticker)
+                ticker_ok = True
             except Exception as exc:
                 logger.warning(
                     "Ticker fetch failed symbol=%s error=%s", symbol, exc
@@ -123,6 +125,17 @@ class MarketEngine:
                         symbol, granularity=gran, limit=100
                     )
                     await self._publish_candles(symbol, gran, candles)
+
+                    # Fallback: se ticker falhou, usa close do candle mais recente
+                    if not ticker_ok and gran == "30m" and candles:
+                        close = candles[-1].close if candles[-1].close else 0.0
+                        if close > 0:
+                            await self._cache.set_price(symbol, close)
+                            logger.debug(
+                                "Price fallback via candle close symbol=%s price=%.2f",
+                                symbol, close,
+                            )
+                            ticker_ok = True  # evita logar fallback múltiplas vezes
                 except Exception as exc:
                     logger.warning(
                         "Candles fetch failed symbol=%s gran=%s error=%s",

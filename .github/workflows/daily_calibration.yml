@@ -35,22 +35,38 @@ jobs:
           key: calibration-db-${{ runner.os }}
           restore-keys: calibration-db-
 
-      # Se banco não existe, faz bootstrap a partir dos caches JSON já no repo
-      - name: Bootstrap DB from JSON cache (first run)
-        if: steps.cache-db.outputs.cache-hit != 'true'
+      # Se banco não existe OU está corrompido, deleta para começar do zero
+      - name: Bootstrap DB from JSON cache (first run or corrupted)
         run: |
-          echo "Banco não encontrado — bootstrap via cache JSON..."
+          if [ ! -f data/calibration.db ]; then
+            echo "Banco não encontrado — bootstrap via cache JSON..."
+          else
+            # Verifica integridade do banco
+            if ! python -c "import sqlite3; c=sqlite3.connect('data/calibration.db'); c.execute('PRAGMA integrity_check').fetchone(); print('DB OK')" 2>/dev/null; then
+              echo "Banco corrompido — removendo e recriando..."
+              rm -f data/calibration.db
+            else
+              echo "Banco OK — skip bootstrap"
+              exit 0
+            fi
+          fi
           python scripts/recalibrate.py --from-cache
         env:
           PYTHONPATH: .
 
-      # Roda calibração incremental (atualiza Platt com novos candles)
+      # Calibração: bootstrap do JSON (sempre) + novos candles da OKX
       - name: Run incremental calibration
         run: |
-          echo "Python: $(python --version)"
-          echo "Working dir: $(pwd)"
-          echo "DB exists: $(test -f data/calibration.db && echo YES || echo NO)"
-          echo "Cache dir: $(ls data/cache/ 2>/dev/null | head -5)"
+          set -x
+          echo "=== ENV DEBUG ==="
+          python --version
+          pwd
+          ls -la data/ || true
+          ls data/cache/ | head -6 || true
+          echo "DB size: $(du -sh data/calibration.db 2>/dev/null || echo 'N/A')"
+          echo "=== BOOTSTRAP from JSON cache ==="
+          python scripts/recalibrate.py --from-cache
+          echo "=== INCREMENTAL (novos candles OKX) ==="
           python scripts/recalibrate.py --incremental
         env:
           PYTHONPATH: .

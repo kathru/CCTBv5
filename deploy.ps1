@@ -94,27 +94,8 @@ if (-not $OracleOnly) {
 if (-not $LocalOnly) {
     Write-Step "Deploying no Oracle Cloud (137.131.220.216:8001)..."
 
-    # Usa single-quoted heredoc (sem expansão PS) + stdin para evitar CRLF
-    $remote_script = @'
-set -e
-cd ~/CCTBv5
-git pull
-# Garante que BOT_INSTANCE identifica esta instância nos alertas Discord
-grep -q '^BOT_INSTANCE=' .env && sed -i 's/^BOT_INSTANCE=.*/BOT_INSTANCE=Oracle/' .env || echo 'BOT_INSTANCE=Oracle' >> .env
-export GIT_MINOR=$(git tag -l 'fase/*' | wc -l | tr -d ' ')
-LAST_TAG=$(git tag -l 'fase/*' | tail -1)
-if [ -n "$LAST_TAG" ]; then
-  export GIT_PATCH=$(git rev-list --count "$LAST_TAG..HEAD" | tr -d ' ')
-else
-  export GIT_PATCH=$(git rev-list --count HEAD | tr -d ' ')
-fi
-echo "Versao: 5.$GIT_MINOR.$GIT_PATCH"
-sudo -E docker compose up -d --build cctb
-echo "Oracle OK"
-'@
-    # Remove CRLF do Windows antes de enviar
-    $remote_script = $remote_script -replace "`r`n", "`n"
-    $remote_script | ssh -i $ORACLE_KEY -o StrictHostKeyChecking=no $ORACLE_HOST "bash -s"
+    # Usa script pré-instalado no Oracle (evita timeout por stdin longo)
+    ssh -i $ORACLE_KEY -o StrictHostKeyChecking=no $ORACLE_HOST "bash ~/CCTBv5/deploy_oracle.sh"
     if ($LASTEXITCODE -ne 0) { Write-Fail "Deploy Oracle falhou"; exit 1 }
     Write-Ok "Oracle atualizado → http://137.131.220.216:8001"
 }

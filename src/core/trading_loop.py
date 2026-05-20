@@ -519,6 +519,26 @@ class TradingLoop:
                 self._heartbeat.beat()
                 self._infra_metrics.record_ws_message()
 
+                # Auto-reset: se kill switch SOFT foi por websocket_dead e WS está vivo novamente
+                ks_ev = getattr(self._kill_switch, "_current_event", None)
+                ks_r  = getattr(ks_ev, "reason", "") or ""
+                if (not self._kill_switch.allows_new_entries
+                        and "websocket" in ks_r
+                        and self._ws_watchdog.is_alive):
+                    logger.warning(
+                        "WebSocket recuperado — auto-resetando kill switch SOFT (reason=%s)", ks_r
+                    )
+                    self._kill_switch.reset_soft(reason="websocket_recovered")
+                    if self._oms:
+                        self._oms.open_gate()
+                    asyncio.create_task(
+                        self._alert_channel.info(
+                            title="✅ WebSocket Recuperado",
+                            message="Conexão com OKX restaurada. Kill switch resetado automaticamente.",
+                        ),
+                        name="discord_ws_recovered",
+                    )
+
                 # Simula fills para ordens paper
                 await self._simulate_paper_fills()
                 # Resumo diário

@@ -246,11 +246,17 @@ class TradingLoop:
         self._running = True
         logger.info("TradingLoop: all services started — RUNNING")
 
-        await self._alert_channel.info(
-            title="CCTBv5 Started",
-            message="Sistema iniciado com sucesso.",
-            mode="paper" if settings.okx_paper_trading else "live",
-            symbols=", ".join(SYMBOLS),
+        # Dispara notificação Discord sem bloquear o loop principal.
+        # await direto antes de _run_loop() pode travar o event loop se o
+        # httpx/DNS resolver usar fallback síncrono (causa do heartbeat_timeout).
+        asyncio.create_task(
+            self._alert_channel.info(
+                title="CCTBv5 Started",
+                message="Sistema iniciado com sucesso.",
+                mode="paper" if settings.okx_paper_trading else "live",
+                symbols=", ".join(SYMBOLS),
+            ),
+            name="discord_startup_notify",
         )
 
         await self._run_loop()
@@ -496,6 +502,18 @@ class TradingLoop:
     # ── Main heartbeat loop ────────────────────────────────────────────────────
 
     async def _run_loop(self) -> None:
+        # Auto-reset: se o kill switch ficou SOFT por heartbeat_timeout no boot
+        # anterior, reseta agora que o loop está operacional.
+        ks_event = getattr(self._kill_switch, "_current_event", None)
+        ks_reason = getattr(ks_event, "reason", "") or ""
+        if not self._kill_switch.allows_new_entries and "heartbeat" in ks_reason:
+            logger.warning(
+                "Auto-resetando kill switch SOFT de boot anterior (reason=%s)", ks_reason
+            )
+            self._kill_switch.reset_soft(reason="auto_reset_on_boot")
+            if self._oms:
+                self._oms.open_gate()
+
         while self._running:
             try:
                 self._heartbeat.beat()

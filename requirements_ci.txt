@@ -1,0 +1,27 @@
+# Dependências mínimas para CI (recalibrate.py + walk_forward.py)
+# recalibrate.py: numpy requests python-dotenv
+# walk_forward.py: importa src.* que precisa do stack abaixo
+
+numpy>=1.26.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# src.core.models, src.strategies.* etc.
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+
+# src.exchange.okx (httpx para chamadas de API)
+httpx>=0.27.0
+cryptography>=42.0.0
+
+# src.persistence.postgres
+asyncpg>=0.29.0
+
+# src.persistence.cache
+redis>=5.0.0
+
+# src.core.logging
+structlog>=24.1.0
+
+# src.strategies.ml.inference
+scikit-learn>=1.4.0

@@ -22,9 +22,9 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      # Instala o stack completo do projeto (recalibrate + walk_forward usam src.*)
+      # Instala deps mínimas para CI (sem fastapi/uvicorn/pytest/pyright)
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements_ci.txt
 
       # Restaura banco SQLite do cache entre runs
       - name: Restore calibration DB

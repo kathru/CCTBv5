@@ -36,11 +36,11 @@ logger     = logging.getLogger(__name__)
 # 30min tem mais ruído → thresholds ~0.06 abaixo dos valores 1H
 # Objetivo: gerar 2-4 trades/dia para validação estatística do paper trading
 REGIME_THRESHOLDS: dict[str, float] = {
-    "TREND_EXPANSION":        0.44,
-    "VOLATILITY_COMPRESSION": 0.46,
-    "TREND_EXHAUSTION":       0.48,
-    "MEAN_REVERTING_CHOP":    0.50,
-    "HIGH_CORRELATION_RISK":  0.54,
+    "TREND_EXPANSION":        0.30,   # TEST: threshold reduzido para diagnóstico
+    "VOLATILITY_COMPRESSION": 0.30,   # TEST
+    "TREND_EXHAUSTION":       0.30,   # TEST
+    "MEAN_REVERTING_CHOP":    0.30,   # TEST
+    "HIGH_CORRELATION_RISK":  0.30,   # TEST
     "BEAR_TREND":             0.99,   # bloqueado
     "PANIC_LIQUIDATION":      0.99,   # bloqueado
 }

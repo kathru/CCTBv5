@@ -120,6 +120,7 @@ class TradingLoop:
         self._oms = OrderManager(
             bus=self._bus,
             router=router,
+            db=self._db,   # persiste ordens no PostgreSQL imediatamente
         )
 
         # ── Risk Engine ───────────────────────────────────────

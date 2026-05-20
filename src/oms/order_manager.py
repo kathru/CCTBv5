@@ -68,16 +68,33 @@ class OrderManager:
         bus: EventBus,
         router: ExecutionRouterProtocol,
         order_timeout: timedelta = ORDER_TIMEOUT,
+        db=None,   # Database — injected after async init; enables persistence
     ) -> None:
         self._bus = bus
         self._router = router
         self._order_timeout = order_timeout
+        self._db = db   # opcional — sem DB, ordens ficam só em memória
 
-        # In-memory state — persisted to DB separately
+        # In-memory state — persisted to DB when db is available
         self._orders: dict[str, Order] = {}   # client_order_id → Order
 
         # System gate — set to False during RECONCILING or HARD kill switch
         self._accepting_orders: bool = False
+
+    def set_db(self, db) -> None:
+        """Injeta o Database após inicialização assíncrona."""
+        self._db = db
+
+    async def _persist(self, order: Order) -> None:
+        """Salva/atualiza ordem no PostgreSQL (fire-and-forget)."""
+        if self._db is None:
+            return
+        try:
+            from ..persistence.repositories.orders import OrderRepository
+            repo = OrderRepository(self._db)
+            await repo.save(order)
+        except Exception as exc:
+            logger.warning("OMS persist error coid=%s: %s", order.client_order_id, exc)
 
     # ── Gate control ─────────────────────────────────────────
 
@@ -137,6 +154,8 @@ class OrderManager:
     async def _register(self, order: Order) -> None:
         """Record order and emit CREATED event."""
         self._orders[order.client_order_id] = order
+        import asyncio
+        asyncio.create_task(self._persist(order), name=f"persist_order_{order.client_order_id[:8]}")
         await self._bus.publish(
             Topic.ORDER,
             OrderCreatedEvent(order=order),
@@ -162,6 +181,8 @@ class OrderManager:
                     Topic.ORDER,
                     OrderSubmittedEvent(order=order),
                 )
+                import asyncio
+                asyncio.create_task(self._persist(order), name=f"persist_submitted_{order.client_order_id[:8]}")
                 logger.info(
                     "Order SUBMITTED coid=%s exchange_id=%s",
                     order.client_order_id, exchange_id,
@@ -207,6 +228,8 @@ class OrderManager:
                 OrderFilledEvent(order=order, fill=fill),
             )
             await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order, fill=fill))
+            import asyncio
+            asyncio.create_task(self._persist(order), name=f"persist_filled_{order.client_order_id[:8]}")
             logger.info("Order FILLED coid=%s avg_px=%.4f", order.client_order_id, order.avg_fill_price)
         else:
             order.status = OrderStatus.PARTIAL

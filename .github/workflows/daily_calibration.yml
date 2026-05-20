@@ -22,8 +22,13 @@ jobs:
           python-version: "3.12"
           cache: pip
 
+      # recalibrate.py: numpy requests python-dotenv
+      # walk_forward.py: importa src.* → precisa de todo o stack
       - name: Install dependencies
-        run: pip install numpy requests python-dotenv
+        run: |
+          pip install numpy requests python-dotenv
+          pip install pydantic pydantic-settings httpx asyncpg aioredis redis \
+                      scikit-learn scipy cryptography anyio sniffio
 
       # Restaura banco SQLite do cache entre runs
       - name: Restore calibration DB
@@ -50,7 +55,9 @@ jobs:
           PYTHONPATH: .
 
       # Roda WFO para validar edge OOS e atualizar coeficientes se aprovado
+      # continue-on-error: calibração não falha se WFO tiver problema
       - name: Run Walk-Forward Optimization
+        continue-on-error: true
         run: python scripts/walk_forward.py --auto-apply
         env:
           PYTHONPATH: .

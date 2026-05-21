@@ -22,6 +22,10 @@ VALID_SYMBOLS = {"BTC-USDT", "ETH-USDT", "SOL-USDT"}
 TRADING_CCYS  = VALID_CCYS - {"USDT"}   # crypto (sem USDT) — para posições
 TRADING_SYMBOLS = VALID_SYMBOLS          # alias de compatibilidade
 
+# Capital inicial fixo do demo trading — base para cálculo de retorno e drawdown.
+# Representa o portfólio total no momento do início: USDT + BTC + ETH + SOL em USD.
+INITIAL_CAPITAL_USD = 85_000.0
+
 
 class ExchangeSync:
     """
@@ -183,32 +187,39 @@ class ExchangeSync:
         usdt = next((d for d in details if d["ccy"] == "USDT"), {})
         cash = usdt.get("cashBal", 0.0)
 
-        # Portfolio rastreado em USDT (capital operacional do bot).
-        # Não inclui BTC/ETH/SOL pré-existentes — só o USDT que o bot usa para operar.
-        # Isso normaliza retorno %, drawdown e todos os outros índices.
-        usdt_notional = cash  # começa com o USDT disponível
-
-        # Adiciona unrealized P&L das posições do bot (capital investido em crypto)
+        # Portfolio total = USDT + valor em USD de BTC + ETH + SOL.
+        # Apenas ativos válidos (details já vem filtrado por VALID_CCYS).
+        total_portfolio = cash  # começa com o USDT disponível
         for symbol, qty in crypto_positions.items():
             price = await self._cache.get_price(symbol)
             if price:
-                usdt_notional += float(price) * qty
+                total_portfolio += float(price) * qty
 
         self._portfolio._state.cash_available = cash
-        self._portfolio._state.total_value    = usdt_notional
+        self._portfolio._state.total_value    = total_portfolio
 
-        # Capital inicial: salvo no Redis na primeira vez, restaurado nos reboots
+        # Capital inicial fixo: $85.000 (USDT + BTC + ETH + SOL no início do demo).
+        # Salvo no Redis na primeira vez para sobreviver a reboots.
         INITIAL_CAPITAL_KEY = "portfolio:initial_capital_usdt"
         stored_initial = await self._cache.get(INITIAL_CAPITAL_KEY)
         if stored_initial:
             initial_capital = float(stored_initial)
         else:
-            # Primeiro boot — salva o capital inicial USDT atual
-            initial_capital = usdt_notional
-            await self._cache.set(INITIAL_CAPITAL_KEY, str(round(initial_capital, 4)), ttl=0)
-            logger.info("Capital inicial USDT registrado: %.2f", initial_capital)
+            # Primeiro boot — usa o valor fixo definido como capital inicial
+            initial_capital = INITIAL_CAPITAL_USD
+            await self._cache.set(INITIAL_CAPITAL_KEY, str(initial_capital), ttl=0)
+            logger.info("Capital inicial demo registrado: $%.2f", initial_capital)
 
         self._portfolio._state.initial_capital = initial_capital
+
+        logger.info(
+            "ExchangeSync portfolio: USDT=%.2f crypto=%.2f total=%.2f inicial=%.2f retorno=%.2f%%",
+            cash,
+            total_portfolio - cash,
+            total_portfolio,
+            initial_capital,
+            (total_portfolio - initial_capital) / initial_capital * 100 if initial_capital else 0,
+        )
 
         total_eq = sum(d["usdValue"] for d in details)  # mantém para log
 

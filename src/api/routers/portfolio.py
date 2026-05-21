@@ -40,9 +40,9 @@ async def portfolio_summary(request: Request) -> dict:
     if portfolio is None:
         return {
             "available": False,
-            "initial_capital":    10000.0,
-            "total_value":        10000.0,
-            "cash_available":     10000.0,
+            "initial_capital":    85_000.0,
+            "total_value":        85_000.0,
+            "cash_available":     85_000.0,
             "total_exposure_pct": 0.0,
             "open_position_count": 0,
             "realized_pnl":       0.0,
@@ -114,7 +114,7 @@ async def portfolio_summary(request: Request) -> dict:
             pass
 
     # Portfolio em USDT = capital inicial + P&L realizado + P&L não realizado (bot)
-    initial = s.initial_capital if s.initial_capital > 5.0 else 5000.0
+    initial = s.initial_capital if s.initial_capital > 1000.0 else 85_000.0
     cash_value = s.cash_available
     # total = cash + valor das posições compradas pelo bot (a preço atual)
     total_value = cash_value + notional_bot if notional_bot > 0 else cash_value + unrealized + initial + realized_pnl

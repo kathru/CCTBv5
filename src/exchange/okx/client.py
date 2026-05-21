@@ -126,9 +126,19 @@ class OKXClient:
     ) -> str:
         """Place an order. Returns exchange_order_id.
 
-        In paper trading mode, sends to OKX simulated trading environment
-        via x-simulated-trading: 1 header — real API, no real money.
+        Em paper trading mode usa simulação LOCAL (PAPER- prefix) para evitar
+        dependência de saldo na conta demo OKX. Fills simulados em _simulate_paper_fills().
+        Em live mode envia para OKX real.
         """
+        if self._paper:
+            # Simulação local — não precisa de saldo OKX
+            paper_id = f"PAPER-{client_order_id[:16]}"
+            logger.info(
+                "[PAPER-LOCAL] order simulated symbol=%s side=%s qty=%s id=%s",
+                symbol, side, quantity, paper_id,
+            )
+            return paper_id
+
         path = "/api/v5/trade/order"
         # OKX clOrdId: alphanumeric only, max 32 chars — strip hyphens from UUID
         cl_ord_id = client_order_id.replace("-", "")[:32]

@@ -36,11 +36,11 @@ logger     = logging.getLogger(__name__)
 # 30min tem mais ruído → thresholds ~0.06 abaixo dos valores 1H
 # Objetivo: gerar 2-4 trades/dia para validação estatística do paper trading
 REGIME_THRESHOLDS: dict[str, float] = {
-    "TREND_EXPANSION":        0.30,   # TEST: threshold reduzido para diagnóstico
-    "VOLATILITY_COMPRESSION": 0.30,   # TEST
-    "TREND_EXHAUSTION":       0.30,   # TEST
-    "MEAN_REVERTING_CHOP":    0.30,   # TEST
-    "HIGH_CORRELATION_RISK":  0.30,   # TEST
+    "TREND_EXPANSION":        0.44,
+    "VOLATILITY_COMPRESSION": 0.46,
+    "TREND_EXHAUSTION":       0.48,
+    "MEAN_REVERTING_CHOP":    0.50,
+    "HIGH_CORRELATION_RISK":  0.54,
     "BEAR_TREND":             0.99,   # bloqueado
     "PANIC_LIQUIDATION":      0.99,   # bloqueado
 }
@@ -86,11 +86,11 @@ REGIME_MIN_EV_MULT: dict[str, float] = {
 # Threshold de momentum 30min para _direction (quão forte deve ser o move)
 # EXPANSION: qualquer alta conta (0.1%) | CHOP: exige move mais forte (0.3%)
 REGIME_DIRECTION_THRESH: dict[str, float] = {
-    "TREND_EXPANSION":        0.0001,  # TEST: muito permissivo
-    "VOLATILITY_COMPRESSION": 0.0001,  # TEST
-    "TREND_EXHAUSTION":       0.0001,  # TEST
-    "MEAN_REVERTING_CHOP":    0.0001,  # TEST
-    "HIGH_CORRELATION_RISK":  0.0001,  # TEST
+    "TREND_EXPANSION":        0.001,   # 0.1% — sensível em tendência clara
+    "VOLATILITY_COMPRESSION": 0.0015,
+    "TREND_EXHAUSTION":       0.002,   # 0.2% — padrão
+    "MEAN_REVERTING_CHOP":    0.003,   # 0.3% — exige move mais forte em lateral
+    "HIGH_CORRELATION_RISK":  0.004,   # 0.4% — muito seletivo em risco alto
     "BEAR_TREND":             0.01,
     "PANIC_LIQUIDATION":      0.01,
 }

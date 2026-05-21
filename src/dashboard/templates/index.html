@@ -934,9 +934,11 @@
 <!-- ══ ORDENS ════════════════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--blue)"></div>Ordens Recentes<span class="cnt" id="ord-count"></span></div>
 <div class="card">
-  <div class="table-wrap">
+  <div class="table-wrap" style="max-height:390px;overflow-y:auto;overflow-x:auto;">
     <table>
-      <thead><tr><th>Par</th><th>Lado</th><th>Status</th><th>Qtd</th><th>Preenchido</th><th>Preço Médio</th><th>Notional</th><th>Estratégia</th><th>Criado</th></tr></thead>
+      <thead style="position:sticky;top:0;background:var(--surface);z-index:2;">
+        <tr><th>Par</th><th>Lado</th><th>Status</th><th>Qtd</th><th>Preenchido</th><th>Preço Médio</th><th>Notional</th><th>Estratégia</th><th>Criado</th></tr>
+      </thead>
       <tbody id="orders-body"><tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr></tbody>
     </table>
   </div>

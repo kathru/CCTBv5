@@ -121,14 +121,29 @@ class StrategyRunner:
             logger.info("StrategyRunner: %s — seed: %s UTC (próxima avaliação na virada da hora)",
                         symbol, ts.strftime("%Y-%m-%d %H:%M"))
 
-        # Avaliação imediata no boot — popula o dashboard sem esperar 1H
-        # Usa o candle mais recente disponível (mesmo que não seja o fechado)
-        logger.info("StrategyRunner: avaliação imediata no boot (warm-start)...")
-        for symbol in symbols:
+        # Avaliação diferida no boot — aguarda MarketEngine buscar candles da OKX
+        # O MarketEngine faz primeira poll em ~15s; aguardamos 35s para garantir
+        asyncio.create_task(self._warm_start(symbols), name="strategy_warm_start")
+
+    async def _warm_start(self, symbols: set[str]) -> None:
+        """
+        Avaliação diferida no boot — aguarda o MarketEngine carregar candles da OKX.
+        Roda 35s após o start para garantir que a primeira poll (15s) completou.
+        Popula o signal_audit_log imediatamente, sem esperar a próxima hora fechar.
+        """
+        await asyncio.sleep(35)
+        logger.info("StrategyRunner: warm-start — avaliando %d símbolos...", len(symbols))
+        for symbol in sorted(symbols):
             try:
+                candles = self._market.get_candles(symbol, "1H")
+                if len(candles) < 22:
+                    logger.info("StrategyRunner: warm-start %s — %d candles (insuficiente)",
+                                symbol, len(candles))
+                    continue
                 await self._evaluate_all(symbol)
+                logger.info("StrategyRunner: warm-start %s — OK", symbol)
             except Exception as exc:
-                logger.warning("StrategyRunner: warm-start falhou para %s: %s", symbol, exc)
+                logger.warning("StrategyRunner: warm-start %s falhou: %s", symbol, exc)
 
     async def stop(self) -> None:
         self._running = False

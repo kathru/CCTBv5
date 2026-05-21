@@ -494,7 +494,7 @@
 
   <!-- Motor Probabilístico -->
   <div class="card">
-    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:0.5px;margin-bottom:12px;">Estratégia de Reversão 1H</div>
+    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:0.5px;margin-bottom:12px;">EMA Trend Diário v5.6</div>
 
     <!-- Regime box (estilo CCTBv4) -->
     <div id="motor-regime-box" class="motor-regime-box">
@@ -586,53 +586,47 @@
       </div>
     </div>
 
-    <!-- Fatores do score de reversão (atualizados pelo último sinal) -->
+    <!-- Fatores do score de tendência -->
     <div style="margin-bottom:12px;">
-      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Fatores do Score (último sinal)</div>
-      <div style="display:grid;grid-template-columns:90px 1fr 38px 52px;align-items:center;gap:8px 10px;">
-        <span style="font-size:0.62rem;color:var(--text)">Queda</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m1" style="height:15px;border-radius:7px;background:#3b82f6;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#3b82f6;text-align:right" id="w-m1">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 30%</span>
+      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Indicadores (atualização diária)</div>
+      <div style="display:grid;grid-template-columns:100px 1fr 44px 52px;align-items:center;gap:8px 10px;">
+        <span style="font-size:0.62rem;color:var(--text)">Dist. EMA50D</span>
+        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m1" style="height:15px;border-radius:7px;background:#10b981;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.65rem;font-weight:700;color:#10b981;text-align:right" id="w-m1">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">acima</span>
 
-        <span style="font-size:0.62rem;color:var(--text)">Base</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m2" style="height:15px;border-radius:7px;background:#10b981;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#10b981;text-align:right" id="w-m2">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 30%</span>
+        <span style="font-size:0.62rem;color:var(--text)">Vol Realizada</span>
+        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m2" style="height:15px;border-radius:7px;background:#f59e0b;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.65rem;font-weight:700;color:#f59e0b;text-align:right" id="w-m2">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">aa</span>
 
-        <span style="font-size:0.62rem;color:var(--text)">Volume</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:15px;border-radius:7px;background:#f59e0b;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#f59e0b;text-align:right" id="w-m3">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 20%</span>
+        <span style="font-size:0.62rem;color:var(--text)">Posição</span>
+        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:15px;border-radius:7px;background:#3b82f6;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.65rem;font-weight:700;color:#3b82f6;text-align:right" id="w-m3">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">% capital</span>
 
-        <span style="font-size:0.62rem;color:var(--text)">Ratio TP/SL</span>
+        <span style="font-size:0.62rem;color:var(--text)">EMA 50D</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m4" style="height:15px;border-radius:7px;background:#8b5cf6;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#8b5cf6;text-align:right" id="w-m4">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 20%</span>
+        <span style="font-size:0.65rem;font-weight:700;color:#8b5cf6;text-align:right;font-size:0.58rem" id="w-m4">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">ref</span>
       </div>
     </div>
 
-    <!-- Condições de entrada da Reversão -->
+    <!-- Condições da Trend Strategy -->
     <div style="margin-bottom:14px;">
-      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">Filtros obrigatórios (todos devem ser ✓)</div>
+      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">Filtros de entrada (todos devem estar ativos)</div>
       <div style="display:flex;flex-direction:column;gap:4px;" id="rev-conditions">
         <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc1" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Queda ≥ 3% (últimas 7–20h)</span>
+          <span id="rc1" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span>
+          <span>BTC fechou acima da EMA 50 dias</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc2" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Base ≥ 6H de estabilização</span>
+          <span id="rc2" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span>
+          <span>Vol realizada &lt; 80% aa (sem pânico)</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc3" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Rompimento da máxima da base</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc4" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Volume ≥ 80% da média 8H</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc5" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Macro: 92–102% da SMA20</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc6" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Dip tocou a SMA20 (estrutural)</span>
+          <span id="rc3" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span>
+          <span>ETH/SOL confirmados pelo BTC (âncora)</span>
         </div>
       </div>
     </div>
@@ -664,7 +658,7 @@
           <div class="mb-big-threshold" style="left:40%"></div>
         </div>
       </div>
-      <div style="font-size:0.58rem;color:var(--muted);text-align:right;margin-bottom:12px;">linha vermelha = limiar de setup (100% = queda ≥3%)</div>
+      <div style="font-size:0.58rem;color:var(--muted);text-align:right;margin-bottom:12px;">barra = força do sinal de tendência (dist. EMA50D)</div>
 
       <!-- 4 métricas com peso e contribuição -->
       <div class="mb-metrics">
@@ -1239,12 +1233,14 @@ function updateDonut(portfolio,prices){
 function regimeTag(r){
   if(!r) return '';
   const R=r.toUpperCase();
+  if(R==='TREND_UP')            return`<span class="rtag rtag-trend">↗ TREND UP</span>`;
+  if(R==='TREND_DOWN')          return`<span class="rtag rtag-exh">↘ TREND DOWN</span>`;
+  if(R==='VOL_SPIKE')           return`<span class="rtag rtag-panic">⚠ VOL SPIKE</span>`;
+  if(R==='BTC_FLAT'||R==='BTC_NOT_TRENDING') return`<span class="rtag rtag-chop">⇄ BTC FLAT</span>`;
   if(R.includes('REVERSAL'))    return`<span class="rtag rtag-trend">REVERSÃO</span>`;
   if(R.includes('EXPANSION'))   return`<span class="rtag rtag-trend">${r.replace(/_/g,' ')}</span>`;
   if(R.includes('EXHAUSTION'))  return`<span class="rtag rtag-exh">${r.replace(/_/g,' ')}</span>`;
   if(R.includes('CHOP'))        return`<span class="rtag rtag-chop">CHOP</span>`;
-  if(R.includes('COMPRESSION')) return`<span class="rtag rtag-vol">VOL COMPRESS</span>`;
-  if(R.includes('CORRELATION')) return`<span class="rtag rtag-corr">HIGH CORR</span>`;
   if(R.includes('PANIC'))       return`<span class="rtag rtag-panic">PANIC</span>`;
   return`<span class="rtag rtag-chop">${r.replace(/_/g,' ')}</span>`;
 }
@@ -1334,8 +1330,9 @@ function action(result,cal,thr,regime){
 }
 
 function stratLabel(id){
-  if(!id) return 'REV-1H';
+  if(!id) return 'TREND-1D';
   const s=id.toLowerCase();
+  if(s.includes('trend_v56')||s.includes('trend')) return 'TREND-1D';
   if(s.includes('reversal')) return 'REV-1H';
   if(s.includes('momentum')) return 'MOM-V2';
   if(s.includes('exchange_sync')) return 'SYNC';
@@ -1359,6 +1356,10 @@ function regimeBadge(regime){
   else if(r.includes('CORR'))    {bg='rgba(249,115,22,0.10)';color='#f97316';border='rgba(249,115,22,0.3)';}
   else if(r.includes('BEAR'))    {bg='rgba(239,68,68,0.12)'; color='#f87171';border='rgba(239,68,68,0.35)';}
   else if(r.includes('PANIC'))   {bg='rgba(239,68,68,0.18)'; color='#ef4444';border='rgba(239,68,68,0.5)';}
+  else if(r==='TREND_UP')        {bg='rgba(16,185,129,0.12)';color='#10b981';border='rgba(16,185,129,0.3)';}
+  else if(r==='TREND_DOWN')      {bg='rgba(59,130,246,0.10)';color='#60a5fa';border='rgba(59,130,246,0.25)';}
+  else if(r==='VOL_SPIKE')       {bg='rgba(239,68,68,0.12)'; color='#f87171';border='rgba(239,68,68,0.35)';}
+  else if(r.includes('BTC_FLAT')||r.includes('BTC_NOT')){bg='rgba(90,106,126,0.10)';color='#9ca3af';border='rgba(90,106,126,0.2)';}
   else if(r.includes('REVERSAL')){bg='rgba(16,185,129,0.12)';color='#34d399';border='rgba(16,185,129,0.3)';}
   else                           {bg='rgba(90,106,126,0.10)';color='#5a6a7e';border='rgba(90,106,126,0.2)';}
   return`<span style="background:${bg};color:${color};border:1px solid ${border};border-radius:6px;padding:2px 8px;font-size:0.6rem;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;white-space:nowrap">${lbl}</span>`;
@@ -2057,10 +2058,20 @@ async function updateAll(){
       'BEAR_TREND':             'BEAR',
       'PANIC_LIQUIDATION':      'PANIC',
       'REVERSAL_1H':            'REVERSÃO',
+      'TREND_UP':               'TREND ↗',
+      'TREND_DOWN':             'TREND ↘',
+      'VOL_SPIKE':              'VOL SPIKE',
+      'BTC_FLAT':               'BTC FLAT',
+      'BTC_NOT_TRENDING':       'BTC FLAT',
+      'TREND_FLAT':             'FLAT',
     };
     const label = regimeShortMap[r] || r.replace(/_/g,' ') || '–';
     let cls='regime-badge rb-other', arrow='·';
-    if(r.includes('PANIC'))            { cls='regime-badge rb-panic'; arrow='⚠'; }
+    if(r==='TREND_UP')                 { cls='regime-badge rb-trend'; arrow='↗'; }
+    else if(r==='TREND_DOWN')          { cls='regime-badge rb-other'; arrow='↘'; }
+    else if(r==='VOL_SPIKE')           { cls='regime-badge rb-panic'; arrow='⚠'; }
+    else if(r==='BTC_FLAT'||r==='BTC_NOT_TRENDING') { arrow='⇄'; }
+    else if(r.includes('PANIC'))       { cls='regime-badge rb-panic'; arrow='⚠'; }
     else if(r==='BEAR_TREND')          { cls='regime-badge rb-panic'; arrow='↓'; }
     else if(r.includes('REVERSAL'))    { cls='regime-badge rb-trend'; arrow='↗'; }
     else if(r.includes('EXPANSION'))   { cls='regime-badge rb-trend'; arrow='↗'; }
@@ -2118,34 +2129,34 @@ async function updateAll(){
   if(exits?.plans) Object.assign(_c.exits,exits.plans);
   buildCards(_c.prices,_c.sym,_c.exits,[...(oOpen||[]),...(oRec||[])]);
 
-  // Estratégia de Reversão 1H — painel Motor
+  // EMA Trend Diário v5.6 — painel Motor
   if(sym&&Object.keys(sym).length){
     const latest=Object.values(sym)[0]||{};
-    const regime=(latest.regime||'REVERSAL_1H');
-    const rg=regime.replace(/_/g,' ');
+    const regime=(latest.regime||'TREND_UP');
+    const f=latest.factors||{};
 
-    // Regime box — REVERSAL_1H = verde (sinal de compra no fundo)
+    // Regime box
     const box=document.getElementById('motor-regime-box');
-    let boxCls='motor-regime-box', arrow='↗';
-    if(regime.includes('REVERSAL')) { boxCls+=' rb-trend'; arrow='↗'; }
-    else if(rg.includes('PANIC'))   { boxCls+=' rb-panic'; arrow='⚠'; }
-    else if(rg.includes('BEAR'))    { boxCls+=' rb-panic'; arrow='↓'; }
-    else { arrow='⇄'; }
+    let boxCls='motor-regime-box', arrow='⇄';
+    if(regime==='TREND_UP')         { boxCls+=' rb-trend'; arrow='↗'; }
+    else if(regime==='TREND_DOWN')  { boxCls+=' rb-other'; arrow='↘'; }
+    else if(regime==='VOL_SPIKE')   { boxCls+=' rb-panic'; arrow='⚠'; }
+    else if(regime==='BTC_FLAT'||regime==='BTC_NOT_TRENDING') { arrow='⇄'; }
     box.className=boxCls;
 
-    // Subtítulo dinâmico baseado no resultado real da avaliação
-    const resultSubMap={
-      'SIGNAL':        'Comprar o Fundo — todas as condições confirmadas ✓',
-      'FALL_WEAK':     `Aguardando queda ≥3% (atual: ${((latest.factors?.fall_pct||0)*100).toFixed(1)}%)`,
-      'MACRO_BLOCKED': 'Preço fora da faixa SMA20 (92%–102%)',
-      'DIP_SHALLOW':   'Queda não tocou a SMA20 — não é dip estrutural',
-      'BASE_MISSING':  'Aguardando rompimento da máxima da base',
-      'VOLUME_WEAK':   'Volume do rompimento insuficiente (<80% média)',
-      'SL_INVALID':    'SL fora do range válido (0.8%–6%)',
-      'NO_CANDLES':    'Aguardando candles 1H do MarketEngine...',
+    // Subtítulo dinâmico
+    const distPct = (f.dist_pct||0)*100;
+    const volAnn  = (f.vol_ann||0)*100;
+    const subMap={
+      'SIGNAL':            `LONG ativo — BTC +${distPct.toFixed(1)}% acima da EMA50D ✓`,
+      'TREND_FLAT':        regime==='VOL_SPIKE' ? `Vol ${volAnn.toFixed(0)}% aa ≥ 80% — aguardando em USDT`
+                                                : `BTC abaixo da EMA50D (${distPct.toFixed(1)}%) — aguardando em USDT`,
+      'BTC_NOT_TRENDING':  'BTC abaixo da EMA50D — ETH/SOL bloqueados',
+      'NO_CANDLES':        'Aguardando dados diários do MarketEngine...',
     };
-    const subTxt = resultSubMap[latest.result] || 'Monitorando condições de reversão...';
-    document.getElementById('motor-regime').textContent=`${arrow} REVERSAL 1H — ${subTxt}`;
+    const subTxt = subMap[latest.result] || (regime==='TREND_UP'?'BTC em alta — posição LONG':'Aguardando tendência de alta...');
+    const regLbl = regime==='TREND_UP'?'TREND UP':regime==='TREND_DOWN'?'TREND DOWN':regime==='VOL_SPIKE'?'VOL SPIKE':'EMA TREND';
+    document.getElementById('motor-regime').textContent=`${arrow} ${regLbl} — ${subTxt}`;
 
     // Badge
     const mb=document.getElementById('motor-badge');
@@ -2157,55 +2168,53 @@ async function updateAll(){
       mb.textContent='monitorando'; mb.className='hbadge hbadge-gray';
     }
 
-    // ── Fatores da reversão ────────────────────────────────────────────────
-    const f=latest.factors||{};
+    // ── Fatores do Trend ──────────────────────────────────────────────────
     const hasSig = latest.result==='SIGNAL';
-    const fallPct = f.fall_pct||0;
+    const distPctF = f.dist_pct||0;  // % acima da EMA50D
+    const volAnnF  = f.vol_ann||0;   // vol anualizada
+    const posPctF  = f.pos_pct||0;   // % do capital alocado
+    const ema50dF  = f.ema50d||0;    // valor da EMA50D
 
-    // Barra de Queda: mostra progresso em direção ao limiar de 3%
-    // Quando ≥3%: barra cheia verde; quando <3%: barra proporcional amarela
-    const fFall = Math.min(fallPct/0.03, 1);  // 3% = 100% da barra
-    const fallCol = fallPct>=0.03?'var(--green)':'var(--yellow)';
+    // Barra Distância EMA: verde quando positivo, vermelho quando negativo
+    const distAbs = Math.abs(distPctF);
+    const distCol = distPctF>=0?'var(--green)':'var(--red)';
     const bEl1=document.getElementById('wb-m1'), wEl1=document.getElementById('w-m1');
-    if(bEl1){ bEl1.style.width=(fFall*100).toFixed(1)+'%'; bEl1.style.background=fallCol; }
-    if(wEl1) wEl1.textContent=fallPct>0?((fallPct*100).toFixed(1)+'%'):'–';
+    if(bEl1){ bEl1.style.width=Math.min(distAbs/0.10*100,100).toFixed(1)+'%'; bEl1.style.background=distCol; }
+    if(wEl1) wEl1.textContent=distPctF!==0?((distPctF>=0?'+':'')+( distPctF*100).toFixed(1)+'%'):'–';
 
-    // Base, Volume, Ratio: só disponíveis quando queda ≥3% e condições anteriores passam
-    const fBase  = hasSig?Math.max(1-(f.base_range||1),0):0;
-    const fVol   = hasSig?Math.min((f.vol_ratio||0)/2.0,1):0;
-    const fRatio = hasSig?Math.min((f.tp_ratio||0)/8.0,1):0;
-    const facData=[
-      {k:'m2',v:fBase,  lbl:hasSig&&f.base_range!=null?((f.base_range*100).toFixed(0)+'%'):(fallPct>=0.03?'calc...':'aguard.')},
-      {k:'m3',v:fVol,   lbl:hasSig&&f.vol_ratio!=null?(f.vol_ratio.toFixed(2)+'×'):(fallPct>=0.03?'calc...':'aguard.')},
-      {k:'m4',v:fRatio, lbl:hasSig&&f.tp_ratio!=null?(f.tp_ratio.toFixed(2)+'×'):(fallPct>=0.03?'calc...':'aguard.')},
-    ];
-    facData.forEach(({k,v,lbl})=>{
-      const bEl=document.getElementById('wb-'+k), wEl=document.getElementById('w-'+k);
-      if(bEl) bEl.style.width=(v*100).toFixed(1)+'%';
-      if(wEl) wEl.textContent=lbl;
-    });
+    // Barra Vol: amarela (normal) → laranja/vermelha quando alta
+    const volCol = volAnnF>=0.8?'var(--red)':volAnnF>=0.5?'var(--yellow)':'var(--green)';
+    const bEl2=document.getElementById('wb-m2'), wEl2=document.getElementById('w-m2');
+    if(bEl2){ bEl2.style.width=Math.min(volAnnF/0.8*100,100).toFixed(1)+'%'; bEl2.style.background=volCol; }
+    if(wEl2) wEl2.textContent=volAnnF>0?(volAnnF*100).toFixed(0)+'%':'–';
 
-    // ── Condições (CSS puro, sem emoji) ───────────────────────────────────
-    const fallOk = fallPct>=0.03;
-    const baseOk = hasSig && (f.base_range||1)<1.0;
-    const volOk  = hasSig && (f.vol_ratio||0)>=0.8;
+    // Barra Posição
+    const bEl3=document.getElementById('wb-m3'), wEl3=document.getElementById('w-m3');
+    if(bEl3) bEl3.style.width=(posPctF/0.33*100).toFixed(1)+'%';
+    if(wEl3) wEl3.textContent=posPctF>0?(posPctF*100).toFixed(0)+'%':'flat';
+
+    // EMA50D valor
+    const bEl4=document.getElementById('wb-m4'), wEl4=document.getElementById('w-m4');
+    if(bEl4) bEl4.style.width='0%';
+    if(wEl4) wEl4.textContent=ema50dF>0?'$'+ema50dF.toLocaleString('pt-BR',{maximumFractionDigits:0}):'–';
+
+    // ── Condições (3 checks para Trend) ──────────────────────────────────
+    const btcLong = hasSig || (regime==='TREND_UP' && distPctF>0);
+    const volOkT  = volAnnF>0 && volAnnF<0.8;
     const setRC=(id,ok)=>{
       const el=document.getElementById(id); if(!el) return;
       el.style.background=ok?'var(--green)':'#374151';
       el.style.boxShadow=ok?'0 0 6px rgba(16,185,129,0.5)':'none';
-      el.textContent='';  // limpa emoji anterior
     };
-    setRC('rc1', fallOk);
-    setRC('rc2', baseOk);
+    setRC('rc1', btcLong);
+    setRC('rc2', volOkT);
     setRC('rc3', hasSig);
-    setRC('rc4', volOk);
-    setRC('rc5', hasSig);
-    setRC('rc6', hasSig);
+    // rc4-rc6 não existem mais (só 3 condições no trend)
+    ['rc4','rc5','rc6'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
 
-    // ── Kelly bar: mostra capacidade quando há sinal ───────────────────────
-    const cap=0.08;
-    const rawKelly=hasSig?(latest.calibrated||0)*0.08:0;
-    const effKelly=Math.min(rawKelly,cap);
+    // ── Kelly: usa pos_pct diretamente (vol-target sizing) ────────────────
+    const cap=0.33;
+    const effKelly=posPctF;
     const tv=portfolio?.total_value||0;
     const notional=tv*effKelly;
     const kFill=document.getElementById('motor-kelly-fill');
@@ -2217,22 +2226,21 @@ async function updateAll(){
     if(kFill) kFill.style.width=(kDisplay*100).toFixed(1)+'%';
     if(kCap)  kCap.style.left='100%';
     if(kVal)  kVal.textContent=hasSig?(effKelly*100).toFixed(1)+'%':'–';
-    if(kCapLbl) kCapLbl.textContent='8%';
+    if(kCapLbl) kCapLbl.textContent='33%';
     const notEl=document.getElementById('motor-notional');
-    if(notEl) notEl.textContent=notional>0?'~'+usd(notional,0):'–';
+    if(notEl) notEl.textContent=notional>0?'~'+usd(notional,0):'flat';
 
-    // ── Score: usa fall_pct/3% como proxy de proximidade ─────────────────
-    // Quando não há SIGNAL, mostra quão próximo estamos do setup (0–100%)
-    const rawScore = hasSig?(latest.score||0)*100 : Math.min(fallPct/0.03*100, 99);
+    // ── Score: distância da EMA50D (força do sinal de tendência) ─────────
+    const rawScore = hasSig?(latest.score||0)*100 : Math.min(Math.abs(distPctF)/0.05*100, 99);
     const sFill=document.getElementById('motor-score-fill');
     const sNow=document.getElementById('motor-score-now');
     const sThr=document.getElementById('motor-score-thr');
     const sThrLine=document.getElementById('motor-score-thr-line');
-    const scoreCol=rawScore>=100?'var(--green)':rawScore>=60?'var(--yellow)':'var(--red)';
+    const scoreCol=hasSig&&rawScore>=50?'var(--green)':hasSig?'var(--yellow)':'var(--muted)';
     if(sFill){ sFill.style.width=Math.min(rawScore,100).toFixed(1)+'%'; sFill.style.background=scoreCol; }
-    if(sNow)  sNow.textContent=hasSig?rawScore.toFixed(1)+'%':(fallPct*100).toFixed(1)+'%';
-    if(sThr)  sThr.textContent=hasSig?'qualidade':'≥3%';
-    if(sThrLine) sThrLine.style.left='100%'; // limiar = 100% da barra
+    if(sNow)  sNow.textContent=(distPctF*100).toFixed(1)+'%';
+    if(sThr)  sThr.textContent='dist. EMA';
+    if(sThrLine) sThrLine.style.left='0%'; // limiar = 100% da barra
 
     // ── SL/TP ─────────────────────────────────────────────────────────────
     const slPctF=f.sl_pct||0, tpPctF=f.tp_pct||0;
@@ -2312,8 +2320,9 @@ async function updateAll(){
 
     // Regime Atual
     const latestEntry=entries[0]||{};
-    const rScore=latestEntry.regime?.includes('REVERSAL')?65:latestEntry.regime?.includes('EXPANSION')?85:latestEntry.regime?.includes('CHOP')?40:latestEntry.regime?.includes('PANIC')?5:50;
-    const rLabel=latestEntry.regime?.includes('REVERSAL')?'reversão':latestEntry.regime?.includes('EXPANSION')?'expansão':latestEntry.regime?.includes('CHOP')?'lateral':'risco';
+    const lr=latestEntry.regime||'';
+    const rScore=lr==='TREND_UP'?85:lr==='TREND_DOWN'?30:lr==='VOL_SPIKE'?10:lr.includes('BTC_FLAT')?45:lr.includes('EXPANSION')?85:lr.includes('CHOP')?40:lr.includes('PANIC')?5:50;
+    const rLabel=lr==='TREND_UP'?'trend up':lr==='TREND_DOWN'?'trend down':lr==='VOL_SPIKE'?'vol spike':lr.includes('BTC_FLAT')?'btc flat':'lateral';
     mbMetric('mbf-regime','mbv-regime','mbs-regime',rScore,100,'var(--green)',()=>rLabel);
     document.getElementById('mbv-regime').textContent=(latestEntry.regime||'–').replace(/_/g,' ').toLowerCase();
 
@@ -2326,16 +2335,17 @@ async function updateAll(){
     const gateTxt=document.getElementById('mb-gate-txt');
     const gateScore=document.getElementById('mb-gate-score');
     if(gateBox&&gateTxt&&gateScore){
-      const hasSignal = entries.some(e=>e.result==='SIGNAL');
-      const isNear    = bigPct>=60;
-      const col = hasSignal?'rgba(16,185,129,':isNear?'rgba(245,158,11,':'rgba(59,130,246,';
+      const hasTrendUp = entries.some(e=>e.regime==='TREND_UP'&&e.result==='SIGNAL');
+      const anyTrendUp = entries.some(e=>e.regime==='TREND_UP');
+      const volSpike   = entries.some(e=>e.regime==='VOL_SPIKE');
+      const col = hasTrendUp?'rgba(16,185,129,':volSpike?'rgba(239,68,68,':'rgba(59,130,246,';
       gateBox.style.background=col+'0.08)';
       gateBox.style.border=`1px solid ${col}0.25)`;
-      gateTxt.style.color=hasSignal?'var(--green)':isNear?'var(--yellow)':'var(--blue)';
-      if(hasSignal)      gateTxt.textContent='✓ Sinal confirmado — todas as 6 condições ativas';
-      else if(isNear)    gateTxt.textContent=`→ Proximidade ao setup: ${bigPct}% do limiar de 3%`;
-      else               gateTxt.textContent=`Aguardando dip ≥3% — maior queda atual: ${(Math.max(...(fallPcts.map(v=>v*0.03)),0)*100).toFixed(1)}%`;
-      gateScore.textContent=bigPct+'%';
+      gateTxt.style.color=hasTrendUp?'var(--green)':volSpike?'var(--red)':'var(--blue)';
+      if(hasTrendUp)    gateTxt.textContent='✓ TREND UP — BTC acima da EMA50D, posição LONG ativa';
+      else if(volSpike) gateTxt.textContent='⚠ VOL SPIKE — Volatilidade alta, aguardando em USDT';
+      else              gateTxt.textContent='→ BTC abaixo da EMA50D — aguardando tendência de alta';
+      gateScore.textContent=(latestEntry.regime||'–').replace(/_/g,' ');
     }
     // Feed stats
     document.getElementById('feed-stats').textContent=`${s.total_evaluations||0} aval · ${rate}% sinais · ${epm.toFixed(1)}/min · uptime ${(s.uptime_minutes||0).toFixed(0)}min`;

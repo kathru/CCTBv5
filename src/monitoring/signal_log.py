@@ -57,7 +57,8 @@ class SignalAuditEntry:
             "result":      self.result,
             "detail":      self.detail,
             "icon":        RESULT_ICON.get(self.result, "⚪"),
-            "factors":     {k: round(v, 3) for k, v in self.factors.items()},
+            "factors":     {k: round(v, 3) if isinstance(v, (int, float)) else v
+                            for k, v in self.factors.items()},
         }
 
 
@@ -121,7 +122,8 @@ class SignalAuditLog:
                     SELECT ts, symbol, regime, score, calibrated, threshold,
                            ev, direction, result, detail, factors
                     FROM signal_evaluations
-                    WHERE regime = 'REVERSAL_1H'
+                    WHERE regime IN ('TREND_UP','TREND_DOWN','VOL_SPIKE','BTC_FLAT',
+                                     'BTC_NOT_TRENDING','TREND_FLAT')
                     ORDER BY ts DESC
                     LIMIT $1
                     """,

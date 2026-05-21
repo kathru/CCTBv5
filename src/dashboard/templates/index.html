@@ -1465,6 +1465,10 @@ function buildCards(prices,sym,exits,recentOrders=[]){
     const ev=d.ev!=null?(d.ev>=0?'+':'')+(d.ev*100).toFixed(4):'–';
     const evCls=d.ev>0.001?'g':d.ev<-0.001?'r':'m';
     const hasPos=!!ep;
+    // ATR estimado: distância SL/entry quando há posição, ou 1% como fallback
+    const atr=hasPos&&ep.stop_loss&&ep.entry_price
+      ? Math.abs(((ep.stop_loss-ep.entry_price)/ep.entry_price)*100).toFixed(1)
+      : '~1.0';
     // SL/TP: usa ExitPlan quando posição aberta (inclui sl_pct/tp_pct da reversão)
     const sl=hasPos?ep.stop_loss:null;
     const tp=hasPos?ep.take_profit:null;

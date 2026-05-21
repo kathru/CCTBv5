@@ -391,6 +391,14 @@ class TradingLoop:
           2. Sizing     — calcula quantidade usando kelly_fraction e preço atual
           3. OMS        — cria e submete ordem de mercado
         """
+        # Modo monitor: sinais avaliados e logados, mas nenhuma ordem executada
+        if settings.monitor_only:
+            logger.debug(
+                "[MONITOR_ONLY] Sinal recebido mas não executado: %s %s score=%.3f",
+                event.signal.direction, event.signal.symbol, event.signal.calibrated_score,
+            )
+            return
+
         from ..core.models.signal import SignalDirection
 
         signal  = event.signal
@@ -560,7 +568,7 @@ class TradingLoop:
           - PAPER-xxx: simulação local (sem credenciais demo) — usa preço do cache
           - OKX demo IDs: verifica status real via OKX e propaga fill
         """
-        if not settings.okx_paper_trading:
+        if not settings.okx_paper_trading or settings.monitor_only:
             return
         import datetime as _dt
 

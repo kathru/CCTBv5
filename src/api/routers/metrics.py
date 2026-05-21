@@ -18,6 +18,7 @@ async def get_system_metrics(request: Request) -> dict:
         "system_status": status,
         "version": get_version(),
         "mode": "paper" if settings.okx_paper_trading else "live",
+        "monitor_only": settings.monitor_only,
     }
 
 

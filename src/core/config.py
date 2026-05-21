@@ -39,5 +39,9 @@ class Settings(BaseSettings):
     max_total_exposure: float = 0.5
     max_daily_drawdown: float = 0.03
 
+    # Modo monitor: avalia sinais e exibe dashboard, mas NÃO executa ordens.
+    # Ativar no localhost para não contaminar o Oracle (que roda fulltime).
+    monitor_only: bool = False
+
 
 settings = Settings()

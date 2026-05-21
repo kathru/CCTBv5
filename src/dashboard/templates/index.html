@@ -1817,7 +1817,8 @@ async function updateAll(){
   if(system){
     const m=(system.mode||'paper').toLowerCase();
     const sub=document.getElementById('hdr-sub');
-    if(sub) sub.textContent='USDT · OKX · '+(m==='live'?'Live Trading':'Paper Mode');
+    const monitorOnly = system.monitor_only || false;
+    if(sub) sub.textContent='USDT · OKX · '+(monitorOnly ? 'Monitor Only' : m==='live'?'Live Trading':'Paper Mode');
   }
   if(health){
     const suspended=health.suspended||false;

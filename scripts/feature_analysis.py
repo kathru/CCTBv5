@@ -62,17 +62,18 @@ def compute_features(candles_window: list[dict]) -> dict[str, float] | None:
     lows    = [c["low"]    for c in candles_window[:10]]
     volumes = [c["volume"] for c in candles_window[:20]]
 
-    # M1 Adaptive Momentum
+    # M1 Adaptive Momentum — ciclo 1H: blend r1+r5 (curto) + r10+r20 (médio)
     atr  = sum(highs[i]-lows[i] for i in range(min(10,len(highs))))/min(10,len(highs))
     norm = max(atr*2, closes[0]*0.005)
+    r1   = (closes[0]-closes[1])/closes[1]   if len(closes)>1  and closes[1]>0  else 0
     r5   = (closes[0]-closes[5])/closes[5]   if len(closes)>5  and closes[5]>0  else 0
     r10  = (closes[0]-closes[10])/closes[10] if len(closes)>10 and closes[10]>0 else 0
     r20  = (closes[0]-closes[20])/closes[20] if len(closes)>20 and closes[20]>0 else 0
-    mw   = r5*0.5 + r10*0.3 + r20*0.2
+    mw   = r1*0.30 + r5*0.30 + r10*0.25 + r20*0.15
     m1   = min(max((mw/(norm/closes[0]))*0.5+0.5, 0.0), 1.0)
 
-    # M2 Trend Consistency
-    n    = min(5, len(closes)-1)
+    # M2 Trend Consistency — 6 candles 1H (= 6h de histórico)
+    n    = min(6, len(closes)-1)
     bull = sum(1 for i in range(n) if closes[i]>opens[i])/n if n>0 else 0.5
     hh   = sum(1 for i in range(min(4,len(highs)-1)) if highs[i]>highs[i+1])/4
     hl   = sum(1 for i in range(min(4,len(lows)-1))  if lows[i]>lows[i+1])/4

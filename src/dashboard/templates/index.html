@@ -953,6 +953,20 @@
   </div>
 </div>
 
+<!-- ══ CONCILIAÇÃO OKX ══════════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--green)"></div>Conciliação OKX ↔ DB<span class="cnt" id="recon-status-badge"></span></div>
+<div class="card" style="padding:16px 20px;">
+  <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div id="recon-icon" style="width:10px;height:10px;border-radius:50%;background:#6b7280;flex-shrink:0;"></div>
+      <span style="font-size:0.72rem;color:var(--muted)" id="recon-msg">Aguardando primeiro ciclo…</span>
+    </div>
+    <div id="recon-symbols" style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.68rem;"></div>
+    <div style="margin-left:auto;font-size:0.62rem;color:var(--muted)" id="recon-ts"></div>
+  </div>
+  <div id="recon-warnings" style="margin-top:8px;display:none;padding:8px 12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;font-size:0.65rem;color:#ef4444;"></div>
+</div>
+
 <!-- ══ FEATURE GOVERNANCE ══════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Feature Governance<span class="cnt" id="gov-schema-ver"></span></div>
 
@@ -1622,6 +1636,69 @@ function renderFunnel(data){
   }).join('');
 }
 
+// ── Conciliação OKX ──────────────────────────────────────────
+function updateReconciler(report){
+  if(!report||!report.available) return;
+
+  const divs = report.divergences||0;
+  const fixed = report.fixed||0;
+  const warns = report.warnings||[];
+  const syms  = report.symbols||{};
+  const ts    = report.checked_at;
+
+  // Ícone e badge
+  const icon = document.getElementById('recon-icon');
+  const badge = document.getElementById('recon-status-badge');
+  const msg   = document.getElementById('recon-msg');
+
+  if(divs===0){
+    icon.style.background='#10b981';
+    badge.textContent='· conciliado';
+    badge.style.color='var(--green)';
+    msg.textContent='Todos os saldos OKX correspondem ao DB local. Sem divergências.';
+  } else if(divs===fixed){
+    icon.style.background='#f59e0b';
+    badge.textContent=`· ${divs} divergência(s) corrigida(s)`;
+    badge.style.color='#f59e0b';
+    msg.textContent=`${divs} divergência(s) detectada(s) e corrigida(s) automaticamente.`;
+  } else {
+    icon.style.background='#ef4444';
+    badge.textContent=`· ${divs-fixed} divergência(s) pendente(s)`;
+    badge.style.color='var(--red)';
+    msg.textContent=`${divs} divergência(s): ${fixed} corrigida(s), ${divs-fixed} pendente(s).`;
+  }
+
+  // Símbolos
+  const symEl = document.getElementById('recon-symbols');
+  symEl.innerHTML = Object.entries(syms).map(([s,v])=>{
+    const st=v.status||'ok';
+    const col=st==='ok'?'#10b981':st==='fixed'?'#f59e0b':'#ef4444';
+    const icon=st==='ok'?'✓':st==='fixed'?'⚡':'✗';
+    const drift=v.drift!=null?(v.drift>=0?'+':'')+v.drift.toFixed(6):'–';
+    return`<div style="display:flex;align-items:center;gap:4px;">
+      <span style="color:${col};font-weight:700">${icon}</span>
+      <span style="color:var(--text)">${s.replace('-USDT','')}</span>
+      <span style="color:var(--muted)">okx=${v.okx_qty||0} db=${v.db_qty||0} drift=${drift}</span>
+    </div>`;
+  }).join('');
+
+  // Timestamp
+  if(ts){
+    const d=new Date(ts);
+    document.getElementById('recon-ts').textContent=
+      'último sync: '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+
+  // Warnings
+  const warnEl = document.getElementById('recon-warnings');
+  if(warns.length){
+    warnEl.style.display='block';
+    warnEl.innerHTML='<strong>Divergências:</strong><br>'+warns.join('<br>');
+  } else {
+    warnEl.style.display='none';
+  }
+}
+
 // ── Feature Governance ────────────────────────────────────────
 function psiColor(psi){
   if(psi==null) return 'var(--muted)';
@@ -1861,14 +1938,15 @@ function renderWfo(data){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
     fetchJSON('/api/governance/importance'),fetchJSON('/api/governance/wfo'),
+    fetchJSON('/api/reconciler/status'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -1879,6 +1957,7 @@ async function updateSlow(){
   if(govSchema) _slowData.govSchema=govSchema;
   if(govImp)    _slowData.govImp=govImp;
   if(govWfo)    _slowData.govWfo=govWfo;
+  if(recon)     _slowData.recon=recon;
 }
 
 async function updateAll(){
@@ -1893,7 +1972,8 @@ async function updateAll(){
   ]);
 
   // Slow data vem do cache — atualizado em paralelo pelo loop lento
-  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo}=_slowData;
+  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon}=_slowData;
+  if(recon) updateReconciler(recon);
 
   // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS
   const hasPrices = prices && Object.keys(prices).length > 0;
@@ -2311,6 +2391,9 @@ async function updateAll(){
     updateDonut(portfolio,_c.prices);
     buildOkxAssetCards(portfolio);
   }
+
+  // Reconciler: atualiza a cada ciclo rápido (30s) via Redis cache
+  fetchJSON('/api/reconciler/status').then(r=>{ if(r&&r.available) updateReconciler(r); });
 
   // Signal feed v2
   if(log){

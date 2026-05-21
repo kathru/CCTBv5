@@ -142,8 +142,9 @@ class ExchangeSync:
 
     async def sync_balances(self) -> float:
         """
-        Sincronização leve (periódica): só lê saldos e atualiza Redis/portfolio.
-        Não acessa DB nem recria posições. Ideal para rodar a cada 5 minutos.
+        Sincronização leve (periódica): lê saldos, atualiza Redis/portfolio
+        e executa conciliação de trades OKX ↔ DB.
+        Roda a cada 5 minutos via TradingLoop._periodic_balance_sync().
         Retorna o portfolio total em USD.
         """
         try:
@@ -152,7 +153,6 @@ class ExchangeSync:
 
             await self._store_balances(details)
 
-            # Recalcula e atualiza portfolio
             total = sum(d["usdValue"] for d in details)
             usdt  = next((d for d in details if d["ccy"] == "USDT"), {})
             cash  = usdt.get("cashBal", 0.0)
@@ -160,11 +160,10 @@ class ExchangeSync:
             self._portfolio._state.cash_available = cash
             self._portfolio._state.total_value    = total
 
-            # Atualiza preços derivados dos saldos OKX
+            # Atualiza preços implícitos derivados dos saldos OKX
             for d in details:
                 ccy = d["ccy"]
-                if ccy in TRADING_CCYS and d["cashBal"] > 0:
-                    # Preço implícito = usdValue / qty
+                if ccy in TRADING_CCYS and d["cashBal"] > 0 and d["usdValue"] > 0:
                     implied_px = d["usdValue"] / d["cashBal"]
                     await self._cache.set_price(f"{ccy}-USDT", implied_px)
 
@@ -172,6 +171,26 @@ class ExchangeSync:
                 "ExchangeSync (periódico): total=%.2f USD  USDT=%.2f",
                 total, cash,
             )
+
+            # ── Conciliação de trades OKX ↔ DB ────────────────────────────
+            # Detecta e corrige divergências entre saldo OKX e registros do DB
+            if self._db:
+                from .trade_reconciler import TradeReconciler
+                recon = TradeReconciler(
+                    db=self._db,
+                    cache=self._cache,
+                    exchange=self._okx,
+                )
+                report = await recon.run()
+                if report.get("divergences", 0) > 0:
+                    logger.warning(
+                        "TradeReconciler: %d divergência(s) detectada(s), "
+                        "%d corrigida(s). Detalhes: %s",
+                        report["divergences"],
+                        report["fixed"],
+                        report.get("warnings", []),
+                    )
+
             return total
 
         except Exception as exc:

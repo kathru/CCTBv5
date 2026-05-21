@@ -724,6 +724,10 @@ class TradingLoop:
             if self._oms:
                 self._oms.open_gate()
 
+        # Contador para sincronização periódica de saldos OKX (a cada 5 min)
+        _sync_tick = 0
+        _SYNC_EVERY = 20   # 20 × 15s = 300s = 5 minutos
+
         while self._running:
             try:
                 self._heartbeat.beat()
@@ -733,6 +737,15 @@ class TradingLoop:
                 await self._simulate_paper_fills()
                 # Resumo diário
                 await self._maybe_send_daily_summary()
+
+                # Sincronização periódica de saldos OKX (a cada 5 min)
+                _sync_tick += 1
+                if _sync_tick >= _SYNC_EVERY:
+                    _sync_tick = 0
+                    asyncio.create_task(
+                        self._periodic_balance_sync(),
+                        name="periodic_balance_sync",
+                    )
 
                 # Atualiza portfolio value no runner
                 self._runner.update_portfolio_value(
@@ -750,6 +763,26 @@ class TradingLoop:
             except Exception as exc:
                 logger.error("TradingLoop error: %s", exc, exc_info=True)
                 self._infra_metrics.record_error()
+
+    async def _periodic_balance_sync(self) -> None:
+        """
+        Sincronização leve com OKX a cada 5 minutos.
+        Atualiza saldos no Redis e portfolio state sem recriar posições.
+        """
+        try:
+            from ..recovery.exchange_sync import ExchangeSync
+            sync = ExchangeSync(
+                exchange=self._okx,
+                db=None,        # sem DB — só Redis
+                cache=self._cache,
+                portfolio=self._portfolio,
+            )
+            total = await sync.sync_balances()
+            if total > 0:
+                self._runner.update_portfolio_value(total)
+                logger.debug("Sync periódico OKX: portfolio=%.2f USD", total)
+        except Exception as exc:
+            logger.debug("Sync periódico falhou: %s", exc)
 
     async def _on_ws_dead(self) -> None:
         # WebSocket morto NÃO dispara kill switch — market engine tem polling REST

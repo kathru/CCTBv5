@@ -60,7 +60,21 @@ async def portfolio_summary(request: Request) -> dict:
 
     db = getattr(request.app.state, "db", None)
     cache = getattr(request.app.state, "cache", None)
-    initial = s.initial_capital if s.initial_capital > 1000.0 else 85_000.0
+    initial = s.initial_capital if s.initial_capital > 1000.0 else 96_592.87
+
+    # ── Lê saldos OKX do Redis (atualizados pelo sync periódico) ───────────────
+    # Inclui TODOS os ativos: USDT, BTC, ETH, SOL, OKB, BRL
+    ALL_OKX_CCYS = ["USDT", "BTC", "ETH", "SOL", "OKB", "BRL"]
+    okx_balances: dict[str, dict] = {}
+    if cache:
+        for ccy in ALL_OKX_CCYS:
+            raw = await cache.get(f"okx:balance:{ccy}")
+            if raw:
+                try:
+                    import ast
+                    okx_balances[ccy] = ast.literal_eval(raw)
+                except Exception:
+                    pass
 
     # ── Posições abertas do DB (para open_count e exposição da exchange_sync) ──
     from ...persistence.repositories.positions import PositionRepository
@@ -185,18 +199,40 @@ async def portfolio_summary(request: Request) -> dict:
                 "strategy_id":    "exchange_sync",
             }
 
-    # ── Portfolio total = USDT + BTC + ETH + SOL (tudo a preço atual) ──────────
-    cash_value    = s.cash_available
-    notional_all  = notional_bot + notional_sync          # toda crypto
-    unrealized    = unrealized_bot + unrealized_sync       # P&L não realizado total
-    total_value   = cash_value + notional_all             # portfolio completo
+    # ── Portfolio total = soma de TODOS os ativos OKX via Redis ─────────────────
+    # Se Redis tem dados frescos do sync periódico, usa eles (mais preciso)
+    # Fallback: recalcula com o que temos localmente
+    okx_total_raw = await cache.get("okx:portfolio_total_usd") if cache else None
+    if okx_total_raw:
+        total_value = float(okx_total_raw)
+        cash_value  = float(okx_balances.get("USDT", {}).get("cashBal", s.cash_available))
+    else:
+        cash_value  = s.cash_available
+        total_value = cash_value + notional_bot + notional_sync
 
-    # Exposição = crypto / total (incluindo holdings pré-existentes)
-    exposure_pct     = notional_all / total_value if total_value > 0 and notional_all > 0 else 0.0
+    # Adiciona OKB e BRL ao total (se não incluídos no notional_sync)
+    extra_usd = 0.0
+    okx_extra_assets = {}   # OKB, BRL para exibição
+    for ccy in ["OKB", "BRL"]:
+        bal = okx_balances.get(ccy, {})
+        usd_val = bal.get("usdValue", 0.0)
+        if usd_val > 0:
+            extra_usd += usd_val
+            okx_extra_assets[ccy] = {
+                "cashBal":  bal.get("cashBal", 0.0),
+                "usdValue": usd_val,
+                "ccy":      ccy,
+            }
+
+    # Se o total do Redis não inclui OKB/BRL, adiciona
+    if not okx_total_raw:
+        total_value += extra_usd
+
+    unrealized    = unrealized_bot + unrealized_sync
+    notional_all  = total_value - cash_value
+    exposure_pct  = notional_all / total_value if total_value > 0 and notional_all > 0 else 0.0
     total_return_pct = (total_value - initial) / initial if initial > 0 else 0.0
-
-    # Saldo disponível para o dashboard = USDT + toda crypto (pode vender tudo)
-    liquid_total = total_value
+    liquid_total  = total_value
 
     open_count = len(positions_data)
 
@@ -205,8 +241,10 @@ async def portfolio_summary(request: Request) -> dict:
         "initial_capital":     initial,
         "total_value":         round(total_value, 2),
         "cash_available":      round(cash_value, 2),
-        "liquid_total":        round(liquid_total, 2),   # USDT + toda crypto
-        "notional_crypto":     round(notional_all, 2),   # valor total da crypto
+        "liquid_total":        round(liquid_total, 2),
+        "notional_crypto":     round(notional_all, 2),
+        "okx_balances":        okx_balances,        # todos os saldos OKX brutos
+        "okx_extra_assets":    okx_extra_assets,    # OKB e BRL para display
         "total_exposure_pct":  round(exposure_pct, 4),
         "open_position_count": open_count,
         "positions":           positions_data,

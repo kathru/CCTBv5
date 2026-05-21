@@ -480,6 +480,15 @@
 <div class="section-hdr"><div class="dot"></div>Mercado & Monitoramento</div>
 <div class="grid g3" id="crypto-row"></div>
 
+<!-- ══ ATIVOS OKX (watch-only: OKB + BRL) ═══════════════════════ -->
+<div id="okx-assets-row" style="display:none">
+  <div class="section-hdr" style="margin-top:8px;">
+    <div class="dot" style="background:var(--yellow)"></div>Ativos OKX (monitorados)
+    <span class="cnt" id="okx-assets-updated"></span>
+  </div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;" id="okx-assets-cards"></div>
+</div>
+
 <!-- ══ MOTOR + BREADTH ═══════════════════════════════════════ -->
 <div class="grid g21">
 
@@ -1171,32 +1180,34 @@ function initDonutChart(){
 
 function updateDonut(portfolio,prices){
   if(!_donutChart||!portfolio) return;
-  const cash  = portfolio.cash_available||0;
-  const tv    = portfolio.liquid_total||portfolio.total_value||1;
-  const pos   = portfolio.positions||{};
-  const syms  = ['BTC-USDT','ETH-USDT','SOL-USDT'];
-  const colors= ['#3b82f6','#f97316','#6366f1','#8b5cf6'];
-  const names = ['Cash (USDT)','BTC','ETH','SOL'];
+  const tv  = portfolio.liquid_total||portfolio.total_value||1;
+  const pos = portfolio.positions||{};
+  const bal = portfolio.okx_balances||{};
+  const extra = portfolio.okx_extra_assets||{};
 
-  // Notional de cada crypto: usa positions (já inclui bot + exchange_sync mesclados)
-  // Fallback: qty × preço atual se positions não tiver
-  const cryptoVals = syms.map(s=>{
-    const p = pos[s];
-    if(p && p.notional>0) return p.notional;
-    // Fallback via preço do cache × qty do position
-    if(p && p.quantity>0 && prices && prices[s]) return p.quantity * parseFloat(prices[s]);
-    return 0;
-  });
+  // Valores por ativo — ordem e cores fixas
+  const assets = [
+    { name:'USDT',       color:'#3b82f6', val: bal.USDT?.usdValue || portfolio.cash_available || 0 },
+    { name:'BTC',        color:'#f97316', val: (()=>{ const p=pos['BTC-USDT']; return p?.notional||(p?.quantity&&prices?.['BTC-USDT']?p.quantity*parseFloat(prices['BTC-USDT']):0); })() },
+    { name:'ETH',        color:'#6366f1', val: (()=>{ const p=pos['ETH-USDT']; return p?.notional||(p?.quantity&&prices?.['ETH-USDT']?p.quantity*parseFloat(prices['ETH-USDT']):0); })() },
+    { name:'SOL',        color:'#8b5cf6', val: (()=>{ const p=pos['SOL-USDT']; return p?.notional||(p?.quantity&&prices?.['SOL-USDT']?p.quantity*parseFloat(prices['SOL-USDT']):0); })() },
+    { name:'OKB',        color:'#0b5eda', val: extra.OKB?.usdValue||0 },
+    { name:'BRL (fiat)', color:'#009c3b', val: extra.BRL?.usdValue||0 },
+  ].filter(a=>a.val>0);
 
-  const vals = [cash, ...cryptoVals];
-  _donutChart.data.datasets[0].data = vals;
+  // Ajusta labels e cores do chart
+  _donutChart.data.labels   = assets.map(a=>a.name);
+  _donutChart.data.datasets[0].backgroundColor = assets.map(a=>a.color);
+  _donutChart.data.datasets[0].data = assets.map(a=>a.val);
   _donutChart.update('none');
 
-  // Legend com valores reais e percentuais sobre o total
   const leg = document.getElementById('donut-legend');
-  leg.innerHTML = names.map((n,i)=>{
-    const v=vals[i], pct=tv>0?(v/tv*100).toFixed(1):'0.0';
-    return`<div class="donut-row"><div class="donut-sym"><div class="donut-dot" style="background:${colors[i]}"></div>${n}</div><div><span class="donut-val">${usd(v)}</span><span class="donut-pct">(${pct}%)</span></div></div>`;
+  leg.innerHTML = assets.map(a=>{
+    const pct = tv>0?(a.val/tv*100).toFixed(1):'0.0';
+    return`<div class="donut-row">
+      <div class="donut-sym"><div class="donut-dot" style="background:${a.color}"></div>${a.name}</div>
+      <div><span class="donut-val">${usd(a.val)}</span><span class="donut-pct">(${pct}%)</span></div>
+    </div>`;
   }).join('');
 }
 
@@ -1321,6 +1332,89 @@ function regimeBadge(regime){
 const COIN_NAMES={
   'BTC-USDT':'Bitcoin','ETH-USDT':'Ethereum','SOL-USDT':'Solana',
 };
+
+// ── Cards OKB e BRL (watch-only) ─────────────────────────────
+function buildOkxAssetCards(portfolio){
+  const extra = portfolio?.okx_extra_assets || {};
+  const balances = portfolio?.okx_balances || {};
+  const keys = Object.keys(extra);
+  // Também mostra USDT como card se disponível
+  const usdt = balances['USDT'];
+  if(!keys.length && !usdt) { document.getElementById('okx-assets-row').style.display='none'; return; }
+
+  document.getElementById('okx-assets-row').style.display='block';
+
+  const cards = [];
+
+  // Card USDT
+  if(usdt){
+    const v = usdt.usdValue||0, q = usdt.cashBal||0;
+    cards.push(`<div class="card" style="padding:16px 18px;background:#161b22;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div class="coin-icon" style="background:linear-gradient(135deg,#26a17b,#1a7a5e);color:#fff;font-size:0.75rem;font-weight:800;">$</div>
+        <div><div style="font-weight:800;font-size:0.95rem;">Tether USD</div>
+          <div style="font-size:0.6rem;color:var(--muted)">USDT · Stablecoin</div></div>
+        <div style="margin-left:auto;text-align:right;">
+          <div style="font-size:1.2rem;font-weight:900">${usd(v)}</div>
+          <div style="font-size:0.6rem;color:var(--muted)">${q.toLocaleString('pt-BR',{maximumFractionDigits:2})} USDT</div>
+        </div>
+      </div>
+      <div style="font-size:0.62rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;">
+        Capital operacional · Usado nas compras do bot
+      </div>
+    </div>`);
+  }
+
+  // Cards OKB e BRL
+  for(const ccy of keys){
+    const d = extra[ccy];
+    const v = d.usdValue||0, q = d.cashBal||0;
+    if(ccy==='OKB'){
+      cards.push(`<div class="card" style="padding:16px 18px;background:#161b22;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div class="coin-icon" style="background:linear-gradient(135deg,#0b5eda,#083da5);color:#fff;font-size:0.75rem;font-weight:800;">OK</div>
+          <div><div style="font-weight:800;font-size:0.95rem;">OKX Token</div>
+            <div style="font-size:0.6rem;color:var(--muted)">OKB · Token nativo OKX</div></div>
+          <div style="margin-left:auto;text-align:right;">
+            <div style="font-size:1.2rem;font-weight:900">${usd(v)}</div>
+            <div style="font-size:0.6rem;color:var(--muted)">${q.toLocaleString('pt-BR',{maximumFractionDigits:4})} OKB</div>
+          </div>
+        </div>
+        <div style="font-size:0.62rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;">
+          Preço unitário: ${usd(q>0?v/q:0)} · Apenas monitorado (não negociado)
+        </div>
+      </div>`);
+    }
+    if(ccy==='BRL'){
+      const brlFmt = q.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+      const rate = q>0?(v/q):0;
+      cards.push(`<div class="card" style="padding:16px 18px;background:#161b22;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div class="coin-icon" style="background:linear-gradient(135deg,#009c3b,#002776);color:#ffdf00;font-size:0.75rem;font-weight:800;">R$</div>
+          <div><div style="font-weight:800;font-size:0.95rem;">Brazilian Real</div>
+            <div style="font-size:0.6rem;color:var(--muted)">BRL · Dinheiro fiat</div></div>
+          <div style="margin-left:auto;text-align:right;">
+            <div style="font-size:1.2rem;font-weight:900">${usd(v)}</div>
+            <div style="font-size:0.6rem;color:var(--muted)">${brlFmt}</div>
+          </div>
+        </div>
+        <div style="font-size:0.62rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;">
+          Câmbio: 1 USD = ${(1/rate).toFixed(4)} BRL · Apenas monitorado
+        </div>
+      </div>`);
+    }
+  }
+
+  document.getElementById('okx-assets-cards').innerHTML=cards.join('');
+
+  // Atualiza timestamp
+  const upd = portfolio?.okx_balances?.USDT?.updated_at;
+  if(upd){
+    const d=new Date(upd);
+    document.getElementById('okx-assets-updated').textContent=
+      '· sync '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }
+}
 
 function buildCards(prices,sym,exits,recentOrders=[]){
   document.getElementById('crypto-row').innerHTML=SYMBOLS.map(s=>{
@@ -2213,7 +2307,10 @@ async function updateAll(){
   renderWfo(govWfo);
 
   // Donut (portfolio distribution)
-  if(portfolio&&portfolio.total_value) updateDonut(portfolio,_c.prices);
+  if(portfolio&&portfolio.total_value){
+    updateDonut(portfolio,_c.prices);
+    buildOkxAssetCards(portfolio);
+  }
 
   // Signal feed v2
   if(log){

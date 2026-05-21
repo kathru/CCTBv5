@@ -2133,14 +2133,19 @@ async function updateAll(){
     else { arrow='⇄'; }
     box.className=boxCls;
 
-    const subMap={
-      'REVERSAL 1H': 'Comprar o Fundo — 6 condições confirmadas',
-      'MEAN REVERTING CHOP': 'Aguardando setup de reversão...',
-      'BEAR TREND': 'Entradas bloqueadas — Downtrend ativo',
-      'PANIC LIQUIDATION': 'Proteger Capital — Pânico detectado',
+    // Subtítulo dinâmico baseado no resultado real da avaliação
+    const resultSubMap={
+      'SIGNAL':        'Comprar o Fundo — todas as condições confirmadas ✓',
+      'FALL_WEAK':     `Aguardando queda ≥3% (atual: ${((latest.factors?.fall_pct||0)*100).toFixed(1)}%)`,
+      'MACRO_BLOCKED': 'Preço fora da faixa SMA20 (92%–102%)',
+      'DIP_SHALLOW':   'Queda não tocou a SMA20 — não é dip estrutural',
+      'BASE_MISSING':  'Aguardando rompimento da máxima da base',
+      'VOLUME_WEAK':   'Volume do rompimento insuficiente (<80% média)',
+      'SL_INVALID':    'SL fora do range válido (0.8%–6%)',
+      'NO_CANDLES':    'Aguardando candles 1H do MarketEngine...',
     };
-    const subTxt=subMap[rg]||'Monitorando condições de reversão...';
-    document.getElementById('motor-regime').textContent=`${arrow} ${rg} — ${subTxt}`;
+    const subTxt = resultSubMap[latest.result] || 'Monitorando condições de reversão...';
+    document.getElementById('motor-regime').textContent=`${arrow} REVERSAL 1H — ${subTxt}`;
 
     // Badge
     const mb=document.getElementById('motor-badge');
@@ -2280,8 +2285,9 @@ async function updateAll(){
     mbMetric('mbf-rate','mbv-rate','mbs-rate',rate,100,'var(--green)',v=>v>5?'ativo':v>0?'baixo':'inativo');
     // Regime score (100=trend, 50=chop, 0=panic)
     const latestEntry=entries[0]||{};
-    const rScore=latestEntry.regime?.includes('REVERSAL')?80:latestEntry.regime?.includes('EXPANSION')?85:latestEntry.regime?.includes('CHOP')?40:latestEntry.regime?.includes('PANIC')?5:50;
-    mbMetric('mbf-regime','mbv-regime','mbs-regime',rScore,100,'var(--yellow)',v=>v>=70?'expansão':v>=40?'lateral':'risco');
+    const rScore=latestEntry.regime?.includes('REVERSAL')?65:latestEntry.regime?.includes('EXPANSION')?85:latestEntry.regime?.includes('CHOP')?40:latestEntry.regime?.includes('PANIC')?5:50;
+    const rLabel=latestEntry.regime?.includes('REVERSAL')?'reversão':latestEntry.regime?.includes('EXPANSION')?'expansão':latestEntry.regime?.includes('CHOP')?'lateral':'risco';
+    mbMetric('mbf-regime','mbv-regime','mbs-regime',rScore,100,'var(--green)',v=>v>=60?rLabel:v>=40?'lateral':'risco');
     document.getElementById('mbv-regime').textContent=(latestEntry.regime||'–').replace(/_/g,' ').toLowerCase();
     mbMetric('mbf-epm','mbv-epm','mbs-epm',Math.min(epm,10),10,'var(--purple)',v=>v>=3?'ativo':v>=1?'baixo':'inativo');
     document.getElementById('mbv-epm').textContent=epm.toFixed(1)+'/min';

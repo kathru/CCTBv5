@@ -229,11 +229,10 @@ class TradingLoop:
             self._app_state.portfolio          = self._portfolio
             self._app_state.position_monitor   = self._position_monitor
 
-        # ── Subscreve ao pipeline de sinais ──────────────────
+        # ── Subscreve ao pipeline de sinais (queue criada antes dos starts) ──
+        # IMPORTANTE: a task só é criada DEPOIS de self._running = True
+        # para evitar que o consumer veja self._running=False e saia imediatamente.
         self._signal_queue = self._bus.subscribe(Topic.SIGNAL)
-        self._signal_task  = asyncio.create_task(
-            self._consume_signals(), name="signal_consumer"
-        )
 
         await self._alert_listener.start()
         await self._heartbeat.start()
@@ -246,6 +245,12 @@ class TradingLoop:
 
         self._running = True
         logger.info("TradingLoop: all services started — RUNNING")
+
+        # Cria a task do consumer APÓS self._running = True
+        # (se fosse antes, o while self._running: retornaria False imediatamente)
+        self._signal_task = asyncio.create_task(
+            self._consume_signals(), name="signal_consumer"
+        )
 
         # Dispara notificação Discord sem bloquear o loop principal.
         # await direto antes de _run_loop() pode travar o event loop se o

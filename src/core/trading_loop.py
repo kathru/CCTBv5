@@ -243,6 +243,25 @@ class TradingLoop:
         await self._position_monitor.start()
         await self._reconciler.start()
 
+        # Calibra portfolio com saldo real da conta OKX (USDT disponível)
+        try:
+            usdt_balance = await self._okx.get_usdt_balance()
+            if usdt_balance > 10.0:
+                self._portfolio._state.initial_capital = usdt_balance
+                self._portfolio._state.cash_available  = usdt_balance
+                self._portfolio._state.total_value     = usdt_balance
+                self._runner.update_portfolio_value(usdt_balance)
+                logger.info(
+                    "Portfolio calibrado com saldo OKX: USDT=%.2f", usdt_balance
+                )
+            else:
+                logger.warning(
+                    "Saldo USDT OKX insuficiente (%.4f) — mantendo capital inicial padrão",
+                    usdt_balance,
+                )
+        except Exception as exc:
+            logger.warning("Falha ao calibrar portfolio com OKX: %s", exc)
+
         self._running = True
         logger.info("TradingLoop: all services started — RUNNING")
 
@@ -302,26 +321,16 @@ class TradingLoop:
         Recebe cada SignalEvent, avalia risco, dimensiona e envia ao OMS.
         """
         logger.info("Signal consumer iniciado — aguardando sinais...")
-        _consumed = 0
         while self._running:
             try:
                 event = await asyncio.wait_for(
                     self._signal_queue.get(), timeout=1.0
                 )
-                _consumed += 1
-                logger.info(
-                    "[CONSUME] evento #%d type=%s is_signal=%s",
-                    _consumed, type(event).__name__,
-                    isinstance(event, SignalEvent),
-                )
                 if isinstance(event, SignalEvent) and event.signal:
                     await self._process_signal(event)
-                else:
-                    logger.warning("[CONSUME] evento ignorado — não é SignalEvent: %s", type(event))
             except TimeoutError:
                 continue
             except asyncio.CancelledError:
-                logger.warning("Signal consumer CANCELADO após %d eventos", _consumed)
                 break
             except Exception as exc:
                 logger.error("Signal consumer error: %s", exc, exc_info=True)
@@ -334,8 +343,6 @@ class TradingLoop:
           3. OMS        — cria e submete ordem de mercado
         """
         signal = event.signal
-        logger.info("[PROCESS] iniciando symbol=%s dir=%s score=%.3f",
-                    signal.symbol, signal.direction, signal.calibrated_score)
 
         # Bloqueia nova entrada se já há posição ou ordem aberta no símbolo
         open_orders = self._oms.get_open_orders()
@@ -345,9 +352,8 @@ class TradingLoop:
             already_open = signal.symbol in existing_plans
 
         if already_open:
-            logger.info(
-                "[PROCESS] BLOQUEADO — posição/ordem já aberta para %s (orders=%d plans=%s)",
-                signal.symbol, len(open_orders), list(existing_plans.keys())
+            logger.debug(
+                "Sinal ignorado — posição/ordem já aberta para %s", signal.symbol
             )
             return
 
@@ -359,21 +365,19 @@ class TradingLoop:
             strategy_id=signal.strategy_id,
         )
         action = await self._risk.evaluate(risk_ctx)
-        logger.info("[PROCESS] risk action=%s portfolio=%.0f", action, portfolio_value)
 
         if action != RiskAction.NORMAL:
             logger.info(
-                "[PROCESS] BLOQUEADO pelo RiskEngine action=%s symbol=%s",
-                action, signal.symbol,
+                "Sinal rejeitado pelo RiskEngine action=%s symbol=%s strategy=%s",
+                action, signal.symbol, signal.strategy_id,
             )
             return
 
         # 2. Sizing usando kelly_fraction e preço atual
         price_raw = await self._cache.get_price(signal.symbol)
-        logger.info("[PROCESS] price=%s symbol=%s", price_raw, signal.symbol)
         if not price_raw:
             logger.warning(
-                "[PROCESS] BLOQUEADO — Sem preço em cache para %s", signal.symbol
+                "Sem preço em cache para %s — sinal descartado", signal.symbol
             )
             return
 

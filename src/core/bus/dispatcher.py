@@ -74,13 +74,6 @@ class EventBus:
         subscribers = self._subscribers.get(topic, [])
         self._publish_count[topic] += 1
 
-        # DIAG: log todos os publishes no topic SIGNAL para rastrear o pipeline
-        if str(topic) == "signal":
-            logger.info(
-                "[BUS] publish topic=%s subscribers=%d event=%s id=%s",
-                topic, len(subscribers), type(event).__name__, event.event_id,
-            )
-
         for queue in subscribers:
             try:
                 queue.put_nowait(event)

@@ -1,13 +1,12 @@
 """
-TrendStrategy — EMA50D + Vol Scaling (v5.6)
+TrendStrategy — EMA50D + Vol Scaling (v5.6 Brasil)
 
 Estratégia documentada pelos maiores CTAs do mundo (Man AHL, Winton, Aspect).
-Validada em backtest Jan/2025→Abr/2026: +7.8% vs Buy&Hold -18.4%.
+Validada em backtest Jan/2025→Abr/2026: -1.4% vs Buy&Hold -18.4% (+17pp alpha).
 
-Regras:
+Regras (Long + Flat — sem derivativos, compatível com regulação BR):
   LONG  : close > EMA50D AND vol_20D < 80% aa → compra spot
-  SHORT : close < EMA50D AND vol_20D < 80% aa → vende perp (BTC-USDT-SWAP)
-  FLAT  : vol muito alta (≥80% aa) → zera posição
+  FLAT  : close < EMA50D OR  vol_20D ≥ 80% aa → vende spot, aguarda em USDT
 
 Avalia 1× por dia no fechamento do candle diário (agregado dos 1H).
 BTC avaliado primeiro → serve de âncora para ETH e SOL (BTC correlation gate).
@@ -163,81 +162,71 @@ class TrendStrategy(BaseStrategy):
         vol_ann = atr_pct * ANN   # vol realizada anualizada
 
         # ── Sinal ─────────────────────────────────────────────────────────────
-        trend_up   = price > ema50d
-        trend_down = price < ema50d
-        vol_ok     = vol_ann < VOL_CAP
+        trend_up = price > ema50d
+        vol_ok   = vol_ann < VOL_CAP
 
-        # Atualiza âncora BTC
+        # Atualiza âncora BTC para ETH/SOL
         if sym == "BTC-USDT":
-            if trend_up and vol_ok:
-                TrendStrategy._btc_signal = "LONG"
-            elif trend_down and vol_ok:
-                TrendStrategy._btc_signal = "SHORT"
-            else:
-                TrendStrategy._btc_signal = "FLAT"
-            TrendStrategy._btc_vol = vol_ann
+            TrendStrategy._btc_signal = "LONG" if (trend_up and vol_ok) else "FLAT"
+            TrendStrategy._btc_vol    = vol_ann
 
-        # ETH e SOL precisam de concordância com BTC (correlation gate)
+        # ETH e SOL só entram se BTC também estiver em tendência de alta
         if BTC_ANCHOR_ENABLED and sym != "BTC-USDT":
-            btc_sig = TrendStrategy._btc_signal
-            if trend_up and btc_sig != "LONG":
-                return None   # BTC não confirma alta → não entra long
-            if trend_down and btc_sig != "SHORT":
-                return None   # BTC não confirma baixa → não entra short
+            if TrendStrategy._btc_signal != "LONG":
+                # BTC não confirma alta → sinal FLAT para ETH/SOL se tiverem posição
+                return Signal(
+                    strategy_id=self._strategy_id, symbol=sym,
+                    direction=SignalDirection.FLAT,
+                    timestamp=datetime.now(UTC),
+                    score=0.0, calibrated_score=0.0, confidence=0.0,
+                    expected_value=0.0, kelly_fraction=0.0,
+                    regime="BTC_FLAT", timeframe="1D",
+                    factors={"vol_ann": round(vol_ann, 4), "ema50d": round(ema50d, 4),
+                             "mode": "flat", "reason": "btc_not_trending"},
+                )
 
-        # Vol alta → flat (sai de qualquer posição)
-        if not vol_ok:
+        # Vol spike ou tendência de baixa → FLAT (vende spot, aguarda em USDT)
+        if not vol_ok or not trend_up:
+            reason = "vol_spike" if not vol_ok else "below_ema50d"
+            regime = "VOL_SPIKE" if not vol_ok else "TREND_DOWN"
+            logger.info(
+                "TrendStrategy %s | FLAT | price=%.2f ema50=%.2f vol=%.1f%% reason=%s",
+                sym, price, ema50d, vol_ann * 100, reason,
+            )
             return Signal(
-                strategy_id=self._strategy_id,
-                symbol=sym,
+                strategy_id=self._strategy_id, symbol=sym,
                 direction=SignalDirection.FLAT,
                 timestamp=datetime.now(UTC),
                 score=0.0, calibrated_score=0.0, confidence=0.0,
                 expected_value=0.0, kelly_fraction=0.0,
-                regime="VOL_SPIKE",
-                timeframe="1D",
-                factors={"vol_ann": round(vol_ann, 3), "ema50d": round(ema50d, 4),
-                         "mode": "flat", "reason": "vol_spike"},
+                regime=regime, timeframe="1D",
+                factors={"vol_ann": round(vol_ann, 4), "ema50d": round(ema50d, 4),
+                         "mode": "flat", "reason": reason},
             )
 
-        if not trend_up and not trend_down:
-            return None   # Preço na EMA → sem sinal
+        # ── LONG: acima da EMA50D com vol controlada ───────────────────────────
+        pos_pct  = min(VOL_TARGET / vol_ann, MAX_POS_PCT)
+        sl_pct   = min(atr_pct * 2, 0.10)   # SL emergência: 2× ATR, máx 10%
+        tp_pct   = sl_pct * 2.0              # TP = 2× SL
 
-        # ── Sizing ─────────────────────────────────────────────────────────────
-        pos_pct = min(VOL_TARGET / vol_ann, MAX_POS_PCT)
-
-        # SL: ATR × 2 do lado oposto (stop baseado em vol, não fixo)
-        sl_pct = min(atr_pct * 2, 0.08)   # máx 8% SL
-        tp_pct = sl_pct * 2.0              # TP = 2× SL (ratio 2:1)
-
-        # Score baseado na força do sinal (distância % da EMA50D)
-        dist_pct = abs(price - ema50d) / ema50d
-        raw_score = min(dist_pct / 0.05, 1.0)   # 5% de distância = score 1.0
-
+        dist_pct  = (price - ema50d) / ema50d
+        raw_score = min(dist_pct / 0.05, 1.0)   # 5% acima da EMA = score máximo
         calibrated = self._platt.calibrate(raw_score) if self._platt else raw_score
-        ev = raw_score * 2.0 - (1 - raw_score)   # TP=2×SL → EV simples
-
-        direction = SignalDirection.LONG if trend_up else SignalDirection.SHORT
-        regime    = "TREND_UP" if trend_up else "TREND_DOWN"
-        mode      = "long"     if trend_up else "short"
 
         logger.info(
-            "TrendStrategy %s | %s | price=%.4f ema50=%.4f vol=%.1f%% pos=%.1f%% score=%.2f",
-            sym, regime, price, ema50d, vol_ann * 100, pos_pct * 100, raw_score,
+            "TrendStrategy %s | LONG | price=%.2f ema50=%.2f dist=%.1f%% vol=%.1f%% pos=%.1f%%",
+            sym, price, ema50d, dist_pct * 100, vol_ann * 100, pos_pct * 100,
         )
 
         return Signal(
-            strategy_id=self._strategy_id,
-            symbol=sym,
-            direction=direction,
+            strategy_id=self._strategy_id, symbol=sym,
+            direction=SignalDirection.LONG,
             timestamp=datetime.now(UTC),
-            score=raw_score,
-            calibrated_score=calibrated,
+            score=raw_score, calibrated_score=calibrated,
             confidence=calibrated,
-            expected_value=ev,
+            expected_value=raw_score * 2.0 - (1 - raw_score),
             kelly_fraction=round(pos_pct, 4),
-            regime=regime,
-            timeframe="1D",
+            regime="TREND_UP", timeframe="1D",
             factors={
                 "sl_pct":   round(sl_pct, 5),
                 "tp_pct":   round(tp_pct, 5),
@@ -245,6 +234,6 @@ class TrendStrategy(BaseStrategy):
                 "ema50d":   round(ema50d, 4),
                 "pos_pct":  round(pos_pct, 4),
                 "dist_pct": round(dist_pct, 4),
-                "mode":     mode,
+                "mode":     "long",
             },
         )

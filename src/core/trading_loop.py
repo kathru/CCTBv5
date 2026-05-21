@@ -398,12 +398,11 @@ class TradingLoop:
 
     async def _process_signal(self, event: SignalEvent) -> None:
         """
-        Processa sinal da TrendStrategy v5.6:
-          LONG  → compra spot (existente)
-          SHORT → vende perp (BTC/ETH/SOL-USDT-SWAP via OKX)
-          FLAT  → fecha posição spot ou perp
+        Processa sinal da TrendStrategy v5.6 (Long + Flat — Brasil):
+          LONG  → compra spot quando BTC > EMA50D
+          FLAT  → vende spot quando BTC < EMA50D ou vol spike
 
-          Pipeline: RiskEngine → Sizing (vol-target) → Execução
+          Pipeline: RiskEngine → Sizing (vol-target) → OMS
         """
         if settings.monitor_only:
             logger.debug(
@@ -415,23 +414,15 @@ class TradingLoop:
 
         from ..core.models.signal import SignalDirection
 
-        signal  = event.signal
-        regime  = getattr(signal, "regime", "")
-        factors = getattr(signal, "factors", {}) or {}
-        mode    = factors.get("mode", "")
+        signal = event.signal
 
-        # ── FLAT / VOL_SPIKE: fecha tudo para este símbolo ───────────────────
+        # ── FLAT: fecha posição spot se existir ──────────────────────────────
         if signal.direction == SignalDirection.FLAT:
-            await self._close_all_positions(signal.symbol)
+            await self._close_spot_position(signal.symbol, reason=signal.regime)
             return
 
-        # ── SHORT via perpetual swap ──────────────────────────────────────────
-        if signal.direction == SignalDirection.SHORT and regime == "TREND_DOWN":
-            await self._open_short_perp(signal, event)
-            return
-
-        # ── LONG via spot (caminho original) ─────────────────────────────────
-        is_exit = signal.direction in (SignalDirection.SHORT, SignalDirection.FLAT)
+        # ── LONG via spot ─────────────────────────────────────────────────────
+        is_exit = False
         open_orders    = self._oms.get_open_orders()
         existing_plans = getattr(self._position_monitor, '_plans', {})
 
@@ -518,11 +509,12 @@ class TradingLoop:
         kelly    = signal.kelly_fraction or 0.05
         regime   = getattr(signal, "regime", "MEAN_REVERTING_CHOP")
 
-        # Cap máximo de Kelly por regime (segurança extra)
+        # Cap máximo de Kelly por regime
         KELLY_CAP = {
-            "TREND_UP":               0.33,   # v5.6 trend: vol-target sizing (já vem calibrado)
-            "TREND_DOWN":             0.33,   # short perp: tratado em _open_short_perp
-            "VOL_SPIKE":              0.00,   # flat: não entra
+            "TREND_UP":               0.33,   # v5.6: vol-target sizing (já calibrado pela estratégia)
+            "BTC_FLAT":               0.00,   # BTC não confirma → não entra
+            "VOL_SPIKE":              0.00,   # vol alta → não entra
+            "TREND_DOWN":             0.00,   # sinal de saída → não entra long
             "TREND_EXPANSION":        0.15,
             "VOLATILITY_COMPRESSION": 0.12,
             "TREND_EXHAUSTION":       0.10,
@@ -569,117 +561,45 @@ class TradingLoop:
                 ),
             )
 
-    # ── v5.6: SHORT perp + fechar posições ───────────────────────────────────
+    # ── v5.6: Fechar posição spot (Long + Flat — sem derivativos) ────────────
 
-    # Mapeamento símbolo spot → instrumento SWAP OKX
-    SWAP_INSTRUMENTS = {
-        "BTC-USDT": "BTC-USDT-SWAP",
-        "ETH-USDT": "ETH-USDT-SWAP",
-        "SOL-USDT": "SOL-USDT-SWAP",
-    }
-    # Tamanho de 1 contrato em unidade base (OKX padrão)
-    CONTRACT_SIZE = {
-        "BTC-USDT-SWAP": 0.01,    # 1 contrato = 0.01 BTC
-        "ETH-USDT-SWAP": 0.1,     # 1 contrato = 0.1 ETH
-        "SOL-USDT-SWAP": 1.0,     # 1 contrato = 1 SOL
-    }
-    # Posições swap abertas em memória {symbol: {"qty_contracts": N, "side": "short"}}
-    _swap_positions: dict = {}
+    async def _close_spot_position(self, sym: str, reason: str = "FLAT") -> None:
+        """
+        Fecha posição spot para um símbolo quando sinal FLAT é emitido.
+        Triggered quando: BTC < EMA50D | vol spike | BTC não confirma.
+        """
+        if sym not in self._positions:
+            return   # sem posição, nada a fazer
 
-    async def _open_short_perp(self, signal, event: SignalEvent) -> None:
-        """Abre posição SHORT via perpetual swap na OKX."""
-        sym       = signal.symbol
-        swap_inst = self.SWAP_INSTRUMENTS.get(sym)
-        if not swap_inst:
-            logger.warning("SHORT não suportado para %s", sym)
-            return
-
-        # Já tem short aberto para este símbolo?
-        if sym in self._swap_positions:
-            logger.debug("Short já aberto para %s — ignorando sinal duplicado", sym)
-            return
-
-        # Preço e sizing
-        price_raw = await self._cache.get_price(sym)
-        if not price_raw:
-            return
-        price = float(price_raw)
-        if price <= 0:
-            return
-
-        portfolio_value = self._portfolio.state.total_value or 85_000.0
-        kelly    = min(signal.kelly_fraction or 0.08, 0.33)
-        notional = portfolio_value * kelly
-        contract_sz = self.CONTRACT_SIZE[swap_inst]
-        n_contracts = max(1, int(notional / (price * contract_sz)))
-
-        logger.info(
-            "SHORT PERP %s | swap=%s | qty=%d contratos | notional≈$%.0f | vol=%.1f%%",
-            sym, swap_inst, n_contracts, n_contracts * contract_sz * price,
-            (signal.factors or {}).get("vol_ann", 0) * 100,
+        open_orders = self._oms.get_open_orders()
+        sell_pending = any(
+            o.symbol == sym and str(getattr(o, "side", "")).lower() in ("sell", "short")
+            for o in open_orders
         )
-
-        try:
-            order_id = await self._okx.place_swap_order(
-                symbol=swap_inst, side="sell", pos_side="short",
-                quantity=n_contracts, order_type="market",
-            )
-            self._swap_positions[sym] = {
-                "qty_contracts": n_contracts,
-                "side": "short",
-                "swap_inst": swap_inst,
-                "entry_price": price,
-                "order_id": order_id,
-            }
-            logger.info("Short aberto %s ordId=%s", swap_inst, order_id)
-        except Exception as exc:
-            logger.error("Erro ao abrir short %s: %s", swap_inst, exc)
-
-    async def _close_short_perp(self, sym: str) -> None:
-        """Fecha posição SHORT de perpetual swap."""
-        sp = self._swap_positions.get(sym)
-        if not sp:
+        if sell_pending:
+            logger.debug("Venda já pendente para %s — FLAT ignorado", sym)
             return
-        swap_inst = sp["swap_inst"]
-        n_contracts = sp["qty_contracts"]
-        try:
-            order_id = await self._okx.place_swap_order(
-                symbol=swap_inst, side="buy", pos_side="short",
-                quantity=n_contracts, order_type="market",
-            )
-            logger.info("Short fechado %s ordId=%s", swap_inst, order_id)
-            del self._swap_positions[sym]
-        except Exception as exc:
-            logger.error("Erro ao fechar short %s: %s", swap_inst, exc)
 
-    async def _close_all_positions(self, sym: str) -> None:
-        """Fecha spot long E short perp para um símbolo (sinal FLAT)."""
-        # Fecha spot long se existir
-        if sym in self._positions:
-            from ..core.models.signal import SignalDirection
-            from ..core.models import Signal
-            flat_sig = Signal(
-                strategy_id="trend_v56", symbol=sym,
-                direction=SignalDirection.FLAT,
-                timestamp=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
-                score=0.0, calibrated_score=0.0, confidence=0.0,
-                expected_value=0.0, kelly_fraction=0.0,
-                regime="VOL_SPIKE", timeframe="1D", factors={},
-            )
-            fake_event = SignalEvent(signal=flat_sig)
-            open_orders = self._oms.get_open_orders()
-            sell_pending = any(
-                o.symbol == sym and str(getattr(o, "side", "")).lower() in ("sell", "short")
-                for o in open_orders
-            )
-            if not sell_pending:
-                pos = self._positions[sym]
-                qty = round(pos.quantity, QTY_PRECISION.get(sym, 4))
-                if qty >= MIN_QTY.get(sym, 0.0001):
-                    await self._oms.create_order_from_signal(fake_event, qty)
-                    logger.info("FLAT SPOT %s qty=%.6f", sym, qty)
-        # Fecha short perp se existir
-        await self._close_short_perp(sym)
+        pos = self._positions[sym]
+        qty = round(pos.quantity, QTY_PRECISION.get(sym, 4))
+        if qty < MIN_QTY.get(sym, 0.0001):
+            return
+
+        # Cria evento de saída
+        from ..core.models.signal import SignalDirection
+        from ..core.models import Signal
+        from datetime import UTC, datetime
+        flat_sig = Signal(
+            strategy_id="trend_v56", symbol=sym,
+            direction=SignalDirection.FLAT,
+            timestamp=datetime.now(UTC),
+            score=0.0, calibrated_score=0.0, confidence=0.0,
+            expected_value=0.0, kelly_fraction=0.0,
+            regime=reason, timeframe="1D", factors={"reason": reason},
+        )
+        fake_event = SignalEvent(signal=flat_sig)
+        await self._oms.create_order_from_signal(fake_event, qty)
+        logger.info("FLAT %s qty=%.6f reason=%s (EMA50D cross / vol spike)", sym, qty, reason)
 
     # ── Resumo diário Discord ─────────────────────────────────────────────────
 

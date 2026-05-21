@@ -15,9 +15,12 @@ from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
-# Símbolos que o bot negocia — usados para filtrar posições relevantes
-TRADING_SYMBOLS = {"BTC-USDT", "ETH-USDT", "SOL-USDT"}
-TRADING_CCYS    = {"BTC", "ETH", "SOL"}
+# Ativos válidos para o sistema — apenas esses são considerados no portfolio e P&L.
+# Qualquer outro ativo presente na conta OKX é ignorado (logado como aviso).
+VALID_CCYS    = {"USDT", "BTC", "ETH", "SOL"}
+VALID_SYMBOLS = {"BTC-USDT", "ETH-USDT", "SOL-USDT"}
+TRADING_CCYS  = VALID_CCYS - {"USDT"}   # crypto (sem USDT) — para posições
+TRADING_SYMBOLS = VALID_SYMBOLS          # alias de compatibilidade
 
 
 class ExchangeSync:
@@ -48,12 +51,31 @@ class ExchangeSync:
         try:
             # ── 1. Saldo de todos os ativos ──────────────────────────────────
             logger.info("ExchangeSync: lendo saldo da conta OKX...")
-            details = await self._okx.get_account_details()
-            summary["assets"] = details
+            all_details = await self._okx.get_account_details()
+            summary["assets"] = all_details
+
+            # Filtra para apenas USDT, BTC, ETH, SOL — ignora todo o resto
+            valid   = [d for d in all_details if d["ccy"] in VALID_CCYS]
+            ignored = [d for d in all_details if d["ccy"] not in VALID_CCYS]
+            if ignored:
+                logger.warning(
+                    "ExchangeSync: ativos ignorados (fora do escopo do sistema): %s",
+                    [f"{d['ccy']}={d['cashBal']:.6f}" for d in ignored],
+                )
+            details = valid  # daqui em diante só ativos válidos
 
             usdt = next((d for d in details if d["ccy"] == "USDT"), {})
             summary["usdt_balance"] = usdt.get("cashBal", 0.0)
             summary["total_equity_usd"] = sum(d["usdValue"] for d in details)
+
+            logger.info(
+                "ExchangeSync: ativos válidos — USDT=%.2f | %s",
+                summary["usdt_balance"],
+                " | ".join(
+                    f"{d['ccy']}={d['cashBal']:.6f} (~${d['usdValue']:.2f})"
+                    for d in details if d["ccy"] != "USDT"
+                ) or "nenhuma crypto",
+            )
 
             # ── 2. Posições crypto ───────────────────────────────────────────
             for d in details:
@@ -244,7 +266,9 @@ class ExchangeSync:
                     logger.debug("ExchangeSync: erro ao salvar posição %s: %s", symbol, pos_exc)
 
         # Remove posições do Redis que não existem mais na exchange
-        for symbol in TRADING_SYMBOLS - set(crypto_positions.keys()):
+        # (só verifica os símbolos válidos do sistema: BTC-USDT, ETH-USDT, SOL-USDT)
+        for symbol in VALID_SYMBOLS - set(crypto_positions.keys()):
             existing = await self._cache.get_position(symbol)
             if existing and existing.get("source") == "exchange_sync":
                 await self._cache.delete_position(symbol)
+                logger.info("ExchangeSync: posição removida do Redis (não existe mais na OKX): %s", symbol)

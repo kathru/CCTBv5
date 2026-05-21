@@ -137,11 +137,14 @@ class OKXClient:
             return 0.0
 
     async def get_account_details(self) -> list[dict]:
-        """Retorna detalhes de todos os ativos da conta (saldo + crypto)."""
+        """
+        Retorna detalhes de TODOS os ativos da conta OKX (saldo > 0).
+        Não filtra por ativo — a filtragem de ativos válidos é feita no ExchangeSync.
+        """
         try:
             data = await self.get_balance()
             details = data.get("data", [{}])[0].get("details", [])
-            return [
+            all_assets = [
                 {
                     "ccy":       d.get("ccy", ""),
                     "availBal":  float(d.get("availBal", 0)),
@@ -150,8 +153,13 @@ class OKXClient:
                     "usdValue":  float(d.get("eqUsd", 0) or 0),
                 }
                 for d in details
-                if float(d.get("cashBal", 0)) > 0
+                if float(d.get("cashBal", 0)) > 0 or float(d.get("availBal", 0)) > 0
             ]
+            logger.info(
+                "OKX account assets found: %s",
+                [f"{a['ccy']}={a['cashBal']:.6f}" for a in all_assets],
+            )
+            return all_assets
         except Exception as exc:
             logger.warning("get_account_details failed: %s", exc)
             return []

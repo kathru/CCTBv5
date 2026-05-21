@@ -41,7 +41,8 @@ async def get_closed_positions(request: Request, limit: int = 50) -> list[dict]:
 
 
 def _serialize(row) -> dict:
-    import decimal, uuid
+    import decimal
+    import uuid
     from datetime import datetime
     def _s(v):
         if isinstance(v, (decimal.Decimal, uuid.UUID, datetime)):

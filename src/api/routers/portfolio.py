@@ -106,7 +106,7 @@ async def portfolio_summary(request: Request) -> dict:
                     order_stats[sym]["sell_notional"] += float(r["notional"] or 0)
                 order_stats[sym]["fees"] += float(r["fees"] or 0)
 
-            for sym, st in order_stats.items():
+            for _sym, st in order_stats.items():
                 if st["buy_qty"] > 0 and st["sell_qty"] > 0:
                     avg_buy_px = st["buy_notional"] / st["buy_qty"]
                     # P&L das unidades já vendidas = recebido - custo das vendas

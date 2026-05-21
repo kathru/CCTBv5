@@ -90,7 +90,8 @@ class StateLoader:
 
     async def _warm_cache(self, positions: list[dict]) -> None:
         """Push open positions into Redis for fast access."""
-        import decimal, uuid as _uuid
+        import decimal
+        import uuid as _uuid
         from datetime import datetime
 
         def _safe(v):

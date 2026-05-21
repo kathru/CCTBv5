@@ -25,7 +25,6 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Request
 
 from ...monitoring.signal_log import signal_audit_log
-from ...persistence.repositories.fills import FillRepository
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 

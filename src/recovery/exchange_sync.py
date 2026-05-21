@@ -9,7 +9,6 @@ Ao iniciar, lê da exchange:
 Garante que, após um restart, o bot reflete exatamente o estado da exchange.
 """
 
-import json
 import logging
 from datetime import UTC, datetime
 
@@ -181,8 +180,9 @@ class ExchangeSync:
         Atualiza o PortfolioEngine, Redis e PostgreSQL com o estado real da exchange.
         """
         import uuid as _uuid
-        from ..persistence.repositories.positions import PositionRepository
+
         from ..core.models import Position, PositionSide, PositionStatus
+        from ..persistence.repositories.positions import PositionRepository
 
         usdt = next((d for d in details if d["ccy"] == "USDT"), {})
         cash = usdt.get("cashBal", 0.0)
@@ -220,8 +220,6 @@ class ExchangeSync:
             initial_capital,
             (total_portfolio - initial_capital) / initial_capital * 100 if initial_capital else 0,
         )
-
-        total_eq = sum(d["usdValue"] for d in details)  # mantém para log
 
         pos_repo = PositionRepository(self._db) if self._db else None
 

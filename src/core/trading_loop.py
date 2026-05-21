@@ -135,7 +135,7 @@ class TradingLoop:
             initial_capital=10000.0,
         )
         # Rastreia posições abertas em memória (atualizado a cada fill)
-        self._positions: dict[str, "Position"] = {}
+        self._positions: dict = {}   # symbol → Position (importado localmente nos métodos)
         self._cash: float = 10000.0
 
         # ── ML Inference ──────────────────────────────────────
@@ -393,9 +393,8 @@ class TradingLoop:
         """
         from ..core.models.signal import SignalDirection
 
-        signal    = event.signal
-        is_entry  = signal.direction == SignalDirection.LONG
-        is_exit   = signal.direction in (SignalDirection.SHORT, SignalDirection.FLAT)
+        signal  = event.signal
+        is_exit = signal.direction in (SignalDirection.SHORT, SignalDirection.FLAT)
 
         open_orders    = self._oms.get_open_orders()
         existing_plans = getattr(self._position_monitor, '_plans', {})
@@ -623,7 +622,6 @@ class TradingLoop:
     async def _on_fill_update_portfolio(self, order) -> None:
         """Atualiza portfolio e posições em memória após um fill."""
         from ..core.models import Position, PositionSide, PositionStatus
-        from ..core.models.order import OrderSide
 
         try:
             side_raw = str(getattr(order, "side", "")).lower()

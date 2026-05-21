@@ -617,22 +617,22 @@
       <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">Filtros obrigatórios (todos devem ser ✓)</div>
       <div style="display:flex;flex-direction:column;gap:4px;" id="rev-conditions">
         <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc1" style="font-size:0.8rem">⚪</span><span>Queda ≥ 3% (últimas 7–20h)</span>
+          <span id="rc1" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Queda ≥ 3% (últimas 7–20h)</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc2" style="font-size:0.8rem">⚪</span><span>Base ≥ 6H de estabilização</span>
+          <span id="rc2" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Base ≥ 6H de estabilização</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc3" style="font-size:0.8rem">⚪</span><span>Rompimento da máxima da base</span>
+          <span id="rc3" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Rompimento da máxima da base</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc4" style="font-size:0.8rem">⚪</span><span>Volume ≥ 80% da média 8H</span>
+          <span id="rc4" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Volume ≥ 80% da média 8H</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc5" style="font-size:0.8rem">⚪</span><span>Macro: 92–102% da SMA20</span>
+          <span id="rc5" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Macro: 92–102% da SMA20</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc6" style="font-size:0.8rem">⚪</span><span>Dip tocou a SMA20 (estrutural)</span>
+          <span id="rc6" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span><span>Dip tocou a SMA20 (estrutural)</span>
         </div>
       </div>
     </div>
@@ -664,7 +664,7 @@
           <div class="mb-big-threshold" style="left:40%"></div>
         </div>
       </div>
-      <div style="font-size:0.58rem;color:var(--muted);text-align:right;margin-bottom:12px;">linha vermelha = limite de bloqueio (40%)</div>
+      <div style="font-size:0.58rem;color:var(--muted);text-align:right;margin-bottom:12px;">linha vermelha = limiar de setup (100% = queda ≥3%)</div>
 
       <!-- 4 métricas com peso e contribuição -->
       <div class="mb-metrics">
@@ -2157,45 +2157,54 @@ async function updateAll(){
       mb.textContent='monitorando'; mb.className='hbadge hbadge-gray';
     }
 
-    // Fatores da reversão (fall_pct, base_range, vol_ratio, tp_ratio)
+    // ── Fatores da reversão ────────────────────────────────────────────────
     const f=latest.factors||{};
-    // Normaliza cada fator para 0–1 para exibição nas barras
-    const fFall   = Math.min((f.fall_pct||0)/0.10, 1);       // 10% queda = 100%
-    const fBase   = Math.max(1-(f.base_range||1), 0);         // base apertada = alto
-    const fVol    = Math.min((f.vol_ratio||0)/2.0, 1);        // 2× volume = 100%
-    const fRatio  = Math.min((f.tp_ratio||0)/8.0, 1);         // ratio 8:1 = 100%
-    const revFactors={m1:fFall, m2:fBase, m3:fVol, m4:fRatio};
-    const revLabels={
-      m1: f.fall_pct!=null?((f.fall_pct*100).toFixed(1)+'%'):'–',
-      m2: f.base_range!=null?((f.base_range*100).toFixed(0)+'%'):'–',
-      m3: f.vol_ratio!=null?(f.vol_ratio.toFixed(2)+'×'):'–',
-      m4: f.tp_ratio!=null?(f.tp_ratio.toFixed(2)+'×'):'–',
-    };
-    ['m1','m2','m3','m4'].forEach(k=>{
-      const bEl=document.getElementById('wb-'+k);
-      const wEl=document.getElementById('w-'+k);
-      if(bEl) bEl.style.width=(revFactors[k]*100).toFixed(1)+'%';
-      if(wEl) wEl.textContent=revLabels[k];
+    const hasSig = latest.result==='SIGNAL';
+    const fallPct = f.fall_pct||0;
+
+    // Barra de Queda: mostra progresso em direção ao limiar de 3%
+    // Quando ≥3%: barra cheia verde; quando <3%: barra proporcional amarela
+    const fFall = Math.min(fallPct/0.03, 1);  // 3% = 100% da barra
+    const fallCol = fallPct>=0.03?'var(--green)':'var(--yellow)';
+    const bEl1=document.getElementById('wb-m1'), wEl1=document.getElementById('w-m1');
+    if(bEl1){ bEl1.style.width=(fFall*100).toFixed(1)+'%'; bEl1.style.background=fallCol; }
+    if(wEl1) wEl1.textContent=fallPct>0?((fallPct*100).toFixed(1)+'%'):'–';
+
+    // Base, Volume, Ratio: só disponíveis quando queda ≥3% e condições anteriores passam
+    const fBase  = hasSig?Math.max(1-(f.base_range||1),0):0;
+    const fVol   = hasSig?Math.min((f.vol_ratio||0)/2.0,1):0;
+    const fRatio = hasSig?Math.min((f.tp_ratio||0)/8.0,1):0;
+    const facData=[
+      {k:'m2',v:fBase,  lbl:hasSig&&f.base_range!=null?((f.base_range*100).toFixed(0)+'%'):(fallPct>=0.03?'calc...':'aguard.')},
+      {k:'m3',v:fVol,   lbl:hasSig&&f.vol_ratio!=null?(f.vol_ratio.toFixed(2)+'×'):(fallPct>=0.03?'calc...':'aguard.')},
+      {k:'m4',v:fRatio, lbl:hasSig&&f.tp_ratio!=null?(f.tp_ratio.toFixed(2)+'×'):(fallPct>=0.03?'calc...':'aguard.')},
+    ];
+    facData.forEach(({k,v,lbl})=>{
+      const bEl=document.getElementById('wb-'+k), wEl=document.getElementById('w-'+k);
+      if(bEl) bEl.style.width=(v*100).toFixed(1)+'%';
+      if(wEl) wEl.textContent=lbl;
     });
 
-    // Condições de reversão — ilumina quando temos dados de sinal
-    const hasSig = latest.result==='SIGNAL';
-    const fallOk  = (f.fall_pct||0)>=0.03;
-    const baseOk  = (f.base_range||1)<1.0;
-    const volOk   = (f.vol_ratio||0)>=0.8;
-    const ratioOk = (f.tp_ratio||0)>=1.5;
-    // Condições 3,5,6 não temos dados diretos → mostram verde se houve sinal
-    const setRC=(id,ok)=>{const el=document.getElementById(id);if(el)el.textContent=ok?'✅':'⚪';};
+    // ── Condições (CSS puro, sem emoji) ───────────────────────────────────
+    const fallOk = fallPct>=0.03;
+    const baseOk = hasSig && (f.base_range||1)<1.0;
+    const volOk  = hasSig && (f.vol_ratio||0)>=0.8;
+    const setRC=(id,ok)=>{
+      const el=document.getElementById(id); if(!el) return;
+      el.style.background=ok?'var(--green)':'#374151';
+      el.style.boxShadow=ok?'0 0 6px rgba(16,185,129,0.5)':'none';
+      el.textContent='';  // limpa emoji anterior
+    };
     setRC('rc1', fallOk);
-    setRC('rc2', baseOk && hasSig);
+    setRC('rc2', baseOk);
     setRC('rc3', hasSig);
-    setRC('rc4', volOk  && hasSig);
+    setRC('rc4', volOk);
     setRC('rc5', hasSig);
     setRC('rc6', hasSig);
 
-    // Kelly bar + notional (fixo 8% para reversão)
+    // ── Kelly bar: mostra capacidade quando há sinal ───────────────────────
     const cap=0.08;
-    const rawKelly=(latest.calibrated||0)*0.08; // calibrated × kelly_base
+    const rawKelly=hasSig?(latest.calibrated||0)*0.08:0;
     const effKelly=Math.min(rawKelly,cap);
     const tv=portfolio?.total_value||0;
     const notional=tv*effKelly;
@@ -2203,38 +2212,39 @@ async function updateAll(){
     const kCap=document.getElementById('motor-kelly-cap-line');
     const kVal=document.getElementById('motor-kelly-val');
     const kCapLbl=document.getElementById('motor-kelly-cap-lbl');
-    if(kFill) kFill.style.width=(effKelly/cap*100).toFixed(1)+'%';
+    // Quando aguardando: barra mostra capacidade potencial (8%)
+    const kDisplay = hasSig ? effKelly/cap : 0;
+    if(kFill) kFill.style.width=(kDisplay*100).toFixed(1)+'%';
     if(kCap)  kCap.style.left='100%';
-    if(kVal)  kVal.textContent=(effKelly*100).toFixed(1)+'%';
+    if(kVal)  kVal.textContent=hasSig?(effKelly*100).toFixed(1)+'%':'–';
     if(kCapLbl) kCapLbl.textContent='8%';
     const notEl=document.getElementById('motor-notional');
     if(notEl) notEl.textContent=notional>0?'~'+usd(notional,0):'–';
 
-    // Score atual (score bruto da reversão, threshold fixo não se aplica da mesma forma)
-    const rawScore=(latest.score||0)*100;
+    // ── Score: usa fall_pct/3% como proxy de proximidade ─────────────────
+    // Quando não há SIGNAL, mostra quão próximo estamos do setup (0–100%)
+    const rawScore = hasSig?(latest.score||0)*100 : Math.min(fallPct/0.03*100, 99);
     const sFill=document.getElementById('motor-score-fill');
     const sNow=document.getElementById('motor-score-now');
     const sThr=document.getElementById('motor-score-thr');
     const sThrLine=document.getElementById('motor-score-thr-line');
-    const scoreCol=rawScore>=50?'var(--green)':rawScore>=30?'var(--yellow)':'var(--red)';
+    const scoreCol=rawScore>=100?'var(--green)':rawScore>=60?'var(--yellow)':'var(--red)';
     if(sFill){ sFill.style.width=Math.min(rawScore,100).toFixed(1)+'%'; sFill.style.background=scoreCol; }
-    if(sNow)  sNow.textContent=rawScore.toFixed(1)+'%';
-    if(sThr)  sThr.textContent='qualidade';
-    if(sThrLine) sThrLine.style.left='50%';
+    if(sNow)  sNow.textContent=hasSig?rawScore.toFixed(1)+'%':(fallPct*100).toFixed(1)+'%';
+    if(sThr)  sThr.textContent=hasSig?'qualidade':'≥3%';
+    if(sThrLine) sThrLine.style.left='100%'; // limiar = 100% da barra
 
-    // SL/TP — usa fatores do sinal quando disponíveis
+    // ── SL/TP ─────────────────────────────────────────────────────────────
     const slPctF=f.sl_pct||0, tpPctF=f.tp_pct||0;
     const slEl=document.getElementById('motor-sl');
     const tpEl=document.getElementById('motor-tp');
-    if(slEl) slEl.textContent=slPctF>0?`-${(slPctF*100).toFixed(1)}%`:'–0.8–6%';
+    if(slEl) slEl.textContent=slPctF>0?`-${(slPctF*100).toFixed(1)}%`:'0.8–6%';
     if(tpEl) tpEl.textContent=tpPctF>0?`+${(tpPctF*100).toFixed(1)}%`:'1.5× SL';
 
-    // Sem "zonas de threshold" para reversão — elementos existem mas não se aplicam
-    const zones=['tz-hold','tz-reduce','tz-normal','tz-agg'];
-    zones.forEach((id,i)=>{
+    // ── Zonas: dimm todas (não aplicável) ─────────────────────────────────
+    ['tz-hold','tz-reduce','tz-normal','tz-agg'].forEach(id=>{
       const el=document.getElementById(id); if(!el) return;
-      el.style.boxShadow=''; el.style.opacity='0.4'; el.style.transform='';
-      if(i===0&&hasSig){ el.style.opacity='1'; el.style.boxShadow='0 0 0 2px rgba(16,185,129,0.5)'; }
+      el.style.boxShadow=''; el.style.opacity='0.3'; el.style.transform='';
     });
   }
   // Motor risk bars (from portfolio)
@@ -2255,54 +2265,77 @@ async function updateAll(){
     if(wrStat) wrStat.textContent=wrN>=40?'saudável':wrN>=25?'moderado':'abaixo do esperado';
   }
 
-  // Market Breadth
+  // Market Breadth — adaptado para Estratégia de Reversão 1H
   if(log){
     const s=log.stats||{};
     const total=s.total_evaluations||1,signals=s.signals_generated||0,rate=s.signal_rate_pct||0,epm=s.evals_per_minute||0;
     const entries=log.entries||[];
-    const scores=entries.map(e=>e.score).filter(Boolean);
-    const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0;
-    const avgPct=Math.round(avg*100);
 
-    // Big bar com label interno e cor dinâmica
+    // Para reversão: Score Médio = proximidade ao setup (fall_pct / 3%)
+    // Usa fall_pct das últimas avaliações como proxy de "quão próximo estamos"
+    const fallPcts=entries.map(e=>(e.factors?.fall_pct||0)/0.03*100).filter(v=>v>0);
+    const avgFallPct=fallPcts.length?Math.round(fallPcts.reduce((a,b)=>a+b,0)/fallPcts.length):0;
+
+    // Proximidade máxima: melhor símbolo (o mais próximo do setup)
+    const maxFallPct=fallPcts.length?Math.round(Math.max(...fallPcts)):0;
+
+    // Big bar: mostra melhor proximidade (qualquer símbolo)
     const bigFill=document.getElementById('mb-big-fill');
     const bigLabel=document.getElementById('mb-big-label');
-    const barCol=avgPct>=65?'linear-gradient(90deg,#059669,#34d399)':avgPct>=40?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#dc2626,#f87171)';
-    if(bigFill){ bigFill.style.width=avgPct+'%'; bigFill.style.background=barCol; }
-    if(bigLabel){ bigLabel.textContent=avgPct+'%'; }
+    const bigPct=Math.min(maxFallPct,100);
+    const barCol=bigPct>=100?'linear-gradient(90deg,#059669,#34d399)':bigPct>=60?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#3b82f6,#60a5fa)';
+    if(bigFill){ bigFill.style.width=bigPct+'%'; bigFill.style.background=barCol; }
+    if(bigLabel){ bigLabel.textContent=bigPct+'%'; }
 
-    // Overall badge
+    // Badge: PRONTO (≥100%), PRÓXIMO (≥60%), AGUARDANDO (<60%)
     const mbBadge=document.getElementById('mb-overall-badge');
-    if(mbBadge){ mbBadge.textContent=avgPct>=65?'FORTE':avgPct>=40?'MODERADO':'FRACO'; mbBadge.className='hbadge '+(avgPct>=65?'hbadge-green':avgPct>=40?'hbadge-yellow':'hbadge-red'); }
+    if(mbBadge){
+      if(bigPct>=100){ mbBadge.textContent='PRONTO'; mbBadge.className='hbadge hbadge-green'; }
+      else if(bigPct>=60){ mbBadge.textContent='PRÓXIMO'; mbBadge.className='hbadge hbadge-yellow'; }
+      else { mbBadge.textContent='AGUARDANDO'; mbBadge.className='hbadge hbadge-gray'; }
+    }
 
-    // 4 metrics
+    // 4 métricas
     function mbMetric(fillId,valId,statId,value,maxVal,color,statusFn){
       const f=document.getElementById(fillId); if(f){ f.style.width=Math.min(value/maxVal,1)*100+'%'; f.style.background=color; }
       const v=document.getElementById(valId); if(v) v.textContent=value.toFixed(1)+'%';
       const st=document.getElementById(statId); if(st) st.textContent=statusFn(value);
     }
-    mbMetric('mbf-score','mbv-score','mbs-score',avgPct,100,'var(--blue)',v=>v>=65?'forte':v>=40?'moderado':'fraco');
-    mbMetric('mbf-rate','mbv-rate','mbs-rate',rate,100,'var(--green)',v=>v>5?'ativo':v>0?'baixo':'inativo');
-    // Regime score (100=trend, 50=chop, 0=panic)
+
+    // Score Médio = proximidade média ao limiar de 3%
+    mbMetric('mbf-score','mbv-score','mbs-score',Math.min(avgFallPct,100),100,'var(--blue)',v=>v>=100?'limiar':v>=60?'próximo':'aguardando');
+    const scoreLabel=document.getElementById('mbv-score');
+    if(scoreLabel) scoreLabel.textContent=avgFallPct.toFixed(0)+'%';
+
+    // Taxa de Sinais = % de avaliações que resultaram em SIGNAL
+    mbMetric('mbf-rate','mbv-rate','mbs-rate',rate,100,'var(--green)',v=>v>5?'ativo':v>0?'baixo':'em espera');
+
+    // Regime Atual
     const latestEntry=entries[0]||{};
     const rScore=latestEntry.regime?.includes('REVERSAL')?65:latestEntry.regime?.includes('EXPANSION')?85:latestEntry.regime?.includes('CHOP')?40:latestEntry.regime?.includes('PANIC')?5:50;
     const rLabel=latestEntry.regime?.includes('REVERSAL')?'reversão':latestEntry.regime?.includes('EXPANSION')?'expansão':latestEntry.regime?.includes('CHOP')?'lateral':'risco';
-    mbMetric('mbf-regime','mbv-regime','mbs-regime',rScore,100,'var(--green)',v=>v>=60?rLabel:v>=40?'lateral':'risco');
+    mbMetric('mbf-regime','mbv-regime','mbs-regime',rScore,100,'var(--green)',()=>rLabel);
     document.getElementById('mbv-regime').textContent=(latestEntry.regime||'–').replace(/_/g,' ').toLowerCase();
+
     mbMetric('mbf-epm','mbv-epm','mbs-epm',Math.min(epm,10),10,'var(--purple)',v=>v>=3?'ativo':v>=1?'baixo':'inativo');
     document.getElementById('mbv-epm').textContent=epm.toFixed(1)+'/min';
 
-    // Gate status box
+    // Gate: para reversão, entrada é controlada pelas 6 condições (não breadth)
+    // Mostra se algum símbolo está próximo do setup
     const gateBox=document.getElementById('mb-gate-box');
     const gateTxt=document.getElementById('mb-gate-txt');
     const gateScore=document.getElementById('mb-gate-score');
     if(gateBox&&gateTxt&&gateScore){
-      const open=avgPct>=40;
-      gateBox.style.background=open?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)';
-      gateBox.style.border=`1px solid ${open?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`;
-      gateTxt.style.color=open?'var(--green)':'var(--red)';
-      gateTxt.textContent=open?'✓ Compras liberadas — Breadth acima do mínimo':'✗ Compras bloqueadas — Breadth abaixo do mínimo';
-      gateScore.textContent=avgPct+'%';
+      const hasSignal = entries.some(e=>e.result==='SIGNAL');
+      const isNear    = bigPct>=60;
+      const col = hasSignal?'rgba(16,185,129,':isNear?'rgba(245,158,11,':'rgba(59,130,246,';
+      gateBox.style.background=col+'0.08)';
+      gateBox.style.border=`1px solid ${col}0.25)`;
+      gateTxt.style.color=hasSignal?'var(--green)':isNear?'var(--yellow)':'var(--blue)';
+      if(hasSignal)      gateTxt.textContent='✓ Sinal confirmado — todas as 6 condições ativas';
+      else if(isNear)    gateTxt.textContent=`→ Proximidade ao setup: ${bigPct}% do limiar de 3%`;
+      else               gateTxt.textContent=`Aguardando dip ≥3% — maior queda atual: ${(Math.max(...(fallPcts.map(v=>v*0.03)),0)*100).toFixed(1)}%`;
+      gateScore.textContent=bigPct+'%';
     }
     // Feed stats
     document.getElementById('feed-stats').textContent=`${s.total_evaluations||0} aval · ${rate}% sinais · ${epm.toFixed(1)}/min · uptime ${(s.uptime_minutes||0).toFixed(0)}min`;

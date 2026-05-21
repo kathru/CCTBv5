@@ -34,9 +34,21 @@ async def get_drift_report() -> dict:
 
 @router.get("/live-stats")
 async def get_live_stats() -> dict:
-    """Estatísticas das features ao vivo (últimas 500 observações)."""
+    """
+    Estatísticas das features ao vivo (últimas 500 observações).
+    Se não há dados ao vivo ainda, retorna o baseline como referência.
+    """
     stats = governance.drift.live_stats()
-    return {k: v.to_dict() for k, v in stats.items()}
+    if stats:
+        return {k: v.to_dict() for k, v in stats.items()}
+
+    # Fallback: sem dados ao vivo → retorna baseline como referência inicial
+    if governance.drift._baseline:
+        return {
+            k: {**v.to_dict(), "_source": "baseline_reference"}
+            for k, v in governance.drift._baseline.items()
+        }
+    return {}
 
 
 @router.get("/importance")

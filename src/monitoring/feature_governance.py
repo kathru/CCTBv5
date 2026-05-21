@@ -370,19 +370,26 @@ class DriftMonitor:
             report["overall_status"] = "no_baseline"
             return report
 
+        # Sempre inclui todas as features do baseline no report,
+        # mesmo sem observações ao vivo suficientes.
+        # Isso permite o dashboard mostrar o baseline como referência desde o boot.
         worst_psi = 0.0
-        for name, window in self._live_window.items():
+        for name, baseline in self._baseline.items():
+            window = self._live_window.get(name, [])
+
             if len(window) < self.MIN_SAMPLES:
-                report["features"][name] = {"status": "insufficient_data", "n": len(window)}
+                # Ainda sem dados ao vivo — mostra baseline como referência
+                report["features"][name] = {
+                    "status":   "awaiting_data",
+                    "psi":      None,
+                    "n_live":   len(window),
+                    "baseline": baseline.to_dict(),
+                    "delta_mean": None,
+                }
                 continue
 
-            live_values  = list(window)
-            live_stats   = FeatureStats.from_values(live_values)
-            baseline     = self._baseline.get(name)
-
-            if baseline is None:
-                report["features"][name] = {"status": "no_baseline"}
-                continue
+            live_values = list(window)
+            live_stats  = FeatureStats.from_values(live_values)
 
             psi = _psi(baseline, live_stats)
             worst_psi = max(worst_psi, psi)
@@ -397,10 +404,11 @@ class DriftMonitor:
                 status = "ok"
 
             report["features"][name] = {
-                "status":   status,
-                "psi":      round(psi, 4),
-                "live":     live_stats.to_dict(),
-                "baseline": baseline.to_dict(),
+                "status":     status,
+                "psi":        round(psi, 4),
+                "n_live":     len(window),
+                "live":       live_stats.to_dict(),
+                "baseline":   baseline.to_dict(),
                 "delta_mean": round(live_stats.mean - baseline.mean, 4),
             }
 

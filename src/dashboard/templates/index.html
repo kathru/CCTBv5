@@ -1721,55 +1721,75 @@ function renderGovernance(status, drift, live, schema){
   if(drift&&driftEl){
     const features=drift.features||{};
     const keys=Object.keys(features);
-    if(!keys.length){
-      driftEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Baseline não configurado — rode feature_analysis.py</div>';
+    const FLABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'};
+    if(!keys.length && drift.overall_status==='no_baseline'){
+      driftEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Baseline não encontrado — rode feature_analysis.py</div>';
       if(driftBadge){ driftBadge.textContent='sem baseline'; driftBadge.className='hbadge hbadge-gray'; }
+    } else if(!keys.length){
+      driftEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Carregando...</div>';
     } else {
-      const maxPsi=Math.max(...keys.map(k=>features[k].psi||0));
+      // PSI: só conta features com psi definido (awaiting_data tem psi=null)
+      const psiValues=keys.map(k=>features[k].psi).filter(p=>p!=null);
+      const allAwaiting=psiValues.length===0;
+      const maxPsi=allAwaiting?0:Math.max(...psiValues);
       if(driftBadge){
-        driftBadge.textContent=maxPsi<0.1?'ESTÁVEL':maxPsi<0.2?'ATENÇÃO':'DRIFT';
-        driftBadge.className='hbadge '+(maxPsi<0.1?'hbadge-green':maxPsi<0.2?'hbadge-yellow':'hbadge-red');
+        if(allAwaiting){
+          driftBadge.textContent='baseline carregado · aguardando obs.';
+          driftBadge.className='hbadge hbadge-blue';
+        } else {
+          driftBadge.textContent=maxPsi<0.1?'ESTÁVEL':maxPsi<0.2?'ATENÇÃO':'DRIFT';
+          driftBadge.className='hbadge '+(maxPsi<0.1?'hbadge-green':maxPsi<0.2?'hbadge-yellow':'hbadge-red');
+        }
       }
-      const FLABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'};
       driftEl.innerHTML=keys.map(k=>{
         const f=features[k];
-        const psi=f.psi!=null?f.psi.toFixed(3):'–';
-        const col=psiColor(f.psi);
-        const lbl=psiLabel(f.psi);
-        const barW=f.psi!=null?Math.min(f.psi/0.3*100,100).toFixed(0):0;
-        return`<div style="display:grid;grid-template-columns:120px 1fr 44px 56px;align-items:center;gap:8px;">
+        const waiting=f.status==='awaiting_data';
+        const psi=waiting?null:f.psi;
+        const col=waiting?'#4b5563':psiColor(psi);
+        const baselineMean=f.baseline?.mean!=null?f.baseline.mean.toFixed(3):'–';
+        const liveMean=f.live?.mean!=null?f.live.mean.toFixed(3):(waiting?`base: ${baselineMean}`:'–');
+        const barW=psi!=null?Math.min(psi/0.3*100,100).toFixed(0):0;
+        const label=waiting?`${f.n_live||0} obs`:psiLabel(psi);
+        return`<div style="display:grid;grid-template-columns:120px 1fr 90px 64px;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="font-size:0.65rem;color:var(--text);font-weight:600">${FLABELS[k]||k}</span>
           <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;">
             <div style="height:15px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
           </div>
-          <span style="font-size:0.63rem;color:${col};font-weight:700;text-align:right">PSI ${psi}</span>
-          <span style="font-size:0.6rem;color:${col};text-align:right">${lbl}</span>
+          <span style="font-size:0.6rem;color:var(--muted);text-align:center">${liveMean}</span>
+          <span style="font-size:0.62rem;color:${col};font-weight:700;text-align:right">${psi!=null?'PSI '+psi.toFixed(3):label}</span>
         </div>`;
       }).join('');
     }
   } else if(driftEl){
-    driftEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando baseline...</div>';
+    driftEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Carregando governance...</div>';
   }
 
   // Live Feature Stats
   const liveEl=document.getElementById('gov-live-list');
   if(live&&liveEl){
     const keys=Object.keys(live);
+    // Verifica se são dados reais ao vivo ou referência do baseline
+    const isBaseline = keys.length>0 && live[keys[0]]?._source==='baseline_reference';
     if(!keys.length){
       liveEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Sem dados ao vivo ainda</div>';
     } else {
-      // Pegar pesos do schema
       const schemaFeats=schema?.features||{};
-      liveEl.innerHTML=keys.map(k=>{
+      const FLIVE={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'};
+      // Badge indicador de fonte
+      const srcLabel = isBaseline
+        ? '<span style="font-size:0.58rem;color:#f59e0b;margin-left:6px">· referência baseline (aguardando obs. ao vivo)</span>'
+        : '';
+      liveEl.innerHTML = (isBaseline ? `<div style="font-size:0.62rem;color:#f59e0b;margin-bottom:8px;padding:4px 8px;background:rgba(245,158,11,0.08);border-radius:4px;">Exibindo distribuição do baseline como referência — dados ao vivo acumulam com os sinais</div>` : '') +
+      keys.filter(k=>!k.startsWith('_')).map(k=>{
         const s=live[k];
         const w=schemaFeats[k]?((schemaFeats[k].weight||0)*100).toFixed(0)+'%':'–';
         const mean=s.mean!=null?s.mean.toFixed(3):'–';
         const std=s.std!=null?s.std.toFixed(3):'–';
         const p50=s.p50!=null?s.p50.toFixed(3):'–';
-        const n=s.n||0;
+        const n=isBaseline?(s.n||0)+' (baseline)':s.n||0;
         return`<div style="display:grid;grid-template-columns:120px 1fr auto;align-items:center;gap:8px;padding:3px 0;">
           <div>
-            <span style="font-size:0.65rem;color:var(--text);font-weight:600">${{'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'}[k]||k}</span>
+            <span style="font-size:0.65rem;color:var(--text);font-weight:600">${FLIVE[k]||k}</span>
             <span style="font-size:0.58rem;color:var(--muted);margin-left:5px">w:${w}</span>
           </div>
           <div style="font-size:0.6rem;color:var(--muted)">
@@ -1777,7 +1797,7 @@ function renderGovernance(status, drift, live, schema){
             &nbsp;σ <span style="color:var(--text)">${std}</span>
             &nbsp;p50 <span style="color:var(--blue)">${p50}</span>
           </div>
-          <span style="font-size:0.58rem;color:var(--muted)">${n} obs</span>
+          <span style="font-size:0.58rem;color:var(--muted)">${n}</span>
         </div>`;
       }).join('');
     }

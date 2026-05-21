@@ -57,15 +57,54 @@ async def portfolio_summary(request: Request) -> dict:
         }
 
     s = portfolio.state
+
+    # Conta posições abertas do DB (inclui posições sincronizadas da exchange)
+    from ...persistence.repositories.positions import PositionRepository
+    db = getattr(request.app.state, "db", None)
+    db_open_positions = []
+    if db:
+        try:
+            repo = PositionRepository(db)
+            db_open_positions = await repo.get_open()
+        except Exception:
+            pass
+    open_count = max(s.open_position_count, len(db_open_positions))
+
+    # Calcula exposição e P&L com base nas posições do DB + preços do cache
+    cache = getattr(request.app.state, "cache", None)
+    unrealized = s.unrealized_pnl
+    notional_total = 0.0
+    positions_data = {}
+    if cache and db_open_positions:
+        for pos in db_open_positions:
+            sym = pos.get("symbol") if isinstance(pos, dict) else getattr(pos, "symbol", "")
+            qty = float(pos.get("quantity", 0) if isinstance(pos, dict) else getattr(pos, "quantity", 0))
+            entry = float(pos.get("avg_entry_price", 0) if isinstance(pos, dict) else getattr(pos, "avg_entry_price", 0))
+            price_raw = await cache.get_price(sym)
+            price = float(price_raw) if price_raw else entry
+            notional = qty * price
+            unreal = (price - entry) * qty if entry > 0 else 0.0
+            notional_total += notional
+            unrealized += unreal
+            positions_data[sym] = {
+                "quantity": qty, "avg_entry": entry,
+                "current_price": price, "notional": notional,
+                "unrealized_pnl": unreal,
+            }
+
+    total_value = s.total_value  # já vem correto do ExchangeSync
+    exposure_pct = notional_total / total_value if total_value > 0 and notional_total > 0 else s.total_exposure_pct
+
     return {
         "available":           True,
         "initial_capital":     s.initial_capital,
-        "total_value":         s.total_value,
+        "total_value":         total_value,
         "cash_available":      s.cash_available,
-        "total_exposure_pct":  round(s.total_exposure_pct, 4),
-        "open_position_count": s.open_position_count,
+        "total_exposure_pct":  round(exposure_pct, 4),
+        "open_position_count": open_count,
+        "positions":           positions_data,
         "realized_pnl":        round(s.realized_pnl, 4),
-        "unrealized_pnl":      round(s.unrealized_pnl, 4),
+        "unrealized_pnl":      round(unrealized, 4),
         "daily_pnl":           round(s.daily_pnl, 4),
         "total_return_pct":    round(s.total_return_pct, 4),
         "drawdown_pct":        round(s.drawdown_pct, 4),

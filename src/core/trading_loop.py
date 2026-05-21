@@ -246,25 +246,31 @@ class TradingLoop:
         await self._position_monitor.start()
         await self._reconciler.start()
 
-        # Calibra portfolio com saldo real da conta OKX (USDT disponível)
+        # Sincronização completa com OKX: saldo, posições e histórico de ordens
         try:
-            usdt_balance = await self._okx.get_usdt_balance()
-            if usdt_balance > 10.0:
-                self._portfolio._state.initial_capital = usdt_balance
-                self._portfolio._state.cash_available  = usdt_balance
-                self._portfolio._state.total_value     = usdt_balance
-                self._cash = usdt_balance   # sincroniza tracker interno
-                self._runner.update_portfolio_value(usdt_balance)
+            from ..recovery.exchange_sync import ExchangeSync
+            sync = ExchangeSync(
+                exchange=self._okx,
+                db=self._db,
+                cache=self._cache,
+                portfolio=self._portfolio,
+            )
+            sync_result = await sync.run()
+
+            # Atualiza tracker interno com saldo real
+            usdt = sync_result["usdt_balance"]
+            total_eq = sync_result["total_equity_usd"]
+            if usdt > 0 or total_eq > 0:
+                self._cash = usdt
+                self._runner.update_portfolio_value(total_eq or usdt)
                 logger.info(
-                    "Portfolio calibrado com saldo OKX: USDT=%.2f", usdt_balance
-                )
-            else:
-                logger.warning(
-                    "Saldo USDT OKX insuficiente (%.4f) — mantendo capital inicial padrão",
-                    usdt_balance,
+                    "ExchangeSync: USDT=%.2f equity=%.2f posições=%s ordens=%d",
+                    usdt, total_eq,
+                    list(sync_result["crypto_positions"].keys()),
+                    sync_result["orders_imported"],
                 )
         except Exception as exc:
-            logger.warning("Falha ao calibrar portfolio com OKX: %s", exc)
+            logger.warning("ExchangeSync falhou no boot: %s", exc)
 
         self._running = True
         logger.info("TradingLoop: all services started — RUNNING")

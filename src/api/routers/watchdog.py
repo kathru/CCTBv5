@@ -4,6 +4,31 @@ from fastapi import APIRouter, Request
 router = APIRouter(prefix="/api/watchdog", tags=["watchdog"])
 
 
+@router.post("/sync-exchange")
+async def sync_with_exchange(request: Request) -> dict:
+    """Sincroniza estado local com OKX: saldo, posições e histórico de ordens."""
+    loop = getattr(request.app.state, "trading_loop", None)
+    if not loop:
+        return {"ok": False, "message": "TradingLoop não encontrado"}
+    try:
+        from ...recovery.exchange_sync import ExchangeSync
+        sync = ExchangeSync(
+            exchange=loop._okx,
+            db=loop._db,
+            cache=loop._cache,
+            portfolio=loop._portfolio,
+        )
+        result = await sync.run()
+        # Atualiza runner com equity total
+        total_eq = result["total_equity_usd"]
+        if total_eq > 0:
+            loop._cash = result["usdt_balance"]
+            loop._runner.update_portfolio_value(total_eq)
+        return {"ok": True, **result}
+    except Exception as exc:
+        return {"ok": False, "message": str(exc)}
+
+
 @router.get("/status")
 async def get_watchdog_status(request: Request) -> dict:
     """Return status of all registered watchdogs."""

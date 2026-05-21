@@ -136,6 +136,63 @@ class OKXClient:
             logger.warning("get_total_equity_usd failed: %s", exc)
             return 0.0
 
+    async def get_account_details(self) -> list[dict]:
+        """Retorna detalhes de todos os ativos da conta (saldo + crypto)."""
+        try:
+            data = await self.get_balance()
+            details = data.get("data", [{}])[0].get("details", [])
+            return [
+                {
+                    "ccy":       d.get("ccy", ""),
+                    "availBal":  float(d.get("availBal", 0)),
+                    "cashBal":   float(d.get("cashBal", 0)),
+                    "frozenBal": float(d.get("frozenBal", 0)),
+                    "usdValue":  float(d.get("eqUsd", 0) or 0),
+                }
+                for d in details
+                if float(d.get("cashBal", 0)) > 0
+            ]
+        except Exception as exc:
+            logger.warning("get_account_details failed: %s", exc)
+            return []
+
+    async def get_filled_orders(
+        self,
+        inst_type: str = "SPOT",
+        limit: int = 100,
+    ) -> list[dict]:
+        """Retorna ordens preenchidas recentes do OKX."""
+        path = "/api/v5/trade/orders-history"
+        headers = build_headers(
+            self._api_key, self._secret_key, self._passphrase,
+            "GET", path, paper=self._paper,
+        )
+        resp = await self._http().get(
+            path,
+            headers=headers,
+            params={"instType": inst_type, "state": "filled", "limit": str(limit)},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        orders = []
+        for o in data.get("data", []):
+            orders.append({
+                "ordId":    o.get("ordId", ""),
+                "clOrdId":  o.get("clOrdId", ""),
+                "symbol":   o.get("instId", ""),
+                "side":     o.get("side", ""),
+                "ordType":  o.get("ordType", ""),
+                "sz":       float(o.get("sz", 0)),
+                "fillSz":   float(o.get("fillSz", 0)),
+                "avgPx":    float(o.get("avgPx", 0) or 0),
+                "fee":      float(o.get("fee", 0) or 0),
+                "feeCcy":   o.get("feeCcy", ""),
+                "state":    o.get("state", ""),
+                "uTime":    int(o.get("uTime", 0)),   # update timestamp ms
+                "cTime":    int(o.get("cTime", 0)),   # create timestamp ms
+            })
+        return orders
+
     async def place_order(
         self,
         symbol: str,

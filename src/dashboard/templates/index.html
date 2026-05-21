@@ -1035,8 +1035,9 @@ function setChartWindow(pts,btnId){
 // ── Sampling independente a cada 60s ───────────────────────
 async function samplePortfolio(){
   const d=await fetchJSON('/api/portfolio/summary');
-  if(d&&d.total_value&&d.total_value>0){
-    pushPortfolioValue(d.total_value);
+  if(d&&(d.liquid_total||d.total_value)>0){
+    // Usa liquid_total (USDT + BTC + ETH + SOL) para o gráfico de evolução
+    pushPortfolioValue(d.liquid_total||d.total_value);
     updatePortfolioChart();
     updateDonut(d, _c.prices);
   }
@@ -1167,22 +1168,32 @@ function initDonutChart(){
 }
 
 function updateDonut(portfolio,prices){
-  if(!_donutChart||!portfolio||!prices) return;
-  const cash=portfolio.cash_available||0;
-  const tv=portfolio.liquid_total||portfolio.total_value||1;
-  const pos=portfolio.positions||{};
-  const data=[cash];
-  const syms=['BTC-USDT','ETH-USDT','SOL-USDT'];
-  const colors=['#3b82f6','#f97316','#6366f1','#8b5cf6'];
-  const names=['Cash','BTC','ETH','SOL'];
-  const vals=[cash];
-  syms.forEach(s=>{ const p=pos[s]; vals.push(p?p.notional||0:0); data.push(p?p.notional||0:0); });
-  _donutChart.data.datasets[0].data=data;
+  if(!_donutChart||!portfolio) return;
+  const cash  = portfolio.cash_available||0;
+  const tv    = portfolio.liquid_total||portfolio.total_value||1;
+  const pos   = portfolio.positions||{};
+  const syms  = ['BTC-USDT','ETH-USDT','SOL-USDT'];
+  const colors= ['#3b82f6','#f97316','#6366f1','#8b5cf6'];
+  const names = ['Cash (USDT)','BTC','ETH','SOL'];
+
+  // Notional de cada crypto: usa positions (já inclui bot + exchange_sync mesclados)
+  // Fallback: qty × preço atual se positions não tiver
+  const cryptoVals = syms.map(s=>{
+    const p = pos[s];
+    if(p && p.notional>0) return p.notional;
+    // Fallback via preço do cache × qty do position
+    if(p && p.quantity>0 && prices && prices[s]) return p.quantity * parseFloat(prices[s]);
+    return 0;
+  });
+
+  const vals = [cash, ...cryptoVals];
+  _donutChart.data.datasets[0].data = vals;
   _donutChart.update('none');
-  // Legend
-  const leg=document.getElementById('donut-legend');
-  leg.innerHTML=names.map((n,i)=>{
-    const v=vals[i],pct=tv>0?(v/tv*100).toFixed(1):'0.0';
+
+  // Legend com valores reais e percentuais sobre o total
+  const leg = document.getElementById('donut-legend');
+  leg.innerHTML = names.map((n,i)=>{
+    const v=vals[i], pct=tv>0?(v/tv*100).toFixed(1):'0.0';
     return`<div class="donut-row"><div class="donut-sym"><div class="donut-dot" style="background:${colors[i]}"></div>${n}</div><div><span class="donut-val">${usd(v)}</span><span class="donut-pct">(${pct}%)</span></div></div>`;
   }).join('');
 }
@@ -1844,7 +1855,7 @@ async function updateAll(){
 
   // KPIs
   if(portfolio){
-    const tv=portfolio.total_value||0,ic=portfolio.initial_capital||0;
+    const tv=portfolio.liquid_total||portfolio.total_value||0,ic=portfolio.initial_capital||0;
     document.getElementById('kpi-portfolio').textContent=usd(tv);
     document.getElementById('kpi-initial').textContent=usd(ic);
     document.getElementById('kpi-rpnl').innerHTML=colored(portfolio.realized_pnl);

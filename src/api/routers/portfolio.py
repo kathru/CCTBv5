@@ -159,8 +159,23 @@ async def portfolio_summary(request: Request) -> dict:
         unreal    = (price - entry) * qty if entry > 0 else 0.0
         notional_sync   += notional
         unrealized_sync += unreal
-        # Adiciona (ou mescla com posição do bot se também tiver ordens abertas)
-        if sym not in positions_data:
+        # Mescla com posição do bot (se houver) — soma quantidades e notionals
+        if sym in positions_data:
+            existing = positions_data[sym]
+            merged_qty      = existing["quantity"] + qty
+            merged_notional = existing["notional"] + notional
+            merged_unreal   = existing["unrealized_pnl"] + unreal
+            # Preço médio ponderado
+            merged_entry    = (existing["avg_entry"] * existing["quantity"] + entry * qty) / merged_qty if merged_qty > 0 else entry
+            positions_data[sym] = {
+                "quantity":       round(merged_qty, 6),
+                "avg_entry":      round(merged_entry, 4),
+                "current_price":  round(price, 4),
+                "notional":       round(merged_notional, 4),
+                "unrealized_pnl": round(merged_unreal, 4),
+                "strategy_id":    "combined",
+            }
+        else:
             positions_data[sym] = {
                 "quantity":       round(qty, 6),
                 "avg_entry":      round(entry, 4),

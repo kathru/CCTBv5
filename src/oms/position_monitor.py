@@ -264,10 +264,9 @@ class PositionMonitor:
         entry_price: float,
         strategy_id: str,
     ) -> None:
-        # ATR em 30min (14 × 30min = 7h) — responsivo ao timeframe de avaliação
-        candles_30m = self._market.get_candles(symbol, "30m", limit=ATR_PERIOD + 5)
-        candles_1h  = self._market.get_candles(symbol, "1H",  limit=ATR_PERIOD + 5)
-        atr = _calc_atr(candles_30m, ATR_PERIOD) if len(candles_30m) >= ATR_PERIOD else 0.0
+        # ATR em 1H (14 × 1H = 14h) — alinhado com o timeframe de avaliação
+        candles_1h = self._market.get_candles(symbol, "1H", limit=ATR_PERIOD + 5)
+        atr = _calc_atr(candles_1h, ATR_PERIOD) if len(candles_1h) >= ATR_PERIOD else 0.0
 
         if atr <= 0:
             # Fallback: tenta 1H, depois percentual fixo
@@ -345,11 +344,10 @@ class PositionMonitor:
             return
         price = float(price)
 
-        # Regime check: usa 30m para detectar PANIC/BEAR rapidamente
-        candles_30m_chk = self._market.get_candles(symbol, "30m", limit=25)
-        candles_1h_chk  = self._market.get_candles(symbol, "1H",  limit=25)
-        current_regime = _detect_regime(candles_30m_chk) if len(candles_30m_chk) >= 5 \
-            else _detect_regime(candles_1h_chk)
+        # Regime check: usa 1H alinhado com o timeframe de avaliação
+        candles_1h_chk = self._market.get_candles(symbol, "1H", limit=25)
+        current_regime = _detect_regime(candles_1h_chk) if len(candles_1h_chk) >= 5 \
+            else "MEAN_REVERTING_CHOP"
 
         # ── Phase D — Regime deteriorado ──────────────────────
         if current_regime in EXIT_REGIMES:

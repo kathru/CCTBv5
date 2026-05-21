@@ -10,7 +10,7 @@
     "ETH-USDT",
     "SOL-USDT"
   ],
-  "granularity": "30m",
+  "granularity": "1H",
   "forward_candles": 10,
   "regime_thresholds": {
     "HIGH_CORRELATION_RISK": 0.75,

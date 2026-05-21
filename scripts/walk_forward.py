@@ -59,7 +59,7 @@ log.setLevel(logging.INFO)
 CACHE_DIR   = ROOT / "data" / "cache"
 OUTPUT_DIR  = ROOT / "data" / "wfo"
 OKX_BASE    = "https://www.okx.com"
-GRAN_MS     = {"30m": 1_800_000, "1H": 3_600_000}
+GRAN_MS     = {"1H": 3_600_000, "4H": 14_400_000}
 DEFAULT_FEE = 0.005   # round-trip 0.5%
 
 PLATT_A_INIT = 0.378188
@@ -70,10 +70,10 @@ PLATT_B_INIT = -1.075301
 
 def fetch_candles(symbol: str, start_dt: datetime, end_dt: datetime,
                   use_cache: bool = True) -> list[dict]:
-    """Baixa candles 30m da OKX ou usa cache local (fallback 1H)."""
-    cache_file = CACHE_DIR / f"{symbol.replace('-','_')}_30m.json"
+    """Baixa candles 1H da OKX ou usa cache local (fallback 4H)."""
+    cache_file = CACHE_DIR / f"{symbol.replace('-','_')}_1H.json"
     if not cache_file.exists():
-        cache_file = CACHE_DIR / f"{symbol.replace('-','_')}_1H.json"
+        cache_file = CACHE_DIR / f"{symbol.replace('-','_')}_4H.json"
 
     if use_cache and cache_file.exists():
         all_candles = json.loads(cache_file.read_text())
@@ -96,7 +96,7 @@ def fetch_candles(symbol: str, start_dt: datetime, end_dt: datetime,
 
     while True:
         url = (f"{OKX_BASE}/api/v5/market/history-candles"
-               f"?instId={symbol}&bar=30m&limit=100&after={after_ms}")
+               f"?instId={symbol}&bar=1H&limit=100&after={after_ms}")
         try:
             resp = requests.get(url, timeout=15)
             resp.raise_for_status()
@@ -140,7 +140,7 @@ def to_candle_objects(raw: list[dict], symbol: str) -> list[Candle]:
     for r in raw:
         result.append(Candle(
             symbol=symbol,
-            granularity="30m",
+            granularity="1H",
             timestamp=datetime.fromtimestamp(r["ts"] / 1000, tz=UTC),
             open=r["open"], high=r["high"], low=r["low"],
             close=r["close"], volume=r["volume"],
@@ -369,7 +369,7 @@ async def walk_forward(
     train_months: int = 6,
     test_months:  int = 2,
     initial_capital: float = 10000.0,
-    forward_candles: int = 10,  # 10×30min = 5h
+    forward_candles: int = 10,  # 10×1H = 10h
 ) -> WalkForwardResult:
     """
     Executa WFO com janela expandida.

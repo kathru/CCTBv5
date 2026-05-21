@@ -109,8 +109,8 @@ def compute_features(candles_window: list[dict]) -> dict[str, float] | None:
 
 
 def load_cache(symbol: str) -> list[dict]:
-    # Prefere 30m, fallback para 1H
-    for gran in ("30m", "1H"):
+    # Prefere 1H, fallback para 4H
+    for gran in ("1H", "4H"):
         path = CACHE_DIR / f"{symbol.replace('-','_')}_{gran}.json"
         if path.exists():
             candles = json.loads(path.read_text())
@@ -124,7 +124,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Feature Analysis CCTBv5")
     parser.add_argument("--symbol",  default="BTC-USDT")
     parser.add_argument("--start",   default=None, help="YYYY-MM-DD filtro de início")
-    parser.add_argument("--forward", type=int, default=10)  # 10×30min = 5h
+    parser.add_argument("--forward", type=int, default=10)  # 10×1H = 10h
     parser.add_argument("--fee",     type=float, default=0.005)
     args = parser.parse_args()
 

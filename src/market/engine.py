@@ -127,7 +127,7 @@ class MarketEngine:
                     await self._publish_candles(symbol, gran, candles)
 
                     # Fallback: se ticker falhou, usa close do candle mais recente
-                    if not ticker_ok and gran == "30m" and candles:
+                    if not ticker_ok and gran == "1H" and candles:
                         close = candles[-1].close if candles[-1].close else 0.0
                         if close > 0:
                             await self._cache.set_price(symbol, close)

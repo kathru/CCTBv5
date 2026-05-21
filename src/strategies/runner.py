@@ -27,11 +27,11 @@ from .base import BaseStrategy, StrategyContext
 
 logger = logging.getLogger(__name__)
 
-# Só avalia candles 30m confirmados com menos de 1 hora de idade
-MAX_CANDLE_AGE = timedelta(hours=1)
+# Só avalia candles 1H confirmados com menos de 2 horas de idade
+MAX_CANDLE_AGE = timedelta(hours=2)
 
 # Granularidade alvo — só avalia eventos dessa granularidade
-EVAL_GRANULARITY = "30m"
+EVAL_GRANULARITY = "1H"
 
 
 class StrategyRunner:
@@ -101,10 +101,9 @@ class StrategyRunner:
         for strategy in self._strategies.values():
             symbols.update(strategy.symbols)
 
-        # Timestamp do último candle 30m fechado = minuto atual truncado a 30min - 30min
+        # Timestamp do último candle 1H fechado = hora atual truncada - 1h
         now = datetime.now(UTC)
-        half = 0 if now.minute < 30 else 30
-        last_closed_ts = now.replace(minute=half, second=0, microsecond=0) - timedelta(minutes=30)
+        last_closed_ts = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=1)
 
         for symbol in symbols:
             redis_ts: datetime | None = None
@@ -174,7 +173,7 @@ class StrategyRunner:
                     ttl=10800,  # 3 horas
                 )
                 logger.info(
-                    "Nova vela 30m %s ts=%s — avaliando estratégia",
+                    "Nova vela 1H %s ts=%s — avaliando estratégia",
                     candle.symbol, candle_ts.strftime("%Y-%m-%d %H:%M")
                 )
                 await self._evaluate_all(candle.symbol)
@@ -206,9 +205,9 @@ class StrategyRunner:
                 )
 
     async def _build_context(self, symbol: str) -> StrategyContext:
-        candles_1h  = self._market.get_candles(symbol, "1H")
-        candles_6h  = self._market.get_candles(symbol, "6H")
-        candles_30m = self._market.get_candles(symbol, "30m")
+        candles_1h = self._market.get_candles(symbol, "1H")
+        candles_6h = self._market.get_candles(symbol, "6H")
+        # Ciclo 1H: candles_30m não coletados — estratégia usa candles_1h para tudo
 
         pos_data = await self._cache.get_position(symbol)
         open_positions = [pos_data] if pos_data else []
@@ -217,7 +216,7 @@ class StrategyRunner:
             symbol=symbol,
             candles_1h=candles_1h,
             candles_6h=candles_6h,
-            candles_30m=candles_30m,
+            candles_30m=[],   # vazio — ciclo 1H não coleta granularidade 30m
             ticker=None,
             portfolio_value=self._portfolio_value,
             open_positions=open_positions,

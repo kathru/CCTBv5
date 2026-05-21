@@ -32,15 +32,15 @@ logger     = logging.getLogger(__name__)
 
 # ── Configuração por regime ───────────────────────────────────────────────────
 
-# Thresholds em RAW score space — ajustados para 30min
-# 30min tem mais ruído → thresholds ~0.06 abaixo dos valores 1H
-# Objetivo: gerar 2-4 trades/dia para validação estatística do paper trading
+# Thresholds em RAW score space — calibrados para 1H
+# 1H tem menos ruído que 30m → thresholds mais conservadores (+0.04 vs 30m)
+# Objetivo: 1-3 trades/dia de alta qualidade com menor ruído
 REGIME_THRESHOLDS: dict[str, float] = {
-    "TREND_EXPANSION":        0.44,
-    "VOLATILITY_COMPRESSION": 0.46,
-    "TREND_EXHAUSTION":       0.48,
-    "MEAN_REVERTING_CHOP":    0.50,
-    "HIGH_CORRELATION_RISK":  0.54,
+    "TREND_EXPANSION":        0.48,
+    "VOLATILITY_COMPRESSION": 0.50,
+    "TREND_EXHAUSTION":       0.52,
+    "MEAN_REVERTING_CHOP":    0.54,
+    "HIGH_CORRELATION_RISK":  0.58,
     "BEAR_TREND":             0.99,   # bloqueado
     "PANIC_LIQUIDATION":      0.99,   # bloqueado
 }
@@ -83,16 +83,17 @@ REGIME_MIN_EV_MULT: dict[str, float] = {
     "PANIC_LIQUIDATION":      0.0,
 }
 
-# Threshold de momentum 30min para _direction (quão forte deve ser o move)
-# EXPANSION: qualquer alta conta (0.1%) | CHOP: exige move mais forte (0.3%)
+# Threshold de momentum 1H para _direction (quão forte deve ser o move)
+# 1H move esperado é maior — thresholds dobrados vs 30m
+# EXPANSION: 0.2% confirma tendência | CHOP: exige move de 0.5%+
 REGIME_DIRECTION_THRESH: dict[str, float] = {
-    "TREND_EXPANSION":        0.001,   # 0.1% — sensível em tendência clara
-    "VOLATILITY_COMPRESSION": 0.0015,
-    "TREND_EXHAUSTION":       0.002,   # 0.2% — padrão
-    "MEAN_REVERTING_CHOP":    0.003,   # 0.3% — exige move mais forte em lateral
-    "HIGH_CORRELATION_RISK":  0.004,   # 0.4% — muito seletivo em risco alto
-    "BEAR_TREND":             0.01,
-    "PANIC_LIQUIDATION":      0.01,
+    "TREND_EXPANSION":        0.002,   # 0.2% — sensível em tendência clara
+    "VOLATILITY_COMPRESSION": 0.003,
+    "TREND_EXHAUSTION":       0.004,   # 0.4% — padrão 1H
+    "MEAN_REVERTING_CHOP":    0.005,   # 0.5% — exige move mais forte em lateral
+    "HIGH_CORRELATION_RISK":  0.007,   # 0.7% — muito seletivo em risco alto
+    "BEAR_TREND":             0.02,
+    "PANIC_LIQUIDATION":      0.02,
 }
 
 
@@ -125,9 +126,7 @@ class MomentumStrategy(BaseStrategy):
         if len(ctx.candles_1h) < 20:
             _log("NO_CANDLES", f"Candles 1H insuficientes: {len(ctx.candles_1h)}/20")
             return None
-        if not ctx.candles_30m or len(ctx.candles_30m) < 4:
-            _log("NO_CANDLES", f"Candles 30m insuficientes: {len(ctx.candles_30m) if ctx.candles_30m else 0}/4")
-            return None
+        # Ciclo 1H: candles_30m não coletados — usamos somente 1H e 6H
 
         # ── Camada 1: Detecção de regime 1H ─────────────────
         regime_1h = self._detect_regime_1h(ctx)
@@ -208,7 +207,7 @@ class MomentumStrategy(BaseStrategy):
             expected_value=ev,
             kelly_fraction=kelly,
             regime=regime,
-            timeframe="30m",
+            timeframe="1H",
             factors=factors,
         )
 
@@ -257,15 +256,14 @@ class MomentumStrategy(BaseStrategy):
 
     def _confirm_regime_mtf(self, ctx: StrategyContext, regime_1h: str) -> str:
         """
-        Confirma regime 1H com contexto 6H — ajustado para 30min.
+        Confirma regime 1H com contexto 6H — ciclo 1H.
 
-        Em modelo 30min o 6H representa 12 candles de avaliação.
-        Regras suavizadas para não bloquear excessivamente em 30min:
+        Em ciclo 1H o 6H representa 6 candles de avaliação (mais rigoroso).
+        Regras para 1H (menos ruído, maior confiança na confirmação):
           - 6H BULL + 1H BULL  → confirma (upgrade possível)
           - 6H BULL + 1H CHOP  → VOLATILITY_COMPRESSION (upgrade leve)
-          - 6H BEAR + 1H BULL  → downgrade para CHOP (não bloqueia)
-          - 6H BEAR + 1H CHOP  → HIGH_CORRELATION_RISK (downgrade, mas NÃO BEAR_TREND)
-            ↑ Mudança chave: em 30min, 1H=CHOP+6H=BEAR não bloqueia — apenas penaliza sizing
+          - 6H BEAR + 1H BULL  → downgrade para CHOP (conflito → cautela)
+          - 6H BEAR + 1H CHOP  → HIGH_CORRELATION_RISK (penaliza sizing)
           - 6H BEAR + 1H BEAR  → BEAR_TREND (bloqueio confirmado por ambos)
           - Sem 6H             → usa só 1H
         """
@@ -294,13 +292,12 @@ class MomentumStrategy(BaseStrategy):
             logger.debug("MTF: 1H=BEAR + 6H=BEAR → BEAR_TREND confirmado")
             return "BEAR_TREND"
 
-        # 6H BEAR + 1H BULL → downgrade para CHOP (não bloqueia em 30min)
+        # 6H BEAR + 1H BULL → downgrade para CHOP (conflito entre timeframes)
         if family_1h == "BULL" and trend_6h == "BEAR":
             logger.debug("MTF: 1H=%s (BULL) conflita 6H BEAR → CHOP (downgrade)", regime_1h)
             return "MEAN_REVERTING_CHOP"
 
-        # 6H BEAR + 1H CHOP → HIGH_CORRELATION_RISK (penaliza sizing mas não bloqueia)
-        # Em 30min: não escalamos CHOP→BEAR_TREND pois o 6H pode estar em correção
+        # 6H BEAR + 1H CHOP → HIGH_CORRELATION_RISK (penaliza sizing)
         if family_1h == "CHOP" and trend_6h == "BEAR":
             logger.debug("MTF: 1H=CHOP + 6H=BEAR → HIGH_CORRELATION_RISK (não bloqueia)")
             return "HIGH_CORRELATION_RISK"
@@ -316,71 +313,52 @@ class MomentumStrategy(BaseStrategy):
 
     def _score_signal(self, ctx: StrategyContext, regime: str) -> tuple[float, dict]:
         """
-        Modelo de scoring com 5 fatores contínuos.
-        M1 usa retornos 30min (curto prazo) + 1H (médio prazo) para capturar moves intra-hora.
+        Modelo de scoring com 5 fatores contínuos — ciclo 1H.
+        Todos os fatores usam candles 1H (sem granularidade 30m).
 
         Fatores:
-          M1 Adaptive Momentum  (25%): blend 30min + 1H (captura moves rápidos)
-          M2 Trend Consistency   (25%): % candles bullish + higher-highs E higher-lows
-          M3 Volume Confirmation (20%): volume crescente + confirmação direcional
+          M1 Adaptive Momentum  (25%): retornos 1H (1h, 5h, 10h, 20h)
+          M2 Trend Consistency   (25%): % candles bullish + higher-highs/lows (1H)
+          M3 Volume Confirmation (20%): volume crescente + confirmação direcional (1H)
           M4 Regime Strength     (20%): distância SMA5-SMA20 normalizada
-          M5 Candle Structure    (10%): close no terço superior do range
+          M5 Candle Structure    (10%): close no terço superior do range (1H)
         """
-        # Candles 1H (regime/tendência macro — SMA, ATR, M4)
-        closes = [c.close  for c in ctx.candles_1h[:21]]
-        highs  = [c.high   for c in ctx.candles_1h[:10]]
-        lows   = [c.low    for c in ctx.candles_1h[:10]]
-        opens  = [c.open   for c in ctx.candles_1h[:10]]
+        # Candles 1H — única granularidade em ciclo 1H
+        closes  = [c.close  for c in ctx.candles_1h[:21]]
+        highs   = [c.high   for c in ctx.candles_1h[:10]]
+        lows    = [c.low    for c in ctx.candles_1h[:10]]
+        opens   = [c.open   for c in ctx.candles_1h[:10]]
         vols_1h = [c.volume for c in ctx.candles_1h[:20]]
 
-        # Candles 30min (estrutura recente — M2, M3, M5)
-        c30 = ctx.candles_30m or []
-        highs_30m = [c.high   for c in c30[:10]]
-        lows_30m  = [c.low    for c in c30[:10]]
-        opens_30m = [c.open   for c in c30[:10]]
-        closes_30m = [c.close for c in c30[:10]]
-        vols_30m  = [c.volume for c in c30[:20]]
-
-        # ── M1: Adaptive Momentum (25%) — blend 30min + 1H ───
+        # ── M1: Adaptive Momentum (25%) — retornos 1H multi-horizonte ─
         atr_20 = sum(highs[i] - lows[i] for i in range(min(10, len(highs)))) / min(10, len(highs)) if highs else closes[0] * 0.01
         norm   = max(atr_20 * 2, closes[0] * 0.005)
 
-        # Horizonte 1H (médio prazo: 5h, 10h, 20h)
+        # Horizonte curto (1h, 5h) — captura momentum recente
+        r1  = (closes[0] - closes[1])  / closes[1]  if len(closes) > 1  and closes[1]  > 0 else 0
         r5  = (closes[0] - closes[5])  / closes[5]  if len(closes) > 5  and closes[5]  > 0 else 0
+        # Horizonte médio (10h, 20h) — tendência estabelecida
         r10 = (closes[0] - closes[10]) / closes[10] if len(closes) > 10 and closes[10] > 0 else 0
         r20 = (closes[0] - closes[20]) / closes[20] if len(closes) > 20 and closes[20] > 0 else 0
-        m1_1h = r5 * 0.5 + r10 * 0.3 + r20 * 0.2
 
-        # Horizonte 30min (curto prazo: 30min, 2h em candles 30m)
-        if len(closes_30m) >= 4:
-            r1_30 = (closes_30m[0] - closes_30m[1]) / closes_30m[1] if closes_30m[1] > 0 else 0
-            r4_30 = (closes_30m[0] - closes_30m[3]) / closes_30m[3] if closes_30m[3] > 0 else 0
-            m1_30m = r1_30 * 0.6 + r4_30 * 0.4
-        else:
-            m1_30m = m1_1h
-
-        momentum_weighted = m1_1h * 0.60 + m1_30m * 0.40
+        # Blend: peso maior no curto prazo (mais reativo) sem ignorar médio prazo
+        momentum_weighted = r1 * 0.30 + r5 * 0.30 + r10 * 0.25 + r20 * 0.15
         m1 = min(max((momentum_weighted / (norm / closes[0])) * 0.5 + 0.5, 0.0), 1.0)
 
-        # ── M2: Trend Consistency (25%) — usa candles 30min ──
-        # Bullish count nos últimos 6 candles 30m (= 3h)
-        src_opens  = opens_30m  if len(opens_30m)  >= 5 else opens
-        src_closes = closes_30m if len(closes_30m) >= 5 else closes
-        src_highs  = highs_30m  if len(highs_30m)  >= 5 else highs
-        src_lows   = lows_30m   if len(lows_30m)   >= 5 else lows
-
-        n = min(6, len(src_closes) - 1)
-        bullish_count = sum(1 for i in range(n) if src_closes[i] > src_opens[i])
+        # ── M2: Trend Consistency (25%) — candles 1H ──────────
+        # Bullish count nos últimos 6 candles 1H (= 6h de histórico)
+        n = min(6, len(closes) - 1)
+        bullish_count = sum(1 for i in range(n) if closes[i] > opens[i])
         pct_bullish   = bullish_count / n if n > 0 else 0.5
 
-        hh_count  = sum(1 for i in range(min(4, len(src_highs)-1)) if src_highs[i] > src_highs[i+1])
-        hl_count  = sum(1 for i in range(min(4, len(src_lows)-1))  if src_lows[i]  > src_lows[i+1])
+        hh_count  = sum(1 for i in range(min(4, len(highs)-1)) if highs[i] > highs[i+1])
+        hl_count  = sum(1 for i in range(min(4, len(lows)-1))  if lows[i]  > lows[i+1])
         structure = (hh_count + hl_count) / 8
 
         m2 = pct_bullish * 0.5 + structure * 0.5
 
-        # ── M3: Volume Confirmation (20%) — usa volumes 30min ─
-        vols = vols_30m if len(vols_30m) >= 6 else vols_1h
+        # ── M3: Volume Confirmation (20%) — volumes 1H ────────
+        vols = vols_1h
         avg_vol_5  = sum(vols[:5])  / 5  if len(vols) >= 5  else vols[0] if vols else 1
         avg_vol_20 = sum(vols[:20]) / 20 if len(vols) >= 20 else avg_vol_5
 
@@ -389,14 +367,12 @@ class MomentumStrategy(BaseStrategy):
         vol_trend = min(max(vol_trend, 0.3), 2.0)
         vol_trend_score = (vol_trend - 0.3) / 1.7
 
-        # Confirmação direcional com candle 30min mais recente
-        cur_close = src_closes[0] if src_closes else closes[0]
-        cur_open  = src_opens[0]  if src_opens  else opens[0]
-        candle_confirm = 1.0 if (cur_close > cur_open and vols[0] > avg_vol_20) else 0.4
+        # Confirmação direcional com candle 1H mais recente
+        candle_confirm = 1.0 if (closes[0] > opens[0] and vols[0] > avg_vol_20) else 0.4
 
         m3 = vol_ratio * 0.4 + vol_trend_score * 0.3 + candle_confirm * 0.3
 
-        # ── M4: Regime Strength (20%) — mantém 1H (SMA macro) ─
+        # ── M4: Regime Strength (20%) — SMA macro 1H ──────────
         sma5  = sum(closes[:5])  / 5
         sma20 = sum(closes[:20]) / 20 if len(closes) >= 20 else sma5
         sma_distance = (sma5 - sma20) / sma20 if sma20 > 0 else 0
@@ -404,11 +380,11 @@ class MomentumStrategy(BaseStrategy):
         m4_regime = REGIME_M4.get(regime, 0.45)
         m4 = m4_raw * 0.6 + m4_regime * 0.4
 
-        # ── M5: Candle Structure (10%) — usa candles 30min ────
-        # Close no terço superior do range dos 3 candles 30m mais recentes
-        m5_highs  = src_highs[:3]  if src_highs  else highs[:3]
-        m5_lows   = src_lows[:3]   if src_lows   else lows[:3]
-        m5_closes = src_closes[:3] if src_closes else closes[:3]
+        # ── M5: Candle Structure (10%) — 3 candles 1H recentes ─
+        # Close no terço superior do range dos 3 candles 1H mais recentes
+        m5_highs  = highs[:3]
+        m5_lows   = lows[:3]
+        m5_closes = closes[:3]
         candle_scores = []
         for i in range(min(3, len(m5_closes))):
             rng = m5_highs[i] - m5_lows[i] if i < len(m5_highs) else 0
@@ -455,9 +431,9 @@ class MomentumStrategy(BaseStrategy):
 
     def _direction(self, ctx: StrategyContext, regime: str = "") -> SignalDirection:
         """
-        Direção dinâmica por regime:
-        - Maioria dos últimos 3 candles 1H bullish
-        - Fallback 30min com threshold ajustado ao regime (EXPANSION mais sensível, CHOP mais exigente)
+        Direção dinâmica por regime (ciclo 1H):
+        - Maioria dos últimos 3 candles 1H bullish (closes crescentes)
+        - Fallback: retorno do último candle 1H acima do threshold do regime
         """
         if len(ctx.candles_1h) < 3:
             return SignalDirection.FLAT
@@ -468,11 +444,10 @@ class MomentumStrategy(BaseStrategy):
         if bullish_count >= 2:
             return SignalDirection.LONG
 
-        # Fallback 30min com threshold dinâmico por regime
-        if ctx.candles_30m and len(ctx.candles_30m) >= 3:
-            c30 = [c.close for c in ctx.candles_30m[:3]]
-            thresh_30m = REGIME_DIRECTION_THRESH.get(regime, 0.002)
-            if c30[2] > 0 and (c30[0] - c30[2]) / c30[2] > thresh_30m:
+        # Fallback: momentum do último candle 1H com threshold por regime
+        if len(closes_1h) >= 3 and closes_1h[2] > 0:
+            thresh_1h = REGIME_DIRECTION_THRESH.get(regime, 0.004)
+            if (closes_1h[0] - closes_1h[2]) / closes_1h[2] > thresh_1h:
                 return SignalDirection.LONG
 
         return SignalDirection.FLAT

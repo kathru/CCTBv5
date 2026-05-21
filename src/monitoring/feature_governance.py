@@ -304,10 +304,11 @@ class DriftMonitor:
 
     def __init__(self) -> None:
         # Baseline: estatísticas da distribuição de treino
-        self._baseline:  dict[str, FeatureStats] = {}
-        # Janela viva: últimas N observações por feature
+        self._baseline:    dict[str, FeatureStats] = {}
+        # Janela viva: últimas N observações por feature (persistida no Redis)
         self._live_window: dict[str, deque] = defaultdict(lambda: deque(maxlen=self.WINDOW_SIZE))
         self._obs_count:   int = 0
+        self._cache = None   # injetado via load_from_redis() ou set_cache()
 
     def set_baseline(self, feature_stats: dict[str, FeatureStats]) -> None:
         """Define a distribuição de referência (calculada no treino)."""
@@ -349,10 +350,76 @@ class DriftMonitor:
             return False
 
     def record(self, features: dict[str, float]) -> None:
-        """Registra uma observação ao vivo."""
+        """Registra uma observação ao vivo e agenda persistência no Redis."""
         for name, value in features.items():
             self._live_window[name].append(value)
         self._obs_count += 1
+        # Persiste no Redis a cada 10 observações (fire-and-forget, não bloqueia)
+        if self._obs_count % 10 == 0 and self._cache:
+            import asyncio
+            try:
+                asyncio.get_running_loop().create_task(
+                    self._save_to_redis(),
+                    name="drift_save_redis",
+                )
+            except RuntimeError:
+                pass  # fora de um event loop — ignora
+
+    async def _save_to_redis(self) -> None:
+        """Persiste a janela deslizante inteira no Redis (TTL = 7 dias)."""
+        if not self._cache:
+            return
+        try:
+            data = {
+                name: list(window)
+                for name, window in self._live_window.items()
+                if window
+            }
+            data["__obs_count__"] = self._obs_count
+            await self._cache.set(
+                "governance:live_window",
+                json.dumps(data),
+                ttl=604800,   # 7 dias
+            )
+            logger.debug(
+                "DriftMonitor: janela salva no Redis (%d obs, %d features)",
+                self._obs_count, len(data) - 1,
+            )
+        except Exception as exc:
+            logger.debug("DriftMonitor: falha ao salvar Redis: %s", exc)
+
+    async def load_from_redis(self, cache) -> bool:
+        """
+        Restaura a janela deslizante do Redis no boot.
+        Retorna True se restaurado com sucesso.
+        """
+        self._cache = cache
+        try:
+            raw = await cache.get("governance:live_window")
+            if not raw:
+                logger.info("DriftMonitor: sem histórico no Redis — janela começa do zero")
+                return False
+            data = json.loads(raw)
+            obs_count = data.pop("__obs_count__", 0)
+            restored = 0
+            for name, values in data.items():
+                if isinstance(values, list) and values:
+                    self._live_window[name] = deque(values, maxlen=self.WINDOW_SIZE)
+                    restored += 1
+            self._obs_count = obs_count
+            logger.info(
+                "DriftMonitor: histórico restaurado do Redis — "
+                "%d obs, %d features (janela até %d amostras por feature)",
+                obs_count, restored, self.WINDOW_SIZE,
+            )
+            return True
+        except Exception as exc:
+            logger.warning("DriftMonitor: falha ao restaurar Redis: %s", exc)
+            return False
+
+    def set_cache(self, cache) -> None:
+        """Define o cache Redis para persistência automática."""
+        self._cache = cache
 
     def drift_report(self) -> dict[str, Any]:
         """

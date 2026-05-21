@@ -246,6 +246,18 @@ class TradingLoop:
         await self._position_monitor.start()
         await self._reconciler.start()
 
+        # Restaura histórico de live features do Redis (janela deslizante do DriftMonitor)
+        try:
+            from ..monitoring.feature_governance import governance
+            restored = await governance.drift.load_from_redis(self._cache)
+            if restored:
+                logger.info(
+                    "DriftMonitor: histórico restaurado (%d obs) — PSI disponível imediatamente",
+                    governance.drift._obs_count,
+                )
+        except Exception as exc:
+            logger.warning("DriftMonitor: falha ao restaurar histórico: %s", exc)
+
         # Sincronização completa com OKX: saldo, posições e histórico de ordens
         try:
             from ..recovery.exchange_sync import ExchangeSync

@@ -1241,11 +1241,14 @@ function buildSignalFeed(entries){
 }
 
 // ── Trade history ──────────────────────────────────────────
-function buildTradeHistory(orders){
+function buildTradeHistory(orders, totalFilled){
   if(!orders||!orders.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Nenhum trade executado ainda</div>';
   const filled=orders.filter(o=>(o.status||'').toLowerCase()==='filled');
   if(!filled.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Nenhum trade preenchido ainda</div>';
-  document.getElementById('trade-count-badge').textContent=filled.length+' trades';
+  // Usa o total real da API (não o length do array limitado)
+  const total = totalFilled || filled.length;
+  const showing = filled.length < total ? ` (mostrando ${filled.length})` : '';
+  document.getElementById('trade-count-badge').textContent=total+' trades'+showing;
   return filled.map(o=>{
     const side=(o.side||'buy').toLowerCase();
     const qty=parseFloat(o.filled_quantity||0), px=parseFloat(o.avg_fill_price||0);
@@ -1790,7 +1793,7 @@ async function updateAll(){
     fetchJSON('/api/metrics/prices'),fetchJSON('/api/signals/symbols'),
     fetchJSON('/api/portfolio/exits'),fetchJSON('/api/signals/log?limit=30'),
     fetchJSON('/api/signals/funnel'),fetchJSON('/api/watchdog/status'),fetchJSON('/api/positions/open'),
-    fetchJSON('/api/orders/open'),fetchJSON('/api/orders/recent?limit=500'),
+    fetchJSON('/api/orders/open'),fetchJSON('/api/orders/recent?limit=50'),
   ]);
 
   // Slow data vem do cache — atualizado em paralelo pelo loop lento
@@ -2126,7 +2129,10 @@ async function updateAll(){
   // Orders
   const seen=new Set(),all=[];
   for(const o of [...(oOpen||[]),...(oRec||[])]){const id=o.client_order_id||JSON.stringify(o);if(!seen.has(id)){seen.add(id);all.push(o);}}
-  document.getElementById('ord-count').textContent=`(${all.length})`;
+  // Usa total real do DB; mostra quantas estão em tela se for diferente
+  const totalOrdersDb = perf?.total_orders_db || all.length;
+  const ordShowing = all.length < totalOrdersDb ? ` / ${totalOrdersDb} total` : '';
+  document.getElementById('ord-count').textContent=`(${all.length}${ordShowing})`;
   document.getElementById('orders-body').innerHTML=all.length?all.map(o=>{
     const q=parseFloat(o.quantity||0),f=parseFloat(o.filled_quantity||0),px=parseFloat(o.avg_fill_price||0),n=f>0&&px>0?f*px:0;
     const si=(o.side||'').toLowerCase(),st=(o.status||'').toLowerCase();
@@ -2218,9 +2224,10 @@ async function updateAll(){
     document.getElementById('feed-signal-rate').textContent=totalSig>0?`${totalSig} sinais (${s.signal_rate_pct||0}%)`:'sem sinais';
   }
 
-  // Trade history
+  // Trade history — exibe as mais recentes, mas conta via perf (total real do DB)
   const allOrders=[...(oOpen||[]),...(oRec||[])];
-  document.getElementById('trade-history').innerHTML=buildTradeHistory(allOrders);
+  const totalFilled = perf?.total_trades || null;
+  document.getElementById('trade-history').innerHTML=buildTradeHistory(allOrders, totalFilled);
 }
 
 function init(){

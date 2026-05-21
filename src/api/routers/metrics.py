@@ -89,10 +89,15 @@ async def get_performance(request: Request) -> dict:
 
     total_pnl = sum(pnl_by_symbol.values())
 
+    # Total de ordens no banco (filled + cancelled)
+    all_rows = await db.fetch("SELECT COUNT(*) as n FROM orders")
+    total_orders_db = int(all_rows[0]["n"]) if all_rows else total_trades
+
     return {
-        "total_trades": total_trades,   # todas as ordens executadas (buy + sell)
-        "total_buys":   total_buys,
-        "total_sells":  total_sells,
+        "total_trades":    total_trades,   # ordens filled (buy + sell)
+        "total_buys":      total_buys,
+        "total_sells":     total_sells,
+        "total_orders_db": total_orders_db,  # total no banco (inclui cancelled)
         "total_fees":   round(total_fees, 4),
         "total_volume": round(total_volume, 2),
         "total_pnl":    round(total_pnl, 2),

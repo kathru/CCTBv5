@@ -10,6 +10,7 @@ Retries: handled by caller (RetryPolicy).
 
 import json
 import logging
+from datetime import UTC, datetime
 
 import httpx
 
@@ -251,6 +252,85 @@ class OKXClient:
         if self._paper:
             logger.info("[PAPER] Order placed on OKX simulated env ordId=%s", order_id)
         return order_id
+
+    async def place_swap_order(
+        self,
+        symbol: str,           # ex: "BTC-USDT-SWAP"
+        side: str,             # "buy" (close short / open long) | "sell" (open short / close long)
+        pos_side: str,         # "long" | "short"
+        quantity: float,       # contratos (1 contrato BTC-SWAP = 0.01 BTC)
+        order_type: str = "market",
+        client_order_id: str = "",
+    ) -> str:
+        """
+        Coloca ordem em perpetual swap (futuros perpétuos) na OKX.
+        Usa cross-margin com hedge mode (long+short simultâneos permitidos).
+
+        Para SHORT:  side="sell", pos_side="short"
+        Para fechar: side="buy",  pos_side="short"
+
+        OKX demo suporta SWAP com x-simulated-trading: 1.
+        """
+        path      = "/api/v5/trade/order"
+        cl_ord_id = (client_order_id or "").replace("-", "")[:32] or "cctb" + str(int(datetime.now(UTC).timestamp()))[-8:]
+        body_dict = {
+            "instId":  symbol,
+            "tdMode":  "cross",     # cross-margin (não isolated)
+            "side":    side,
+            "posSide": pos_side,    # hedge mode obrigatório para distinguir long/short
+            "ordType": order_type,
+            "sz":      str(int(quantity)),  # OKX SWAP: sz em número de contratos (inteiro)
+            "clOrdId": cl_ord_id,
+        }
+        body    = json.dumps(body_dict)
+        headers = build_headers(
+            self._api_key, self._secret_key, self._passphrase,
+            "POST", path, body, paper=self._paper,
+        )
+        resp = await self._http().post(path, content=body, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") != "0":
+            raise ValueError(f"OKX SWAP order rejected: {data.get('msg')} data={data}")
+        order_id = data["data"][0]["ordId"]
+        logger.info(
+            "[%s] SWAP Order %s %s %s qty=%d ordId=%s",
+            "PAPER" if self._paper else "LIVE",
+            side.upper(), pos_side.upper(), symbol, int(quantity), order_id,
+        )
+        return order_id
+
+    async def get_swap_positions(self) -> list[dict]:
+        """Retorna posições abertas em perpetual swaps."""
+        path    = "/api/v5/account/positions"
+        params  = {"instType": "SWAP"}
+        headers = build_headers(
+            self._api_key, self._secret_key, self._passphrase,
+            "GET", path, "", paper=self._paper,
+        )
+        resp = await self._http().get(path, params=params, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") != "0":
+            return []
+        return data.get("data", [])
+
+    async def get_swap_funding_rate(self, symbol: str) -> float | None:
+        """Retorna o funding rate atual de um instrumento SWAP (ex: BTC-USDT-SWAP)."""
+        path    = "/api/v5/public/funding-rate"
+        params  = {"instId": symbol}
+        headers = build_headers(
+            self._api_key, self._secret_key, self._passphrase,
+            "GET", path, "", paper=self._paper,
+        )
+        try:
+            resp = await self._http().get(path, params=params, headers=headers)
+            data = resp.json()
+            if data.get("code") == "0" and data.get("data"):
+                return float(data["data"][0].get("fundingRate", 0))
+        except Exception:
+            pass
+        return None
 
     async def cancel_order(
         self,

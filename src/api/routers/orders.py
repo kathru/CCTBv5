@@ -19,7 +19,7 @@ async def get_recent_orders(request: Request, strategy_id: str = "", limit: int 
     if strategy_id:
         orders = await repo.get_by_strategy(strategy_id, limit=limit)
     else:
-        orders = await repo.get_open()
+        orders = await repo.get_recent(limit=limit)
     return [_serialize(o) for o in orders]
 
 

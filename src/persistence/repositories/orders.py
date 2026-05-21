@@ -82,6 +82,14 @@ class OrderRepository:
             )
         return [self._to_model(r) for r in rows]
 
+    async def get_recent(self, limit: int = 50) -> list[Order]:
+        """Retorna ordens recentes (todos os status) ordenadas por data."""
+        rows = await self._db.fetch(
+            "SELECT * FROM orders ORDER BY created_at DESC LIMIT $1",
+            limit,
+        )
+        return [self._to_model(r) for r in rows]
+
     async def get_by_strategy(
         self, strategy_id: str, limit: int = 100
     ) -> list[Order]:

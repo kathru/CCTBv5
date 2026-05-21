@@ -63,10 +63,18 @@ class ExchangeSync:
                     summary["crypto_positions"][symbol] = d["cashBal"]
 
             # ── 3. Histórico de ordens preenchidas ───────────────────────────
+            # OKX demo pode não suportar orders-history (401) — falha graciosamente
             logger.info("ExchangeSync: importando histórico de ordens OKX...")
-            okx_orders = await self._okx.get_filled_orders(limit=100)
-            imported = await self._import_orders(okx_orders)
-            summary["orders_imported"] = imported
+            try:
+                okx_orders = await self._okx.get_filled_orders(limit=100)
+                imported = await self._import_orders(okx_orders)
+                summary["orders_imported"] = imported
+            except Exception as orders_exc:
+                logger.warning(
+                    "ExchangeSync: orders-history indisponível (%s) — "
+                    "usando histórico local do DB",
+                    str(orders_exc)[:80],
+                )
 
             # ── 4. Atualiza portfolio com saldo real ─────────────────────────
             await self._sync_portfolio(details, summary["crypto_positions"])
@@ -144,45 +152,73 @@ class ExchangeSync:
 
     async def _sync_portfolio(self, details: list[dict], crypto_positions: dict) -> None:
         """
-        Atualiza o PortfolioEngine e o Redis com o estado real da exchange.
-        Salva posições crypto como positions no Redis para o dashboard.
+        Atualiza o PortfolioEngine, Redis e PostgreSQL com o estado real da exchange.
         """
+        import uuid as _uuid
+        from ..persistence.repositories.positions import PositionRepository
+        from ..core.models import Position, PositionSide, PositionStatus
+
         usdt = next((d for d in details if d["ccy"] == "USDT"), {})
         cash = usdt.get("cashBal", 0.0)
         total_eq = sum(d["usdValue"] for d in details)
 
-        # Atualiza PortfolioEngine com equity total
-        self._portfolio._state.cash_available = cash
-        self._portfolio._state.total_value    = total_eq
-        if self._portfolio._state.initial_capital <= 10.0:
-            self._portfolio._state.initial_capital = total_eq
+        # Atualiza PortfolioEngine com equity total real
+        self._portfolio._state.cash_available  = cash
+        self._portfolio._state.total_value     = total_eq
+        self._portfolio._state.initial_capital = total_eq  # sempre reflete estado real
 
-        # Salva posições crypto no Redis para o dashboard
+        pos_repo = PositionRepository(self._db) if self._db else None
+
+        # Salva posições crypto no Redis e PostgreSQL
         for symbol, qty in crypto_positions.items():
             price = await self._cache.get_price(symbol)
             price = float(price) if price else 0.0
-            notional = qty * price
 
             ccy = symbol.replace("-USDT", "")
             ccy_data = next((d for d in details if d["ccy"] == ccy), {})
-            usd_value = ccy_data.get("usdValue", notional)
+            usd_value = ccy_data.get("usdValue", qty * price)
 
+            # Redis → dashboard em tempo real
             await self._cache.set_position(symbol, {
-                "symbol":        symbol,
-                "side":          "long",
-                "quantity":      qty,
-                "avg_entry":     price,   # sem histórico, usa preço atual
-                "current_price": price,
-                "notional":      usd_value,
+                "symbol":         symbol,
+                "side":           "long",
+                "quantity":       qty,
+                "avg_entry":      price,
+                "current_price":  price,
+                "notional":       usd_value,
                 "unrealized_pnl": 0.0,
                 "realized_pnl":   0.0,
                 "strategy_id":    "exchange_sync",
                 "source":         "okx_balance",
             })
-            logger.info(
-                "ExchangeSync: posição %s qty=%.6f value=%.2f USD",
-                symbol, qty, usd_value,
-            )
+
+            # PostgreSQL → histórico e posições abertas
+            if pos_repo:
+                try:
+                    # Verifica se já existe posição aberta para o símbolo
+                    existing = await pos_repo.get_open(symbol)
+                    if not existing:
+                        pos = Position(
+                            symbol=symbol,
+                            side=PositionSide.LONG,
+                            strategy_id="exchange_sync",
+                            quantity=qty,
+                            avg_entry_price=price,
+                            total_fees=0.0,
+                            status=PositionStatus.OPEN,
+                        )
+                        await pos_repo.save(pos, str(_uuid.uuid4()))
+                        logger.info(
+                            "ExchangeSync: posição %s qty=%.6f value=%.2f USD → DB",
+                            symbol, qty, usd_value,
+                        )
+                    else:
+                        logger.info(
+                            "ExchangeSync: posição %s já existe no DB (qty=%.6f) — mantida",
+                            symbol, qty,
+                        )
+                except Exception as pos_exc:
+                    logger.debug("ExchangeSync: erro ao salvar posição %s: %s", symbol, pos_exc)
 
         # Remove posições do Redis que não existem mais na exchange
         for symbol in TRADING_SYMBOLS - set(crypto_positions.keys()):

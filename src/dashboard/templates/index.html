@@ -467,7 +467,7 @@
   <div class="kpi-card kpi-red">
     <div class="clabel">Taxas Pagas</div>
     <div class="kpi-val r" id="kpi-fees">–</div>
-    <div class="kpi-sub">P&L fills: <b id="kpi-pnl-fills">–</b></div>
+    <div class="kpi-sub"><b id="kpi-trades-buy-vol">–</b> compras · <b id="kpi-trades-sell-vol">–</b> vendas executadas</div>
   </div>
   <div class="kpi-card kpi-green">
     <div class="clabel">Retorno Total</div>
@@ -2070,7 +2070,8 @@ async function updateAll(){
     document.getElementById('kpi-trades-sell').textContent=(perf.total_sells||0)+'↓';
     document.getElementById('kpi-vol').textContent=usd(perf.total_volume||0,0);
     document.getElementById('kpi-fees').textContent=usd(perf.total_fees||0);
-    document.getElementById('kpi-pnl-fills').innerHTML=colored(perf.total_pnl);
+    document.getElementById('kpi-trades-buy-vol').textContent  = perf.total_buys  || 0;
+    document.getElementById('kpi-trades-sell-vol').textContent = perf.total_sells || 0;
   }
 
   // Crypto cards

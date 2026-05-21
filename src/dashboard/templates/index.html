@@ -1779,25 +1779,26 @@ function renderGovernance(status, drift, live, schema){
       const srcLabel = isBaseline
         ? '<span style="font-size:0.58rem;color:#f59e0b;margin-left:6px">· referência baseline (aguardando obs. ao vivo)</span>'
         : '';
-      liveEl.innerHTML = (isBaseline ? `<div style="font-size:0.62rem;color:#f59e0b;margin-bottom:8px;padding:4px 8px;background:rgba(245,158,11,0.08);border-radius:4px;">Exibindo distribuição do baseline como referência — dados ao vivo acumulam com os sinais</div>` : '') +
+      liveEl.innerHTML = (isBaseline ? `<div style="font-size:0.62rem;color:#f59e0b;margin-bottom:10px;padding:4px 8px;background:rgba(245,158,11,0.08);border-radius:4px;">Exibindo distribuição do baseline como referência — dados ao vivo acumulam com os sinais</div>` : '') +
       keys.filter(k=>!k.startsWith('_')).map(k=>{
         const s=live[k];
-        const w=schemaFeats[k]?((schemaFeats[k].weight||0)*100).toFixed(0)+'%':'–';
+        const w=schemaFeats[k]?((schemaFeats[k].weight||0)*100).toFixed(0):'–';
         const mean=s.mean!=null?s.mean.toFixed(3):'–';
         const std=s.std!=null?s.std.toFixed(3):'–';
         const p50=s.p50!=null?s.p50.toFixed(3):'–';
-        const n=isBaseline?(s.n||0)+' (baseline)':s.n||0;
-        return`<div style="display:grid;grid-template-columns:120px 1fr auto;align-items:center;gap:8px;padding:3px 0;">
-          <div>
-            <span style="font-size:0.65rem;color:var(--text);font-weight:600">${FLIVE[k]||k}</span>
-            <span style="font-size:0.58rem;color:var(--muted);margin-left:5px">w:${w}</span>
+        const n=isBaseline?'baseline':''+( s.n||0)+' obs';
+        // grid: [nome+peso | μ σ p50 | n_obs]
+        return`<div style="display:grid;grid-template-columns:160px 1fr 90px;align-items:center;gap:12px;padding:5px 0;border-bottom:1px solid #1a2332;">
+          <div style="display:flex;align-items:baseline;gap:6px;min-width:0;">
+            <span style="font-size:0.68rem;color:var(--text);font-weight:700;white-space:nowrap;">${FLIVE[k]||k}</span>
+            <span style="font-size:0.6rem;color:var(--muted);white-space:nowrap;">w:${w}%</span>
           </div>
-          <div style="font-size:0.6rem;color:var(--muted)">
-            μ <span style="color:var(--text);font-weight:600">${mean}</span>
-            &nbsp;σ <span style="color:var(--text)">${std}</span>
-            &nbsp;p50 <span style="color:var(--blue)">${p50}</span>
+          <div style="font-size:0.65rem;display:flex;gap:14px;align-items:center;">
+            <span style="color:var(--muted)">μ <span style="color:var(--text);font-weight:700">${mean}</span></span>
+            <span style="color:var(--muted)">σ <span style="color:var(--text)">${std}</span></span>
+            <span style="color:var(--muted)">p50 <span style="color:var(--blue);font-weight:600">${p50}</span></span>
           </div>
-          <span style="font-size:0.58rem;color:var(--muted)">${n}</span>
+          <div style="text-align:right;font-size:0.6rem;color:var(--muted);white-space:nowrap;">${n}</div>
         </div>`;
       }).join('');
     }

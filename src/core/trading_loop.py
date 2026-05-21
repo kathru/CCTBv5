@@ -39,7 +39,7 @@ from ..risk.engine import RiskContext, RiskEngine
 from ..risk.kill_switch import KillSwitch
 from ..strategies.meta_layer import MetaStrategyLayer
 from ..strategies.ml.inference import MLInferenceEngine
-from ..strategies.momentum.momentum_strategy import MomentumStrategy
+from ..strategies.reversal.reversal_strategy import ReversalStrategy1H
 from ..strategies.runner import StrategyRunner
 from ..watchdog.heartbeat import HeartbeatWatchdog
 from ..watchdog.resource_watchdog import ResourceWatchdog
@@ -150,7 +150,7 @@ class TradingLoop:
             market=self._market,
             cache=self._cache,
         )
-        v4 = MomentumStrategy(symbols=SYMBOLS)
+        v4 = ReversalStrategy1H(symbols=SYMBOLS)
         self._runner.register(v4)
         self._meta.register(v4.strategy_id)
 
@@ -506,6 +506,7 @@ class TradingLoop:
             "TREND_EXHAUSTION":       0.10,
             "MEAN_REVERTING_CHOP":    0.08,
             "HIGH_CORRELATION_RISK":  0.05,
+            "REVERSAL_1H":            0.08,   # reversal: 8% por trade (conservador)
         }
         kelly     = min(kelly, KELLY_CAP.get(regime, 0.08))
         notional  = portfolio_value * kelly
@@ -525,6 +526,12 @@ class TradingLoop:
             signal.symbol, regime, quantity, price, notional,
             kelly * 100, KELLY_CAP.get(regime, 0.08) * 100,
         )
+
+        # Registra fatores do sinal no PositionMonitor ANTES do fill chegar
+        # → ExitPlan usará sl_pct/tp_pct relativos ao fill_price real (reversão 1.5:1)
+        signal_factors = getattr(signal, "factors", {}) or {}
+        if signal_factors.get("sl_pct") and signal_factors.get("tp_pct"):
+            self._position_monitor.set_pending_signal_factors(signal.symbol, signal_factors)
 
         # 3. Criar e submeter ordem via OMS
         await self._oms.create_order_from_signal(event, quantity)

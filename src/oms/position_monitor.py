@@ -39,18 +39,20 @@ ATR_PERIOD    = 14    # candles para calcular ATR
 
 # Phase A — Multiplicadores de ATR por regime
 # SL: distância do stop  |  TP: distância do alvo  |  Ratio TP/SL implícito
+# Princípio: ratio 1:4 fixo → com WR histórico 33%, E[trade] = 0.33×4 - 0.67×1 = +0.65R
+# SL apertado (1.0 ATR) para limitar perdas | TP largo (4.0 ATR) para capturar a recuperação
 REGIME_MULT: dict[str, dict[str, float]] = {
     #                              SL    TP     ratio
-    "TREND_EXPANSION":        {"sl": 1.5, "tp": 4.0},  # 1:2.7 — deixa correr
-    "VOLATILITY_COMPRESSION": {"sl": 1.5, "tp": 3.0},  # 1:2.0 — padrão
-    "TREND_EXHAUSTION":       {"sl": 1.5, "tp": 2.5},  # 1:1.7 — conservador
-    "MEAN_REVERTING_CHOP":    {"sl": 1.0, "tp": 1.5},  # 1:1.5 — alvos curtos
-    "HIGH_CORRELATION_RISK":  {"sl": 1.2, "tp": 2.0},  # 1:1.7 — risco controlado
+    "TREND_EXPANSION":        {"sl": 1.0, "tp": 4.0},  # 1:4 — captura recuperação total
+    "VOLATILITY_COMPRESSION": {"sl": 1.0, "tp": 4.0},  # 1:4 — mesmo ratio
+    "MEAN_REVERTING_CHOP":    {"sl": 1.0, "tp": 4.0},  # 1:4 — só entra com score alto
+    "TREND_EXHAUSTION":       {"sl": 1.0, "tp": 1.0},  # bloqueado — nunca entra
+    "HIGH_CORRELATION_RISK":  {"sl": 1.0, "tp": 1.0},  # bloqueado — nunca entra
     "BEAR_TREND":             {"sl": 1.0, "tp": 1.0},  # não entra — saída imediata
     "PANIC_LIQUIDATION":      {"sl": 1.0, "tp": 1.0},  # não entra — saída imediata
 }
-DEFAULT_SL_MULT = 1.5
-DEFAULT_TP_MULT = 3.0
+DEFAULT_SL_MULT = 1.0
+DEFAULT_TP_MULT = 4.0
 
 # Phase B — Trailing stop dinâmico por regime
 # EXPANSION: ativa cedo (0.8R) pois trend pode durar | CHOP: ativa mais tarde (1.2R) para não sair cedo
@@ -69,15 +71,15 @@ TRAIL_ATR_MULT   = 1.0   # distância do trailing = ATR × 1.0
 # Phase C — Saída parcial dinâmica por regime
 # EXPANSION: sai mais tarde (2.0R) para deixar correr | CHOP: sai mais cedo (1.0R) para garantir lucro
 REGIME_PARTIAL_EXIT: dict[str, float] = {
-    "TREND_EXPANSION":        2.0,   # deixa correr mais
-    "VOLATILITY_COMPRESSION": 1.5,
-    "TREND_EXHAUSTION":       1.5,
-    "MEAN_REVERTING_CHOP":    1.0,   # garante lucro cedo em lateral
-    "HIGH_CORRELATION_RISK":  1.2,
-    "BEAR_TREND":             0.5,   # saída parcial imediata se ainda não saiu
-    "PANIC_LIQUIDATION":      0.3,   # saída parcial imediata — sai o mais rápido possível
+    "TREND_EXPANSION":        2.5,   # saída parcial em 2.5R — deixa restante correr ao TP (4R)
+    "VOLATILITY_COMPRESSION": 2.5,   # mesmo ratio
+    "MEAN_REVERTING_CHOP":    2.5,   # mesmo ratio
+    "TREND_EXHAUSTION":       1.5,   # bloqueado — não entra, mas mantém fallback
+    "HIGH_CORRELATION_RISK":  1.5,   # bloqueado — não entra, mas mantém fallback
+    "BEAR_TREND":             0.5,
+    "PANIC_LIQUIDATION":      0.3,
 }
-PARTIAL_EXIT_R   = 1.5   # fallback
+PARTIAL_EXIT_R   = 2.5   # fallback — saída parcial em 2.5R (meio caminho ao TP de 4R)
 PARTIAL_EXIT_PCT = 0.50  # fracção da posição a vender (50% sempre)
 
 # Phase D — Regimes que forçam saída imediata
@@ -109,6 +111,9 @@ class ExitPlan:
     entry_regime:  str
     atr:           float          # ATR no momento da entrada
 
+    # Fatores do sinal (opcional) — usados quando estratégia fornece sl_pct/tp_pct
+    signal_factors: dict = field(default_factory=dict)
+
     # Phase A — níveis fixos
     stop_loss:     float = 0.0
     take_profit:   float = 0.0
@@ -123,15 +128,28 @@ class ExitPlan:
     qty_remaining:     float = 0.0   # quantidade que ainda está aberta
 
     def __post_init__(self) -> None:
-        mults = REGIME_MULT.get(self.entry_regime, {})
-        sl_mult = mults.get("sl", DEFAULT_SL_MULT)
-        tp_mult = mults.get("tp", DEFAULT_TP_MULT)
-        sl_dist = self.atr * sl_mult
-        tp_dist = self.atr * tp_mult
-        self.stop_loss   = round(self.entry_price - sl_dist, 4)
-        self.take_profit = round(self.entry_price + tp_dist, 4)
-        hours = TIMEOUT_HOURS.get(self.entry_regime, DEFAULT_TIMEOUT_HOURS)
-        self.timeout_at  = self.entry_time + timedelta(hours=hours)
+        sl_pct = self.signal_factors.get("sl_pct", 0.0)
+        tp_pct = self.signal_factors.get("tp_pct", 0.0)
+
+        if sl_pct > 0 and tp_pct > 0:
+            # Estratégia de reversão: SL/TP relativos ao fill price real
+            # Garante assimetria 1.5:1 independente de gaps na abertura
+            self.stop_loss   = round(self.entry_price * (1.0 - sl_pct), 4)
+            self.take_profit = round(self.entry_price * (1.0 + tp_pct), 4)
+            # Timeout fixo de 48H para reversão (independente de regime)
+            self.timeout_at = self.entry_time + timedelta(hours=48)
+        else:
+            # ATR-based (estratégias de momentum / fallback)
+            mults = REGIME_MULT.get(self.entry_regime, {})
+            sl_mult = mults.get("sl", DEFAULT_SL_MULT)
+            tp_mult = mults.get("tp", DEFAULT_TP_MULT)
+            sl_dist = self.atr * sl_mult
+            tp_dist = self.atr * tp_mult
+            self.stop_loss   = round(self.entry_price - sl_dist, 4)
+            self.take_profit = round(self.entry_price + tp_dist, 4)
+            hours = TIMEOUT_HOURS.get(self.entry_regime, DEFAULT_TIMEOUT_HOURS)
+            self.timeout_at  = self.entry_time + timedelta(hours=hours)
+
         self.qty_remaining = self.quantity
 
     @property
@@ -186,6 +204,10 @@ class PositionMonitor:
         self._fill_queue: asyncio.Queue | None = None
         self._exits_today = 0
 
+        # Fatores do sinal pendente por símbolo (preenchido antes do fill chegar)
+        # Usado para passar sl_pct/tp_pct de estratégias de reversão ao ExitPlan
+        self._pending_factors: dict[str, dict] = {}
+
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
     async def start(self) -> None:
@@ -235,6 +257,15 @@ class PositionMonitor:
 
     # ── Evento de fill → criar ExitPlan ──────────────────────────────────────
 
+    def set_pending_signal_factors(self, symbol: str, factors: dict) -> None:
+        """
+        Registra os fatores do último sinal de compra para um símbolo.
+        Chamado pelo TradingLoop após submeter a ordem, antes do fill chegar.
+        Os fatores são consumidos na criação do ExitPlan e descartados.
+        """
+        self._pending_factors[symbol] = factors
+        logger.debug("PositionMonitor: fatores pendentes registrados para %s: %s", symbol, factors)
+
     async def _on_order_event(self, event) -> None:
         """Cria ExitPlan quando um fill de compra é confirmado."""
         if not isinstance(event, OrderFilledEvent):
@@ -255,7 +286,9 @@ class PositionMonitor:
         if price <= 0 or qty <= 0:
             return
 
-        await self._create_plan(symbol, qty, price, strat_id)
+        # Recupera fatores do sinal pendente (se disponível — estratégias de reversão)
+        signal_factors = self._pending_factors.pop(symbol, {})
+        await self._create_plan(symbol, qty, price, strat_id, signal_factors=signal_factors)
 
     async def _create_plan(
         self,
@@ -263,6 +296,7 @@ class PositionMonitor:
         quantity: float,
         entry_price: float,
         strategy_id: str,
+        signal_factors: dict | None = None,
     ) -> None:
         # ATR em 1H (14 × 1H = 14h) — alinhado com o timeframe de avaliação
         candles_1h = self._market.get_candles(symbol, "1H", limit=ATR_PERIOD + 5)
@@ -286,6 +320,7 @@ class PositionMonitor:
             entry_time=datetime.now(UTC),
             entry_regime=regime,
             atr=atr,
+            signal_factors=signal_factors or {},
         )
         self._plans[symbol] = plan
         logger.info(

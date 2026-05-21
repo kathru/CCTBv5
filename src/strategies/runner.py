@@ -77,8 +77,8 @@ class StrategyRunner:
         self._running = True
         self._queue = self._bus.subscribe(Topic.MARKET)
 
-        # Pré-popula last_candle_ts com o candle mais recente de cada símbolo
-        # sem avaliar — bot aguarda a PRÓXIMA hora fechar antes de agir
+        # Pré-popula last_candle_ts e dispara avaliação imediata no boot
+        # para popular o dashboard sem esperar a próxima hora fechar
         await self._seed_last_candle_ts()
 
         self._task = asyncio.create_task(
@@ -115,12 +115,20 @@ class StrategyRunner:
                     pass
 
             # Usa o mais recente entre Redis e o candle calculado
-            # Nunca avalia no boot — sempre aguarda a próxima hora fechar
             ts = max(redis_ts, last_closed_ts) if redis_ts else last_closed_ts
             self._last_candle_ts[symbol] = ts
             await self._cache.set(f"last_candle_ts:{symbol}", ts.isoformat(), ttl=10800)
-            logger.info("StrategyRunner: %s — aguardando próxima hora (seed: %s UTC)",
+            logger.info("StrategyRunner: %s — seed: %s UTC (próxima avaliação na virada da hora)",
                         symbol, ts.strftime("%Y-%m-%d %H:%M"))
+
+        # Avaliação imediata no boot — popula o dashboard sem esperar 1H
+        # Usa o candle mais recente disponível (mesmo que não seja o fechado)
+        logger.info("StrategyRunner: avaliação imediata no boot (warm-start)...")
+        for symbol in symbols:
+            try:
+                await self._evaluate_all(symbol)
+            except Exception as exc:
+                logger.warning("StrategyRunner: warm-start falhou para %s: %s", symbol, exc)
 
     async def stop(self) -> None:
         self._running = False

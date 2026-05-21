@@ -121,6 +121,7 @@ class SignalAuditLog:
                     SELECT ts, symbol, regime, score, calibrated, threshold,
                            ev, direction, result, detail, factors
                     FROM signal_evaluations
+                    WHERE regime = 'REVERSAL_1H'
                     ORDER BY ts DESC
                     LIMIT $1
                     """,

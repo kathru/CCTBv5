@@ -29,6 +29,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ...core.models import Signal, SignalDirection
+from ...monitoring.signal_log import SignalAuditEntry, signal_audit_log
 from ..base import BaseStrategy, StrategyContext
 from ..ml.inference import PlattCalibrator
 
@@ -70,15 +71,45 @@ class ReversalStrategy1H(BaseStrategy):
             self._platt = None
             logger.warning("ReversalStrategy1H: calibrador Platt não disponível — usando score raw")
 
+    def _audit(
+        self,
+        symbol: str,
+        result: str,
+        detail: str,
+        score: float = 0.0,
+        calibrated: float = 0.0,
+        ev: float = 0.0,
+        direction: str = "FLAT",
+        factors: dict | None = None,
+    ) -> None:
+        """Registra avaliação no signal_audit_log (alimenta dashboard e funil)."""
+        signal_audit_log.record(SignalAuditEntry(
+            timestamp=datetime.now(UTC),
+            symbol=symbol,
+            regime="REVERSAL_1H",
+            score=score,
+            calibrated=calibrated,
+            threshold=0.0,          # sem threshold fixo na reversão
+            ev=ev,
+            direction=direction,
+            result=result,
+            detail=detail,
+            factors=factors or {},
+        ))
+
     async def evaluate(self, ctx: StrategyContext) -> Signal | None:
         """
         Avalia contexto e retorna sinal de compra se reversão confirmada.
+        Registra CADA avaliação no signal_audit_log para alimentar o dashboard.
 
         Contexto: ctx.candles_1h (newest first, ≥ 22 candles).
         Retorna: Signal com factors{sl_pct, tp_pct} ou None.
         """
-        c = ctx.candles_1h   # newest first
+        sym = ctx.symbol
+        c   = ctx.candles_1h   # newest first
+
         if len(c) < 22:
+            self._audit(sym, "NO_CANDLES", "Candles insuficientes")
             return None
 
         closes  = [x.close  for x in c[:22]]
@@ -91,55 +122,77 @@ class ReversalStrategy1H(BaseStrategy):
 
         # ── Filtro 1: Faixa macro (nem bear nem rally avançado) ───────────────
         if not (sma20 * self.TREND_FLOOR <= current <= sma20 * self.TREND_CEIL):
+            ratio_sma = current / sma20 if sma20 > 0 else 0
+            detail = (f"Acima SMA20 ({ratio_sma:.2%})" if current > sma20 * self.TREND_CEIL
+                      else f"Abaixo SMA20 ({ratio_sma:.2%})")
+            self._audit(sym, "MACRO_BLOCKED", detail)
             return None
 
         # ── Filtro 2: Queda real ≥ 3% ─────────────────────────────────────────
-        # lookback_high: máxima dos candles ANTES da base (7–20h atrás)
         lookback_high = max(closes[self.BASE_CANDLES + 1:20])
         fall_low      = min(closes[1:20])
         fall_pct      = (lookback_high - fall_low) / lookback_high if lookback_high > 0 else 0
 
+        base_factors = {"fall_pct": round(fall_pct, 3), "sma20_ratio": round(current / sma20, 3)}
+
         if fall_pct < self.MIN_FALL_PCT:
+            self._audit(sym, "FALL_WEAK", f"Queda {fall_pct:.1%} < 3%", factors=base_factors)
             return None
 
-        # ── Filtro 3: Dip tocou a SMA20 (não é ruído de rally) ───────────────
+        # ── Filtro 3: Dip tocou a SMA20 ──────────────────────────────────────
         if fall_low > sma20 * 1.01:
+            self._audit(sym, "DIP_SHALLOW", f"Fall low {fall_low:.2f} acima SMA20 {sma20:.2f}",
+                        factors=base_factors)
             return None
 
-        # ── Filtro 4: Base formada (últimas 6H estabilizando) ─────────────────
+        # ── Filtro 4 + 5: Base e rompimento ───────────────────────────────────
         n          = self.BASE_CANDLES
-        base_high  = max(highs[1:n + 1])   # highs[1:7]
-        base_low   = min(lows[1:n + 1])    # lows[1:7]
+        base_high  = max(highs[1:n + 1])
+        base_low   = min(lows[1:n + 1])
         base_range = base_high - base_low
         fall_mag   = lookback_high - fall_low
+        base_ratio = base_range / fall_mag if fall_mag > 0 else 1
 
-        # ── Filtro 5: Rompimento da máxima da base ────────────────────────────
-        if current <= base_high * 1.001:   # tolerância 0.1%
+        base_factors = {**base_factors, "base_range": round(base_ratio, 3)}
+
+        if current <= base_high * 1.001:
+            self._audit(sym, "BASE_MISSING",
+                        f"Sem rompimento: {current:.2f} ≤ base_high {base_high:.2f}",
+                        factors=base_factors)
             return None
 
-        # ── Filtro 6: Volume — força no rompimento ────────────────────────────
-        avg_vol = sum(volumes[1:9]) / 8
-        if avg_vol > 0 and volumes[0] < avg_vol * 0.8:
+        # ── Filtro 6: Volume ──────────────────────────────────────────────────
+        avg_vol   = sum(volumes[1:9]) / 8
+        vol_ratio = volumes[0] / avg_vol if avg_vol > 0 else 0
+
+        all_factors = {**base_factors, "vol_ratio": round(vol_ratio, 2)}
+
+        if avg_vol > 0 and vol_ratio < 0.8:
+            self._audit(sym, "VOLUME_WEAK", f"Volume {vol_ratio:.2f}× < 0.8×",
+                        factors=all_factors)
             return None
 
         # ── Calcula SL / TP ───────────────────────────────────────────────────
-        sl_target = base_low * 0.999                 # 0.1% abaixo da base
+        sl_target = base_low * 0.999
         sl_dist   = current - sl_target
         if sl_dist <= 0:
+            self._audit(sym, "SL_INVALID", "SL abaixo do entry", factors=all_factors)
             return None
 
         sl_pct = sl_dist / current
         if not (self.MIN_SL_PCT <= sl_pct <= self.MAX_SL_PCT):
+            self._audit(sym, "SL_INVALID",
+                        f"SL {sl_pct:.2%} fora de [{self.MIN_SL_PCT:.0%}–{self.MAX_SL_PCT:.0%}]",
+                        factors=all_factors)
             return None
 
-        # TP = 1.5× risco relativo ao entry real (aplicado no ExitPlan)
-        tp_pct    = self.MIN_RATIO * sl_pct
-        ratio     = self.MIN_RATIO   # garantido por construção
+        tp_pct = self.MIN_RATIO * sl_pct
+        ratio  = self.MIN_RATIO
 
-        # ── Score (0–1) ────────────────────────────────────────────────────────
+        # ── Score (0–1) ───────────────────────────────────────────────────────
         score_fall  = min(fall_pct / 0.10, 1.0)
-        score_base  = 1.0 - min(base_range / fall_mag, 1.0) if fall_mag > 0 else 0
-        score_vol   = min(volumes[0] / (avg_vol * 2), 1.0) if avg_vol > 0 else 0.5
+        score_base  = 1.0 - min(base_ratio, 1.0)
+        score_vol   = min(vol_ratio / 2.0, 1.0)
         score_ratio = min(ratio / 8.0, 1.0)
 
         raw_score = (score_fall * 0.30 + score_base * 0.30
@@ -153,34 +206,42 @@ class ReversalStrategy1H(BaseStrategy):
         else:
             calibrated = raw_score
 
+        ev = ratio * calibrated - (1 - calibrated)
+
+        signal_factors = {
+            "sl_pct":     round(sl_pct, 5),
+            "tp_pct":     round(tp_pct, 5),
+            "fall_pct":   round(fall_pct, 3),
+            "base_range": round(base_ratio, 3),
+            "vol_ratio":  round(vol_ratio, 2),
+            "tp_ratio":   round(ratio, 2),
+            "sl_ref":     round(sl_target, 4),
+        }
+
         logger.info(
-            "ReversalStrategy1H | %s | fall=%.1f%% sl=%.2f%% tp=%.2f%% "
-            "vol_ratio=%.2fx score=%.3f",
-            ctx.symbol, fall_pct * 100, sl_pct * 100, tp_pct * 100,
-            volumes[0] / avg_vol if avg_vol > 0 else 0, raw_score,
+            "ReversalStrategy1H SIGNAL | %s | fall=%.1f%% sl=%.2f%% tp=%.2f%% "
+            "vol=%.2fx score=%.3f cal=%.3f EV=%.4f",
+            sym, fall_pct * 100, sl_pct * 100, tp_pct * 100,
+            vol_ratio, raw_score, calibrated, ev,
         )
+
+        # Registra no audit log — alimenta dashboard e funil
+        self._audit(sym, "SIGNAL",
+                    f"Reversão confirmada: fall={fall_pct:.1%} sl={sl_pct:.2%} tp={tp_pct:.2%}",
+                    score=raw_score, calibrated=calibrated, ev=ev,
+                    direction="LONG", factors=signal_factors)
 
         return Signal(
             strategy_id=self._strategy_id,
-            symbol=ctx.symbol,
+            symbol=sym,
             direction=SignalDirection.LONG,
             timestamp=datetime.now(UTC),
             score=raw_score,
             calibrated_score=calibrated,
             confidence=calibrated,
-            expected_value=ratio * calibrated - (1 - calibrated),
+            expected_value=ev,
             kelly_fraction=round(min(self.KELLY_BASE, 0.10), 4),
             regime="REVERSAL_1H",
             timeframe="1H",
-            factors={
-                # Percentuais usados pelo ExitPlan (relativos ao fill_price real)
-                "sl_pct":     round(sl_pct, 5),
-                "tp_pct":     round(tp_pct, 5),
-                # Referência (display / log)
-                "fall_pct":   round(fall_pct, 3),
-                "base_range": round(base_range / fall_mag, 3) if fall_mag > 0 else 0,
-                "vol_ratio":  round(volumes[0] / avg_vol, 2) if avg_vol > 0 else 0,
-                "tp_ratio":   round(ratio, 2),
-                "sl_ref":     round(sl_target, 4),
-            },
+            factors=signal_factors,
         )

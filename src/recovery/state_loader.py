@@ -90,11 +90,18 @@ class StateLoader:
 
     async def _warm_cache(self, positions: list[dict]) -> None:
         """Push open positions into Redis for fast access."""
+        import uuid as _uuid
         for pos in positions:
             symbol = pos.get("symbol", "")
-            if symbol:
-                await self._cache.set_position(symbol, pos)
-                logger.debug("Cache warmed for symbol=%s", symbol)
+            if not symbol:
+                continue
+            # Serializa UUID e outros tipos não-JSON para string
+            safe_pos = {
+                k: str(v) if isinstance(v, (_uuid.UUID,)) else v
+                for k, v in pos.items()
+            }
+            await self._cache.set_position(symbol, safe_pos)
+            logger.debug("Cache warmed for symbol=%s", symbol)
 
     async def restore_oms_state(
         self,

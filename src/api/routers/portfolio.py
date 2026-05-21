@@ -115,24 +115,22 @@ async def portfolio_summary(request: Request) -> dict:
         except Exception:
             pass
 
-    # ── P&L Não Realizado: calculado das ordens abertas do bot ─────────────────
-    # Posições abertas do bot = buy_qty - sell_qty por símbolo (ordens filled)
-    # NÃO usa a tabela positions (que só tem exchange_sync); usa as ordens direto.
-    unrealized   = 0.0
+    # ── Posições abertas do bot (ordens filled: buy_qty - sell_qty) ────────────
+    positions_data: dict[str, dict] = {}
     notional_bot = 0.0
-    positions_data = {}
+    unrealized_bot = 0.0
     if cache and order_stats:
         for sym, st in order_stats.items():
             open_qty = st["buy_qty"] - st["sell_qty"]
-            if open_qty <= 0 or st["buy_qty"] <= 0:
+            if open_qty <= 1e-8 or st["buy_qty"] <= 0:
                 continue
-            avg_buy_px  = st["buy_notional"] / st["buy_qty"]
-            price_raw   = await cache.get_price(sym)
-            price       = float(price_raw) if price_raw else avg_buy_px
-            notional    = open_qty * price
-            unreal      = (price - avg_buy_px) * open_qty
-            notional_bot += notional
-            unrealized   += unreal
+            avg_buy_px = st["buy_notional"] / st["buy_qty"]
+            price_raw  = await cache.get_price(sym)
+            price      = float(price_raw) if price_raw else avg_buy_px
+            notional   = open_qty * price
+            unreal     = (price - avg_buy_px) * open_qty
+            notional_bot   += notional
+            unrealized_bot += unreal
             positions_data[sym] = {
                 "quantity":       round(open_qty, 6),
                 "avg_entry":      round(avg_buy_px, 4),
@@ -142,41 +140,66 @@ async def portfolio_summary(request: Request) -> dict:
                 "strategy_id":    "momentum_v2",
             }
 
-    # Adiciona posições exchange_sync à exposição total (não ao P&L do bot)
-    notional_exchange = 0.0
+    # ── Posições exchange_sync (BTC/ETH/SOL pré-existentes) ────────────────────
+    # Incluídas no portfolio total, no P&L não realizado e no saldo disponível.
+    notional_sync  = 0.0
+    unrealized_sync = 0.0
     for pos in db_open_positions:
         strat = pos.get("strategy_id", "") if isinstance(pos, dict) else getattr(pos, "strategy_id", "")
-        if str(strat) == "exchange_sync":
-            sym   = pos.get("symbol") if isinstance(pos, dict) else getattr(pos, "symbol", "")
-            qty   = float(pos.get("quantity", 0) if isinstance(pos, dict) else getattr(pos, "quantity", 0))
-            price_raw = await cache.get_price(sym) if cache and sym else None
-            price = float(price_raw) if price_raw else 0.0
-            notional_exchange += qty * price
+        if str(strat) != "exchange_sync":
+            continue
+        sym   = pos.get("symbol") if isinstance(pos, dict) else getattr(pos, "symbol", "")
+        qty   = float(pos.get("quantity", 0) if isinstance(pos, dict) else getattr(pos, "quantity", 0))
+        entry = float(pos.get("avg_entry_price", 0) if isinstance(pos, dict) else getattr(pos, "avg_entry_price", 0))
+        if not cache or not sym or qty <= 0:
+            continue
+        price_raw = await cache.get_price(sym)
+        price     = float(price_raw) if price_raw else (entry or 0.0)
+        notional  = qty * price
+        unreal    = (price - entry) * qty if entry > 0 else 0.0
+        notional_sync   += notional
+        unrealized_sync += unreal
+        # Adiciona (ou mescla com posição do bot se também tiver ordens abertas)
+        if sym not in positions_data:
+            positions_data[sym] = {
+                "quantity":       round(qty, 6),
+                "avg_entry":      round(entry, 4),
+                "current_price":  round(price, 4),
+                "notional":       round(notional, 4),
+                "unrealized_pnl": round(unreal, 4),
+                "strategy_id":    "exchange_sync",
+            }
 
-    # ── Portfolio total = USDT + posições bot (a preço atual) ──────────────────
-    cash_value  = s.cash_available
-    total_value = cash_value + notional_bot
-    if total_value < cash_value:
-        total_value = cash_value
+    # ── Portfolio total = USDT + BTC + ETH + SOL (tudo a preço atual) ──────────
+    cash_value    = s.cash_available
+    notional_all  = notional_bot + notional_sync          # toda crypto
+    unrealized    = unrealized_bot + unrealized_sync       # P&L não realizado total
+    total_value   = cash_value + notional_all             # portfolio completo
 
-    notional_total = notional_bot + notional_exchange
-    exposure_pct   = notional_bot / total_value if total_value > 0 and notional_bot > 0 else 0.0
+    # Exposição = crypto / total (incluindo holdings pré-existentes)
+    exposure_pct     = notional_all / total_value if total_value > 0 and notional_all > 0 else 0.0
     total_return_pct = (total_value - initial) / initial if initial > 0 else 0.0
-    # open_count final: posições ativas do bot (de ordens) + exchange_sync
-    open_count = len(positions_data) + len([p for p in db_open_positions
-                    if (p.get("strategy_id") if isinstance(p, dict) else getattr(p, "strategy_id", "")) == "exchange_sync"])
+
+    # Saldo disponível para o dashboard = USDT + toda crypto (pode vender tudo)
+    liquid_total = total_value
+
+    open_count = len(positions_data)
 
     return {
         "available":           True,
-        "initial_capital":     s.initial_capital,
-        "total_value":         total_value,
-        "cash_available":      s.cash_available,
+        "initial_capital":     initial,
+        "total_value":         round(total_value, 2),
+        "cash_available":      round(cash_value, 2),
+        "liquid_total":        round(liquid_total, 2),   # USDT + toda crypto
+        "notional_crypto":     round(notional_all, 2),   # valor total da crypto
         "total_exposure_pct":  round(exposure_pct, 4),
         "open_position_count": open_count,
         "positions":           positions_data,
         "realized_pnl":        realized_pnl,
         "unrealized_pnl":      round(unrealized, 4),
-        "daily_pnl":           round(unrealized, 4),   # approximation
+        "unrealized_bot":      round(unrealized_bot, 4),   # só posições do bot
+        "unrealized_sync":     round(unrealized_sync, 4),  # só holdings pré-existentes
+        "daily_pnl":           round(unrealized, 4),
         "total_return_pct":    round(total_return_pct, 4),
         "drawdown_pct":        round(s.drawdown_pct, 4),
         "portfolio_beta":      round(s.portfolio_beta, 3),

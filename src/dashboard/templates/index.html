@@ -457,7 +457,7 @@
   <div class="kpi-card kpi-blue">
     <div class="clabel">Saldo Disponível</div>
     <div class="kpi-val" id="kpi-cash">–</div>
-    <div class="kpi-sub">Exposição: <b id="kpi-exp">–</b></div>
+    <div class="kpi-sub">USDT: <b id="kpi-usdt">–</b> · Exposição: <b id="kpi-exp">–</b></div>
   </div>
   <div class="kpi-card kpi-yellow">
     <div class="clabel">Trades</div>
@@ -1168,8 +1168,8 @@ function initDonutChart(){
 
 function updateDonut(portfolio,prices){
   if(!_donutChart||!portfolio||!prices) return;
-  const cash=portfolio.cash_available||portfolio.total_value||0;
-  const tv=portfolio.total_value||1;
+  const cash=portfolio.cash_available||0;
+  const tv=portfolio.liquid_total||portfolio.total_value||1;
   const pos=portfolio.positions||{};
   const data=[cash];
   const syms=['BTC-USDT','ETH-USDT','SOL-USDT'];
@@ -1851,7 +1851,10 @@ async function updateAll(){
     document.getElementById('kpi-dpnl').innerHTML=colored(portfolio.daily_pnl);
     document.getElementById('kpi-upnl').innerHTML=colored(portfolio.unrealized_pnl);
     document.getElementById('kpi-dd').textContent=pct(portfolio.drawdown_pct);
-    document.getElementById('kpi-cash').textContent=usd(portfolio.cash_available);
+    // Saldo Disponível = total líquido (USDT + toda crypto a preço atual)
+    const liquidTotal = portfolio.liquid_total || portfolio.total_value || 0;
+    document.getElementById('kpi-cash').textContent=usd(liquidTotal);
+    document.getElementById('kpi-usdt').textContent=usd(portfolio.cash_available);
     document.getElementById('kpi-exp').textContent=pct(portfolio.total_exposure_pct);
     document.getElementById('kpi-return').innerHTML=colored(portfolio.total_return_pct,false);
     document.getElementById('kpi-pos').textContent=portfolio.open_position_count+' posições';

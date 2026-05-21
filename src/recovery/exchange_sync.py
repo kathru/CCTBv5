@@ -113,12 +113,25 @@ class ExchangeSync:
             # ── 3. Atualiza Redis com todos os saldos ───────────────────────
             await self._store_balances(details)
 
-            # ── 4. Histórico de ordens ────────────────────────────────────────
+            # ── 4. Histórico de ordens (paginado) ────────────────────────────
             logger.info("ExchangeSync: importando histórico de ordens OKX...")
             try:
-                okx_orders = await self._okx.get_filled_orders(limit=100)
-                imported = await self._import_orders(okx_orders)
+                all_okx_orders: list[dict] = []
+                after = ""
+                while True:
+                    batch = await self._okx.get_filled_orders(limit=100, after=after)
+                    if not batch:
+                        break
+                    all_okx_orders.extend(batch)
+                    if len(batch) < 100:
+                        break
+                    after = batch[-1].get("ordId", "")
+                    if not after:
+                        break
+                imported = await self._import_orders(all_okx_orders)
                 summary["orders_imported"] = imported
+                if imported > 0:
+                    logger.info("ExchangeSync: %d novas ordens importadas do OKX", imported)
             except Exception as orders_exc:
                 logger.warning(
                     "ExchangeSync: orders-history indisponível (%s) — usando DB local",
@@ -241,10 +254,10 @@ class ExchangeSync:
                         INSERT INTO orders (
                             client_order_id, exchange_order_id, symbol, side,
                             order_type, mode, status, quantity, filled_quantity,
-                            avg_fill_price, fees_paid, strategy_id,
+                            avg_fill_price, fees_paid, strategy_id, signal_id,
                             submitted_at, filled_at, created_at
                         )
-                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
                         ON CONFLICT (client_order_id) DO UPDATE SET
                             status          = EXCLUDED.status,
                             filled_quantity = EXCLUDED.filled_quantity,
@@ -259,11 +272,12 @@ class ExchangeSync:
                         o.get("ordType", "market"),
                         "market",
                         "filled",
-                        o["sz"],
-                        o["fillSz"],
-                        o["avgPx"],
+                        float(o.get("accFillSz") or o.get("sz") or 0),
+                        float(o.get("accFillSz") or o.get("fillSz") or 0),
+                        float(o.get("avgPx") or 0),
                         fee,
-                        "momentum_v2",
+                        "okx_import",   # identifica origem: importado do OKX
+                        "okx-import",   # signal_id placeholder
                         filled_at,
                         filled_at,
                         created_at,

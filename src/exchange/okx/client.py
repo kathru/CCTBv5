@@ -168,17 +168,23 @@ class OKXClient:
         self,
         inst_type: str = "SPOT",
         limit: int = 100,
+        after: str = "",
     ) -> list[dict]:
         """Retorna ordens preenchidas recentes do OKX."""
         path = "/api/v5/trade/orders-history"
+        params: dict = {"instType": inst_type, "state": "filled", "limit": str(limit)}
+        if after:
+            params["after"] = after
+        query = "&".join(f"{k}={v}" for k, v in params.items())
+        signed_path = f"{path}?{query}"
         headers = build_headers(
             self._api_key, self._secret_key, self._passphrase,
-            "GET", path, paper=self._paper,
+            "GET", signed_path, paper=self._paper,
         )
         resp = await self._http().get(
             path,
             headers=headers,
-            params={"instType": inst_type, "state": "filled", "limit": str(limit)},
+            params=params,
         )
         resp.raise_for_status()
         data = resp.json()

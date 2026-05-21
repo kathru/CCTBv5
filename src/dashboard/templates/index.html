@@ -1199,14 +1199,15 @@ function updateDonut(portfolio,prices){
   const bal = portfolio.okx_balances||{};
   const extra = portfolio.okx_extra_assets||{};
 
-  // Valores por ativo — ordem e cores fixas
+  // Valores por ativo — SEMPRE usa okx_balances (Redis) como fonte da verdade.
+  // Os saldos reais da OKX são mais precisos que os cálculos de ordens históricas.
   const assets = [
     { name:'USDT',       color:'#3b82f6', val: bal.USDT?.usdValue || portfolio.cash_available || 0 },
-    { name:'BTC',        color:'#f97316', val: (()=>{ const p=pos['BTC-USDT']; return p?.notional||(p?.quantity&&prices?.['BTC-USDT']?p.quantity*parseFloat(prices['BTC-USDT']):0); })() },
-    { name:'ETH',        color:'#6366f1', val: (()=>{ const p=pos['ETH-USDT']; return p?.notional||(p?.quantity&&prices?.['ETH-USDT']?p.quantity*parseFloat(prices['ETH-USDT']):0); })() },
-    { name:'SOL',        color:'#8b5cf6', val: (()=>{ const p=pos['SOL-USDT']; return p?.notional||(p?.quantity&&prices?.['SOL-USDT']?p.quantity*parseFloat(prices['SOL-USDT']):0); })() },
-    { name:'OKB',        color:'#0b5eda', val: extra.OKB?.usdValue||0 },
-    { name:'BRL (fiat)', color:'#009c3b', val: extra.BRL?.usdValue||0 },
+    { name:'BTC',        color:'#f97316', val: bal.BTC?.usdValue  || 0 },
+    { name:'ETH',        color:'#6366f1', val: bal.ETH?.usdValue  || 0 },
+    { name:'SOL',        color:'#8b5cf6', val: bal.SOL?.usdValue  || 0 },
+    { name:'OKB',        color:'#0b5eda', val: bal.OKB?.usdValue  || extra.OKB?.usdValue || 0 },
+    { name:'BRL (fiat)', color:'#009c3b', val: bal.BRL?.usdValue  || extra.BRL?.usdValue || 0 },
   ].filter(a=>a.val>0);
 
   // Ajusta labels e cores do chart

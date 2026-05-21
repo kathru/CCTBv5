@@ -129,75 +129,63 @@ async def portfolio_summary(request: Request) -> dict:
         except Exception:
             pass
 
-    # ── Posições abertas do bot (ordens filled: buy_qty - sell_qty) ────────────
+    # ── Posições reais: derivadas dos saldos OKX do Redis ─────────────────────
+    # FONTE DA VERDADE: okx_balances (Redis, atualizado a cada 5 min da OKX real).
+    # Nunca usa order_stats para calcular posições abertas — esses dados históricos
+    # não refletem o saldo real (podem ter ordens de outros períodos ou bots).
     positions_data: dict[str, dict] = {}
-    notional_bot = 0.0
-    unrealized_bot = 0.0
-    if cache and order_stats:
-        for sym, st in order_stats.items():
-            open_qty = st["buy_qty"] - st["sell_qty"]
-            if open_qty <= 1e-8 or st["buy_qty"] <= 0:
-                continue
-            avg_buy_px = st["buy_notional"] / st["buy_qty"]
-            price_raw  = await cache.get_price(sym)
-            price      = float(price_raw) if price_raw else avg_buy_px
-            notional   = open_qty * price
-            unreal     = (price - avg_buy_px) * open_qty
-            notional_bot   += notional
-            unrealized_bot += unreal
-            positions_data[sym] = {
-                "quantity":       round(open_qty, 6),
-                "avg_entry":      round(avg_buy_px, 4),
-                "current_price":  round(price, 4),
-                "notional":       round(notional, 4),
-                "unrealized_pnl": round(unreal, 4),
-                "strategy_id":    "momentum_v2",
-            }
-
-    # ── Posições exchange_sync (BTC/ETH/SOL pré-existentes) ────────────────────
-    # Incluídas no portfolio total, no P&L não realizado e no saldo disponível.
-    notional_sync  = 0.0
+    notional_bot    = 0.0
+    notional_sync   = 0.0
+    unrealized_bot  = 0.0
     unrealized_sync = 0.0
-    for pos in db_open_positions:
-        strat = pos.get("strategy_id", "") if isinstance(pos, dict) else getattr(pos, "strategy_id", "")
-        if str(strat) != "exchange_sync":
-            continue
-        sym   = pos.get("symbol") if isinstance(pos, dict) else getattr(pos, "symbol", "")
-        qty   = float(pos.get("quantity", 0) if isinstance(pos, dict) else getattr(pos, "quantity", 0))
-        entry = float(pos.get("avg_entry_price", 0) if isinstance(pos, dict) else getattr(pos, "avg_entry_price", 0))
-        if not cache or not sym or qty <= 0:
-            continue
-        price_raw = await cache.get_price(sym)
-        price     = float(price_raw) if price_raw else (entry or 0.0)
-        notional  = qty * price
-        unreal    = (price - entry) * qty if entry > 0 else 0.0
-        notional_sync   += notional
-        unrealized_sync += unreal
-        # Mescla com posição do bot (se houver) — soma quantidades e notionals
-        if sym in positions_data:
-            existing = positions_data[sym]
-            merged_qty      = existing["quantity"] + qty
-            merged_notional = existing["notional"] + notional
-            merged_unreal   = existing["unrealized_pnl"] + unreal
-            # Preço médio ponderado
-            merged_entry    = (existing["avg_entry"] * existing["quantity"] + entry * qty) / merged_qty if merged_qty > 0 else entry
-            positions_data[sym] = {
-                "quantity":       round(merged_qty, 6),
-                "avg_entry":      round(merged_entry, 4),
-                "current_price":  round(price, 4),
-                "notional":       round(merged_notional, 4),
-                "unrealized_pnl": round(merged_unreal, 4),
-                "strategy_id":    "combined",
-            }
+
+    TRADING_CCYS = ["BTC", "ETH", "SOL"]
+    for ccy in TRADING_CCYS:
+        sym = f"{ccy}-USDT"
+        bal = okx_balances.get(ccy, {})
+        qty = float(bal.get("cashBal", 0.0))
+        usd = float(bal.get("usdValue", 0.0))
+
+        if qty <= 1e-8 or usd <= 0:
+            continue  # sem saldo real nesse ativo
+
+        # Preço atual = usdValue / qty (direto do OKX, mais preciso que cache)
+        price = usd / qty if qty > 0 else 0.0
+        # Tenta melhorar com preço do cache de mercado se disponível
+        if cache:
+            price_raw = await cache.get_price(sym)
+            if price_raw:
+                price = float(price_raw)
+
+        # Preço médio de entrada: busca do order_stats (bot) ou usa preço atual
+        avg_entry = price  # fallback: preço atual = sem P&L não realizado
+        unreal = 0.0
+        strategy = "exchange_sync"
+
+        if sym in order_stats:
+            st = order_stats[sym]
+            bot_open_qty = st["buy_qty"] - st["sell_qty"]
+            if bot_open_qty > 1e-8 and st["buy_qty"] > 0:
+                avg_entry = st["buy_notional"] / st["buy_qty"]
+                unreal = (price - avg_entry) * qty
+                strategy = "momentum_v2"
+                notional_bot += usd
+                unrealized_bot += unreal
+            else:
+                # Posição exchange_sync — sem custo base definido
+                notional_sync += usd
+                unrealized_sync += unreal
         else:
-            positions_data[sym] = {
-                "quantity":       round(qty, 6),
-                "avg_entry":      round(entry, 4),
-                "current_price":  round(price, 4),
-                "notional":       round(notional, 4),
-                "unrealized_pnl": round(unreal, 4),
-                "strategy_id":    "exchange_sync",
-            }
+            notional_sync += usd
+
+        positions_data[sym] = {
+            "quantity":       round(qty, 6),
+            "avg_entry":      round(avg_entry, 4),
+            "current_price":  round(price, 4),
+            "notional":       round(usd, 4),     # usa usdValue do OKX diretamente
+            "unrealized_pnl": round(unreal, 4),
+            "strategy_id":    strategy,
+        }
 
     # ── Portfolio total = soma de TODOS os ativos OKX via Redis ─────────────────
     # Se Redis tem dados frescos do sync periódico, usa eles (mais preciso)

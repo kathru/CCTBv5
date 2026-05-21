@@ -171,7 +171,7 @@ class TradingLoop:
         )
         self._ws_watchdog = WebSocketWatchdog(
             on_dead=self._on_ws_dead,
-            dead_threshold=120,
+            dead_threshold=300,   # 5 min sem mensagem antes de considerar morto
             name="okx_market",
         )
         self._resource_watchdog = ResourceWatchdog(
@@ -540,26 +540,6 @@ class TradingLoop:
                 self._heartbeat.beat()
                 self._infra_metrics.record_ws_message()
 
-                # Auto-reset: se kill switch SOFT foi por websocket_dead e WS está vivo novamente
-                ks_ev = getattr(self._kill_switch, "_current_event", None)
-                ks_r  = getattr(ks_ev, "reason", "") or ""
-                if (not self._kill_switch.allows_new_entries
-                        and "websocket" in ks_r
-                        and self._ws_watchdog.is_alive):
-                    logger.warning(
-                        "WebSocket recuperado — auto-resetando kill switch SOFT (reason=%s)", ks_r
-                    )
-                    self._kill_switch.reset_soft(reason="websocket_recovered")
-                    if self._oms:
-                        self._oms.open_gate()
-                    asyncio.create_task(
-                        self._alert_channel.info(
-                            title="✅ WebSocket Recuperado",
-                            message="Conexão com OKX restaurada. Kill switch resetado automaticamente.",
-                        ),
-                        name="discord_ws_recovered",
-                    )
-
                 # Simula fills para ordens paper
                 await self._simulate_paper_fills()
                 # Resumo diário
@@ -583,10 +563,14 @@ class TradingLoop:
                 self._infra_metrics.record_error()
 
     async def _on_ws_dead(self) -> None:
-        logger.warning("WS dead — triggering soft kill switch")
-        self._kill_switch.trigger_soft(reason="websocket_dead")
+        # WebSocket morto NÃO dispara kill switch — market engine tem polling REST
+        # como fallback a cada 15s. Kill switch causava mais dano do que o WS morto.
+        logger.warning("WS dead — aguardando reconexão (polling REST continua ativo)")
         self._infra_metrics.record_error()
-        await self._alert_channel.warning(
-            title="WebSocket Morto",
-            message="Conexao com OKX perdida. Kill switch SOFT ativado.",
+        asyncio.create_task(
+            self._alert_channel.warning(
+                title="⚠️ WebSocket Temporariamente Indisponível",
+                message="Conexão com OKX perdida. Usando polling REST como fallback. Trading continua.",
+            ),
+            name="discord_ws_dead",
         )

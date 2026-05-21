@@ -88,43 +88,61 @@ def _stability(values: list[float]) -> float | None:
     return round(max(0.0, 1.0 - ss_res / ss_tot), 4)
 
 
-def _pair_trades(fills: list) -> list[dict]:
+async def _get_filled_orders(db) -> list[dict]:
+    """Retorna ordens filled como lista de dicts padronizados."""
+    rows = await db.fetch(
+        "SELECT * FROM orders WHERE status='filled' ORDER BY filled_at ASC NULLS LAST"
+    )
+    result = []
+    for r in rows:
+        result.append({
+            "symbol":    r["symbol"],
+            "side":      r["side"],
+            "qty":       float(r["filled_quantity"] or 0),
+            "price":     float(r["avg_fill_price"] or 0),
+            "fee":       float(r["fees_paid"] or 0),
+            "timestamp": r["filled_at"] or r["created_at"],
+        })
+    return result
+
+
+def _pair_trades(orders: list[dict]) -> list[dict]:
     """
-    Emparelha fills BUY→SELL por símbolo (FIFO) para obter trades completos.
-    Retorna lista de dicts com pnl, pnl_pct, hold_bars, mae, mfe.
+    Emparelha BUY→SELL por símbolo (FIFO) para obter trades completos.
+    Aceita lista de dicts com keys: symbol, side, qty, price, fee, timestamp.
     """
     by_sym: dict[str, list] = defaultdict(list)
-    for f in fills:
-        by_sym[f.symbol].append(f)
+    for o in orders:
+        by_sym[o["symbol"]].append(o)
 
     trades = []
-    for sym, sym_fills in by_sym.items():
-        sym_fills.sort(key=lambda f: f.timestamp)
+    for sym, sym_orders in by_sym.items():
+        sym_orders.sort(key=lambda o: o["timestamp"] or 0)
         buy_queue: list = []
-        for f in sym_fills:
-            side = str(getattr(f, "side", "")).upper()
+        for o in sym_orders:
+            side = str(o.get("side", "")).upper()
             if side in ("BUY", "LONG"):
-                buy_queue.append(f)
+                buy_queue.append(o)
             elif side in ("SELL", "SHORT") and buy_queue:
                 entry = buy_queue.pop(0)
-                entry_px = float(entry.price)
-                exit_px  = float(f.price)
-                qty      = float(min(entry.quantity, f.quantity))
-                fee      = float(getattr(entry, "fee", 0)) + float(getattr(f, "fee", 0))
+                entry_px = float(entry["price"])
+                exit_px  = float(o["price"])
+                qty      = float(min(entry["qty"], o["qty"]))
+                fee      = float(entry.get("fee", 0)) + float(o.get("fee", 0))
                 pnl      = (exit_px - entry_px) * qty - fee
                 pnl_pct  = (exit_px - entry_px) / entry_px if entry_px > 0 else 0
                 trades.append({
-                    "symbol":    sym,
-                    "pnl":       pnl,
-                    "pnl_pct":   pnl_pct,
-                    "entry_px":  entry_px,
-                    "exit_px":   exit_px,
-                    "qty":       qty,
-                    "fee":       fee,
-                    "entry_ts":  entry.timestamp,
-                    "exit_ts":   f.timestamp,
+                    "symbol":   sym,
+                    "pnl":      pnl,
+                    "pnl_pct":  pnl_pct,
+                    "entry_px": entry_px,
+                    "exit_px":  exit_px,
+                    "qty":      qty,
+                    "fee":      fee,
+                    "entry_ts": entry["timestamp"],
+                    "exit_ts":  o["timestamp"],
                 })
-    return sorted(trades, key=lambda t: t["exit_ts"])
+    return sorted(trades, key=lambda t: t["exit_ts"] or 0)
 
 
 # ── Endpoint principal ────────────────────────────────────────────────────────
@@ -132,14 +150,10 @@ def _pair_trades(fills: list) -> list[dict]:
 @router.get("/quantitative")
 async def get_quantitative(request: Request) -> dict:
     db   = request.app.state.db
-    repo = FillRepository(db)
 
-    # Coleta fills de todos os símbolos
-    all_fills = []
-    for sym in ["BTC-USDT", "ETH-USDT", "SOL-USDT"]:
-        all_fills.extend(await repo.get_by_symbol(sym, limit=1000))
-
-    trades    = _pair_trades(all_fills)
+    # Usa ordens filled como fonte de verdade (fills table pode estar vazia)
+    all_orders = await _get_filled_orders(db)
+    trades     = _pair_trades(all_orders)
     n_trades  = len(trades)
     pnls      = [t["pnl"]     for t in trades]
     pnl_pcts  = [t["pnl_pct"] for t in trades]

@@ -269,6 +269,22 @@ class TradingLoop:
                     list(sync_result["crypto_positions"].keys()),
                     sync_result["orders_imported"],
                 )
+
+            # Cria ExitPlans para posições sincronizadas da exchange
+            for symbol, qty in sync_result.get("crypto_positions", {}).items():
+                try:
+                    price_raw = await self._cache.get_price(symbol)
+                    price = float(price_raw) if price_raw else 0.0
+                    if price > 0 and qty > 0:
+                        await self._position_monitor._create_plan(
+                            symbol, qty, price, "exchange_sync"
+                        )
+                        logger.info(
+                            "ExitPlan criado para posição sync: %s qty=%.4f entry=%.2f",
+                            symbol, qty, price,
+                        )
+                except Exception as ep_exc:
+                    logger.debug("ExitPlan sync falhou para %s: %s", symbol, ep_exc)
         except Exception as exc:
             logger.warning("ExchangeSync falhou no boot: %s", exc)
 

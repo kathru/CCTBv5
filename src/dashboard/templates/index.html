@@ -1183,7 +1183,7 @@ function updateDonut(portfolio,prices){
   const leg=document.getElementById('donut-legend');
   leg.innerHTML=names.map((n,i)=>{
     const v=vals[i],pct=tv>0?(v/tv*100).toFixed(1):'0.0';
-    return`<div class="donut-row"><div class="donut-sym"><div class="donut-dot" style="background:${colors[i]}"></div>${n}</div><div><span class="donut-val">$${v.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span><span class="donut-pct">(${pct}%)</span></div></div>`;
+    return`<div class="donut-row"><div class="donut-sym"><div class="donut-dot" style="background:${colors[i]}"></div>${n}</div><div><span class="donut-val">${usd(v)}</span><span class="donut-pct">(${pct}%)</span></div></div>`;
   }).join('');
 }
 

@@ -37,45 +37,51 @@ async def get_prices(request: Request) -> dict:
 @router.get("/performance")
 async def get_performance(request: Request) -> dict:
     """
-    Estatísticas de performance calculadas a partir dos fills no PostgreSQL.
-    Retorna: total_trades, win_rate, total_fees, pnl_by_symbol, etc.
+    Estatísticas de performance calculadas a partir das ordens filled.
     """
     db = request.app.state.db
-    repo = FillRepository(db)
 
-    # Agrega fills de todos os símbolos
-    total_trades = 0
+    # Lê ordens filled diretamente (fills table pode estar vazia em paper trading)
+    rows = await db.fetch(
+        "SELECT symbol, side, filled_quantity, avg_fill_price, fees_paid, filled_at "
+        "FROM orders WHERE status='filled' ORDER BY filled_at ASC"
+    )
+
+    total_trades = len(rows)
     total_fees   = 0.0
     total_volume = 0.0
     pnl_by_symbol: dict[str, float] = {}
+    buys_by_sym:  dict[str, float] = {}
+    sells_by_sym: dict[str, float] = {}
 
-    for symbol in SYMBOLS:
-        fills = await repo.get_by_symbol(symbol, limit=1000)
-        if not fills:
-            continue
+    for r in rows:
+        sym   = r["symbol"]
+        qty   = float(r["filled_quantity"] or 0)
+        price = float(r["avg_fill_price"] or 0)
+        fees  = float(r["fees_paid"] or 0)
+        side  = str(r["side"]).upper()
+        notional = qty * price
 
-        for fill in fills:
-            total_trades += 1
-            fee  = getattr(fill, "fee", 0.0) or 0.0
-            qty  = getattr(fill, "quantity", 0.0) or 0.0
-            price = getattr(fill, "price", 0.0) or 0.0
-            total_fees   += fee
-            total_volume += qty * price
+        total_fees   += fees
+        total_volume += notional
 
-        # P&L por símbolo: soma fills SELL - soma fills BUY (simplificado)
-        buys  = sum(f.quantity * f.price for f in fills
-                    if str(getattr(f, "side", "")).upper() in ("BUY", "LONG"))
-        sells = sum(f.quantity * f.price for f in fills
-                    if str(getattr(f, "side", "")).upper() in ("SELL", "SHORT"))
-        if buys > 0 or sells > 0:
-            pnl_by_symbol[symbol] = round(sells - buys, 2)
+        if side in ("BUY", "LONG"):
+            buys_by_sym[sym]  = buys_by_sym.get(sym, 0) + notional
+        elif side in ("SELL", "SHORT"):
+            sells_by_sym[sym] = sells_by_sym.get(sym, 0) + notional
+
+    for sym in set(list(buys_by_sym) + list(sells_by_sym)):
+        b = buys_by_sym.get(sym, 0)
+        s = sells_by_sym.get(sym, 0)
+        if b > 0 or s > 0:
+            pnl_by_symbol[sym] = round(s - b, 2)
 
     total_pnl = sum(pnl_by_symbol.values())
 
     return {
-        "total_trades":   total_trades,
-        "total_fees":     round(total_fees, 4),
-        "total_volume":   round(total_volume, 2),
-        "total_pnl":      round(total_pnl, 2),
-        "pnl_by_symbol":  pnl_by_symbol,
+        "total_trades": total_trades,
+        "total_fees":   round(total_fees, 4),
+        "total_volume": round(total_volume, 2),
+        "total_pnl":    round(total_pnl, 2),
+        "pnl_by_symbol": pnl_by_symbol,
     }

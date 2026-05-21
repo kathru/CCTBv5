@@ -70,52 +70,59 @@ async def portfolio_summary(request: Request) -> dict:
             pass
     open_count = max(s.open_position_count, len(db_open_positions))
 
-    # Calcula exposição e P&L com base nas posições do DB + preços do cache
+    # Calcula P&L com base nas posições do DB + preços do cache
     cache = getattr(request.app.state, "cache", None)
-    unrealized = s.unrealized_pnl
-    notional_total = 0.0
+    unrealized = 0.0
+    notional_bot = 0.0   # só posições do bot (momentum_v2), não exchange_sync
+    notional_total = 0.0 # todas as posições para exposição
     positions_data = {}
     if cache and db_open_positions:
         for pos in db_open_positions:
-            sym = pos.get("symbol") if isinstance(pos, dict) else getattr(pos, "symbol", "")
-            qty = float(pos.get("quantity", 0) if isinstance(pos, dict) else getattr(pos, "quantity", 0))
-            entry = float(pos.get("avg_entry_price", 0) if isinstance(pos, dict) else getattr(pos, "avg_entry_price", 0))
+            sym     = pos.get("symbol") if isinstance(pos, dict) else getattr(pos, "symbol", "")
+            qty     = float(pos.get("quantity", 0) if isinstance(pos, dict) else getattr(pos, "quantity", 0))
+            entry   = float(pos.get("avg_entry_price", 0) if isinstance(pos, dict) else getattr(pos, "avg_entry_price", 0))
+            strat   = pos.get("strategy_id", "") if isinstance(pos, dict) else getattr(pos, "strategy_id", "")
             price_raw = await cache.get_price(sym)
-            price = float(price_raw) if price_raw else entry
+            price   = float(price_raw) if price_raw else entry
             notional = qty * price
-            unreal = (price - entry) * qty if entry > 0 else 0.0
+            unreal   = (price - entry) * qty if entry > 0 else 0.0
             notional_total += notional
-            unrealized += unreal
+            # Só conta unrealized P&L de posições abertas pelo bot (não as do sync inicial)
+            is_bot_position = str(strat) not in ("exchange_sync", "")
+            if is_bot_position:
+                notional_bot += notional
+                unrealized   += unreal
             positions_data[sym] = {
                 "quantity": qty, "avg_entry": entry,
                 "current_price": price, "notional": notional,
                 "unrealized_pnl": unreal,
+                "strategy_id": strat,
             }
 
-    # Portfolio em USDT: cash disponível + notional das posições abertas do bot
-    # NÃO inclui BTC/ETH/SOL pré-existentes — só o capital operacional do bot
-    cash_value = s.cash_available
-    total_value = cash_value + notional_total if notional_total > 0 else s.total_value
-    exposure_pct = notional_total / total_value if total_value > 0 and notional_total > 0 else s.total_exposure_pct
-
-    # Retorno relativo ao capital inicial (em USDT)
-    initial = s.initial_capital if s.initial_capital > 0 else total_value
-    total_return_pct = (total_value - initial) / initial if initial > 0 else 0.0
-
-    # P&L realizado: soma das ordens SELL - ordens BUY fechadas (em USDT)
-    realized_pnl = s.realized_pnl
+    # P&L realizado: SELL - BUY (em USDT) de ordens do bot
+    realized_pnl = 0.0
     if db:
         try:
             rows = await db.fetch(
                 "SELECT side, SUM(filled_quantity * avg_fill_price) as vol "
-                "FROM orders WHERE status='filled' GROUP BY side"
+                "FROM orders WHERE status='filled' AND strategy_id != 'exchange_sync' GROUP BY side"
             )
             sells = sum(float(r["vol"] or 0) for r in rows if str(r["side"]).upper() in ("SELL","SHORT"))
             buys  = sum(float(r["vol"] or 0) for r in rows if str(r["side"]).upper() in ("BUY","LONG"))
-            if buys > 0 or sells > 0:
-                realized_pnl = round(sells - buys, 4)
+            realized_pnl = round(sells - buys, 4)
         except Exception:
             pass
+
+    # Portfolio em USDT = capital inicial + P&L realizado + P&L não realizado (bot)
+    initial = s.initial_capital if s.initial_capital > 5.0 else 5000.0
+    cash_value = s.cash_available
+    # total = cash + valor das posições compradas pelo bot (a preço atual)
+    total_value = cash_value + notional_bot if notional_bot > 0 else cash_value + unrealized + initial + realized_pnl
+    total_value = max(total_value, cash_value)  # nunca menor que o cash disponível
+    exposure_pct = notional_bot / total_value if total_value > 0 and notional_bot > 0 else (
+        notional_total / (initial + realized_pnl + unrealized) if initial > 0 else 0.0
+    )
+    total_return_pct = (total_value - initial) / initial if initial > 0 else 0.0
 
     return {
         "available":           True,

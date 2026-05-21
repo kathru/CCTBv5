@@ -82,10 +82,13 @@ class OrderRepository:
             )
         return [self._to_model(r) for r in rows]
 
-    async def get_recent(self, limit: int = 50) -> list[Order]:
-        """Retorna ordens recentes (todos os status) ordenadas por data."""
+    async def get_recent(self, limit: int = 500) -> list[Order]:
+        """Retorna ordens recentes (todos os status), mais recentes primeiro.
+        Usa filled_at quando disponível, senão created_at."""
         rows = await self._db.fetch(
-            "SELECT * FROM orders ORDER BY created_at DESC LIMIT $1",
+            "SELECT * FROM orders "
+            "ORDER BY COALESCE(filled_at, submitted_at, created_at) DESC "
+            "LIMIT $1",
             limit,
         )
         return [self._to_model(r) for r in rows]

@@ -462,7 +462,7 @@
   <div class="kpi-card kpi-yellow">
     <div class="clabel">Trades</div>
     <div class="kpi-val" id="kpi-trades">–</div>
-    <div class="kpi-sub">Volume: <b id="kpi-vol">–</b></div>
+    <div class="kpi-sub"><b id="kpi-trades-buy">–</b> compras · <b id="kpi-trades-sell">–</b> vendas · Vol: <b id="kpi-vol">–</b></div>
   </div>
   <div class="kpi-card kpi-red">
     <div class="clabel">Taxas Pagas</div>
@@ -1779,7 +1779,7 @@ async function updateAll(){
     fetchJSON('/api/metrics/prices'),fetchJSON('/api/signals/symbols'),
     fetchJSON('/api/portfolio/exits'),fetchJSON('/api/signals/log?limit=30'),
     fetchJSON('/api/signals/funnel'),fetchJSON('/api/watchdog/status'),fetchJSON('/api/positions/open'),
-    fetchJSON('/api/orders/open'),fetchJSON('/api/orders/recent?limit=15'),
+    fetchJSON('/api/orders/open'),fetchJSON('/api/orders/recent?limit=500'),
   ]);
 
   // Slow data vem do cache — atualizado em paralelo pelo loop lento
@@ -1874,6 +1874,8 @@ async function updateAll(){
   }
   if(perf){
     document.getElementById('kpi-trades').textContent=perf.total_trades||0;
+    document.getElementById('kpi-trades-buy').textContent=(perf.total_buys||0)+'↑';
+    document.getElementById('kpi-trades-sell').textContent=(perf.total_sells||0)+'↓';
     document.getElementById('kpi-vol').textContent=usd(perf.total_volume||0,0);
     document.getElementById('kpi-fees').textContent=usd(perf.total_fees||0);
     document.getElementById('kpi-pnl-fills').innerHTML=colored(perf.total_pnl);
@@ -2129,7 +2131,7 @@ async function updateAll(){
     const na='<span class="m" style="font-size:0.9rem">N/A</span>';
     const minOk=q.n_trades>=q.min_trades_req;
 
-    document.getElementById('quant-trades').textContent=`(${q.n_trades} trades)`;
+    document.getElementById('quant-trades').textContent=`(${q.n_trades} ciclos fechados)`;
 
     function qval(v,cls,suffix=''){
       if(v==null)return na;

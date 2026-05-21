@@ -48,6 +48,8 @@ async def get_performance(request: Request) -> dict:
     )
 
     total_trades = len(rows)
+    total_buys   = sum(1 for r in rows if str(r["side"]).upper() in ("BUY", "LONG"))
+    total_sells  = sum(1 for r in rows if str(r["side"]).upper() in ("SELL", "SHORT"))
     total_fees   = 0.0
     total_volume = 0.0
     pnl_by_symbol: dict[str, float] = {}
@@ -88,7 +90,9 @@ async def get_performance(request: Request) -> dict:
     total_pnl = sum(pnl_by_symbol.values())
 
     return {
-        "total_trades": total_trades,
+        "total_trades": total_trades,   # todas as ordens executadas (buy + sell)
+        "total_buys":   total_buys,
+        "total_sells":  total_sells,
         "total_fees":   round(total_fees, 4),
         "total_volume": round(total_volume, 2),
         "total_pnl":    round(total_pnl, 2),

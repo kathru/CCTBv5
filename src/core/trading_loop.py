@@ -134,6 +134,9 @@ class TradingLoop:
             bus=self._bus,
             initial_capital=10000.0,
         )
+        # Rastreia posições abertas em memória (atualizado a cada fill)
+        self._positions: dict[str, "Position"] = {}
+        self._cash: float = 10000.0
 
         # ── ML Inference ──────────────────────────────────────
         self._ml = MLInferenceEngine(models_dir=MODELS_DIR)
@@ -250,6 +253,7 @@ class TradingLoop:
                 self._portfolio._state.initial_capital = usdt_balance
                 self._portfolio._state.cash_available  = usdt_balance
                 self._portfolio._state.total_value     = usdt_balance
+                self._cash = usdt_balance   # sincroniza tracker interno
                 self._runner.update_portfolio_value(usdt_balance)
                 logger.info(
                     "Portfolio calibrado com saldo OKX: USDT=%.2f", usdt_balance
@@ -497,6 +501,8 @@ class TradingLoop:
                     order.client_order_id, order.symbol, order.quantity, price,
                 )
                 await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
+                asyncio.create_task(self._oms._persist(order), name=f"persist_fill_{order.client_order_id[:8]}")
+                await self._on_fill_update_portfolio(order)
 
             elif eid:
                 # OKX demo path — query real status (timeout 5s para não bloquear o loop)
@@ -519,12 +525,100 @@ class TradingLoop:
                             order.filled_quantity, order.avg_fill_price,
                         )
                         await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
+                        # Persiste fill no DB e atualiza portfolio
+                        asyncio.create_task(self._oms._persist(order), name=f"persist_fill_{order.client_order_id[:8]}")
+                        await self._on_fill_update_portfolio(order)
                 except TimeoutError:
                     logger.debug("Fill check timeout eid=%s", eid)
                 except Exception as exc:
                     logger.debug("Fill check failed eid=%s: %s", eid, exc)
 
     # ── Main heartbeat loop ────────────────────────────────────────────────────
+
+    async def _on_fill_update_portfolio(self, order) -> None:
+        """Atualiza portfolio e posições em memória após um fill."""
+        from ..core.models import Position, PositionSide, PositionStatus
+        from ..core.models.order import OrderSide
+
+        try:
+            side_raw = str(getattr(order, "side", "")).lower()
+            is_buy   = side_raw in ("buy", "long")
+            symbol   = order.symbol
+            qty      = order.filled_quantity or order.quantity
+            price    = order.avg_fill_price or 0.0
+            fees     = order.fees_paid or 0.0
+
+            if is_buy:
+                # Abre ou amplia posição
+                cost = qty * price + fees
+                self._cash -= cost
+                if symbol in self._positions:
+                    pos = self._positions[symbol]
+                    # Recalcula preço médio
+                    total_qty = pos.quantity + qty
+                    pos.avg_entry_price = (
+                        (pos.quantity * pos.avg_entry_price + qty * price) / total_qty
+                    )
+                    pos.quantity    = total_qty
+                    pos.total_fees += fees
+                else:
+                    self._positions[symbol] = Position(
+                        symbol=symbol,
+                        side=PositionSide.LONG,
+                        strategy_id=order.strategy_id or "momentum_v2",
+                        quantity=qty,
+                        avg_entry_price=price,
+                        total_fees=fees,
+                    )
+            else:
+                # Fecha ou reduz posição
+                if symbol in self._positions:
+                    pos = self._positions[symbol]
+                    pnl = (price - pos.avg_entry_price) * qty - fees
+                    pos.realized_pnl += pnl
+                    self._cash += qty * price - fees
+                    pos.quantity -= qty
+                    if pos.quantity <= 1e-8:
+                        pos.status = PositionStatus.CLOSED
+                        del self._positions[symbol]
+                else:
+                    # Venda sem posição registrada (ex: restart)
+                    self._cash += qty * price - fees
+
+            # Atualiza PortfolioEngine com preços atuais
+            prices = {}
+            for sym in self._positions:
+                p = await self._cache.get_price(sym)
+                if p:
+                    prices[sym] = float(p)
+
+            self._portfolio.update(
+                positions=list(self._positions.values()),
+                current_prices=prices,
+                cash=max(self._cash, 0.0),
+            )
+
+            # Persiste posição no Redis para o dashboard
+            for sym, pos in self._positions.items():
+                cur_price = prices.get(sym, pos.avg_entry_price)
+                await self._cache.set_position(sym, {
+                    "symbol":           sym,
+                    "side":             pos.side.value,
+                    "quantity":         pos.quantity,
+                    "avg_entry":        pos.avg_entry_price,
+                    "current_price":    cur_price,
+                    "notional":         pos.quantity * cur_price,
+                    "unrealized_pnl":   (cur_price - pos.avg_entry_price) * pos.quantity,
+                    "realized_pnl":     pos.realized_pnl,
+                    "strategy_id":      pos.strategy_id,
+                })
+
+            logger.info(
+                "Portfolio atualizado: cash=%.2f positions=%s",
+                self._cash, list(self._positions.keys()),
+            )
+        except Exception as exc:
+            logger.error("_on_fill_update_portfolio error: %s", exc, exc_info=True)
 
     async def _run_loop(self) -> None:
         # Auto-reset: se o kill switch ficou SOFT por heartbeat_timeout no boot

@@ -172,13 +172,21 @@ class ExchangeSync:
             if price:
                 usdt_notional += float(price) * qty
 
-        # Se não temos capital rastreado ainda, usa o USDT atual como capital inicial
-        if self._portfolio._state.initial_capital <= 10.0:
-            # Provavelmente primeiro boot — usa USDT como capital inicial
-            self._portfolio._state.initial_capital = usdt_notional
-
         self._portfolio._state.cash_available = cash
         self._portfolio._state.total_value    = usdt_notional
+
+        # Capital inicial: salvo no Redis na primeira vez, restaurado nos reboots
+        INITIAL_CAPITAL_KEY = "portfolio:initial_capital_usdt"
+        stored_initial = await self._cache.get(INITIAL_CAPITAL_KEY)
+        if stored_initial:
+            initial_capital = float(stored_initial)
+        else:
+            # Primeiro boot — salva o capital inicial USDT atual
+            initial_capital = usdt_notional
+            await self._cache.set(INITIAL_CAPITAL_KEY, str(round(initial_capital, 4)), ttl=0)
+            logger.info("Capital inicial USDT registrado: %.2f", initial_capital)
+
+        self._portfolio._state.initial_capital = initial_capital
 
         total_eq = sum(d["usdValue"] for d in details)  # mantém para log
 

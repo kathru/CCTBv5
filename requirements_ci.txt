@@ -25,3 +25,4 @@ structlog>=24.1.0
 
 # src.strategies.ml.inference
 scikit-learn>=1.4.0
+scipy>=1.13.0

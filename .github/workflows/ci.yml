@@ -91,10 +91,14 @@ jobs:
           OKX_API_KEY=test
           OKX_SECRET_KEY=test
           OKX_PASSPHRASE=test
+          OKX_DEMO_API_KEY=test
+          OKX_DEMO_SECRET_KEY=test
+          OKX_DEMO_PASSPHRASE=test
           OKX_PAPER_TRADING=true
           DISCORD_WEBHOOK_URL=
           FINNHUB_TOKEN=test
           EODHD_TOKEN=test
+          BOT_INSTANCE=ci
           MAX_TOTAL_EXPOSURE=0.5
           MAX_DAILY_DRAWDOWN=0.03
           EOF

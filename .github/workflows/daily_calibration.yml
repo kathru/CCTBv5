@@ -7,7 +7,7 @@ on:
 
 jobs:
   calibrate:
-    name: Incremental Calibration
+    name: Incremental Calibration (1H)
     runs-on: ubuntu-latest
     permissions:
       contents: write       # necessário para push do calibration_coef.json
@@ -22,86 +22,96 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      # Instala deps mínimas para CI (sem fastapi/uvicorn/pytest/pyright)
       - name: Install dependencies
         run: pip install -r requirements_ci.txt
 
-      # Restaura banco SQLite do cache entre runs
+      # Cache do banco SQLite entre runs.
+      # Chave inclui "1h" para forçar cache limpo após migração de 30m → 1H.
       - name: Restore calibration DB
         id: cache-db
         uses: actions/cache@v4
         with:
           path: data/calibration.db
-          key: calibration-db-${{ runner.os }}
-          restore-keys: calibration-db-
+          key: calibration-db-1h-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            calibration-db-1h-${{ runner.os }}-
 
-      # Se banco não existe OU está corrompido, deleta para começar do zero
-      - name: Bootstrap DB from JSON cache (first run or corrupted)
+      # Bootstrap: só roda se o banco não existe ou está corrompido.
+      # Usa o cache JSON dos candles 1H já baixados no repo.
+      - name: Bootstrap DB (somente se ausente ou corrompido)
         run: |
-          if [ ! -f data/calibration.db ]; then
-            echo "Banco não encontrado — bootstrap via cache JSON..."
-          else
-            # Verifica integridade do banco
-            if ! python -c "import sqlite3; c=sqlite3.connect('data/calibration.db'); c.execute('PRAGMA integrity_check').fetchone(); print('DB OK')" 2>/dev/null; then
-              echo "Banco corrompido — removendo e recriando..."
-              rm -f data/calibration.db
+          if [ -f data/calibration.db ]; then
+            echo "Verificando integridade do banco..."
+            if python -c "
+          import sqlite3, sys
+          try:
+              c = sqlite3.connect('data/calibration.db')
+              result = c.execute('PRAGMA integrity_check').fetchone()
+              sys.exit(0 if result and result[0] == 'ok' else 1)
+          except Exception:
+              sys.exit(1)
+          " 2>/dev/null; then
+              echo "Banco OK — bootstrap ignorado."
             else
-              echo "Banco OK — skip bootstrap"
-              exit 0
+              echo "Banco corrompido — removendo e recriando do cache 1H..."
+              rm -f data/calibration.db
+              python scripts/recalibrate.py --from-cache --gran 1H
             fi
+          else
+            echo "Banco ausente — criando do cache 1H..."
+            python scripts/recalibrate.py --from-cache --gran 1H
           fi
-          python scripts/recalibrate.py --from-cache
         env:
           PYTHONPATH: .
 
-      # Calibração: bootstrap do JSON (garante DB válido) + novos candles da OKX
-      - name: Run incremental calibration
-        run: |
-          python scripts/recalibrate.py --from-cache
-          python scripts/recalibrate.py --incremental
+      # Baixa novos candles 1H da OKX e recalibra o Platt scaling.
+      - name: Incremental calibration (novos candles 1H + recalibração)
+        run: python scripts/recalibrate.py --incremental --gran 1H
         env:
           PYTHONPATH: .
 
-      # Roda WFO — timeout 8min para não travar o job; continua mesmo se falhar
-      - name: Run Walk-Forward Optimization
+      # WFO: testa robustez com walk-forward em dados 1H.
+      # continue-on-error: não falha o job se WFO não encontrar edge suficiente.
+      - name: Walk-Forward Optimization (1H)
         continue-on-error: true
-        timeout-minutes: 8
+        timeout-minutes: 10
         run: python scripts/walk_forward.py --auto-apply
         env:
           PYTHONPATH: .
 
-      # Persiste banco atualizado no cache
-      - name: Save calibration DB to cache
+      # Persiste banco atualizado no cache para o próximo run.
+      - name: Save calibration DB
         uses: actions/cache/save@v4
+        if: always()
         with:
           path: data/calibration.db
-          key: calibration-db-${{ runner.os }}-${{ github.run_id }}
+          key: calibration-db-1h-${{ runner.os }}-${{ github.run_id }}
 
-      # Verifica se houve mudança nos modelos (calibração e/ou WFO)
-      - name: Check for changes
+      # Verifica se houve mudança nos modelos.
+      - name: Check for model changes
         id: changes
         run: |
           git diff --quiet data/models/ && \
             echo "changed=false" >> $GITHUB_OUTPUT || \
             echo "changed=true" >> $GITHUB_OUTPUT
 
-      # Commita e faz push se houve atualização
+      # Commita e faz push se houve atualização dos modelos.
       - name: Commit updated models
         if: steps.changes.outputs.changed == 'true'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/models/
-          # Detecta se WFO atualizou coeficientes
           if git diff --staged --quiet data/models/calibration_coef.json; then
-            MSG="chore: recalibração incremental $(date -u '+%Y-%m-%d')"
+            MSG="chore: recalibração incremental 1H $(date -u '+%Y-%m-%d')"
           else
-            MSG="chore: recalibração + WFO auto-apply $(date -u '+%Y-%m-%d')"
+            MSG="chore: recalibração + WFO auto-apply 1H $(date -u '+%Y-%m-%d')"
           fi
           git commit -m "$MSG"
           git push
 
-      # Deploy no Oracle via SSH
+      # Deploy no Oracle: descarta mudanças locais no modelo antes do pull,
+      # depois reinicia o container (que lê o modelo do volume montado).
       - name: Deploy to Oracle
         if: steps.changes.outputs.changed == 'true'
         uses: appleboy/ssh-action@v1
@@ -111,10 +121,13 @@ jobs:
           key:      ${{ secrets.ORACLE_SSH_KEY }}
           script: |
             cd ${{ secrets.ORACLE_PROJECT_PATH }}
-            git pull
+            # Descarta qualquer mudança local no modelo (gerada por calibração direta)
+            git checkout -- data/models/ 2>/dev/null || true
+            git pull --ff-only
+            # Reinicia o container para recarregar calibration_coef.json do volume
             sudo docker compose restart cctb
             echo "Deploy concluído: $(date -u)"
 
       - name: Skip deploy (no changes)
         if: steps.changes.outputs.changed == 'false'
-        run: echo "Calibração sem mudanças — deploy ignorado."
+        run: echo "Calibração sem mudanças nos modelos — deploy ignorado."

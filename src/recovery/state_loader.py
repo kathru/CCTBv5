@@ -90,16 +90,24 @@ class StateLoader:
 
     async def _warm_cache(self, positions: list[dict]) -> None:
         """Push open positions into Redis for fast access."""
-        import uuid as _uuid
+        import decimal, uuid as _uuid
+        from datetime import datetime
+
+        def _safe(v):
+            """Converte tipos não-JSON para tipos primitivos."""
+            if isinstance(v, (_uuid.UUID, decimal.Decimal, datetime)):
+                return str(v)
+            if isinstance(v, dict):
+                return {kk: _safe(vv) for kk, vv in v.items()}
+            if isinstance(v, (list, tuple)):
+                return [_safe(i) for i in v]
+            return v
+
         for pos in positions:
             symbol = pos.get("symbol", "")
             if not symbol:
                 continue
-            # Serializa UUID e outros tipos não-JSON para string
-            safe_pos = {
-                k: str(v) if isinstance(v, (_uuid.UUID,)) else v
-                for k, v in pos.items()
-            }
+            safe_pos = {k: _safe(v) for k, v in pos.items()}
             await self._cache.set_position(symbol, safe_pos)
             logger.debug("Cache warmed for symbol=%s", symbol)
 

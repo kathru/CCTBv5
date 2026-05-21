@@ -270,6 +270,29 @@ class TradingLoop:
                     sync_result["orders_imported"],
                 )
 
+            # Carrega posições exchange_sync em self._positions para permitir vendas
+            # Sem isso, o bot não sabe que tem BTC/ETH/SOL e ignora sinais de saída.
+            from ..core.models import Position, PositionSide
+            for symbol, qty in sync_result.get("crypto_positions", {}).items():
+                try:
+                    price_raw = await self._cache.get_price(symbol)
+                    price = float(price_raw) if price_raw else 0.0
+                    if qty > 0:
+                        self._positions[symbol] = Position(
+                            symbol=symbol,
+                            side=PositionSide.LONG,
+                            strategy_id="exchange_sync",
+                            quantity=qty,
+                            avg_entry_price=price,
+                            total_fees=0.0,
+                        )
+                        logger.info(
+                            "Posição carregada: %s qty=%.6f @ %.2f (disponível para venda)",
+                            symbol, qty, price,
+                        )
+                except Exception as pos_exc:
+                    logger.debug("Erro ao carregar posição %s: %s", symbol, pos_exc)
+
             # Cria ExitPlans para posições sincronizadas da exchange
             for symbol, qty in sync_result.get("crypto_positions", {}).items():
                 try:
@@ -368,23 +391,65 @@ class TradingLoop:
           2. Sizing     — calcula quantidade usando kelly_fraction e preço atual
           3. OMS        — cria e submete ordem de mercado
         """
-        signal = event.signal
+        from ..core.models.signal import SignalDirection
 
-        # Bloqueia nova entrada se já há posição ou ordem aberta no símbolo
-        open_orders = self._oms.get_open_orders()
+        signal    = event.signal
+        is_entry  = signal.direction == SignalDirection.LONG
+        is_exit   = signal.direction in (SignalDirection.SHORT, SignalDirection.FLAT)
+
+        open_orders    = self._oms.get_open_orders()
+        existing_plans = getattr(self._position_monitor, '_plans', {})
+
+        # ── SAÍDA (SELL/FLAT): vende posição aberta ────────────────────────────
+        if is_exit:
+            if signal.symbol not in self._positions:
+                logger.debug(
+                    "Sinal de saída ignorado — sem posição aberta para %s", signal.symbol
+                )
+                return
+            # Bloqueia se já há ordem de venda pendente para o símbolo
+            sell_pending = any(
+                o.symbol == signal.symbol and str(getattr(o, "side", "")).lower() in ("sell", "short")
+                for o in open_orders
+            )
+            if sell_pending:
+                logger.debug("Ordem de venda já pendente para %s", signal.symbol)
+                return
+
+            pos       = self._positions[signal.symbol]
+            precision = QTY_PRECISION.get(signal.symbol, 4)
+            quantity  = round(pos.quantity, precision)
+            min_qty   = MIN_QTY.get(signal.symbol, 0.0001)
+
+            if quantity < min_qty:
+                logger.info(
+                    "Venda ignorada — qty %.6f < mínimo %.6f para %s",
+                    quantity, min_qty, signal.symbol,
+                )
+                return
+
+            price_raw = await self._cache.get_price(signal.symbol)
+            price = float(price_raw) if price_raw else pos.avg_entry_price
+            logger.info(
+                "SELL %s qty=%.6f @ ~%.2f (entrada=%.2f strat=%s)",
+                signal.symbol, quantity, price, pos.avg_entry_price, pos.strategy_id,
+            )
+            await self._oms.create_order_from_signal(event, quantity)
+            return
+
+        # ── ENTRADA (BUY/LONG): bloqueia se já há posição ou ordem aberta ─────
         already_open = any(o.symbol == signal.symbol for o in open_orders)
         if not already_open:
-            existing_plans = getattr(self._position_monitor, '_plans', {})
             already_open = signal.symbol in existing_plans
 
         if already_open:
             logger.debug(
-                "Sinal ignorado — posição/ordem já aberta para %s", signal.symbol
+                "Sinal de entrada ignorado — posição/ordem já aberta para %s", signal.symbol
             )
             return
 
         # 1. Avaliação de risco
-        portfolio_value = self._portfolio.state.total_value or 10000.0
+        portfolio_value = self._portfolio.state.total_value or 85_000.0
         risk_ctx = RiskContext(
             portfolio_value=portfolio_value,
             open_positions=[],
@@ -423,8 +488,8 @@ class TradingLoop:
             "MEAN_REVERTING_CHOP":    0.08,
             "HIGH_CORRELATION_RISK":  0.05,
         }
-        kelly    = min(kelly, KELLY_CAP.get(regime, 0.08))
-        notional = portfolio_value * kelly
+        kelly     = min(kelly, KELLY_CAP.get(regime, 0.08))
+        notional  = portfolio_value * kelly
         precision = QTY_PRECISION.get(signal.symbol, 4)
         quantity  = round(notional / price, precision)
         min_qty   = MIN_QTY.get(signal.symbol, 0.0001)
@@ -437,11 +502,9 @@ class TradingLoop:
             return
 
         logger.info(
-            "Sinal aprovado: %s %s regime=%s qty=%.6f price=%.2f "
-            "notional=%.2f kelly=%.1f%% (cap=%.0f%%)",
-            signal.direction, signal.symbol, regime,
-            quantity, price, notional, kelly * 100,
-            KELLY_CAP.get(regime, 0.08) * 100,
+            "BUY %s regime=%s qty=%.6f price=%.2f notional=%.2f kelly=%.1f%% (cap=%.0f%%)",
+            signal.symbol, regime, quantity, price, notional,
+            kelly * 100, KELLY_CAP.get(regime, 0.08) * 100,
         )
 
         # 3. Criar e submeter ordem via OMS

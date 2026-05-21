@@ -257,15 +257,15 @@ class TradingLoop:
             )
             sync_result = await sync.run()
 
-            # Atualiza tracker interno com saldo real
+            # Atualiza tracker interno — usa USDT como base do portfolio
             usdt = sync_result["usdt_balance"]
-            total_eq = sync_result["total_equity_usd"]
-            if usdt > 0 or total_eq > 0:
+            portfolio_usdt = self._portfolio.state.total_value  # já calculado no sync
+            if usdt > 0:
                 self._cash = usdt
-                self._runner.update_portfolio_value(total_eq or usdt)
+                self._runner.update_portfolio_value(portfolio_usdt)
                 logger.info(
-                    "ExchangeSync: USDT=%.2f equity=%.2f posições=%s ordens=%d",
-                    usdt, total_eq,
+                    "ExchangeSync: USDT=%.2f portfolio_USDT=%.2f posições=%s ordens=%d",
+                    usdt, portfolio_usdt,
                     list(sync_result["crypto_positions"].keys()),
                     sync_result["orders_imported"],
                 )

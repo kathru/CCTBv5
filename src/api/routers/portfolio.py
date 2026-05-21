@@ -92,8 +92,30 @@ async def portfolio_summary(request: Request) -> dict:
                 "unrealized_pnl": unreal,
             }
 
-    total_value = s.total_value  # já vem correto do ExchangeSync
+    # Portfolio em USDT: cash disponível + notional das posições abertas do bot
+    # NÃO inclui BTC/ETH/SOL pré-existentes — só o capital operacional do bot
+    cash_value = s.cash_available
+    total_value = cash_value + notional_total if notional_total > 0 else s.total_value
     exposure_pct = notional_total / total_value if total_value > 0 and notional_total > 0 else s.total_exposure_pct
+
+    # Retorno relativo ao capital inicial (em USDT)
+    initial = s.initial_capital if s.initial_capital > 0 else total_value
+    total_return_pct = (total_value - initial) / initial if initial > 0 else 0.0
+
+    # P&L realizado: soma das ordens SELL - ordens BUY fechadas (em USDT)
+    realized_pnl = s.realized_pnl
+    if db:
+        try:
+            rows = await db.fetch(
+                "SELECT side, SUM(filled_quantity * avg_fill_price) as vol "
+                "FROM orders WHERE status='filled' GROUP BY side"
+            )
+            sells = sum(float(r["vol"] or 0) for r in rows if str(r["side"]).upper() in ("SELL","SHORT"))
+            buys  = sum(float(r["vol"] or 0) for r in rows if str(r["side"]).upper() in ("BUY","LONG"))
+            if buys > 0 or sells > 0:
+                realized_pnl = round(sells - buys, 4)
+        except Exception:
+            pass
 
     return {
         "available":           True,
@@ -103,10 +125,10 @@ async def portfolio_summary(request: Request) -> dict:
         "total_exposure_pct":  round(exposure_pct, 4),
         "open_position_count": open_count,
         "positions":           positions_data,
-        "realized_pnl":        round(s.realized_pnl, 4),
+        "realized_pnl":        realized_pnl,
         "unrealized_pnl":      round(unrealized, 4),
-        "daily_pnl":           round(s.daily_pnl, 4),
-        "total_return_pct":    round(s.total_return_pct, 4),
+        "daily_pnl":           round(unrealized, 4),   # approximation
+        "total_return_pct":    round(total_return_pct, 4),
         "drawdown_pct":        round(s.drawdown_pct, 4),
         "portfolio_beta":      round(s.portfolio_beta, 3),
         "avg_correlation":     round(s.avg_correlation, 3),

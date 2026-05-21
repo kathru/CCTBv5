@@ -160,12 +160,27 @@ class ExchangeSync:
 
         usdt = next((d for d in details if d["ccy"] == "USDT"), {})
         cash = usdt.get("cashBal", 0.0)
-        total_eq = sum(d["usdValue"] for d in details)
 
-        # Atualiza PortfolioEngine com equity total real
-        self._portfolio._state.cash_available  = cash
-        self._portfolio._state.total_value     = total_eq
-        self._portfolio._state.initial_capital = total_eq  # sempre reflete estado real
+        # Portfolio rastreado em USDT (capital operacional do bot).
+        # Não inclui BTC/ETH/SOL pré-existentes — só o USDT que o bot usa para operar.
+        # Isso normaliza retorno %, drawdown e todos os outros índices.
+        usdt_notional = cash  # começa com o USDT disponível
+
+        # Adiciona unrealized P&L das posições do bot (capital investido em crypto)
+        for symbol, qty in crypto_positions.items():
+            price = await self._cache.get_price(symbol)
+            if price:
+                usdt_notional += float(price) * qty
+
+        # Se não temos capital rastreado ainda, usa o USDT atual como capital inicial
+        if self._portfolio._state.initial_capital <= 10.0:
+            # Provavelmente primeiro boot — usa USDT como capital inicial
+            self._portfolio._state.initial_capital = usdt_notional
+
+        self._portfolio._state.cash_available = cash
+        self._portfolio._state.total_value    = usdt_notional
+
+        total_eq = sum(d["usdValue"] for d in details)  # mantém para log
 
         pos_repo = PositionRepository(self._db) if self._db else None
 

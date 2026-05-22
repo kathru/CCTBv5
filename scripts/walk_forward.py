@@ -42,10 +42,10 @@ sys.path.insert(0, str(ROOT))
 
 load_dotenv(ROOT / ".env")
 
-from src.core.models import Candle
-from src.replay.backtest_engine import BacktestEngine
-from src.strategies.ml.inference import PlattCalibrator
-from src.strategies.momentum.momentum_strategy import MomentumStrategy
+from src.core.models import Candle  # noqa: E402
+from src.replay.backtest_engine import BacktestEngine  # noqa: E402
+from src.strategies.ml.inference import PlattCalibrator  # noqa: E402
+from src.strategies.momentum.momentum_strategy import MomentumStrategy  # noqa: E402
 
 logging.basicConfig(
     level=logging.WARNING,   # silencia logs da estratégia durante backtest
@@ -151,37 +151,95 @@ def to_candle_objects(raw: list[dict], symbol: str) -> list[Candle]:
 
 # ── Calibração Platt (mesmo algoritmo do recalibrate.py) ─────────────────────
 
+def _atr_wfo(highs: list[float], lows: list[float], closes: list[float],
+             period: int = 14) -> float:
+    n = min(period, len(highs) - 1)
+    if n <= 0:
+        return (highs[0] - lows[0]) if highs else 0.0
+    trs = [max(highs[i] - lows[i], abs(highs[i] - closes[i+1]),
+               abs(lows[i] - closes[i+1])) for i in range(n)]
+    return sum(trs) / len(trs) if trs else 0.0
+
+
+def _bollinger_wfo(closes: list[float], period: int = 20) -> tuple[float, float, float]:
+    import math as _math
+    n = min(period, len(closes))
+    if n < 2:
+        c = closes[0]
+        return c, c, c
+    window = closes[:n]
+    mid = sum(window) / n
+    std = _math.sqrt(sum((x - mid) ** 2 for x in window) / n)
+    return mid + 2 * std, mid, mid - 2 * std
+
+
+def _compute_m8_wfo(closes: list[float], highs: list[float], lows: list[float]) -> float:
+    """M8 Volatility State — espelho de volatility_state.compute_vol_state()."""
+    if len(closes) < 22:
+        return 0.5
+    price    = closes[0]
+    atr_now  = _atr_wfo(highs, lows, closes, 14)
+    atr_prev = _atr_wfo(highs[7:], lows[7:], closes[7:], 14)
+    bb_upper, _, bb_lower = _bollinger_wfo(closes, 20)
+    atr_pct    = atr_now / price if price > 0 else 0.0
+    atr_change = atr_now / atr_prev if atr_prev > 0 else 1.0
+    bb_w_pct   = (bb_upper - bb_lower) / price if price > 0 else 0.0
+    n_dir = min(10, len(closes) - 1)
+    ups   = sum(1 for i in range(n_dir) if closes[i] > closes[i+1])
+    dir_c = max(ups, n_dir - ups) / n_dir if n_dir > 0 else 0.5
+    STATE_M8 = {"EXPANDING":0.80,"TREND":0.70,"COMPRESSED":0.65,
+                "MEAN_REVERTING":0.35,"CHAOTIC":0.20}
+    if atr_pct > 0.025 and dir_c < 0.45:
+        state = "CHAOTIC"
+    elif atr_change > 1.15 and dir_c > 0.55:
+        state = "EXPANDING"
+    elif atr_pct < 0.008 or bb_w_pct < 0.015:
+        state = "COMPRESSED"
+    elif dir_c > 0.60 and 0.008 <= atr_pct <= 0.025:
+        state = "TREND"
+    else:
+        state = "MEAN_REVERTING"
+    return STATE_M8[state]
+
+
 def score_raw(candles_window: list[dict]) -> float | None:
     """
-    Computa score bruto V4 v2 para um ponto.
+    Computa score bruto M1-M8 para um ponto.
     DEVE ser idêntico ao _score_signal() em momentum_strategy.py.
+
+    Pesos: M1=18% M2=18% M3=14% M4=14% M5=6% M6=10%(neutro) M7=9%(neutro) M8=11%
+
+    M6 (Futures Flow): neutro 0.5 — requer API OKX em tempo real
+    M7 (Rel.Strength): neutro 0.5 — requer multi-símbolo simultâneo
+    M8 (Vol.State):    calculado de candles
     """
-    if len(candles_window) < 21:
+    if len(candles_window) < 25:
         return None
 
-    closes  = [c["close"]  for c in candles_window[:21]]
+    closes  = [c["close"]  for c in candles_window[:25]]
     opens   = [c["open"]   for c in candles_window[:10]]
-    highs   = [c["high"]   for c in candles_window[:10]]
-    lows    = [c["low"]    for c in candles_window[:10]]
+    highs   = [c["high"]   for c in candles_window[:25]]
+    lows    = [c["low"]    for c in candles_window[:25]]
     volumes = [c["volume"] for c in candles_window[:20]]
 
-    # M1 — Adaptive Momentum (25%)
-    atr = sum(highs[i]-lows[i] for i in range(min(10,len(highs))))/min(10,len(highs))
+    # M1 — Adaptive Momentum (18%)
+    atr  = sum(highs[i]-lows[i] for i in range(min(10,len(highs))))/min(10,len(highs))
     norm = max(atr*2, closes[0]*0.005)
+    r1   = (closes[0]-closes[1])/closes[1]   if len(closes)>1  and closes[1]>0  else 0
     r5   = (closes[0]-closes[5])/closes[5]   if len(closes)>5  and closes[5]>0  else 0
     r10  = (closes[0]-closes[10])/closes[10] if len(closes)>10 and closes[10]>0 else 0
     r20  = (closes[0]-closes[20])/closes[20] if len(closes)>20 and closes[20]>0 else 0
-    mw   = r5*0.5 + r10*0.3 + r20*0.2
+    mw   = r1*0.30 + r5*0.30 + r10*0.25 + r20*0.15
     m1   = min(max((mw/(norm/closes[0]))*0.5+0.5, 0.0), 1.0)
 
-    # M2 — Trend Consistency (25%)
-    n = min(5, len(closes)-1)
+    # M2 — Trend Consistency (18%)
+    n    = min(6, len(closes)-1)
     bull = sum(1 for i in range(n) if closes[i]>opens[i])/n if n>0 else 0.5
-    hh = sum(1 for i in range(min(4,len(highs)-1)) if highs[i]>highs[i+1])/4
-    hl = sum(1 for i in range(min(4,len(lows)-1))  if lows[i]>lows[i+1])/4
-    m2 = bull*0.5 + (hh+hl)/2*0.5
+    hh   = sum(1 for i in range(min(4,len(highs)-1)) if highs[i]>highs[i+1])/4
+    hl   = sum(1 for i in range(min(4,len(lows)-1))  if lows[i]>lows[i+1])/4
+    m2   = bull*0.5 + (hh+hl)/2*0.5
 
-    # M3 — Volume Confirmation (20%)
+    # M3 — Volume Confirmation (14%)
     avg5  = sum(volumes[:5])/5   if len(volumes)>=5  else volumes[0] if volumes else 1
     avg20 = sum(volumes[:20])/20 if len(volumes)>=20 else avg5
     vr  = min(volumes[0]/avg5, 3.0)/3.0 if avg5>0 else 0.5
@@ -189,7 +247,7 @@ def score_raw(candles_window: list[dict]) -> float | None:
     cc  = 1.0 if closes[0]>opens[0] and volumes[0]>avg20 else 0.4
     m3  = vr*0.4 + (vt-0.3)/1.7*0.3 + cc*0.3
 
-    # M4 — Regime Strength (20%)
+    # M4 — Regime Strength (14%)
     sma5  = sum(closes[:5])/5
     sma20 = sum(closes[:20])/20
     dist  = (sma5-sma20)/sma20 if sma20>0 else 0
@@ -197,12 +255,22 @@ def score_raw(candles_window: list[dict]) -> float | None:
     m4f   = 0.85 if sma5>sma20 else 0.45
     m4    = m4r*0.6 + m4f*0.4
 
-    # M5 — Candle Structure (10%)
+    # M5 — Candle Structure (6%)
     cs = [(closes[i]-lows[i])/(highs[i]-lows[i]) if highs[i]>lows[i] else 0.5
           for i in range(min(3, len(closes)))]
     m5 = sum(cs)/len(cs) if cs else 0.5
 
-    return m1*0.25 + m2*0.25 + m3*0.20 + m4*0.20 + m5*0.10
+    # M6 — Futures Flow (10%) — neutro no backtest histórico
+    m6 = 0.5
+
+    # M7 — Relative Strength (9%) — neutro no backtest histórico
+    m7 = 0.5
+
+    # M8 — Volatility State (11%) — calculado de candles
+    m8 = _compute_m8_wfo(closes, highs, lows)
+
+    return (m1*0.18 + m2*0.18 + m3*0.14 + m4*0.14 +
+            m5*0.06 + m6*0.10 + m7*0.09 + m8*0.11)
 
 
 def fit_platt_on_period(candles: list[dict], forward: int = 5,
@@ -218,8 +286,8 @@ def fit_platt_on_period(candles: list[dict], forward: int = 5,
     scores, labels = [], []
     n = len(candles)
 
-    for i in range(20, n - forward):
-        window = list(reversed(candles[max(0, i-20):i+1]))
+    for i in range(25, n - forward):
+        window = list(reversed(candles[max(0, i-25):i+1]))
         score  = score_raw(window)
         if score is None or score < min_score:   # era 0.3 — contaminava com sinais fracos
             continue
@@ -343,11 +411,11 @@ async def run_fold_backtest(
         seed=42,
     )
 
-    if len(test_candles) < 25:
+    if len(test_candles) < 30:
         return {"trades": 0, "win_rate": 0, "expectancy": 0,
                 "pf": 0, "sharpe": 0, "max_dd": 0, "return": 0}
 
-    result = await engine.run(test_candles, warmup=20)
+    result = await engine.run(test_candles, warmup=25)
 
     pnls    = [t.pnl for t in result.trades]
     returns = [t.pnl_pct for t in result.trades]
@@ -502,7 +570,6 @@ def print_report(wfo: WalkForwardResult, symbol: str) -> None:
 
     # Interpretação
     log.info("  INTERPRETAÇÃO:")
-    valid = [f for f in wfo.folds if f["valid"]]
     if summary["avg_oos_return"] > 0:
         log.info("  ✓ Retorno OOS positivo em média — estratégia tem edge real")
     else:

@@ -58,7 +58,7 @@ DEFAULT_FORWARD     = 10   # 10 × 1H = 10h (janela de avaliação)
 DEFAULT_FEE         = 0.005
 DEFAULT_MIN_SCORE   = 0.40
 
-LOOKBACK = 20   # candles de janela para score_signal
+LOOKBACK = 25   # candles de janela para score_signal (25 para M8 Bollinger 20 + buffer)
 
 REGIME_THRESHOLDS_DEFAULT: dict[str, float] = {
     "TREND_EXPANSION":        0.56,
@@ -284,15 +284,118 @@ def detect_regime(closes: list[float], volumes: list[float]) -> str:
     return "MEAN_REVERTING_CHOP"
 
 
+def _atr_recal(highs: list[float], lows: list[float], closes: list[float],
+               period: int = 14) -> float:
+    n = min(period, len(highs) - 1)
+    if n <= 0:
+        return (highs[0] - lows[0]) if highs else 0.0
+    trs = [max(highs[i] - lows[i], abs(highs[i] - closes[i+1]),
+               abs(lows[i] - closes[i+1])) for i in range(n)]
+    return sum(trs) / len(trs) if trs else 0.0
+
+
+def _bollinger_recal(closes: list[float], period: int = 20) -> tuple[float, float, float]:
+    import math as _math
+    n = min(period, len(closes))
+    if n < 2:
+        c = closes[0]
+        return c, c, c
+    window = closes[:n]
+    mid = sum(window) / n
+    std = _math.sqrt(sum((x - mid) ** 2 for x in window) / n)
+    return mid + 2 * std, mid, mid - 2 * std
+
+
+def _compute_m8_recal(closes: list[float], highs: list[float], lows: list[float]) -> float:
+    """M8 Volatility State — espelho de volatility_state.compute_vol_state()."""
+    if len(closes) < 22:
+        return 0.5
+    price    = closes[0]
+    atr_now  = _atr_recal(highs, lows, closes, 14)
+    atr_prev = _atr_recal(highs[7:], lows[7:], closes[7:], 14)
+    bb_upper, _, bb_lower = _bollinger_recal(closes, 20)
+    atr_pct    = atr_now / price if price > 0 else 0.0
+    atr_change = atr_now / atr_prev if atr_prev > 0 else 1.0
+    bb_w_pct   = (bb_upper - bb_lower) / price if price > 0 else 0.0
+    n_dir = min(10, len(closes) - 1)
+    ups   = sum(1 for i in range(n_dir) if closes[i] > closes[i+1])
+    dir_c = max(ups, n_dir - ups) / n_dir if n_dir > 0 else 0.5
+    STATE_M8 = {"EXPANDING":0.80,"TREND":0.70,"COMPRESSED":0.65,
+                "MEAN_REVERTING":0.35,"CHAOTIC":0.20}
+    if atr_pct > 0.025 and dir_c < 0.45:
+        state = "CHAOTIC"
+    elif atr_change > 1.15 and dir_c > 0.55:
+        state = "EXPANDING"
+    elif atr_pct < 0.008 or bb_w_pct < 0.015:
+        state = "COMPRESSED"
+    elif dir_c > 0.60 and 0.008 <= atr_pct <= 0.025:
+        state = "TREND"
+    else:
+        state = "MEAN_REVERTING"
+    return STATE_M8[state]
+
+
 def score_signal(closes: list[float], highs: list[float],
+                 lows: list[float], opens: list[float],
                  volumes: list[float], regime: str) -> float:
-    momentum = (closes[0] - closes[-1]) / closes[-1] if closes[-1] > 0 else 0
-    m1 = min(max((momentum + 0.05) / 0.10, 0.0), 1.0)
-    m2 = 1.0 if (len(highs) >= 3 and highs[0] > highs[1] > highs[2]) else 0.4
-    avg_v = float(np.mean(volumes[:5])) if volumes else 1.0
-    m3 = min(volumes[0] / avg_v, 2.0) / 2.0 if avg_v > 0 else 0.5
-    m4 = 0.8 if regime == "TREND_EXPANSION" else 0.5
-    return m1 * 0.3 + m2 * 0.3 + m3 * 0.2 + m4 * 0.2
+    """
+    Score M1-M8 espelho de MomentumStrategy._score_signal().
+    Pesos: M1=18% M2=18% M3=14% M4=14% M5=6% M6=10%(neutro) M7=9%(neutro) M8=11%
+
+    M6 (Futures Flow): neutro 0.5 — requer API OKX em tempo real
+    M7 (Rel.Strength): neutro 0.5 — requer multi-símbolo simultâneo
+    """
+    n = len(closes)
+
+    # M1 Adaptive Momentum
+    atr  = sum(highs[i]-lows[i] for i in range(min(10,len(highs))))/min(10,len(highs))
+    norm = max(atr*2, closes[0]*0.005)
+    r1   = (closes[0]-closes[1])/closes[1]   if n>1  and closes[1]>0  else 0
+    r5   = (closes[0]-closes[5])/closes[5]   if n>5  and closes[5]>0  else 0
+    r10  = (closes[0]-closes[10])/closes[10] if n>10 and closes[10]>0 else 0
+    r20  = (closes[0]-closes[20])/closes[20] if n>20 and closes[20]>0 else 0
+    mw   = r1*0.30 + r5*0.30 + r10*0.25 + r20*0.15
+    m1   = min(max((mw/(norm/closes[0]))*0.5+0.5, 0.0), 1.0)
+
+    # M2 Trend Consistency
+    nb   = min(6, n-1)
+    bull = sum(1 for i in range(nb) if closes[i]>opens[i])/nb if nb>0 else 0.5
+    hh   = sum(1 for i in range(min(4,len(highs)-1)) if highs[i]>highs[i+1])/4
+    hl   = sum(1 for i in range(min(4,len(lows)-1))  if lows[i]>lows[i+1])/4
+    m2   = bull*0.5 + (hh+hl)/2*0.5
+
+    # M3 Volume Confirmation
+    avg5  = sum(volumes[:5])/5   if len(volumes)>=5  else volumes[0] if volumes else 1
+    avg20 = sum(volumes[:20])/20 if len(volumes)>=20 else avg5
+    vr    = min(volumes[0]/avg5, 3.0)/3.0 if avg5>0 else 0.5
+    vt    = min(max(sum(volumes[:3])/sum(volumes[3:6]),0.3),2.0) if len(volumes)>=6 and sum(volumes[3:6])>0 else 1.0
+    cc    = 1.0 if closes[0]>opens[0] and volumes[0]>avg20 else 0.4
+    m3    = vr*0.4 + (vt-0.3)/1.7*0.3 + cc*0.3
+
+    # M4 Regime Strength
+    sma5  = sum(closes[:5])/5
+    sma20 = sum(closes[:20])/20 if n>=20 else sma5
+    dist  = (sma5-sma20)/sma20 if sma20>0 else 0
+    m4r   = min(max((dist+0.02)/0.04, 0.0), 1.0)
+    m4f   = 0.85 if sma5>sma20 else 0.45
+    m4    = m4r*0.6 + m4f*0.4
+
+    # M5 Candle Structure
+    cs = [(closes[i]-lows[i])/(highs[i]-lows[i]) if highs[i]>lows[i] else 0.5
+          for i in range(min(3, n))]
+    m5 = sum(cs)/len(cs) if cs else 0.5
+
+    # M6 Futures Flow — neutro no backtest histórico
+    m6 = 0.5
+
+    # M7 Relative Strength — neutro no backtest histórico
+    m7 = 0.5
+
+    # M8 Volatility State — calculado de candles
+    m8 = _compute_m8_recal(closes, highs, lows)
+
+    return (m1*0.18 + m2*0.18 + m3*0.14 + m4*0.14 +
+            m5*0.06 + m6*0.10 + m7*0.09 + m8*0.11)
 
 
 def platt_calibrate(score: float, A: float, B: float) -> float:
@@ -310,6 +413,8 @@ def build_samples(candles: list[dict], symbol: str, gran: str,
     """
     closes  = [c["close"]  for c in candles]
     highs   = [c["high"]   for c in candles]
+    lows    = [c["low"]    for c in candles]
+    opens   = [c["open"]   for c in candles]
     volumes = [c["volume"] for c in candles]
     n = len(candles)
     samples: list[dict] = []
@@ -317,13 +422,15 @@ def build_samples(candles: list[dict], symbol: str, gran: str,
     for i in range(start_idx, n - forward):
         w_close = list(reversed(closes[max(0, i - LOOKBACK):i + 1]))
         w_high  = list(reversed(highs[max(0, i - LOOKBACK):i + 1]))
+        w_low   = list(reversed(lows[max(0, i - LOOKBACK):i + 1]))
+        w_open  = list(reversed(opens[max(0, i - LOOKBACK):i + 1]))
         w_vol   = list(reversed(volumes[max(0, i - LOOKBACK):i + 1]))
 
         regime = detect_regime(w_close, w_vol)
         if regime in {"PANIC_LIQUIDATION", "LIQUIDITY_VACUUM"}:
             continue
 
-        score = score_signal(w_close, w_high, w_vol, regime)
+        score = score_signal(w_close, w_high, w_low, w_open, w_vol, regime)
         if score < min_score:
             continue
 

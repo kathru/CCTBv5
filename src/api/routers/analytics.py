@@ -1384,3 +1384,33 @@ async def get_volatility_state(request: Request) -> dict:
         "summary":     summary,
         "computed_at": datetime.now(UTC).isoformat(),
     }
+
+
+# ── Phase 13 — Meta Regime ────────────────────────────────────────────────────
+
+@router.get("/meta_regime")
+async def get_meta_regime(request: Request) -> dict:
+    """
+    Phase 13 — Meta Regime: regime macro cross-asset (BTC+ETH+SOL).
+
+    Lê do Redis o dado calculado pelo MetaRegimeDetector (cache 15min).
+    Retorna regime, features, distâncias aos arquétipos e multiplicador de threshold.
+    """
+    cache = request.app.state.cache
+    raw   = await cache.get("meta_regime")
+
+    if not raw:
+        return {
+            "regime":         "UNKNOWN",
+            "description":    "Collector ainda não rodou — aguarde 15min após boot",
+            "color":          "muted",
+            "confidence":     0.0,
+            "threshold_mult": 1.0,
+            "features_raw":   {},
+            "has_data":       False,
+            "computed_at":    datetime.now(UTC).isoformat(),
+        }
+
+    data = raw if isinstance(raw, dict) else json.loads(raw)
+    data["has_data"] = True
+    return data

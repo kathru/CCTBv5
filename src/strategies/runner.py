@@ -49,6 +49,7 @@ class StrategyRunner:
         futures_flow=None,       # FuturesFlowCollector | None  (M6)
         relative_strength=None,  # RelativeStrengthCollector | None  (M7)
         vol_state=None,          # VolatilityStateCollector | None   (M8)
+        meta_regime=None,        # MetaRegimeDetector | None         (Phase 13)
     ) -> None:
         self._bus = bus
         self._market = market
@@ -57,6 +58,7 @@ class StrategyRunner:
         self._futures_flow      = futures_flow       # injeta M6 no contexto
         self._relative_strength = relative_strength  # injeta M7 no contexto
         self._vol_state         = vol_state          # injeta M8 no contexto
+        self._meta_regime       = meta_regime        # injeta meta regime no contexto
         self._strategies: dict[str, BaseStrategy] = {}
         self._queue: asyncio.Queue | None = None
         self._task: asyncio.Task | None = None
@@ -262,6 +264,14 @@ class StrategyRunner:
             except Exception as exc:
                 logger.debug("vol_state.get_state(%s) falhou: %s", symbol, exc)
 
+        # ── Meta Regime (Phase 13) — macro threshold modulator ───────────────
+        meta_regime_data = None
+        if self._meta_regime is not None:
+            try:
+                meta_regime_data = await self._meta_regime.get_regime()
+            except Exception as exc:
+                logger.debug("meta_regime.get_regime() falhou: %s", exc)
+
         return StrategyContext(
             symbol=symbol,
             candles_1h=candles_1h,
@@ -274,6 +284,7 @@ class StrategyRunner:
                 "futures_flow":      futures_flow_data,
                 "relative_strength": rs_data,
                 "vol_state":         vol_data,
+                "meta_regime":       meta_regime_data,
             },
         )
 

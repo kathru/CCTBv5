@@ -143,15 +143,26 @@ class MomentumStrategy(BaseStrategy):
         threshold  = REGIME_THRESHOLDS.get(regime, 0.56)
         kelly_mult = REGIME_KELLY_MULT.get(regime, 0.5)
 
+        # ── Phase 13: Meta Regime — modula threshold macro ───────────────────
+        # Multiplica o threshold pelo modificador do regime macro (cross-asset).
+        # RISK_ON ×0.92 → mais fácil entrar | RISK_OFF ×1.20 → muito difícil
+        # Nunca bloqueia sozinho — apenas facilita/dificulta a passagem.
+        meta_regime_data = (ctx.extra or {}).get("meta_regime") or {}
+        meta_regime_name = meta_regime_data.get("regime", "UNKNOWN")
+        meta_thr_mult    = float(meta_regime_data.get("threshold_mult", 1.0))
+        threshold        = round(min(threshold * meta_thr_mult, 0.99), 4)
+
         # ── Score e fatores — calculados SEMPRE (mesmo em regime bloqueado) ──
         # Garantia: o dashboard sempre exibe M1-M7 com valores reais,
         # independente do resultado final. Permite diagnóstico contínuo.
         score, factors = self._score_signal(ctx, regime)
+        # Adiciona meta_thr_mult ao factors (calculado no evaluate, não no _score_signal)
+        factors["meta_thr_mult"] = round(meta_thr_mult, 3)
         calibrated     = self._calibrate(score)
 
         if regime in BLOCKED_REGIMES:
             _log("REGIME_BLOCKED",
-                 f"Regime bloqueado: {regime} (sem entradas LONG em bear/panic)",
+                 f"Regime bloqueado: {regime} | meta={meta_regime_name}",
                  regime=regime, score=score, calibrated=calibrated,
                  threshold=threshold, factors=factors)
             return None

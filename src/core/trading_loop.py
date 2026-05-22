@@ -28,6 +28,7 @@ from ..alerts.listener import AlertListener
 from ..exchange.okx.client import OKXClient
 from ..market.engine import MarketEngine
 from ..market.futures_flow import FuturesFlowCollector
+from ..market.meta_regime import MetaRegimeDetector
 from ..market.relative_strength import RelativeStrengthCollector
 from ..market.volatility_state import VolatilityStateCollector
 from ..metrics.infra_metrics import InfraMetrics
@@ -168,6 +169,13 @@ class TradingLoop:
             symbols=SYMBOLS,
         )
 
+        # ── Meta Regime Detector (Phase 13) — macro threshold modulator ───────
+        self._meta_regime = MetaRegimeDetector(
+            market=self._market,
+            cache=self._cache,
+            symbols=SYMBOLS,
+        )
+
         # ── Strategy Runner ───────────────────────────────────
         self._runner = StrategyRunner(
             bus=self._bus,
@@ -176,6 +184,7 @@ class TradingLoop:
             futures_flow=self._futures_flow,
             relative_strength=self._rel_strength,
             vol_state=self._vol_state,
+            meta_regime=self._meta_regime,
         )
         v4 = MomentumStrategy(symbols=SYMBOLS)
         self._runner.register(v4)
@@ -272,6 +281,7 @@ class TradingLoop:
         await self._futures_flow.start()     # Phase 10: M6 data antes do runner
         await self._rel_strength.start()    # Phase 11: M7 data antes do runner
         await self._vol_state.start()       # Phase 12: M8 data antes do runner
+        await self._meta_regime.start()     # Phase 13: macro regime antes do runner
         await self._runner.start()
         await self._position_monitor.start()
         await self._reconciler.start()
@@ -393,6 +403,7 @@ class TradingLoop:
         await self._futures_flow.stop()
         await self._rel_strength.stop()
         await self._vol_state.stop()
+        await self._meta_regime.stop()
         await self._runner.stop()
         await self._position_monitor.stop()
         await self._reconciler.stop()

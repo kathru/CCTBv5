@@ -3727,11 +3727,11 @@ async function updateAll(){
   if(ff)      updateFuturesFlow(ff, sym);
   if(rs)      updateRelativeStrength(rs, sym);
   if(vs)      updateVolatilityState(vs, sym);
-  const {mr,ar,mh,ens}=_slowData;
-  if(st)      buildStressBacktest(st);
-  if(mh||ens) buildModelHealth(mh, ens);
-  if(ar)      buildAdvancedRisk(ar);
-  if(mr)      buildMetaRegime(mr);
+  const {mr,ar,mh,ens,st:stressData}=_slowData;
+  if(stressData) buildStressBacktest(stressData);
+  if(mh||ens)    buildModelHealth(mh, ens);
+  if(ar)         buildAdvancedRisk(ar);
+  if(mr)         buildMetaRegime(mr);
 
   // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS
   const hasPrices = prices && Object.keys(prices).length > 0;

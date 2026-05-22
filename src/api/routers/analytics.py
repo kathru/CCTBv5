@@ -1,20 +1,13 @@
 """
 Quantitative Analytics — métricas institucionais calculadas dos fills reais.
 
-Métricas implementadas:
-  - Sharpe Ratio        (retorno ajustado ao risco, anualizado)
-  - Sortino Ratio       (penaliza só downside, anualizado)
-  - Calmar Ratio        (retorno anual / max drawdown)
-  - Hit Rate            (% trades vencedores)
-  - Expectancy          (E[lucro] por trade em R$)
-  - Avg Win / Avg Loss  (ratio ganho médio / perda média)
-  - MAE / MFE           (excursão adversa/favorável máxima por trade)
-  - Regime Breakdown    (performance por regime do signal_audit_log)
-  - Drawdown Duration   (quantos trades consecutivos em drawdown)
-  - Stability (R²)      (quão linear é a equity curve)
-  - Profit Factor       (gross profit / gross loss)
-
-Requer mínimo de trades para ter significância estatística (indicado em cada métrica).
+Phase 6 — Equity Analytics:
+  - Equity Curve       (série temporal por trade, high-water mark, underwater)
+  - Rolling Metrics    (Sharpe/WR/Expectancy janela deslizante 20 trades)
+  - Drawdown Analytics (max DD persistido, duração, recovery factor)
+  - Regime Breakdown   (performance por regime)
+  - Stability (R²)     (quão linear é a equity curve)
+  - Export CSV         (equity curve para análise externa)
 """
 
 import math
@@ -22,7 +15,7 @@ import statistics
 from collections import defaultdict
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 
 from ...monitoring.signal_log import signal_audit_log
 
@@ -274,3 +267,229 @@ async def get_quantitative(request: Request) -> dict:
         "min_trades_req": MIN_TRADES,
         "computed_at":    datetime.now(UTC).isoformat(),
     }
+
+
+# ── Phase 6.1 — Equity Curve ─────────────────────────────────────────────────
+
+@router.get("/equity_curve")
+async def get_equity_curve(request: Request) -> dict:
+    """
+    Phase 6.1 — Equity Curve completa.
+
+    Retorna:
+    - equity[]        : série de capital acumulado por trade (em $)
+    - hwm[]           : high-water mark em cada ponto
+    - underwater[]    : drawdown atual em % (0 = em máxima, -0.10 = -10%)
+    - by_symbol{}     : contribuição de P&L por símbolo
+    - trades[]        : lista completa de trades para exportação CSV
+    - summary         : max_dd, recovery_factor, total_pnl, stability_r2
+    """
+    db      = request.app.state.db
+    cache   = request.app.state.cache
+    initial = 96_592.87  # capital inicial configurado
+
+    all_orders = await _get_filled_orders(db)
+    trades     = _pair_trades(all_orders)
+
+    # ── Série temporal de equity ──────────────────────────────────────────────
+    equity     = [initial]
+    hwm        = [initial]
+    underwater = [0.0]
+    peak       = initial
+
+    for t in trades:
+        val = equity[-1] + t["pnl"]
+        equity.append(round(val, 2))
+        peak = max(peak, val)
+        hwm.append(round(peak, 2))
+        dd   = (val - peak) / peak if peak > 0 else 0.0
+        underwater.append(round(dd, 6))
+
+    # ── High-water mark persistido no Redis ───────────────────────────────────
+    if cache and equity:
+        stored_hwm = await cache.get("analytics:hwm")
+        global_hwm = float(stored_hwm) if stored_hwm else initial
+        current_hwm = max(global_hwm, max(equity))
+        await cache.set("analytics:hwm", str(current_hwm), ttl=0)  # TTL 0 = persistente
+    else:
+        current_hwm = max(equity) if equity else initial
+
+    # ── Breakdown por símbolo ─────────────────────────────────────────────────
+    by_symbol: dict[str, dict] = {}
+    for t in trades:
+        sym = t["symbol"]
+        s   = by_symbol.setdefault(sym, {"pnl": 0.0, "trades": 0, "wins": 0})
+        s["pnl"]    += t["pnl"]
+        s["trades"] += 1
+        if t["pnl"] > 0:
+            s["wins"] += 1
+    for sym, s in by_symbol.items():
+        s["pnl"]     = round(s["pnl"], 2)
+        s["win_rate"] = round(s["wins"] / s["trades"], 3) if s["trades"] else 0
+
+    # ── Métricas de drawdown ──────────────────────────────────────────────────
+    max_dd_pct   = round(abs(min(underwater)), 4) if underwater else 0.0
+    total_pnl    = equity[-1] - initial if len(equity) > 1 else 0.0
+    total_ret_pct = total_pnl / initial if initial > 0 else 0.0
+    recovery_factor = round(total_ret_pct / max_dd_pct, 3) if max_dd_pct > 0 else None
+
+    # ── Stability R² ──────────────────────────────────────────────────────────
+    stability = _stability(equity[1:]) if len(equity) > MIN_TRADES + 1 else None
+
+    # ── Labels de tempo (índice de trade ou data) ─────────────────────────────
+    labels = [f"T{i}" for i in range(len(equity))]
+    if trades:
+        labels[0] = "Início"
+        for i, t in enumerate(trades, 1):
+            ts = t.get("exit_ts")
+            if hasattr(ts, "strftime"):
+                labels[i] = ts.strftime("%d/%m %H:%M")
+
+    return {
+        "equity":          equity,
+        "hwm":             hwm,
+        "underwater":      underwater,
+        "labels":          labels,
+        "by_symbol":       by_symbol,
+        "n_trades":        len(trades),
+        "initial_capital": initial,
+        "current_hwm":     round(current_hwm, 2),
+        "total_pnl":       round(total_pnl, 2),
+        "total_return_pct": round(total_ret_pct, 4),
+        "max_drawdown_pct": max_dd_pct,
+        "recovery_factor": recovery_factor,
+        "stability_r2":    stability,
+        "computed_at":     datetime.now(UTC).isoformat(),
+    }
+
+
+# ── Phase 6.2 — Rolling Metrics ──────────────────────────────────────────────
+
+@router.get("/rolling")
+async def get_rolling_metrics(
+    request: Request,
+    window: int = Query(default=20, ge=5, le=100, description="Janela deslizante de N trades"),
+) -> dict:
+    """
+    Phase 6.2 — Rolling metrics com janela deslizante.
+
+    Calcula para cada ponto com >= window trades:
+    - rolling_sharpe     : Sharpe anualizado na janela
+    - rolling_win_rate   : Win rate na janela
+    - rolling_expectancy : Expectancy ($) na janela
+    - rolling_vol        : Volatilidade de retornos na janela
+
+    Permite detectar:
+    - Degradação de edge (Sharpe caindo)
+    - Regime shift (WR mudando)
+    - Períodos de sobre/sub-performance
+    """
+    db     = request.app.state.db
+    orders = await _get_filled_orders(db)
+    trades = _pair_trades(orders)
+
+    if len(trades) < window:
+        return {
+            "window":            window,
+            "n_trades":          len(trades),
+            "min_required":      window,
+            "sufficient_data":   False,
+            "rolling_sharpe":    [],
+            "rolling_win_rate":  [],
+            "rolling_expectancy": [],
+            "rolling_vol":       [],
+            "labels":            [],
+        }
+
+    rolling_sharpe:     list[float | None] = []
+    rolling_wr:         list[float] = []
+    rolling_expectancy: list[float] = []
+    rolling_vol:        list[float] = []
+    labels: list[str] = []
+
+    for i in range(window - 1, len(trades)):
+        w_trades = trades[i - window + 1 : i + 1]
+        pnls     = [t["pnl"]     for t in w_trades]
+        pcts     = [t["pnl_pct"] for t in w_trades]
+        wins     = [p for p in pnls if p > 0]
+        losses   = [p for p in pnls if p <= 0]
+
+        # Rolling Sharpe
+        s = _sharpe(pcts)
+        rolling_sharpe.append(s)
+
+        # Rolling Win Rate
+        rolling_wr.append(round(len(wins) / len(pnls), 3))
+
+        # Rolling Expectancy
+        avg_w = sum(wins)   / len(wins)   if wins   else 0
+        avg_l = sum(losses) / len(losses) if losses else 0
+        hr    = len(wins) / len(pnls)
+        rolling_expectancy.append(round(hr * avg_w + (1 - hr) * avg_l, 2))
+
+        # Rolling Vol (desvio padrão dos retornos %)
+        rolling_vol.append(
+            round(statistics.stdev(pcts) * 100, 3) if len(pcts) > 1 else 0.0
+        )
+
+        # Label
+        ts = w_trades[-1].get("exit_ts")
+        labels.append(ts.strftime("%d/%m") if hasattr(ts, "strftime") else f"T{i}")
+
+    # Resumo: tendência dos últimos 5 pontos (melhora ou piora?)
+    def _trend(series: list) -> str:
+        valid = [x for x in series[-5:] if x is not None]
+        if len(valid) < 2:
+            return "insufficient"
+        return "improving" if valid[-1] > valid[0] else "degrading"
+
+    return {
+        "window":             window,
+        "n_trades":           len(trades),
+        "sufficient_data":    True,
+        "rolling_sharpe":     [round(x, 3) if x is not None else None for x in rolling_sharpe],
+        "rolling_win_rate":   rolling_wr,
+        "rolling_expectancy": rolling_expectancy,
+        "rolling_vol":        rolling_vol,
+        "labels":             labels,
+        "trends": {
+            "sharpe":     _trend(rolling_sharpe),
+            "win_rate":   _trend(rolling_wr),
+            "expectancy": _trend(rolling_expectancy),
+        },
+        "latest": {
+            "sharpe":     rolling_sharpe[-1] if rolling_sharpe else None,
+            "win_rate":   rolling_wr[-1]     if rolling_wr     else None,
+            "expectancy": rolling_expectancy[-1] if rolling_expectancy else None,
+            "vol_pct":    rolling_vol[-1]    if rolling_vol    else None,
+        },
+        "computed_at": datetime.now(UTC).isoformat(),
+    }
+
+
+# ── Phase 6.1 — Exportar CSV ─────────────────────────────────────────────────
+
+@router.get("/equity_curve/csv")
+async def export_equity_csv(request: Request):
+    """Exporta equity curve como CSV para análise externa."""
+    from fastapi.responses import PlainTextResponse
+    db     = request.app.state.db
+    orders = await _get_filled_orders(db)
+    trades = _pair_trades(orders)
+    initial = 96_592.87
+
+    lines = ["trade,symbol,entry_ts,exit_ts,pnl,pnl_pct,equity,drawdown_pct"]
+    equity = initial
+    peak   = initial
+    for i, t in enumerate(trades, 1):
+        equity += t["pnl"]
+        peak    = max(peak, equity)
+        dd      = (equity - peak) / peak if peak > 0 else 0
+        entry_s = t["entry_ts"].isoformat() if hasattr(t.get("entry_ts"), "isoformat") else ""
+        exit_s  = t["exit_ts"].isoformat()  if hasattr(t.get("exit_ts"),  "isoformat") else ""
+        lines.append(
+            f"{i},{t['symbol']},{entry_s},{exit_s},"
+            f"{t['pnl']:.2f},{t['pnl_pct']:.6f},{equity:.2f},{dd:.6f}"
+        )
+    return PlainTextResponse("\n".join(lines), media_type="text/csv",
+                             headers={"Content-Disposition": "attachment; filename=equity_curve.csv"})

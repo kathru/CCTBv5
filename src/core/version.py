@@ -3,12 +3,13 @@ Version module — derives semantic version from git history.
 
   X.Y.Z
   ├── X  Major version (hardcoded — architecture generation)
-  ├── Y  Structural changes (number of git tags = milestone releases)
-  └── Z  Commit count (total commits on current branch)
+  ├── Y  Minor version (hardcoded — current evolution milestone/phase series)
+  └── Z  Patch (commit count — auto-increments with every commit)
 
-Examples:
-  5.0.27  → v5, no tags yet, 27 commits
-  5.2.41  → v5, 2 tagged releases, 41 commits
+Scheme: v5.6.x
+  5 = CCTBv5 architecture
+  6 = Phase series 6.x (Equity Analytics, Distribution, Reality Check, ...)
+  x = commit count — each phase commit produces v5.6.1, v5.6.2, ...
 """
 
 import logging
@@ -18,10 +19,10 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 MAJOR = 5
+MINOR = 6  # Hardcoded: current phase series (bump manually for next major milestone)
 
 # Files written by Dockerfile build stage from git metadata
 _BUILD_DIR = Path(__file__).parent.parent.parent  # /app
-_MINOR_FILE = _BUILD_DIR / "_git_minor"
 _PATCH_FILE  = _BUILD_DIR / "_git_patch"
 
 
@@ -43,20 +44,15 @@ def _run(cmd: list[str], default: str = "0") -> str:
 def get_version() -> str:
     """Return X.Y.Z version string.
 
-    Y and Z are read from files generated at Docker build time (from git).
-    Falls back to live git commands when running outside Docker (dev mode).
+    Z (patch) is read from a file generated at Docker build time (from git).
+    Falls back to live git commit count when running outside Docker (dev mode).
     """
-    if _MINOR_FILE.exists() and _PATCH_FILE.exists():
-        # Docker: read pre-computed values from build stage
-        minor = _read_file(_MINOR_FILE)
+    if _PATCH_FILE.exists():
         patch = _read_file(_PATCH_FILE)
     else:
-        # Dev: compute live from git
-        tags_output = _run(["git", "tag"])
-        minor = str(len([t for t in tags_output.splitlines() if t.strip()]))
         patch = _run(["git", "rev-list", "--count", "HEAD"], default="0")
 
-    return f"{MAJOR}.{minor}.{patch}"
+    return f"{MAJOR}.{MINOR}.{patch}"
 
 
 def get_version_info() -> dict:

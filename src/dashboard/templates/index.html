@@ -887,6 +887,104 @@
 
 </div>
 
+<!-- ══ PHASE 6 — EQUITY ANALYTICS ══════════════════════════════ -->
+<div class="section-hdr">
+  <div class="dot" style="background:var(--blue)"></div>
+  Equity Analytics
+  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 6 · por trade</span>
+  <a href="/api/analytics/equity_curve/csv" style="margin-left:auto;font-size:0.6rem;color:var(--blue);text-decoration:none;padding:2px 8px;border:1px solid rgba(59,130,246,0.3);border-radius:4px">↓ CSV</a>
+</div>
+
+<!-- Métricas de equity -->
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px;">
+  <div class="kpi-card kpi-green" style="padding:10px 14px">
+    <div class="clabel" style="font-size:0.55rem">P&L Total</div>
+    <div class="kpi-val" id="eq-pnl" style="font-size:1rem">–</div>
+    <div class="kpi-sub" id="eq-ret">–</div>
+  </div>
+  <div class="kpi-card kpi-blue" style="padding:10px 14px">
+    <div class="clabel" style="font-size:0.55rem">High-Water Mark</div>
+    <div class="kpi-val" id="eq-hwm" style="font-size:1rem">–</div>
+    <div class="kpi-sub">máximo histórico</div>
+  </div>
+  <div class="kpi-card kpi-red" style="padding:10px 14px">
+    <div class="clabel" style="font-size:0.55rem">Max Drawdown</div>
+    <div class="kpi-val" id="eq-maxdd" style="font-size:1rem">–</div>
+    <div class="kpi-sub">do HWM</div>
+  </div>
+  <div class="kpi-card kpi-yellow" style="padding:10px 14px">
+    <div class="clabel" style="font-size:0.55rem">Recovery Factor</div>
+    <div class="kpi-val" id="eq-recovery" style="font-size:1rem">–</div>
+    <div class="kpi-sub">retorno / max DD</div>
+  </div>
+  <div class="kpi-card kpi-purple" style="padding:10px 14px">
+    <div class="clabel" style="font-size:0.55rem">Stability R²</div>
+    <div class="kpi-val" id="eq-stability" style="font-size:1rem">–</div>
+    <div class="kpi-sub">&gt;0.7 = linear</div>
+  </div>
+</div>
+
+<!-- Equity Curve + Underwater + Rolling charts -->
+<div class="grid g21" style="margin-bottom:12px;">
+
+  <!-- Equity Curve -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="clabel" style="margin:0">Equity Curve</div>
+      <div style="display:flex;gap:6px;font-size:0.6rem;">
+        <span style="color:var(--green)">── capital</span>
+        <span style="color:rgba(59,130,246,0.6)">── HWM</span>
+      </div>
+    </div>
+    <div style="position:relative;height:140px;"><canvas id="equity-chart"></canvas></div>
+    <!-- Underwater chart (drawdown) -->
+    <div style="margin-top:6px;">
+      <div style="font-size:0.55rem;color:var(--muted);margin-bottom:3px">Drawdown</div>
+      <div style="position:relative;height:50px;"><canvas id="underwater-chart"></canvas></div>
+    </div>
+    <!-- P&L por símbolo -->
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;" id="eq-by-symbol"></div>
+  </div>
+
+  <!-- Rolling Metrics (janela 10 trades) -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="clabel" style="margin:0">Rolling Metrics</div>
+      <span id="rolling-window-lbl" style="font-size:0.6rem;color:var(--muted)">janela 10 trades</span>
+    </div>
+    <!-- 4 mini-barras de tendência -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div>
+        <div style="font-size:0.55rem;color:var(--muted);margin-bottom:2px">Sharpe (rolling)</div>
+        <div style="font-size:1.1rem;font-weight:800;" id="roll-sharpe">–</div>
+        <div style="font-size:0.6rem;" id="roll-sharpe-trend">–</div>
+      </div>
+      <div>
+        <div style="font-size:0.55rem;color:var(--muted);margin-bottom:2px">Win Rate (rolling)</div>
+        <div style="font-size:1.1rem;font-weight:800;" id="roll-wr">–</div>
+        <div style="font-size:0.6rem;" id="roll-wr-trend">–</div>
+      </div>
+      <div>
+        <div style="font-size:0.55rem;color:var(--muted);margin-bottom:2px">Expectancy (rolling)</div>
+        <div style="font-size:1.1rem;font-weight:800;" id="roll-exp">–</div>
+        <div style="font-size:0.6rem;" id="roll-exp-trend">–</div>
+      </div>
+      <div>
+        <div style="font-size:0.55rem;color:var(--muted);margin-bottom:2px">Vol Retornos</div>
+        <div style="font-size:1.1rem;font-weight:800;" id="roll-vol">–</div>
+        <div style="font-size:0.6rem;color:var(--muted)">% por trade</div>
+      </div>
+    </div>
+    <!-- Gráfico rolling WR -->
+    <div style="font-size:0.55rem;color:var(--muted);margin-bottom:3px">Rolling Win Rate</div>
+    <div style="position:relative;height:80px;"><canvas id="rolling-wr-chart"></canvas></div>
+    <!-- Gráfico rolling Sharpe -->
+    <div style="font-size:0.55rem;color:var(--muted);margin-top:6px;margin-bottom:3px">Rolling Sharpe</div>
+    <div style="position:relative;height:70px;"><canvas id="rolling-sharpe-chart"></canvas></div>
+  </div>
+
+</div>
+
 <!-- ══ GRÁFICOS ════════════════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Evolução & Distribuição</div>
 <div class="grid g21">
@@ -1959,16 +2057,147 @@ function renderWfo(data){
   }).join('<hr style="border-color:var(--border);margin:8px 0;">');
 }
 
+// ── Phase 6 — Equity Analytics ──────────────────────────────────────────────
+
+let _equityChart=null, _underwaterChart=null, _rollingWrChart=null, _rollingSharpeChart=null;
+
+function buildEquityCharts(eq){
+  if(!eq) return;
+  const labels  = eq.labels||[];
+  const equity  = eq.equity||[];
+  const hwm     = eq.hwm||[];
+  const uw      = (eq.underwater||[]).map(v=>v*100);
+
+  // ── Equity + HWM chart ──────────────────────────────────────────────────
+  const ctx1 = document.getElementById('equity-chart');
+  if(ctx1){
+    if(_equityChart) _equityChart.destroy();
+    _equityChart = new Chart(ctx1,{
+      type:'line',
+      data:{
+        labels,
+        datasets:[
+          {label:'Capital',data:equity,borderColor:'#10b981',borderWidth:2,
+           pointRadius:0,tension:0.3,fill:{target:'origin',above:'rgba(16,185,129,0.08)',below:'rgba(239,68,68,0.08)'}},
+          {label:'HWM',data:hwm,borderColor:'rgba(59,130,246,0.5)',borderWidth:1,
+           borderDash:[4,4],pointRadius:0,tension:0.3},
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+        scales:{x:{display:false},y:{display:true,ticks:{callback:v=>'$'+Math.round(v).toLocaleString('pt-BR'),font:{size:9}},grid:{color:'rgba(255,255,255,0.05)'}}}}
+    });
+  }
+
+  // ── Underwater chart ─────────────────────────────────────────────────────
+  const ctx2 = document.getElementById('underwater-chart');
+  if(ctx2){
+    if(_underwaterChart) _underwaterChart.destroy();
+    _underwaterChart = new Chart(ctx2,{
+      type:'line',
+      data:{labels,datasets:[{label:'DD%',data:uw,borderColor:'#ef4444',borderWidth:1.5,
+        pointRadius:0,tension:0.3,fill:{target:{value:0},above:'rgba(239,68,68,0.0)',below:'rgba(239,68,68,0.25)'}}]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.raw.toFixed(2)+'%'}}},
+        scales:{x:{display:false},y:{display:true,ticks:{callback:v=>v.toFixed(1)+'%',font:{size:8}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+    });
+  }
+
+  // ── Métricas de equity ───────────────────────────────────────────────────
+  const pnl = eq.total_pnl||0;
+  const pnlEl = document.getElementById('eq-pnl');
+  if(pnlEl){ pnlEl.textContent=(pnl>=0?'+':'')+usd(pnl); pnlEl.className='kpi-val '+(pnl>=0?'g':'r'); }
+  const retEl = document.getElementById('eq-ret');
+  if(retEl) retEl.textContent=(eq.total_return_pct>=0?'+':'')+(eq.total_return_pct*100).toFixed(2)+'%';
+  const hwmEl = document.getElementById('eq-hwm');
+  if(hwmEl) hwmEl.textContent=usd(eq.current_hwm||0);
+  const mddEl = document.getElementById('eq-maxdd');
+  if(mddEl){ mddEl.textContent=(-eq.max_drawdown_pct*100).toFixed(2)+'%'; mddEl.className='kpi-val r'; }
+  const rfEl = document.getElementById('eq-recovery');
+  if(rfEl){ const rf=eq.recovery_factor; rfEl.textContent=rf!=null?rf.toFixed(2):'N/A'; rfEl.className='kpi-val '+(rf>0?'g':'r'); }
+  const stEl = document.getElementById('eq-stability');
+  if(stEl){ const st=eq.stability_r2; stEl.textContent=st!=null?st.toFixed(3):'N/A'; stEl.className='kpi-val '+(st>0.7?'g':st>0.4?'y':'r'); }
+
+  // ── Por símbolo ──────────────────────────────────────────────────────────
+  const symEl = document.getElementById('eq-by-symbol');
+  if(symEl && eq.by_symbol){
+    symEl.innerHTML = Object.entries(eq.by_symbol).map(([sym,s])=>{
+      const p=s.pnl, cls=p>=0?'var(--green)':'var(--red)';
+      return`<span style="font-size:0.62rem;padding:2px 8px;border-radius:4px;border:1px solid ${cls}33;color:${cls}">
+        ${sym.replace('-USDT','')} ${p>=0?'+':''}$${Math.abs(p).toFixed(0)} (${(s.win_rate*100).toFixed(0)}% WR)
+      </span>`;
+    }).join('');
+  }
+}
+
+function buildRollingCharts(roll){
+  if(!roll||!roll.sufficient_data) return;
+  const labels = roll.labels||[];
+  const l = roll.latest||{};
+
+  // Valores atuais
+  const srEl=document.getElementById('roll-sharpe');
+  const wrEl=document.getElementById('roll-wr');
+  const exEl=document.getElementById('roll-exp');
+  const voEl=document.getElementById('roll-vol');
+  if(srEl){ const v=l.sharpe; srEl.textContent=v!=null?v.toFixed(2):'–'; srEl.style.color=v>0?'var(--green)':v>-5?'var(--yellow)':'var(--red)'; }
+  if(wrEl){ const v=l.win_rate; wrEl.textContent=v!=null?(v*100).toFixed(0)+'%':'–'; wrEl.style.color=v>0.5?'var(--green)':v>0.35?'var(--yellow)':'var(--red)'; }
+  if(exEl){ const v=l.expectancy; exEl.textContent=v!=null?(v>=0?'+':'')+usd(v):'–'; exEl.style.color=v>0?'var(--green)':'var(--red)'; }
+  if(voEl){ const v=l.vol_pct; voEl.textContent=v!=null?v.toFixed(2)+'%':'–'; voEl.style.color='var(--text)'; }
+
+  // Tendências
+  const trendLabel = t => t==='improving'?'↑ melhorando':t==='degrading'?'↓ degradando':'estável';
+  const trendColor = t => t==='improving'?'var(--green)':'var(--red)';
+  const tr=roll.trends||{};
+  document.getElementById('roll-sharpe-trend').innerHTML=`<span style="color:${trendColor(tr.sharpe)}">${trendLabel(tr.sharpe)}</span>`;
+  document.getElementById('roll-wr-trend').innerHTML=`<span style="color:${trendColor(tr.win_rate)}">${trendLabel(tr.win_rate)}</span>`;
+  document.getElementById('roll-exp-trend').innerHTML=`<span style="color:${trendColor(tr.expectancy)}">${trendLabel(tr.expectancy)}</span>`;
+  document.getElementById('rolling-window-lbl').textContent=`janela ${roll.window} trades`;
+
+  // Chart rolling WR
+  const ctx3=document.getElementById('rolling-wr-chart');
+  if(ctx3){
+    if(_rollingWrChart) _rollingWrChart.destroy();
+    _rollingWrChart=new Chart(ctx3,{type:'line',
+      data:{labels,datasets:[
+        {label:'WR',data:roll.rolling_win_rate.map(v=>v*100),borderColor:'#10b981',borderWidth:1.5,pointRadius:0,tension:0.3},
+        {label:'40%',data:Array(labels.length).fill(40),borderColor:'rgba(239,68,68,0.5)',borderWidth:1,borderDash:[3,3],pointRadius:0},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{display:false},y:{display:true,ticks:{callback:v=>v+'%',font:{size:8}},
+          min:0,max:100,grid:{color:'rgba(255,255,255,0.04)'}}}}
+    });
+  }
+
+  // Chart rolling Sharpe
+  const ctx4=document.getElementById('rolling-sharpe-chart');
+  if(ctx4){
+    if(_rollingSharpeChart) _rollingSharpeChart.destroy();
+    _rollingSharpeChart=new Chart(ctx4,{type:'line',
+      data:{labels,datasets:[
+        {label:'Sharpe',data:roll.rolling_sharpe,borderColor:'#3b82f6',borderWidth:1.5,pointRadius:0,tension:0.3},
+        {label:'0',data:Array(labels.length).fill(0),borderColor:'rgba(255,255,255,0.2)',borderWidth:1,borderDash:[3,3],pointRadius:0},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{display:false},y:{display:true,ticks:{callback:v=>v.toFixed(1),font:{size:8}},
+          grid:{color:'rgba(255,255,255,0.04)'}}}}
+    });
+  }
+}
+
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
     fetchJSON('/api/governance/importance'),fetchJSON('/api/governance/wfo'),
     fetchJSON('/api/reconciler/status'),
+    fetchJSON('/api/analytics/equity_curve'),
+    fetchJSON('/api/analytics/rolling?window=10'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -1980,6 +2209,8 @@ async function updateSlow(){
   if(govImp)    _slowData.govImp=govImp;
   if(govWfo)    _slowData.govWfo=govWfo;
   if(recon)     _slowData.recon=recon;
+  if(equity)    _slowData.equity=equity;
+  if(rolling)   _slowData.rolling=rolling;
 }
 
 async function updateAll(){
@@ -1994,8 +2225,10 @@ async function updateAll(){
   ]);
 
   // Slow data vem do cache — atualizado em paralelo pelo loop lento
-  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon}=_slowData;
-  if(recon) updateReconciler(recon);
+  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling}=_slowData;
+  if(recon)   updateReconciler(recon);
+  if(equity)  buildEquityCharts(equity);
+  if(rolling) buildRollingCharts(rolling);
 
   // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS
   const hasPrices = prices && Object.keys(prices).length > 0;

@@ -445,8 +445,7 @@ class MomentumStrategy(BaseStrategy):
             "m7_rs_1h":       round(float(rs_scores.get("rs_1h",      0.5)), 3),
             "m7_leadership":  round(float(rs_scores.get("leadership",  0.5)), 3),
             "m7_rs_trend":    round(float(rs_scores.get("rs_trend",    0.5)), 3),
-            # Sub-scores M8
-            "m8_state_name":  vol_state_name,
+            # Sub-scores M8 — apenas numéricos (strings não são aceitas em factors)
             "m8_atr_pct":     round(float(vol_data.get("metrics", {}).get("atr_pct",        0)), 3),
             "m8_dir_consist": round(float(vol_data.get("metrics", {}).get("dir_consistency", 0.5)), 3),
         }

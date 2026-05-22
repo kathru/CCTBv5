@@ -103,7 +103,8 @@ class SignalAuditLog:
                     entry.direction,
                     entry.result,
                     entry.detail,
-                    json.dumps({k: round(v, 4) for k, v in entry.factors.items()}),
+                    json.dumps({k: round(v, 4) if isinstance(v, (int, float)) else v
+                                for k, v in entry.factors.items()}),
                 )
         except Exception as exc:
             logger.debug("signal_log persist error: %s", exc)

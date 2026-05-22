@@ -613,7 +613,30 @@
         <span style="font-size:0.62rem;color:var(--text)">Candle (M5)</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m5" style="height:15px;border-radius:7px;background:#f97316;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.65rem;font-weight:700;color:#f97316;text-align:right" id="w-m5">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 10%</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 8%</span>
+
+        <span style="font-size:0.62rem;color:var(--text)">Futures (M6)</span>
+        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m6" style="height:15px;border-radius:7px;background:#06b6d4;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.65rem;font-weight:700;color:#06b6d4;text-align:right" id="w-m6">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 12%</span>
+      </div>
+    </div>
+
+    <!-- M6 sub-scores compactos -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:12px;margin-top:-4px;">
+      <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.15);border-radius:5px;padding:5px;text-align:center;">
+        <div style="font-size:0.48rem;color:var(--muted)">Funding Rate</div>
+        <div style="font-size:0.75rem;font-weight:700;color:#06b6d4" id="m6-funding">–</div>
+        <div style="font-size:0.48rem;color:var(--muted)" id="m6-funding-pct">–</div>
+      </div>
+      <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.15);border-radius:5px;padding:5px;text-align:center;">
+        <div style="font-size:0.48rem;color:var(--muted)">OI Change</div>
+        <div style="font-size:0.75rem;font-weight:700;color:#06b6d4" id="m6-oi">–</div>
+        <div style="font-size:0.48rem;color:var(--muted)" id="m6-oi-usd">–</div>
+      </div>
+      <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.15);border-radius:5px;padding:5px;text-align:center;">
+        <div style="font-size:0.48rem;color:var(--muted)">Sentiment</div>
+        <div style="font-size:0.6rem;font-weight:700;color:#06b6d4;line-height:1.2" id="m6-sentiment">–</div>
       </div>
     </div>
 
@@ -2819,10 +2842,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -2833,6 +2856,7 @@ async function updateSlow(){
     fetchJSON('/api/analytics/distribution'),
     fetchJSON('/api/analytics/reality_check'),
     fetchJSON('/api/analytics/meta_overfitting?n_trials=10'),
+    fetchJSON('/api/analytics/futures_flow'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -2849,6 +2873,53 @@ async function updateSlow(){
   if(dist)      _slowData.dist=dist;
   if(rc)        _slowData.rc=rc;
   if(mo)        _slowData.mo=mo;
+  if(ff)        _slowData.ff=ff;
+}
+
+// ── Phase 10 — Futures Flow ──────────────────────────────────────────────────
+
+function updateFuturesFlow(ff, sym){
+  if(!ff||!ff.summary) return;
+  const s = ff.summary;
+
+  // Summary no painel M6 — usa o símbolo com mais sinal no log (ou BTC por default)
+  // O Motor Probabilístico mostra o dado do símbolo sendo exibido no log
+  const activeSym = (sym && Object.keys(sym).length ? Object.keys(sym)[0] : 'BTC-USDT');
+  const symData   = (ff.by_symbol||{})[activeSym] || Object.values(ff.by_symbol||{})[0] || {};
+  const scores    = symData.scores || {};
+
+  // Funding Rate
+  const frPct = symData.funding_rate_pct;
+  const frEl  = document.getElementById('m6-funding');
+  const frLbl = document.getElementById('m6-funding-pct');
+  if(frEl){
+    const frScore = scores.funding || 0.5;
+    frEl.textContent  = frScore.toFixed(3);
+    frEl.style.color  = frScore > 0.6 ? 'var(--green)' : frScore < 0.4 ? 'var(--red)' : '#06b6d4';
+  }
+  if(frLbl && frPct != null) frLbl.textContent = (frPct >= 0 ? '+' : '') + frPct.toFixed(4) + '%';
+
+  // OI Change
+  const oiPct = symData.oi_change_pct;
+  const oiEl  = document.getElementById('m6-oi');
+  const oiUsd = document.getElementById('m6-oi-usd');
+  if(oiEl){
+    const oiScore = scores.oi_change || 0.5;
+    oiEl.textContent = oiScore.toFixed(3);
+    oiEl.style.color = oiScore > 0.6 ? 'var(--green)' : oiScore < 0.4 ? 'var(--red)' : '#06b6d4';
+  }
+  if(oiUsd && oiPct != null) oiUsd.textContent = (oiPct >= 0 ? '+' : '') + oiPct.toFixed(2) + '%';
+
+  // Sentiment
+  const sentEl = document.getElementById('m6-sentiment');
+  if(sentEl){
+    sentEl.textContent = s.market_sentiment || '–';
+    const col = s.market_sentiment?.includes('BULL') ? 'var(--green)'
+              : s.market_sentiment?.includes('BEAR') ? 'var(--red)'
+              : s.market_sentiment?.includes('CROWD') ? 'var(--yellow)'
+              : '#06b6d4';
+    sentEl.style.color = col;
+  }
 }
 
 async function updateAll(){
@@ -2863,13 +2934,14 @@ async function updateAll(){
   ]);
 
   // Slow data vem do cache — atualizado em paralelo pelo loop lento
-  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo}=_slowData;
+  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff}=_slowData;
   if(recon)   updateReconciler(recon);
   if(equity)  buildEquityCharts(equity);
   if(rolling) buildRollingCharts(rolling);
   if(dist)    buildDistributionPanel(dist);
   if(rc)      buildRealityCheck(rc);
   if(mo)      buildMetaOverfitting(mo);
+  if(ff)      updateFuturesFlow(ff, sym);
 
   // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS
   const hasPrices = prices && Object.keys(prices).length > 0;
@@ -3017,8 +3089,9 @@ async function updateAll(){
     const m3=f.m3_volume     ||f.volume    ||0;
     const m4=f.m4_regime_str ||f.m4_regime ||f.regime   ||0;
     const m5=f.m5_candle     ||0;
-    const factors={m1,m2,m3,m4,m5};
-    ['m1','m2','m3','m4','m5'].forEach(k=>{
+    const m6=f.m6_futures    ||0;
+    const factors={m1,m2,m3,m4,m5,m6};
+    ['m1','m2','m3','m4','m5','m6'].forEach(k=>{
       const v=factors[k],pct=(v*100).toFixed(1)+'%';
       const wEl=document.getElementById('w-'+k);
       const bEl=document.getElementById('wb-'+k);

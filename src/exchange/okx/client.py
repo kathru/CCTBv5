@@ -332,6 +332,51 @@ class OKXClient:
             pass
         return None
 
+    async def get_open_interest(self, symbol: str) -> dict | None:
+        """
+        Retorna Open Interest de um instrumento SWAP (endpoint público).
+
+        symbol: ex. 'BTC-USDT-SWAP'
+        Retorna dict com:
+          oi      : OI em contratos
+          oiCcy   : OI em moeda base
+          oiUsd   : OI em USD
+          ts      : timestamp
+        """
+        path   = "/api/v5/public/open-interest"
+        params = {"instType": "SWAP", "instId": symbol}
+        try:
+            resp = await self._http().get(path, params=params)
+            data = resp.json()
+            if data.get("code") == "0" and data.get("data"):
+                row = data["data"][0]
+                return {
+                    "oi":     float(row.get("oi",    0)),
+                    "oiCcy":  float(row.get("oiCcy", 0)),
+                    "oiUsd":  float(row.get("oiUsd", 0) or row.get("oiCcy", 0)),
+                    "ts":     int(row.get("ts", 0)),
+                }
+        except Exception:
+            pass
+        return None
+
+    async def get_funding_rate_history(self, symbol: str, limit: int = 3) -> list[float]:
+        """
+        Retorna os últimos N funding rates de um SWAP para calcular tendência.
+        Permite detectar se o funding está subindo (crescente demanda de longs)
+        ou caindo (bearish ou desinteresse).
+        """
+        path   = "/api/v5/public/funding-rate-history"
+        params = {"instId": symbol, "limit": str(limit)}
+        try:
+            resp = await self._http().get(path, params=params)
+            data = resp.json()
+            if data.get("code") == "0" and data.get("data"):
+                return [float(r.get("fundingRate", 0)) for r in data["data"]]
+        except Exception:
+            pass
+        return []
+
     async def cancel_order(
         self,
         symbol: str,

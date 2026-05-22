@@ -36,11 +36,11 @@ logger     = logging.getLogger(__name__)
 # 1H tem menos ruído que 30m → thresholds mais conservadores (+0.04 vs 30m)
 # Objetivo: 1-3 trades/dia de alta qualidade com menor ruído
 REGIME_THRESHOLDS: dict[str, float] = {
-    "TREND_EXPANSION":        0.48,
-    "VOLATILITY_COMPRESSION": 0.50,
-    "TREND_EXHAUSTION":       0.52,
-    "MEAN_REVERTING_CHOP":    0.54,
-    "HIGH_CORRELATION_RISK":  0.58,
+    "TREND_EXPANSION":        0.50,   # +0.02 — mais seletivo
+    "VOLATILITY_COMPRESSION": 0.52,   # +0.02
+    "MEAN_REVERTING_CHOP":    0.60,   # +0.06 — só sinais muito fortes
+    "TREND_EXHAUSTION":       0.99,   # BLOQUEADO — comprar topo é errado
+    "HIGH_CORRELATION_RISK":  0.99,   # BLOQUEADO — risco não justifica
     "BEAR_TREND":             0.99,   # bloqueado
     "PANIC_LIQUIDATION":      0.99,   # bloqueado
 }
@@ -68,7 +68,13 @@ REGIME_M4: dict[str, float] = {
 }
 
 # Regimes que bloqueiam novas entradas
-BLOCKED_REGIMES = {"BEAR_TREND", "PANIC_LIQUIDATION"}
+# Princípio: "comprar fraqueza dentro de força — nunca comprar força exaurida"
+BLOCKED_REGIMES = {
+    "BEAR_TREND",
+    "PANIC_LIQUIDATION",
+    "TREND_EXHAUSTION",      # comprar topo de movimento fraco = errado
+    "HIGH_CORRELATION_RISK", # risco sistêmico não justifica entrada
+}
 
 # EV mínimo por regime — quanto mais favorável o regime, mais exigente
 # EXPANSION: mercado claro → exige EV positivo real
@@ -313,15 +319,16 @@ class MomentumStrategy(BaseStrategy):
 
     def _score_signal(self, ctx: StrategyContext, regime: str) -> tuple[float, dict]:
         """
-        Modelo de scoring com 5 fatores contínuos — ciclo 1H.
+        Modelo de scoring com 6 fatores contínuos — ciclo 1H.
         Todos os fatores usam candles 1H (sem granularidade 30m).
 
         Fatores:
-          M1 Adaptive Momentum  (25%): retornos 1H (1h, 5h, 10h, 20h)
-          M2 Trend Consistency   (25%): % candles bullish + higher-highs/lows (1H)
-          M3 Volume Confirmation (20%): volume crescente + confirmação direcional (1H)
-          M4 Regime Strength     (20%): distância SMA5-SMA20 normalizada
-          M5 Candle Structure    (10%): close no terço superior do range (1H)
+          M1 Adaptive Momentum  (22%): retornos 1H (1h, 5h, 10h, 20h)
+          M2 Trend Consistency   (22%): % candles bullish + higher-highs/lows (1H)
+          M3 Volume Confirmation (18%): volume crescente + confirmação direcional (1H)
+          M4 Regime Strength     (18%): distância SMA5-SMA20 normalizada
+          M5 Candle Structure    ( 8%): close no terço superior do range (1H)
+          M6 Futures Flow        (12%): funding rate + OI change (perp market signal)
         """
         # Candles 1H — única granularidade em ciclo 1H
         closes  = [c.close  for c in ctx.candles_1h[:21]]
@@ -393,16 +400,29 @@ class MomentumStrategy(BaseStrategy):
                 candle_scores.append(pos)
         m5 = sum(candle_scores) / len(candle_scores) if candle_scores else 0.5
 
-        # ── Score final ────────────────────────────────────────
-        score = m1 * 0.25 + m2 * 0.25 + m3 * 0.20 + m4 * 0.20 + m5 * 0.10
+        # ── M6: Futures Flow (12%) — funding rate + OI (Phase 10) ────────────
+        # Lê do ctx.extra injetado pelo StrategyRunner (FuturesFlowCollector).
+        # Fallback neutro (0.5) se dados indisponíveis — não bloqueia o trading.
+        ff_data  = (ctx.extra or {}).get("futures_flow") or {}
+        ff_scores = ff_data.get("scores", {})
+        m6 = float(ff_scores.get("m6", 0.5))
+
+        # ── Score final — pesos redistribuídos com M6 ────────────────────────
+        score = (m1 * 0.22 + m2 * 0.22 + m3 * 0.18 +
+                 m4 * 0.18 + m5 * 0.08 + m6 * 0.12)
         score = round(min(max(score, 0.0), 1.0), 4)
 
         factors = {
-            "m1_momentum":   round(m1, 3),
-            "m2_consistency":round(m2, 3),
-            "m3_volume":     round(m3, 3),
-            "m4_regime_str": round(m4, 3),
-            "m5_candle":     round(m5, 3),
+            "m1_momentum":    round(m1, 3),
+            "m2_consistency": round(m2, 3),
+            "m3_volume":      round(m3, 3),
+            "m4_regime_str":  round(m4, 3),
+            "m5_candle":      round(m5, 3),
+            "m6_futures":     round(m6, 3),
+            # Sub-scores M6 para diagnóstico no dashboard
+            "m6_funding":     round(float(ff_scores.get("funding",       0.5)), 3),
+            "m6_oi_change":   round(float(ff_scores.get("oi_change",     0.5)), 3),
+            "m6_fr_trend":    round(float(ff_scores.get("funding_trend", 0.5)), 3),
         }
         # Registra features no drift monitor (nunca bloqueia o trading)
         try:
@@ -431,23 +451,43 @@ class MomentumStrategy(BaseStrategy):
 
     def _direction(self, ctx: StrategyContext, regime: str = "") -> SignalDirection:
         """
-        Direção dinâmica por regime (ciclo 1H):
-        - Maioria dos últimos 3 candles 1H bullish (closes crescentes)
-        - Fallback: retorno do último candle 1H acima do threshold do regime
+        Detecção de DIP + RECUPERAÇÃO dentro de uptrend.
+
+        Princípio: "comprar fraqueza dentro de força — nunca comprar força".
+
+        3 condições obrigatórias (todas devem ser verdade):
+          a) Dip real: preço caiu ≥ 0.3% do máximo das últimas 4 horas
+          b) Uptrend intacto: preço atual acima da SMA20 1H
+          c) Recuperação iniciada: último candle 1H fechou acima da abertura
+
+        Se não há dip detectado → FLAT (aguarda oportunidade).
         """
-        if len(ctx.candles_1h) < 3:
+        if len(ctx.candles_1h) < 6:
             return SignalDirection.FLAT
 
-        closes_1h = [c.close for c in ctx.candles_1h[:4]]
-        bullish_count = sum(1 for i in range(3) if closes_1h[i] > closes_1h[i + 1])
+        closes = [c.close for c in ctx.candles_1h[:21]]
+        opens  = [c.open  for c in ctx.candles_1h[:6]]
 
-        if bullish_count >= 2:
-            return SignalDirection.LONG
+        current = closes[0]
 
-        # Fallback: momentum do último candle 1H com threshold por regime
-        if len(closes_1h) >= 3 and closes_1h[2] > 0:
-            thresh_1h = REGIME_DIRECTION_THRESH.get(regime, 0.004)
-            if (closes_1h[0] - closes_1h[2]) / closes_1h[2] > thresh_1h:
-                return SignalDirection.LONG
+        # ── Condição B: uptrend intacto (SMA20 1H) ──────────
+        sma20 = sum(closes[:20]) / 20 if len(closes) >= 20 else closes[-1]
+        if current < sma20 * 0.998:   # tolerância 0.2% abaixo da SMA20
+            return SignalDirection.FLAT
 
-        return SignalDirection.FLAT
+        # ── Condição A: dip real nas últimas 4 horas ────────
+        recent_high = max(closes[1:5])   # máximo dos últimos 4 candles
+        recent_low  = min(closes[1:5])   # mínimo dos últimos 4 candles
+        dip_pct = (recent_high - recent_low) / recent_high if recent_high > 0 else 0
+
+        if dip_pct < 0.003:   # dip mínimo de 0.3%
+            return SignalDirection.FLAT
+
+        # ── Condição C: recuperação iniciada ────────────────
+        # Último candle 1H fechou acima da abertura (vela verde)
+        last_candle_bullish = closes[0] > opens[0]
+        if not last_candle_bullish:
+            return SignalDirection.FLAT
+
+        # ── Todas as condições OK → DIP + RECUPERAÇÃO ───────
+        return SignalDirection.LONG

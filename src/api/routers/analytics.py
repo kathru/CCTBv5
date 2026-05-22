@@ -1,6 +1,9 @@
 """
 Quantitative Analytics — métricas institucionais calculadas dos fills reais.
 
+Phase 10 — Futures Flow:
+  - /api/analytics/futures_flow  : funding rate, OI, M6 score por símbolo
+
 Phase 6 — Equity Analytics:
   - Equity Curve       (série temporal por trade, high-water mark, underwater)
   - Rolling Metrics    (Sharpe/WR/Expectancy janela deslizante 20 trades)
@@ -10,6 +13,7 @@ Phase 6 — Equity Analytics:
   - Export CSV         (equity curve para análise externa)
 """
 
+import json
 import math
 import statistics
 from collections import defaultdict
@@ -1200,4 +1204,68 @@ async def get_meta_overfitting(
         "verdict":         verdict,
         "alpha":           ALPHA,
         "computed_at":     datetime.now(UTC).isoformat(),
+    }
+
+
+# ── Phase 10 — Futures Flow ───────────────────────────────────────────────────
+
+SYMBOLS_FF = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
+
+
+@router.get("/futures_flow")
+async def get_futures_flow(request: Request) -> dict:
+    """
+    Phase 10 — Futures Flow: funding rate, Open Interest e M6 score.
+
+    Lê do Redis os dados coletados pelo FuturesFlowCollector (cache 15min).
+    Retorna dados por símbolo + sumário agregado.
+    """
+    cache = request.app.state.cache
+    by_symbol: dict[str, dict] = {}
+
+    for symbol in SYMBOLS_FF:
+        raw = await cache.get(f"futures_flow:{symbol}")
+        if raw:
+            # cache.get() already parses JSON → may return dict or str
+            if isinstance(raw, dict):
+                by_symbol[symbol] = raw
+            else:
+                try:
+                    by_symbol[symbol] = json.loads(raw)
+                except Exception:
+                    pass
+
+    # Sumário agregado — M6 médio, funding médio
+    m6_scores   = [d["scores"]["m6"]       for d in by_symbol.values() if d.get("scores")]
+    fundings    = [d["funding_rate_pct"]    for d in by_symbol.values() if d.get("funding_rate_pct") is not None]
+    oi_changes  = [d["oi_change_pct"]       for d in by_symbol.values() if d.get("oi_change_pct") is not None]
+
+    summary = {
+        "avg_m6":           round(sum(m6_scores)  / len(m6_scores),  4) if m6_scores  else None,
+        "avg_funding_pct":  round(sum(fundings)   / len(fundings),   5) if fundings   else None,
+        "avg_oi_change_pct":round(sum(oi_changes) / len(oi_changes), 3) if oi_changes else None,
+        "n_symbols":        len(by_symbol),
+        "has_data":         len(by_symbol) > 0,
+    }
+
+    # Interpretação do funding médio
+    if summary["avg_funding_pct"] is not None:
+        fr = summary["avg_funding_pct"]
+        if fr < -0.02:
+            summary["market_sentiment"] = "BEARISH (longs recebem)"
+        elif fr < 0.0:
+            summary["market_sentiment"] = "LEVE BEARISH"
+        elif fr < 0.01:
+            summary["market_sentiment"] = "NEUTRO"
+        elif fr < 0.05:
+            summary["market_sentiment"] = "BULLISH (bulls pagam moderado)"
+        else:
+            summary["market_sentiment"] = "CROWDED LONG (cuidado)"
+    else:
+        summary["market_sentiment"] = "SEM DADOS"
+
+    return {
+        "by_symbol":  by_symbol,
+        "summary":    summary,
+        "computed_at": datetime.now(UTC).isoformat(),
     }

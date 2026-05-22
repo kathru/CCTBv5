@@ -40,6 +40,7 @@ from ..risk.kill_switch import KillSwitch
 from ..strategies.meta_layer import MetaStrategyLayer
 from ..strategies.ml.inference import MLInferenceEngine
 from ..strategies.momentum.momentum_strategy import MomentumStrategy
+from ..market.futures_flow import FuturesFlowCollector
 from ..strategies.runner import StrategyRunner
 from ..watchdog.heartbeat import HeartbeatWatchdog
 from ..watchdog.resource_watchdog import ResourceWatchdog
@@ -144,11 +145,19 @@ class TradingLoop:
         # ── Meta Layer ────────────────────────────────────────
         self._meta = MetaStrategyLayer()
 
+        # ── Futures Flow Collector (Phase 10) — M6 data source ───────────────
+        self._futures_flow = FuturesFlowCollector(
+            exchange=self._okx,
+            cache=self._cache,
+            symbols=SYMBOLS,
+        )
+
         # ── Strategy Runner ───────────────────────────────────
         self._runner = StrategyRunner(
             bus=self._bus,
             market=self._market,
             cache=self._cache,
+            futures_flow=self._futures_flow,
         )
         v4 = MomentumStrategy(symbols=SYMBOLS)
         self._runner.register(v4)
@@ -242,6 +251,7 @@ class TradingLoop:
         await self._ws_watchdog.start()
         await self._resource_watchdog.start()
         await self._market.start()
+        await self._futures_flow.start()     # Phase 10: M6 data antes do runner
         await self._runner.start()
         await self._position_monitor.start()
         await self._reconciler.start()
@@ -360,6 +370,7 @@ class TradingLoop:
                 pass
 
         await self._market.stop()
+        await self._futures_flow.stop()
         await self._runner.stop()
         await self._position_monitor.stop()
         await self._reconciler.stop()

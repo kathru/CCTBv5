@@ -46,11 +46,13 @@ class StrategyRunner:
         market: MarketEngine,
         cache: Cache,
         portfolio_value: float = 0.0,
+        futures_flow=None,  # FuturesFlowCollector | None
     ) -> None:
         self._bus = bus
         self._market = market
         self._cache = cache
         self._portfolio_value = portfolio_value
+        self._futures_flow = futures_flow   # injeta M6 no contexto
         self._strategies: dict[str, BaseStrategy] = {}
         self._queue: asyncio.Queue | None = None
         self._task: asyncio.Task | None = None
@@ -230,6 +232,16 @@ class StrategyRunner:
         pos_data = await self._cache.get_position(symbol)
         open_positions = [pos_data] if pos_data else []
 
+        # ── M6: Futures Flow (Phase 10) ───────────────────────────────────────
+        # Lê do Redis o dado coletado pelo FuturesFlowCollector (15min cache).
+        # Fallback seguro: ctx.extra["futures_flow"] = None → strategy usa 0.5
+        futures_flow_data = None
+        if self._futures_flow is not None:
+            try:
+                futures_flow_data = await self._futures_flow.get_flow(symbol)
+            except Exception as exc:
+                logger.debug("futures_flow.get_flow(%s) falhou: %s", symbol, exc)
+
         return StrategyContext(
             symbol=symbol,
             candles_1h=candles_1h,
@@ -238,6 +250,7 @@ class StrategyRunner:
             ticker=None,
             portfolio_value=self._portfolio_value,
             open_positions=open_positions,
+            extra={"futures_flow": futures_flow_data},
         )
 
     async def _publish_signal(self, signal: Signal) -> None:

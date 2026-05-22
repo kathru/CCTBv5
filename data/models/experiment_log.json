@@ -1,0 +1,26 @@
+{
+  "experiments": [
+    {
+      "version": "platt_v1",
+      "run_at": "2026-05-22T21:08:32.190571+00:00",
+      "mode": "rebuild",
+      "platt_a": 0.296203,
+      "platt_b": -0.684855,
+      "n_samples": 39271,
+      "win_rate": 0.3715,
+      "symbols": [
+        "BTC-USDT",
+        "ETH-USDT",
+        "SOL-USDT"
+      ],
+      "delta_wr": null,
+      "delta_a": null,
+      "forward": 10,
+      "quality_gate": {
+        "wr_vs_prev": "baseline",
+        "passed": true
+      }
+    }
+  ],
+  "updated_at": "2026-05-22T21:08:32.190571+00:00"
+}

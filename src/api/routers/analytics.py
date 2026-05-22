@@ -1386,6 +1386,48 @@ async def get_volatility_state(request: Request) -> dict:
     }
 
 
+# ── Phase 15 — MLOps ──────────────────────────────────────────────────────────
+
+@router.get("/model_health")
+async def get_model_health(request: Request) -> dict:
+    """Phase 15.2 — Model Health: saúde do modelo em produção (PSI, WR drift, score dist)."""
+    import pathlib as _pl
+    cache = request.app.state.cache
+    raw   = await cache.get("model_health")
+    if not raw:
+        return {"has_data": False, "message": "ModelHealthMonitor ainda não rodou",
+                "computed_at": datetime.now(UTC).isoformat()}
+    data = raw if isinstance(raw, dict) else json.loads(raw)
+    data["has_data"] = True
+    # Adiciona experiment log
+    exp_path = _pl.Path("data/models/experiment_log.json")
+    if exp_path.exists():
+        try:
+            data["experiment_log"] = json.loads(exp_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return data
+
+
+@router.get("/ensemble_robustness")
+async def get_ensemble_robustness(request: Request) -> dict:
+    """Phase 15.4 — Ensemble Robustness: resultado do teste C(8,K)."""
+    import pathlib as _pl
+    path = _pl.Path("data/models/ensemble_robustness.json")
+    if not path.exists():
+        return {"has_data": False,
+                "message": "Rode: python scripts/ensemble_robustness.py --k 7",
+                "computed_at": datetime.now(UTC).isoformat()}
+    try:
+        d = json.loads(path.read_text(encoding="utf-8"))
+        d["has_data"] = True
+        # Remove all_results (muito grande para o dashboard)
+        d.pop("all_results", None)
+        return d
+    except Exception as exc:
+        return {"has_data": False, "error": str(exc)}
+
+
 # ── Phase 14 — Advanced Risk ──────────────────────────────────────────────────
 
 @router.get("/advanced_risk")

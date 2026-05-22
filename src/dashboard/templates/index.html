@@ -1374,6 +1374,83 @@
 
 </div>
 
+<!-- ══ MLOPS — Phase 15 ════════════════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="dot" style="background:var(--blue)"></div>
+  MLOps &amp; Saúde do Modelo
+  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 15 · experiment tracking · online validation · ensemble</span>
+  <span id="mh-health-badge" style="margin-left:auto;font-size:0.65rem;font-weight:800;padding:3px 12px;border-radius:5px;">–</span>
+</div>
+<div class="grid g31">
+
+  <!-- Health Score + Dimensões -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:6px">Saúde do Modelo</div>
+    <!-- Gauge circular simplificado via barra -->
+    <div style="text-align:center;padding:8px 0 12px;">
+      <div style="font-size:0.5rem;color:var(--muted)">Health Score</div>
+      <div style="font-size:3rem;font-weight:900;line-height:1;" id="mh-score">–</div>
+      <div style="font-size:0.65rem;margin-top:4px;" id="mh-status">–</div>
+    </div>
+    <!-- Barra de saúde -->
+    <div style="height:8px;background:rgba(255,255,255,0.06);border-radius:4px;margin-bottom:12px;overflow:hidden;">
+      <div id="mh-score-bar" style="height:100%;border-radius:4px;transition:width 0.5s;"></div>
+    </div>
+    <!-- 4 dimensões -->
+    <div style="display:flex;flex-direction:column;gap:6px;" id="mh-dimensions"></div>
+    <!-- Recomendações -->
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:10px;" id="mh-recs"></div>
+  </div>
+
+  <!-- Experiment Tracking -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Experiment Tracking <span style="font-size:0.55rem;color:var(--muted);font-weight:400">(15.1)</span></div>
+    <!-- Calibração atual -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;font-size:0.6rem;">
+      <div><span style="color:var(--muted)">Platt A</span><br><span id="mh-platt-a" style="font-weight:700;font-size:0.9rem;">–</span></div>
+      <div><span style="color:var(--muted)">Platt B</span><br><span id="mh-platt-b" style="font-weight:700;font-size:0.9rem;">–</span></div>
+      <div><span style="color:var(--muted)">Win Rate Calib.</span><br><span id="mh-calib-wr" style="font-weight:700;font-size:0.9rem;">–</span></div>
+      <div><span style="color:var(--muted)">N Amostras</span><br><span id="mh-calib-n" style="font-weight:700;font-size:0.9rem;">–</span></div>
+    </div>
+    <!-- Histórico de runs -->
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">
+      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:6px">Histórico de Calibrações</div>
+      <div id="mh-exp-history" style="font-size:0.58rem;"></div>
+    </div>
+    <!-- Ensemble robustness -->
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:8px;">
+      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px">Ensemble Robustness (15.4)</div>
+      <div id="mh-ensemble" style="font-size:0.6rem;"></div>
+    </div>
+  </div>
+
+  <!-- Online Validation -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Online Validation <span style="font-size:0.55rem;color:var(--muted);font-weight:400">(15.2)</span></div>
+    <!-- PSI -->
+    <div style="margin-bottom:10px;">
+      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:6px">PSI — Drift de Features</div>
+      <div id="mh-psi-features" style="display:flex;flex-direction:column;gap:4px;"></div>
+    </div>
+    <!-- WR drift -->
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">
+      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:6px">Win Rate Drift</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.6rem;text-align:center;">
+        <div><div style="color:var(--muted);font-size:0.5rem">Live WR</div><div id="mh-wr-live" style="font-weight:800;font-size:1rem;">–</div></div>
+        <div><div style="color:var(--muted);font-size:0.5rem">Calibrado</div><div id="mh-wr-calib" style="font-weight:800;font-size:1rem;">–</div></div>
+      </div>
+      <div style="font-size:0.6rem;text-align:center;margin-top:4px;" id="mh-wr-status">–</div>
+    </div>
+    <!-- Execution rate -->
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:8px;">
+      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px">Taxa de Execução</div>
+      <div style="font-size:1.2rem;font-weight:800;" id="mh-exec-rate">–</div>
+      <div style="font-size:0.55rem;color:var(--muted)" id="mh-exec-status">–</div>
+    </div>
+  </div>
+
+</div>
+
 <!-- ══ META-REGIME — Phase 13 ═════════════════════════════════════════════ -->
 <div class="section-hdr">
   <div class="dot" style="background:var(--green)"></div>
@@ -2981,10 +3058,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -3000,6 +3077,8 @@ async function updateSlow(){
     fetchJSON('/api/analytics/volatility_state'),
     fetchJSON('/api/analytics/meta_regime'),
     fetchJSON('/api/analytics/advanced_risk'),
+    fetchJSON('/api/analytics/model_health'),
+    fetchJSON('/api/analytics/ensemble_robustness'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -3021,6 +3100,8 @@ async function updateSlow(){
   if(vs)        _slowData.vs=vs;
   if(mr)        _slowData.mr=mr;
   if(ar)        _slowData.ar=ar;
+  if(mh)        _slowData.mh=mh;
+  if(ens)       _slowData.ens=ens;
 }
 
 // ── Phase 10 — Futures Flow ──────────────────────────────────────────────────
@@ -3107,6 +3188,134 @@ function updateVolatilityState(vs, sym){
 }
 
 // ── Phase 11 — Relative Strength ─────────────────────────────────────────────
+
+// ── Phase 15 — MLOps & Model Health ──────────────────────────────────────────
+
+function buildModelHealth(mh, ens){
+  if(!mh||!mh.has_data) return;
+
+  const setT=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v??'–';};
+  const setC=(id,v,col)=>{const e=document.getElementById(id);if(e){e.textContent=v??'–';if(col)e.style.color=col;}};
+
+  const score  = mh.health_score||0;
+  const status = mh.status||'UNKNOWN';
+  const SCFG   = {
+    SAUDAVEL:  {c:'var(--green)',  bg:'rgba(16,185,129,0.15)', label:'SAUDÁVEL'},
+    ATENCAO:   {c:'var(--yellow)', bg:'rgba(234,179,8,0.15)',  label:'ATENÇÃO'},
+    DEGRADANDO:{c:'var(--orange)', bg:'rgba(249,115,22,0.15)', label:'DEGRADANDO'},
+    CRITICO:   {c:'var(--red)',    bg:'rgba(239,68,68,0.15)',  label:'CRÍTICO'},
+  };
+  const sc = SCFG[status]||{c:'var(--muted)',bg:'rgba(100,100,100,0.1)',label:'–'};
+
+  // Badge
+  const bEl=document.getElementById('mh-health-badge');
+  if(bEl){bEl.textContent=sc.label;bEl.style.background=sc.bg;bEl.style.color=sc.c;}
+
+  // Score
+  const scEl=document.getElementById('mh-score');
+  if(scEl){scEl.textContent=Math.round(score);scEl.style.color=sc.c;}
+  setC('mh-status', sc.label, sc.c);
+  const barEl=document.getElementById('mh-score-bar');
+  if(barEl){barEl.style.width=score+'%';barEl.style.background=sc.c;}
+
+  // Dimensões
+  const DIM_LABELS={psi:'PSI Features',win_rate:'Win Rate Drift',score_dist:'Score Dist.',exec_rate:'Exec Rate'};
+  const dimEl=document.getElementById('mh-dimensions');
+  if(dimEl&&mh.dimensions){
+    dimEl.innerHTML=Object.entries(mh.dimensions).map(([k,d])=>{
+      const sc_=d.score||50;
+      const col=sc_>=80?'var(--green)':sc_>=60?'var(--yellow)':'var(--red)';
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:0.58rem;">
+        <span style="width:80px;color:var(--muted)">${DIM_LABELS[k]||k}</span>
+        <div style="flex:1;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${sc_}%;background:${col};border-radius:3px;"></div>
+        </div>
+        <span style="color:${col};font-weight:700;width:28px;text-align:right">${Math.round(sc_)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Recomendações
+  const recEl=document.getElementById('mh-recs');
+  if(recEl&&mh.recommendations){
+    recEl.innerHTML=mh.recommendations.map(r=>`<div style="font-size:0.58rem;margin-bottom:3px">${r}</div>`).join('');
+  }
+
+  // Experiment tracking
+  const c=mh.calibration||{};
+  setT('mh-platt-a', c.platt_a!=null?c.platt_a.toFixed(6):null);
+  setT('mh-platt-b', c.platt_b!=null?c.platt_b.toFixed(6):null);
+  setC('mh-calib-wr', c.win_rate!=null?((c.win_rate||0)*100).toFixed(1)+'%':null,
+       (c.win_rate||0)>0.4?'var(--green)':'var(--yellow)');
+  setT('mh-calib-n',  c.n_samples!=null?c.n_samples.toLocaleString('pt-BR'):null);
+
+  // Histórico
+  const histEl=document.getElementById('mh-exp-history');
+  if(histEl&&mh.experiment_log?.experiments){
+    const exps=mh.experiment_log.experiments.slice(-5).reverse();
+    histEl.innerHTML=exps.map(e=>{
+      const dwr=e.delta_wr;
+      const dwrCol=dwr==null?'var(--muted)':dwr>0?'var(--green)':'var(--red)';
+      return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+        <span style="color:var(--muted)">${e.version} <span style="font-size:0.5rem">${(e.run_at||'').slice(0,10)}</span></span>
+        <span>WR:${((e.win_rate||0)*100).toFixed(1)}% <span style="color:${dwrCol}">${dwr!=null?(dwr>0?'+':'')+((dwr||0)*100).toFixed(1)+'%':''}</span></span>
+      </div>`;
+    }).join('') || '<span style="color:var(--muted)">Nenhuma calibração registrada</span>';
+  }
+
+  // Ensemble
+  const ensEl=document.getElementById('mh-ensemble');
+  if(ensEl){
+    if(ens&&ens.has_data){
+      const col=ens.robustness==='ROBUSTO'?'var(--green)':ens.robustness==='MODERADO'?'var(--yellow)':'var(--red)';
+      ensEl.innerHTML=`<span style="color:${col};font-weight:700">${ens.robustness}</span>
+        <span style="color:var(--muted);margin-left:6px">${ens.pct_positive}% combinações positivas (K=${ens.k})</span>`;
+    } else {
+      ensEl.textContent='Rode: python scripts/ensemble_robustness.py --k 7';
+      ensEl.style.color='var(--muted)';
+    }
+  }
+
+  // Online validation — PSI
+  const psiEl=document.getElementById('mh-psi-features');
+  const psiD=mh.dimensions?.psi||{};
+  if(psiEl&&psiD.features){
+    const items=Object.entries(psiD.features).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    if(items.length){
+      const maxP=Math.max(...items.map(i=>i[1]),0.01);
+      psiEl.innerHTML=items.map(([k,v])=>{
+        const col=v>=0.20?'var(--red)':v>=0.10?'var(--yellow)':'var(--green)';
+        const pct=Math.round(v/maxP*100);
+        return `<div style="display:flex;align-items:center;gap:6px;font-size:0.55rem;">
+          <span style="width:70px;color:var(--muted);overflow:hidden;text-overflow:ellipsis">${k.replace('_',' ')}</span>
+          <div style="flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;">
+            <div style="height:100%;width:${pct}%;background:${col};border-radius:2px;"></div>
+          </div>
+          <span style="color:${col};font-size:0.5rem;width:32px;text-align:right">${v.toFixed(3)}</span>
+        </div>`;
+      }).join('');
+    } else {
+      psiEl.textContent='Aguardando observações ao vivo...';
+      psiEl.style.color='var(--muted)';
+    }
+  }
+
+  // WR drift
+  const wrD=mh.dimensions?.win_rate||{};
+  setC('mh-wr-live', wrD.live_wr!=null?((wrD.live_wr||0)*100).toFixed(1)+'%':null,
+       wrD.status==='alinhado'?'var(--green)':wrD.status==='atencao'?'var(--yellow)':'var(--red)');
+  setT('mh-wr-calib',  wrD.calibrated_wr!=null?((wrD.calibrated_wr||0)*100).toFixed(1)+'%':null);
+  const WR_STATUS={'alinhado':'✓ Alinhado','atencao':'⚠ Atenção','drift_critico':'✗ Drift crítico'};
+  setC('mh-wr-status', WR_STATUS[wrD.status]||wrD.status,
+       wrD.status==='alinhado'?'var(--green)':wrD.status==='atencao'?'var(--yellow)':'var(--red)');
+
+  // Exec rate
+  const exD=mh.dimensions?.exec_rate||{};
+  setC('mh-exec-rate', exD.exec_pct!=null?exD.exec_pct.toFixed(2)+'%':null,
+       exD.status==='saudavel'?'var(--green)':'var(--yellow)');
+  const EXEC_STATUS={'saudavel':'Taxa saudável (1–15%)','baixa_demais':'Taxa muito baixa','alta_demais':'Taxa muito alta'};
+  setT('mh-exec-status', EXEC_STATUS[exD.status]||exD.status);
+}
 
 // ── Phase 14 — Advanced Risk ─────────────────────────────────────────────────
 
@@ -3381,7 +3590,8 @@ async function updateAll(){
   if(ff)      updateFuturesFlow(ff, sym);
   if(rs)      updateRelativeStrength(rs, sym);
   if(vs)      updateVolatilityState(vs, sym);
-  const {mr,ar}=_slowData;
+  const {mr,ar,mh,ens}=_slowData;
+  if(mh||ens) buildModelHealth(mh, ens);
   if(ar)      buildAdvancedRisk(ar);
   if(mr)      buildMetaRegime(mr);
 

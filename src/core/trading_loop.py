@@ -38,6 +38,7 @@ from ..oms.position_monitor import PositionMonitor
 from ..persistence import Cache, Database
 from ..portfolio.engine import PortfolioEngine
 from ..recovery.boot import BootSequence
+from ..monitoring.model_health import ModelHealthMonitor
 from ..recovery.periodic_reconciler import PeriodicReconciler
 from ..risk.advanced_risk import AdvancedRiskManager
 from ..risk.engine import RiskContext, RiskEngine
@@ -170,6 +171,10 @@ class TradingLoop:
             symbols=SYMBOLS,
         )
 
+        # ── Model Health Monitor (Phase 15.2) ────────────────────────────────
+        from ..monitoring.signal_log import signal_audit_log as _sal
+        self._model_health = ModelHealthMonitor(cache=self._cache, signal_log=_sal)
+
         # ── Advanced Risk Manager (Phase 14) ─────────────────────────────────
         self._adv_risk = AdvancedRiskManager(
             market=self._market,
@@ -293,6 +298,7 @@ class TradingLoop:
         await self._vol_state.start()       # Phase 12: M8 data antes do runner
         await self._meta_regime.start()     # Phase 13: macro regime antes do runner
         await self._adv_risk.start()        # Phase 14: advanced risk
+        await self._model_health.start()    # Phase 15.2: model health monitor
         await self._runner.start()
         await self._position_monitor.start()
         await self._reconciler.start()
@@ -416,6 +422,7 @@ class TradingLoop:
         await self._vol_state.stop()
         await self._meta_regime.stop()
         await self._adv_risk.stop()
+        await self._model_health.stop()
         await self._runner.stop()
         await self._position_monitor.stop()
         await self._reconciler.stop()

@@ -519,6 +519,67 @@ def analyze_regime_thresholds(samples: list[dict],
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def _log_experiment(result: dict, mode: str = "incremental") -> None:
+    """
+    Phase 15.1 — Experiment Tracking.
+    Appends calibration run to experiment_log.json para rastreabilidade histórica.
+    Compara automaticamente com o run anterior (gate de qualidade).
+    """
+    exp_path = ROOT / "data" / "models" / "experiment_log.json"
+    exp_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Lê log existente
+    try:
+        log_data = json.loads(exp_path.read_text(encoding="utf-8")) if exp_path.exists() else {}
+    except Exception:
+        log_data = {}
+
+    experiments = log_data.get("experiments", [])
+    prev = experiments[-1] if experiments else {}
+
+    # Versão incremental
+    version = f"platt_v{len(experiments) + 1}"
+
+    # Comparação vs anterior
+    delta_wr = None
+    delta_a  = None
+    if prev:
+        delta_wr = round(result["win_rate"] - prev.get("win_rate", result["win_rate"]), 4)
+        delta_a  = round(result["platt_a"]   - prev.get("platt_a",  result["platt_a"]),  6)
+
+    entry = {
+        "version":      version,
+        "run_at":       result["calibrated_at"],
+        "mode":         mode,
+        "platt_a":      result["platt_a"],
+        "platt_b":      result["platt_b"],
+        "n_samples":    result["n"],
+        "win_rate":     result["win_rate"],
+        "symbols":      result["symbols"],
+        "delta_wr":     delta_wr,
+        "delta_a":      delta_a,
+        "forward":      result["forward_candles"],
+        "quality_gate": {
+            "wr_vs_prev":  "+" + str(delta_wr) if delta_wr and delta_wr > 0 else str(delta_wr),
+            "passed":      (delta_wr is None or delta_wr >= -0.02),  # aceita queda de até -2%
+        },
+    }
+    experiments.append(entry)
+
+    log_data = {"experiments": experiments, "updated_at": result["calibrated_at"]}
+    exp_path.write_text(json.dumps(log_data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    log.info("\n── Phase 15.1: Experiment Tracking ──────────────────────────")
+    log.info("  Versão   : %s", version)
+    log.info("  WR atual : %.1f%%  (delta %+.1f%%)",
+             result["win_rate"] * 100,
+             (delta_wr or 0) * 100)
+    log.info("  A atual  : %.6f  (delta %+.6f)", result["platt_a"], delta_a or 0)
+    log.info("  Gate     : %s", "✅ PASSED" if entry["quality_gate"]["passed"] else "❌ FAILED")
+    log.info("  Log      : %s (%d runs)", exp_path, len(experiments))
+    log.info("─" * 60)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Recalibra o sistema de sinais CCTBv5")
     parser.add_argument("--symbols",     nargs="+", default=DEFAULT_SYMBOLS)
@@ -710,8 +771,12 @@ def main() -> None:
         log.info("\n✅ Gravado em: %s", OUTPUT)
         log.info("✅ Banco     : %s (%.1f MB)",
                  DB_PATH, DB_PATH.stat().st_size / 1024 / 1024)
+
+        # ── Phase 15.1: Experiment Tracking ───────────────────────────────────
+        _log_experiment(result, mode="rebuild" if args.rebuild else "incremental")
+
         log.info("\nPróximo passo:")
-        log.info("  git add data/models/calibration_coef.json")
+        log.info("  git add data/models/calibration_coef.json data/models/experiment_log.json")
         log.info("  git commit -m 'chore: recalibração %s'",
                  datetime.now(UTC).strftime("%Y-%m-%d"))
         log.info("  git push && ./deploy.ps1")

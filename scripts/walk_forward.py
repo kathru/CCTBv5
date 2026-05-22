@@ -437,7 +437,9 @@ async def walk_forward(
     train_months: int = 6,
     test_months:  int = 2,
     initial_capital: float = 10000.0,
-    forward_candles: int = 10,  # 10×1H = 10h
+    forward_candles: int = 10,   # 10×1H = 10h
+    purged: bool = False,        # Phase 15.3: Purged CV
+    embargo_candles: int = 5,    # candles de embargo entre folds
 ) -> WalkForwardResult:
     """
     Executa WFO com janela expandida.
@@ -457,12 +459,19 @@ async def walk_forward(
     fold_num    = 0
     test_start  = start_ts + train_ms
 
+    # Embargo em ms (purged CV — 15.3)
+    embargo_ms = embargo_candles * GRAN_MS.get("1H", 3_600_000) if purged else 0
+
     while test_start + test_ms <= end_ts:
         fold_num  += 1
         test_end   = test_start + test_ms
 
         # Partição IS (treino) e OOS (teste)
-        train_data = [c for c in all_candles if c["ts"] < test_start]
+        # Purged CV (15.3): remove candles contaminados (forward_candles após último candle de treino)
+        # e adiciona embargo period antes do início do teste
+        purge_ms   = forward_candles * GRAN_MS.get("1H", 3_600_000) if purged else 0
+        train_end  = test_start - embargo_ms
+        train_data = [c for c in all_candles if c["ts"] < (train_end - purge_ms)]
         test_data  = [c for c in all_candles if test_start <= c["ts"] < test_end]
 
         if len(train_data) < 100 or len(test_data) < 50:
@@ -726,6 +735,8 @@ async def main_async(args: argparse.Namespace) -> None:
             train_months=args.train_months,
             test_months=args.test_months,
             initial_capital=args.capital,
+            purged=getattr(args, "purged", False),
+            embargo_candles=getattr(args, "embargo_candles", 5),
         )
 
         all_results[symbol] = wfo
@@ -761,6 +772,10 @@ def main() -> None:
                         help="Não salva arquivos")
     parser.add_argument("--auto-apply",    action="store_true",
                         help="Atualiza calibration_coef.json se OOS positivo e estável")
+    parser.add_argument("--purged",        action="store_true",
+                        help="Phase 15.3: Purged CV — remove contaminação temporal entre folds")
+    parser.add_argument("--embargo-candles", type=int, default=5,
+                        help="Candles de embargo entre treino e teste no modo --purged (default: 5)")
     args = parser.parse_args()
     asyncio.run(main_async(args))
 

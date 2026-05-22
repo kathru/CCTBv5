@@ -160,9 +160,15 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m7_rel_strength": FeatureDef(
-            weight=0.10,
+            weight=0.09,
             description="Relative Strength vs BTC: RS 1h/5h/24h ponderado + BTC leadership score + tendência de RS",
             lookback=25,
+            leakage_safe=True,
+        ),
+        "m8_vol_state": FeatureDef(
+            weight=0.11,
+            description="Volatility State Machine: 5 estados (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC) via ATR + BB + dir_consistency",
+            lookback=20,
             leakage_safe=True,
         ),
     },

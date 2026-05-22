@@ -1323,3 +1323,64 @@ async def get_relative_strength(request: Request) -> dict:
         "summary":     summary,
         "computed_at": datetime.now(UTC).isoformat(),
     }
+
+
+# ── Phase 12 — Volatility State ──────────────────────────────────────────────
+
+SYMBOLS_VS = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
+
+VOL_STATE_M8 = {
+    "EXPANDING":      0.80,
+    "TREND":          0.70,
+    "COMPRESSED":     0.65,
+    "MEAN_REVERTING": 0.35,
+    "CHAOTIC":        0.20,
+}
+
+
+@router.get("/volatility_state")
+async def get_volatility_state(request: Request) -> dict:
+    """
+    Phase 12 — Volatility State Machine: estado atual da volatilidade por símbolo.
+
+    Lê do Redis os dados calculados pelo VolatilityStateCollector (cache 15min).
+    Estados: EXPANDING / TREND / COMPRESSED / MEAN_REVERTING / CHAOTIC
+    """
+    cache = request.app.state.cache
+    by_symbol: dict[str, dict] = {}
+
+    for symbol in SYMBOLS_VS:
+        raw = await cache.get(f"vol_state:{symbol}")
+        if raw:
+            by_symbol[symbol] = raw if isinstance(raw, dict) else json.loads(raw)
+
+    # Sumário
+    states   = {s: d.get("state", "UNKNOWN")   for s, d in by_symbol.items()}
+    m8scores = {s: d.get("m8_score", 0.5)      for s, d in by_symbol.items()}
+    avg_m8   = round(sum(m8scores.values()) / len(m8scores), 4) if m8scores else None
+
+    # Estado mais comum
+    from collections import Counter
+    state_counts = Counter(states.values())
+    dominant_state = state_counts.most_common(1)[0][0] if state_counts else "UNKNOWN"
+
+    summary = {
+        "avg_m8":         avg_m8,
+        "dominant_state": dominant_state,
+        "states":         states,
+        "has_data":       len(by_symbol) > 0,
+        "market_vol_context": {
+            "EXPANDING":      "Breakout — momentum favorável",
+            "TREND":          "Tendência — mercado direcional",
+            "COMPRESSED":     "Compressão — aguardar breakout",
+            "MEAN_REVERTING": "Lateralização — momentum fraco",
+            "CHAOTIC":        "Caótico — evitar novas entradas",
+            "UNKNOWN":        "Sem dados",
+        }.get(dominant_state, "Misto"),
+    }
+
+    return {
+        "by_symbol":   by_symbol,
+        "summary":     summary,
+        "computed_at": datetime.now(UTC).isoformat(),
+    }

@@ -48,13 +48,15 @@ class StrategyRunner:
         portfolio_value: float = 0.0,
         futures_flow=None,       # FuturesFlowCollector | None  (M6)
         relative_strength=None,  # RelativeStrengthCollector | None  (M7)
+        vol_state=None,          # VolatilityStateCollector | None   (M8)
     ) -> None:
         self._bus = bus
         self._market = market
         self._cache = cache
         self._portfolio_value = portfolio_value
-        self._futures_flow = futures_flow          # injeta M6 no contexto
+        self._futures_flow      = futures_flow       # injeta M6 no contexto
         self._relative_strength = relative_strength  # injeta M7 no contexto
+        self._vol_state         = vol_state          # injeta M8 no contexto
         self._strategies: dict[str, BaseStrategy] = {}
         self._queue: asyncio.Queue | None = None
         self._task: asyncio.Task | None = None
@@ -252,6 +254,14 @@ class StrategyRunner:
             except Exception as exc:
                 logger.debug("relative_strength.get_rs(%s) falhou: %s", symbol, exc)
 
+        # ── M8: Volatility State (Phase 12) ──────────────────────────────────
+        vol_data = None
+        if self._vol_state is not None:
+            try:
+                vol_data = await self._vol_state.get_state(symbol)
+            except Exception as exc:
+                logger.debug("vol_state.get_state(%s) falhou: %s", symbol, exc)
+
         return StrategyContext(
             symbol=symbol,
             candles_1h=candles_1h,
@@ -263,6 +273,7 @@ class StrategyRunner:
             extra={
                 "futures_flow":      futures_flow_data,
                 "relative_strength": rs_data,
+                "vol_state":         vol_data,
             },
         )
 

@@ -331,8 +331,9 @@ class MomentumStrategy(BaseStrategy):
           M3 Volume Confirmation (16%): volume crescente + confirmação direcional (1H)
           M4 Regime Strength     (16%): distância SMA5-SMA20 normalizada
           M5 Candle Structure    ( 7%): close no terço superior do range (1H)
-          M6 Futures Flow        (11%): funding rate + OI change (perp market signal)
-          M7 Relative Strength   (10%): RS vs BTC multi-horizonte + BTC leadership
+          M6 Futures Flow        (10%): funding rate + OI change (perp market signal)
+          M7 Relative Strength   ( 9%): RS vs BTC multi-horizonte + BTC leadership
+          M8 Volatility State    (11%): state machine 5-estados (EXPANDING/TREND/...)
         """
         # Candles 1H — única granularidade em ciclo 1H
         closes  = [c.close  for c in ctx.candles_1h[:21]]
@@ -409,16 +410,22 @@ class MomentumStrategy(BaseStrategy):
         ff_scores = ff_data.get("scores", {})
         m6 = float(ff_scores.get("m6", 0.5))
 
-        # ── M7: Relative Strength (10%) — RS vs BTC + leadership (Phase 11) ─
-        # Lê do ctx.extra injetado pelo StrategyRunner (RelativeStrengthCollector).
-        # Fallback neutro (0.5) se dados indisponíveis — não bloqueia o trading.
+        # ── M7: Relative Strength (9%) — RS vs BTC + leadership (Phase 11) ──
         rs_data   = (ctx.extra or {}).get("relative_strength") or {}
         rs_scores = rs_data.get("scores", {})
         m7 = float(rs_scores.get("m7", 0.5))
 
-        # ── Score final — pesos redistribuídos com M6 + M7 ───────────────────
-        score = (m1 * 0.20 + m2 * 0.20 + m3 * 0.16 +
-                 m4 * 0.16 + m5 * 0.07 + m6 * 0.11 + m7 * 0.10)
+        # ── M8: Volatility State (11%) — state machine (Phase 12) ────────────
+        # Lê do ctx.extra injetado pelo StrategyRunner (VolatilityStateCollector).
+        # Fallback neutro (0.5) se dados indisponíveis — não bloqueia o trading.
+        vol_data = (ctx.extra or {}).get("vol_state") or {}
+        m8 = float(vol_data.get("m8_score", 0.5))
+        vol_state_name = vol_data.get("state", "UNKNOWN")
+
+        # ── Score final — pesos redistribuídos com M6 + M7 + M8 ─────────────
+        score = (m1 * 0.18 + m2 * 0.18 + m3 * 0.14 +
+                 m4 * 0.14 + m5 * 0.06 + m6 * 0.10 +
+                 m7 * 0.09 + m8 * 0.11)
         score = round(min(max(score, 0.0), 1.0), 4)
 
         factors = {
@@ -429,6 +436,7 @@ class MomentumStrategy(BaseStrategy):
             "m5_candle":      round(m5, 3),
             "m6_futures":     round(m6, 3),
             "m7_rel_strength":round(m7, 3),
+            "m8_vol_state":   round(m8, 3),
             # Sub-scores M6
             "m6_funding":     round(float(ff_scores.get("funding",       0.5)), 3),
             "m6_oi_change":   round(float(ff_scores.get("oi_change",     0.5)), 3),
@@ -437,6 +445,10 @@ class MomentumStrategy(BaseStrategy):
             "m7_rs_1h":       round(float(rs_scores.get("rs_1h",      0.5)), 3),
             "m7_leadership":  round(float(rs_scores.get("leadership",  0.5)), 3),
             "m7_rs_trend":    round(float(rs_scores.get("rs_trend",    0.5)), 3),
+            # Sub-scores M8
+            "m8_state_name":  vol_state_name,
+            "m8_atr_pct":     round(float(vol_data.get("metrics", {}).get("atr_pct",        0)), 3),
+            "m8_dir_consist": round(float(vol_data.get("metrics", {}).get("dir_consistency", 0.5)), 3),
         }
         # Registra features no drift monitor (nunca bloqueia o trading)
         try:

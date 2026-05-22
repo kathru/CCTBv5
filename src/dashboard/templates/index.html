@@ -618,12 +618,17 @@
         <span style="font-size:0.62rem;color:var(--text)">Futures (M6)</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m6" style="height:15px;border-radius:7px;background:#06b6d4;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.65rem;font-weight:700;color:#06b6d4;text-align:right" id="w-m6">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 11%</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 10%</span>
 
         <span style="font-size:0.62rem;color:var(--text)">Rel. Strength (M7)</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m7" style="height:15px;border-radius:7px;background:#a78bfa;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.65rem;font-weight:700;color:#a78bfa;text-align:right" id="w-m7">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 10%</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 9%</span>
+
+        <span style="font-size:0.62rem;color:var(--text)">Vol. State (M8)</span>
+        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m8" style="height:15px;border-radius:7px;background:#ec4899;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.65rem;font-weight:700;color:#ec4899;text-align:right" id="w-m8">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 11%</span>
       </div>
     </div>
 
@@ -645,7 +650,7 @@
       </div>
     </div>
     <!-- M7 sub-scores compactos -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:12px;">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;">
       <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:5px;padding:5px;text-align:center;">
         <div style="font-size:0.48rem;color:var(--muted)">RS 1h</div>
         <div style="font-size:0.75rem;font-weight:700;color:#a78bfa" id="m7-rs1h">–</div>
@@ -659,6 +664,21 @@
       <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:5px;padding:5px;text-align:center;">
         <div style="font-size:0.48rem;color:var(--muted)">RS Trend</div>
         <div style="font-size:0.75rem;font-weight:700;color:#a78bfa" id="m7-trend">–</div>
+      </div>
+    </div>
+    <!-- M8 sub-scores compactos -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:12px;">
+      <div style="background:rgba(236,72,153,0.07);border:1px solid rgba(236,72,153,0.2);border-radius:5px;padding:5px;text-align:center;">
+        <div style="font-size:0.48rem;color:var(--muted)">Estado</div>
+        <div style="font-size:0.62rem;font-weight:700;color:#ec4899;line-height:1.2" id="m8-state">–</div>
+      </div>
+      <div style="background:rgba(236,72,153,0.07);border:1px solid rgba(236,72,153,0.2);border-radius:5px;padding:5px;text-align:center;">
+        <div style="font-size:0.48rem;color:var(--muted)">ATR%</div>
+        <div style="font-size:0.75rem;font-weight:700;color:#ec4899" id="m8-atr">–</div>
+      </div>
+      <div style="background:rgba(236,72,153,0.07);border:1px solid rgba(236,72,153,0.2);border-radius:5px;padding:5px;text-align:center;">
+        <div style="font-size:0.48rem;color:var(--muted)">Dir. Consist.</div>
+        <div style="font-size:0.75rem;font-weight:700;color:#ec4899" id="m8-dir">–</div>
       </div>
     </div>
 
@@ -2864,10 +2884,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -2880,6 +2900,7 @@ async function updateSlow(){
     fetchJSON('/api/analytics/meta_overfitting?n_trials=10'),
     fetchJSON('/api/analytics/futures_flow'),
     fetchJSON('/api/analytics/relative_strength'),
+    fetchJSON('/api/analytics/volatility_state'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -2898,6 +2919,7 @@ async function updateSlow(){
   if(mo)        _slowData.mo=mo;
   if(ff)        _slowData.ff=ff;
   if(rs)        _slowData.rs=rs;
+  if(vs)        _slowData.vs=vs;
 }
 
 // ── Phase 10 — Futures Flow ──────────────────────────────────────────────────
@@ -2946,6 +2968,43 @@ function updateFuturesFlow(ff, sym){
   }
 }
 
+// ── Phase 12 — Volatility State ──────────────────────────────────────────────
+
+function updateVolatilityState(vs, sym){
+  if(!vs||!vs.summary) return;
+  const s = vs.summary;
+
+  const activeSym = (sym && Object.keys(sym).length ? Object.keys(sym)[0] : 'BTC-USDT');
+  const symData   = (vs.by_symbol||{})[activeSym] || Object.values(vs.by_symbol||{})[0] || {};
+  const metrics   = symData.metrics || {};
+  const state     = symData.state || '–';
+
+  const setT=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v??'–';};
+
+  // Estado de volatilidade
+  const stateEl = document.getElementById('m8-state');
+  if(stateEl){
+    stateEl.textContent = state;
+    const cols={EXPANDING:'var(--green)',TREND:'#3b82f6',COMPRESSED:'var(--yellow)',
+                MEAN_REVERTING:'var(--orange)',CHAOTIC:'var(--red)',UNKNOWN:'var(--muted)'};
+    stateEl.style.color = cols[state]||'#ec4899';
+  }
+
+  // ATR%
+  const atrEl = document.getElementById('m8-atr');
+  if(atrEl && metrics.atr_pct!=null){
+    atrEl.textContent = metrics.atr_pct.toFixed(3)+'%';
+    atrEl.style.color = metrics.atr_pct>2.5?'var(--red)':metrics.atr_pct<0.8?'var(--yellow)':'#ec4899';
+  }
+
+  // Directional Consistency
+  const dirEl = document.getElementById('m8-dir');
+  if(dirEl && metrics.dir_consistency!=null){
+    dirEl.textContent = (metrics.dir_consistency*100).toFixed(0)+'%';
+    dirEl.style.color = metrics.dir_consistency>0.6?'var(--green)':metrics.dir_consistency<0.45?'var(--red)':'#ec4899';
+  }
+}
+
 // ── Phase 11 — Relative Strength ─────────────────────────────────────────────
 
 function updateRelativeStrength(rs, sym){
@@ -2991,7 +3050,7 @@ async function updateAll(){
   ]);
 
   // Slow data vem do cache — atualizado em paralelo pelo loop lento
-  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs}=_slowData;
+  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs}=_slowData;
   if(recon)   updateReconciler(recon);
   if(equity)  buildEquityCharts(equity);
   if(rolling) buildRollingCharts(rolling);
@@ -3000,6 +3059,7 @@ async function updateAll(){
   if(mo)      buildMetaOverfitting(mo);
   if(ff)      updateFuturesFlow(ff, sym);
   if(rs)      updateRelativeStrength(rs, sym);
+  if(vs)      updateVolatilityState(vs, sym);
 
   // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS
   const hasPrices = prices && Object.keys(prices).length > 0;
@@ -3149,8 +3209,9 @@ async function updateAll(){
     const m5=f.m5_candle     ||0;
     const m6=f.m6_futures     ||0;
     const m7=f.m7_rel_strength||0;
-    const factors={m1,m2,m3,m4,m5,m6,m7};
-    ['m1','m2','m3','m4','m5','m6','m7'].forEach(k=>{
+    const m8=f.m8_vol_state   ||0;
+    const factors={m1,m2,m3,m4,m5,m6,m7,m8};
+    ['m1','m2','m3','m4','m5','m6','m7','m8'].forEach(k=>{
       const v=factors[k],pct=(v*100).toFixed(1)+'%';
       const wEl=document.getElementById('w-'+k);
       const bEl=document.getElementById('wb-'+k);

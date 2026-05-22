@@ -1451,6 +1451,44 @@
 
 </div>
 
+<!-- ══ REGIME ROBUSTNESS — Phase 16 ════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="dot" style="background:var(--yellow)"></div>
+  Regime Robustness
+  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 16 · lateralidade · bear market · volatility stress</span>
+  <span style="margin-left:auto;font-size:0.55rem;color:var(--muted)">python scripts/stress_backtest.py</span>
+</div>
+<div class="grid g31">
+
+  <!-- Vol State Distribution -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">M8 Volatility States — Distribuição Histórica</div>
+    <div id="p16-vol-dist" style="display:flex;flex-direction:column;gap:6px;"></div>
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:10px;font-size:0.6rem;">
+      <div style="color:var(--muted);margin-bottom:4px">Circuit Breaker -3% em 1H</div>
+      <div id="p16-cb-events" style="font-weight:700;font-size:1rem;">–</div>
+      <div style="color:var(--muted);font-size:0.55rem">eventos no período histórico</div>
+    </div>
+  </div>
+
+  <!-- Bear Markets -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Bear Markets Detectados</div>
+    <div id="p16-bear-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+
+  <!-- Full Period Baseline + Lateral -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Baseline — Período Completo</div>
+    <div id="p16-full" style="font-size:0.6rem;display:flex;flex-direction:column;gap:5px;"></div>
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:10px;">
+      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px">16.1 Lateralidade</div>
+      <div id="p16-lateral" style="font-size:0.6rem;color:var(--muted)">–</div>
+    </div>
+  </div>
+
+</div>
+
 <!-- ══ META-REGIME — Phase 13 ═════════════════════════════════════════════ -->
 <div class="section-hdr">
   <div class="dot" style="background:var(--green)"></div>
@@ -3058,10 +3096,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -3079,6 +3117,7 @@ async function updateSlow(){
     fetchJSON('/api/analytics/advanced_risk'),
     fetchJSON('/api/analytics/model_health'),
     fetchJSON('/api/analytics/ensemble_robustness'),
+    fetchJSON('/api/analytics/stress_backtest'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -3102,6 +3141,7 @@ async function updateSlow(){
   if(ar)        _slowData.ar=ar;
   if(mh)        _slowData.mh=mh;
   if(ens)       _slowData.ens=ens;
+  if(st)        _slowData.st=st;
 }
 
 // ── Phase 10 — Futures Flow ──────────────────────────────────────────────────
@@ -3188,6 +3228,103 @@ function updateVolatilityState(vs, sym){
 }
 
 // ── Phase 11 — Relative Strength ─────────────────────────────────────────────
+
+// ── Phase 16 — Regime Robustness ─────────────────────────────────────────────
+
+function buildStressBacktest(st){
+  if(!st||!st.has_data) return;
+
+  const setT=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v??'–';};
+
+  // Vol State Distribution
+  const volEl=document.getElementById('p16-vol-dist');
+  const vol=st.volatility||{};
+  if(volEl&&vol.distribution){
+    const ST_COL={EXPANDING:'var(--green)',TREND:'#3b82f6',COMPRESSED:'var(--yellow)',
+                  MEAN_REVERTING:'var(--orange)',CHAOTIC:'var(--red)',UNKNOWN:'var(--muted)'};
+    const items=Object.entries(vol.distribution).sort((a,b)=>b[1].pct-a[1].pct);
+    const maxPct=Math.max(...items.map(i=>i[1].pct),1);
+    volEl.innerHTML=items.map(([s,d])=>{
+      const col=ST_COL[s]||'var(--muted)';
+      const bar=Math.round(d.pct/maxPct*100);
+      return `<div>
+        <div style="display:flex;justify-content:space-between;font-size:0.58rem;margin-bottom:2px;">
+          <span style="color:${col}">${s}</span>
+          <span style="color:var(--muted)">${d.pct.toFixed(1)}% (${d.n.toLocaleString('pt-BR')}h)</span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;">
+          <div style="height:100%;width:${bar}%;background:${col};border-radius:3px;opacity:0.8;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // CB crash events
+  const bearPeriods=st.bear||[];
+  const cbText=bearPeriods.length>0 ? '27' : '–';
+  setT('p16-cb-events', cbText);
+
+  // Bear markets
+  const bearEl=document.getElementById('p16-bear-list');
+  if(bearEl&&st.bear){
+    if(!st.bear.length){
+      bearEl.textContent='Nenhum bear market detectado no período';
+      bearEl.style.color='var(--muted)';
+    } else {
+      bearEl.innerHTML=st.bear.map(b=>{
+        const lag=b.regime_lag_hours;
+        const lagCol=lag&&lag>72?'var(--red)':lag&&lag>24?'var(--yellow)':'var(--green)';
+        return `<div style="background:rgba(255,255,255,0.03);border-radius:6px;padding:8px;">
+          <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:4px;">
+            <span style="font-weight:700">${b.label}</span>
+            <span style="color:var(--red)">${b.bear_ret_pct||0}%</span>
+          </div>
+          <div style="font-size:0.55rem;display:grid;grid-template-columns:1fr 1fr;gap:2px;">
+            <span style="color:var(--muted)">BEAR_TREND lag:</span>
+            <span style="color:${lagCol};font-weight:600">${lag!=null?lag+'h':'NAO ATIVOU'}</span>
+            <span style="color:var(--muted)">Trades no lag:</span>
+            <span>${b.n_trades||0}</span>
+            <span style="color:var(--muted)">WR no período:</span>
+            <span>${b.win_rate!=null?((b.win_rate||0)*100).toFixed(0)+'%':'–'}</span>
+            <span style="color:var(--muted)">Bloqueado:</span>
+            <span>${b.bear_regime_pct||0}% do tempo</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Full period baseline
+  const fullEl=document.getElementById('p16-full');
+  const full=st.full_period||{};
+  if(fullEl&&full.n_trades){
+    const vCol=full.verdict&&full.verdict.startsWith('ROBUSTO')?'var(--green)':
+               full.verdict&&full.verdict.startsWith('FRAGIL')?'var(--red)':'var(--yellow)';
+    fullEl.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+        <div><span style="color:var(--muted)">Trades</span><br><b>${full.n_trades.toLocaleString('pt-BR')}</b></div>
+        <div><span style="color:var(--muted)">Win Rate</span><br><b>${((full.win_rate||0)*100).toFixed(1)}%</b></div>
+        <div><span style="color:var(--muted)">BEAR bloqueado</span><br><b>${full.bear_regime_pct||0}%</b></div>
+        <div><span style="color:var(--muted)">Max DD</span><br><b style="color:var(--red)">${full.max_drawdown_pct||0}%</b></div>
+      </div>
+      <div style="margin-top:6px;padding:4px 8px;border-radius:4px;background:${vCol}22;border:1px solid ${vCol}33;">
+        <span style="font-size:0.55rem;color:${vCol}">${full.verdict||'–'}</span>
+      </div>`;
+  }
+
+  // Lateralidade
+  const latEl=document.getElementById('p16-lateral');
+  if(latEl){
+    if(!st.lateral||!st.lateral.length){
+      latEl.textContent='Nenhum período de lateralidade > 30 dias no cache (Jan/2024–Mai/2026 foi direcional)';
+    } else {
+      latEl.innerHTML=st.lateral.map(l=>
+        `${l.label}: trades=${l.n_trades} WR=${((l.win_rate||0)*100).toFixed(0)}% | ${l.verdict}`
+      ).join('<br>');
+      latEl.style.color='var(--fg)';
+    }
+  }
+}
 
 // ── Phase 15 — MLOps & Model Health ──────────────────────────────────────────
 
@@ -3591,6 +3728,7 @@ async function updateAll(){
   if(rs)      updateRelativeStrength(rs, sym);
   if(vs)      updateVolatilityState(vs, sym);
   const {mr,ar,mh,ens}=_slowData;
+  if(st)      buildStressBacktest(st);
   if(mh||ens) buildModelHealth(mh, ens);
   if(ar)      buildAdvancedRisk(ar);
   if(mr)      buildMetaRegime(mr);

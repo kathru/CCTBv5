@@ -1409,6 +1409,23 @@ async def get_model_health(request: Request) -> dict:
     return data
 
 
+@router.get("/stress_backtest")
+async def get_stress_backtest(request: Request) -> dict:
+    """Phase 16 — Stress Backtest: robustez contra lateralidade, bear markets e vol extrema."""
+    import pathlib as _pl
+    path = _pl.Path("data/models/stress_backtest.json")
+    if not path.exists():
+        return {"has_data": False,
+                "message": "Rode: python scripts/stress_backtest.py",
+                "computed_at": datetime.now(UTC).isoformat()}
+    try:
+        d = json.loads(path.read_text(encoding="utf-8"))
+        d["has_data"] = True
+        return d
+    except Exception as exc:
+        return {"has_data": False, "error": str(exc)}
+
+
 @router.get("/ensemble_robustness")
 async def get_ensemble_robustness(request: Request) -> dict:
     """Phase 15.4 — Ensemble Robustness: resultado do teste C(8,K)."""

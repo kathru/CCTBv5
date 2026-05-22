@@ -15,6 +15,7 @@ Phase 6 — Equity Analytics:
 
 import json
 import math
+import random as _random
 import statistics
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -327,7 +328,7 @@ async def get_equity_curve(request: Request) -> dict:
         s["trades"] += 1
         if t["pnl"] > 0:
             s["wins"] += 1
-    for sym, s in by_symbol.items():
+    for _sym, s in by_symbol.items():
         s["pnl"]     = round(s["pnl"], 2)
         s["win_rate"] = round(s["wins"] / s["trades"], 3) if s["trades"] else 0
 
@@ -596,7 +597,7 @@ def _regime_contribution(trades: list[dict]) -> dict:
             r["wins"] += 1
 
     # Normaliza
-    for rname, r in regime_pnl.items():
+    for _rname, r in regime_pnl.items():
         r["pnl"]      = round(r["pnl"], 2)
         r["win_rate"] = round(r["wins"] / r["trades"], 3) if r["trades"] else 0
         r["avg_pnl"]  = round(r["pnl"] / r["trades"], 2)  if r["trades"] else 0
@@ -698,8 +699,6 @@ async def get_distribution(request: Request) -> dict:
 
 # ── Phase 8 — Reality Check ───────────────────────────────────────────────────
 
-import random as _random
-
 N_BOOTSTRAP  = 1000   # iterações bootstrap
 N_PERMUTE    = 1000   # iterações permutação
 ALPHA        = 0.05   # nível de significância → IC 95%
@@ -796,7 +795,7 @@ def _fee_stress(trades: list[dict], multipliers: list[float]) -> list[dict]:
         exp    = round(wr * avg_w + (1 - wr) * avg_l, 2) if n >= MIN_TRADES else None
         total  = round(sum(stressed_pnls), 2)
         pcts   = [p / t["entry_px"] / t["qty"] if t["entry_px"] * t["qty"] > 0 else 0
-                  for p, t in zip(stressed_pnls, trades)]
+                  for p, t in zip(stressed_pnls, trades, strict=False)]
         sh     = _sharpe(pcts)
 
         results.append({
@@ -855,12 +854,12 @@ async def get_reality_check(request: Request) -> dict:
         # pcts aqui são retornos em fração (não $), precisamos de pnl_pct em $
         # reutilizamos a ideia mas mapeando de volta
         w = [x for x in pcts if x > 0]
-        l = [x for x in pcts if x <= 0]
+        losses_ = [x for x in pcts if x <= 0]
         if not pcts:
             return None
         wr_ = len(w) / len(pcts)
-        aw  = sum(w) / len(w) if w else 0
-        al  = sum(l) / len(l) if l else 0
+        aw  = sum(w)       / len(w)       if w       else 0
+        al  = sum(losses_) / len(losses_) if losses_ else 0
         return wr_ * aw + (1 - wr_) * al
 
     bs_sharpe     = _bootstrap_metric(pnl_pcts, _sharpe)

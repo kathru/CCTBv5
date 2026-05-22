@@ -27,6 +27,7 @@ from ..alerts.discord import create_alert_channel
 from ..alerts.listener import AlertListener
 from ..exchange.okx.client import OKXClient
 from ..market.engine import MarketEngine
+from ..market.futures_flow import FuturesFlowCollector
 from ..metrics.infra_metrics import InfraMetrics
 from ..oms.execution_router import ExecutionRouter
 from ..oms.order_manager import OrderManager
@@ -40,7 +41,6 @@ from ..risk.kill_switch import KillSwitch
 from ..strategies.meta_layer import MetaStrategyLayer
 from ..strategies.ml.inference import MLInferenceEngine
 from ..strategies.momentum.momentum_strategy import MomentumStrategy
-from ..market.futures_flow import FuturesFlowCollector
 from ..strategies.runner import StrategyRunner
 from ..watchdog.heartbeat import HeartbeatWatchdog
 from ..watchdog.resource_watchdog import ResourceWatchdog

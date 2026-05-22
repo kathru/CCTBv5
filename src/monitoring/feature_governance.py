@@ -117,40 +117,52 @@ class FeatureSchema:
 
 # Schema atual (v2 = scoring model v2 com 5 fatores)
 CURRENT_SCHEMA = FeatureSchema(
-    version="2.0.0",
+    version="2.1.0",
     model_id="momentum_scoring_v2",
-    created_at="2026-05-16",
-    lookback_candles=21,
-    notes="5 fatores contínuos. M2 substituiu higher-highs binário. M4 dinâmico.",
+    created_at="2026-05-22",
+    lookback_candles=25,
+    notes="7 fatores. Phase 10: M6 Futures Flow (funding+OI). Phase 11: M7 Relative Strength (RS vs BTC + leadership).",
     features={
         "m1_momentum": FeatureDef(
-            weight=0.25,
-            description="Momentum adaptativo: média ponderada de retornos 5/10/20 candles, normalizado por ATR",
+            weight=0.20,
+            description="Momentum adaptativo: média ponderada de retornos 1/5/10/20 candles 1H, normalizado por ATR",
             lookback=21,
             leakage_safe=True,
         ),
         "m2_consistency": FeatureDef(
-            weight=0.25,
+            weight=0.20,
             description="Consistência de tendência: % candles bullish + higher-highs E higher-lows graduais",
             lookback=10,
             leakage_safe=True,
         ),
         "m3_volume": FeatureDef(
-            weight=0.20,
+            weight=0.16,
             description="Confirmação por volume: ratio + tendência de volume + candle direcional",
             lookback=20,
             leakage_safe=True,
         ),
         "m4_regime_str": FeatureDef(
-            weight=0.20,
+            weight=0.16,
             description="Força do regime: distância SMA5-SMA20 normalizada, blend com regime fixo",
             lookback=20,
             leakage_safe=True,
         ),
         "m5_candle": FeatureDef(
-            weight=0.10,
+            weight=0.07,
             description="Estrutura do candle: posição do close no range dos últimos 3 candles (Williams %R style)",
             lookback=3,
+            leakage_safe=True,
+        ),
+        "m6_futures": FeatureDef(
+            weight=0.11,
+            description="Futures Flow: funding rate (perp) + variação de Open Interest. Lê sinal do mercado de derivativos sem operar futuros.",
+            lookback=1,
+            leakage_safe=True,
+        ),
+        "m7_rel_strength": FeatureDef(
+            weight=0.10,
+            description="Relative Strength vs BTC: RS 1h/5h/24h ponderado + BTC leadership score + tendência de RS",
+            lookback=25,
             leakage_safe=True,
         ),
     },

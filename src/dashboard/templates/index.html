@@ -494,7 +494,7 @@
 
   <!-- Motor Probabilístico -->
   <div class="card">
-    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:0.5px;margin-bottom:12px;">EMA Trend Diário v5.6</div>
+    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:0.5px;margin-bottom:12px;">Motor Probabilístico</div>
 
     <!-- Regime box (estilo CCTBv4) -->
     <div id="motor-regime-box" class="motor-regime-box">
@@ -526,11 +526,11 @@
           </div>
           <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:7px;padding:4px 10px;text-align:center;">
             <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.8px">Stop Loss</div>
-            <div style="font-size:0.82rem;font-weight:800;color:var(--red)" id="motor-sl">–%</div>
+            <div style="font-size:0.82rem;font-weight:800;color:var(--red)" id="motor-sl">–1.5%</div>
           </div>
           <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:7px;padding:4px 10px;text-align:center;">
             <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.8px">Take Profit</div>
-            <div style="font-size:0.82rem;font-weight:800;color:var(--green)" id="motor-tp">+%</div>
+            <div style="font-size:0.82rem;font-weight:800;color:var(--green)" id="motor-tp">+3.0%</div>
           </div>
           <div style="flex:1;min-width:120px;">
             <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);margin-bottom:3px">Score atual</div>
@@ -540,7 +540,7 @@
               </div>
               <div id="motor-score-thr-line" style="position:absolute;top:0;bottom:0;left:56%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;"></div>
             </div>
-            <div style="font-size:0.58rem;color:rgba(255,255,255,0.3);margin-top:2px"><span id="motor-score-thr">dist. EMA</span></div>
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.3);margin-top:2px">thr <span id="motor-score-thr">56%</span></div>
           </div>
         </div>
       </div>
@@ -586,48 +586,45 @@
       </div>
     </div>
 
-    <!-- Fatores do score de tendência -->
+    <!-- Pesos adaptativos — barras por fator -->
     <div style="margin-bottom:12px;">
-      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Indicadores (atualização diária)</div>
-      <div style="display:grid;grid-template-columns:100px 1fr 44px 52px;align-items:center;gap:8px 10px;">
-        <span style="font-size:0.62rem;color:var(--text)">Dist. EMA50D</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m1" style="height:15px;border-radius:7px;background:#10b981;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#10b981;text-align:right" id="w-m1">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">acima</span>
+      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Fatores do Score</div>
+      <div style="display:grid;grid-template-columns:90px 1fr 38px 52px;align-items:center;gap:8px 10px;">
+        <span style="font-size:0.62rem;color:var(--text)">Momentum (M1)</span>
+        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m1" style="height:15px;border-radius:7px;background:#3b82f6;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.65rem;font-weight:700;color:#3b82f6;text-align:right" id="w-m1">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 25%</span>
 
-        <span style="font-size:0.62rem;color:var(--text)">Vol Realizada</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m2" style="height:15px;border-radius:7px;background:#f59e0b;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#f59e0b;text-align:right" id="w-m2">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">aa</span>
+        <span style="font-size:0.62rem;color:var(--text)">Estrutura (M2)</span>
+        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m2" style="height:15px;border-radius:7px;background:#10b981;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.65rem;font-weight:700;color:#10b981;text-align:right" id="w-m2">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 25%</span>
 
-        <span style="font-size:0.62rem;color:var(--text)">Posição</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:15px;border-radius:7px;background:#3b82f6;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#3b82f6;text-align:right" id="w-m3">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">% capital</span>
+        <span style="font-size:0.62rem;color:var(--text)">Volume (M3)</span>
+        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:15px;border-radius:7px;background:#f59e0b;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.65rem;font-weight:700;color:#f59e0b;text-align:right" id="w-m3">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 20%</span>
 
-        <span style="font-size:0.62rem;color:var(--text)">EMA 50D</span>
+        <span style="font-size:0.62rem;color:var(--text)">Regime (M4)</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m4" style="height:15px;border-radius:7px;background:#8b5cf6;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#8b5cf6;text-align:right;font-size:0.58rem" id="w-m4">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">ref</span>
+        <span style="font-size:0.65rem;font-weight:700;color:#8b5cf6;text-align:right" id="w-m4">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 20%</span>
+
+        <span style="font-size:0.62rem;color:var(--text)">Candle (M5)</span>
+        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m5" style="height:15px;border-radius:7px;background:#f97316;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.65rem;font-weight:700;color:#f97316;text-align:right" id="w-m5">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 10%</span>
       </div>
     </div>
 
-    <!-- Condições da Trend Strategy -->
+    <!-- Thresholds — com destaque na zona atual -->
     <div style="margin-bottom:14px;">
-      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">Filtros de entrada (todos devem estar ativos)</div>
-      <div style="display:flex;flex-direction:column;gap:4px;" id="rev-conditions">
-        <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc1" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span>
-          <span>BTC fechou acima da EMA 50 dias</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc2" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span>
-          <span>Vol realizada &lt; 80% aa (sem pânico)</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;font-size:0.62rem;color:var(--muted)">
-          <span id="rc3" style="width:9px;height:9px;border-radius:50%;background:#374151;flex-shrink:0;transition:background 0.3s,box-shadow 0.3s"></span>
-          <span>ETH/SOL confirmados pelo BTC (âncora)</span>
-        </div>
+      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">Zona de operação (score atual)</div>
+      <div class="thresh-row" id="thresh-row">
+        <div class="thresh-box t-hold"   id="tz-hold">  <span class="tval" id="tz-hold-lbl">&lt;56%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">HOLD</div></div>
+        <div class="thresh-box t-reduce" id="tz-reduce"><span class="tval" id="tz-reduce-lbl">56–65%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">REDUZIDO ½×</div></div>
+        <div class="thresh-box t-normal" id="tz-normal"><span class="tval">65–75%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">NORMAL 1×</div></div>
+        <div class="thresh-box t-agg"    id="tz-agg">   <span class="tval">75%+</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">AGRESSIVO 1.5×</div></div>
       </div>
     </div>
 
@@ -658,7 +655,7 @@
           <div class="mb-big-threshold" style="left:40%"></div>
         </div>
       </div>
-      <div style="font-size:0.58rem;color:var(--muted);text-align:right;margin-bottom:12px;">barra = força do sinal de tendência (dist. EMA50D)</div>
+      <div style="font-size:0.58rem;color:var(--muted);text-align:right;margin-bottom:12px;">linha vermelha = limite de bloqueio (40%)</div>
 
       <!-- 4 métricas com peso e contribuição -->
       <div class="mb-metrics">
@@ -1233,14 +1230,11 @@ function updateDonut(portfolio,prices){
 function regimeTag(r){
   if(!r) return '';
   const R=r.toUpperCase();
-  if(R==='TREND_UP')            return`<span class="rtag rtag-trend">↗ TREND UP</span>`;
-  if(R==='TREND_DOWN')          return`<span class="rtag rtag-exh">↘ TREND DOWN</span>`;
-  if(R==='VOL_SPIKE')           return`<span class="rtag rtag-panic">⚠ VOL SPIKE</span>`;
-  if(R==='BTC_FLAT'||R==='BTC_NOT_TRENDING') return`<span class="rtag rtag-chop">⇄ BTC FLAT</span>`;
-  if(R.includes('REVERSAL'))    return`<span class="rtag rtag-trend">REVERSÃO</span>`;
   if(R.includes('EXPANSION'))   return`<span class="rtag rtag-trend">${r.replace(/_/g,' ')}</span>`;
   if(R.includes('EXHAUSTION'))  return`<span class="rtag rtag-exh">${r.replace(/_/g,' ')}</span>`;
   if(R.includes('CHOP'))        return`<span class="rtag rtag-chop">CHOP</span>`;
+  if(R.includes('COMPRESSION')) return`<span class="rtag rtag-vol">VOL COMPRESS</span>`;
+  if(R.includes('CORRELATION')) return`<span class="rtag rtag-corr">HIGH CORR</span>`;
   if(R.includes('PANIC'))       return`<span class="rtag rtag-panic">PANIC</span>`;
   return`<span class="rtag rtag-chop">${r.replace(/_/g,' ')}</span>`;
 }
@@ -1262,7 +1256,7 @@ function buildSignalFeed(entries){
       <div class="sfeed-top">
         <div class="trade-pill ${actCls}" style="min-width:52px;font-size:0.62rem">${actTxt}</div>
         <span class="b" style="font-weight:700;font-size:0.78rem">${sym}</span>
-        <span class="m" style="font-size:0.62rem">${stratLabel(e.strategy_id)}</span>
+        <span class="m" style="font-size:0.62rem">${(e.strategy_id||'momentum_v2').replace('momentum_','m').toUpperCase()}</span>
         <span class="sfeed-ts">${t}</span>
       </div>
       <div class="sfeed-tags">
@@ -1295,7 +1289,7 @@ function buildTradeHistory(orders, totalFilled){
       <div class="trade-pill ${side==='buy'?'tp-buy':'tp-sell'}">${side.toUpperCase()}</div>
       <div>
         <div class="trade-sym">${o.symbol||'–'}</div>
-        <div class="trade-meta"><span class="strat">${stratLabel(o.strategy_id)}</span> · ${qty.toFixed(4)} un · fee –</div>
+        <div class="trade-meta"><span class="strat">${(o.strategy_id||'momentum_v2').replace('momentum_','m').toUpperCase()}</span> · ${qty.toFixed(4)} un · fee –</div>
       </div>
       <div class="trade-right">
         <div class="trade-pnl ${pnlCls}">${pnlStr!=='–'?pnlStr:usd(-notional)}</div>
@@ -1329,23 +1323,13 @@ function action(result,cal,thr,regime){
   return{l:'HOLD',c:'ap-hold'};
 }
 
-function stratLabel(id){
-  if(!id) return 'TREND-1D';
-  const s=id.toLowerCase();
-  if(s.includes('trend_v56')||s.includes('trend')) return 'TREND-1D';
-  if(s.includes('reversal')) return 'REV-1H';
-  if(s.includes('momentum')) return 'MOM-V2';
-  if(s.includes('exchange_sync')) return 'SYNC';
-  return id.toUpperCase().slice(0,8);
-}
-
 function regimeBadge(regime){
   const r=(regime||'').toUpperCase();
   const labels={
     'TREND_EXPANSION':'BULL','VOLATILITY_COMPRESSION':'COMPRESS',
     'TREND_EXHAUSTION':'EXHAUST','MEAN_REVERTING_CHOP':'CHOP',
     'HIGH_CORRELATION_RISK':'HIGH CORR','BEAR_TREND':'BEAR',
-    'PANIC_LIQUIDATION':'PANIC','REVERSAL_1H':'REVERSÃO 1H',
+    'PANIC_LIQUIDATION':'PANIC',
   };
   const lbl=labels[regime]||regime.replace(/_/g,' ');
   let bg,color,border;
@@ -1356,11 +1340,6 @@ function regimeBadge(regime){
   else if(r.includes('CORR'))    {bg='rgba(249,115,22,0.10)';color='#f97316';border='rgba(249,115,22,0.3)';}
   else if(r.includes('BEAR'))    {bg='rgba(239,68,68,0.12)'; color='#f87171';border='rgba(239,68,68,0.35)';}
   else if(r.includes('PANIC'))   {bg='rgba(239,68,68,0.18)'; color='#ef4444';border='rgba(239,68,68,0.5)';}
-  else if(r==='TREND_UP')        {bg='rgba(16,185,129,0.12)';color='#10b981';border='rgba(16,185,129,0.3)';}
-  else if(r==='TREND_DOWN')      {bg='rgba(59,130,246,0.10)';color='#60a5fa';border='rgba(59,130,246,0.25)';}
-  else if(r==='VOL_SPIKE')       {bg='rgba(239,68,68,0.12)'; color='#f87171';border='rgba(239,68,68,0.35)';}
-  else if(r.includes('BTC_FLAT')||r.includes('BTC_NOT')){bg='rgba(90,106,126,0.10)';color='#9ca3af';border='rgba(90,106,126,0.2)';}
-  else if(r.includes('REVERSAL')){bg='rgba(16,185,129,0.12)';color='#34d399';border='rgba(16,185,129,0.3)';}
   else                           {bg='rgba(90,106,126,0.10)';color='#5a6a7e';border='rgba(90,106,126,0.2)';}
   return`<span style="background:${bg};color:${color};border:1px solid ${border};border-radius:6px;padding:2px 8px;font-size:0.6rem;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;white-space:nowrap">${lbl}</span>`;
 }
@@ -1465,19 +1444,23 @@ function buildCards(prices,sym,exits,recentOrders=[]){
     const coinCls=`coin-${name.toLowerCase()}`;
     const ev=d.ev!=null?(d.ev>=0?'+':'')+(d.ev*100).toFixed(4):'–';
     const evCls=d.ev>0.001?'g':d.ev<-0.001?'r':'m';
+    const atr=p>0?'~1.0':'–';
+    // Multiplicadores SL/TP por regime (espelho de position_monitor.py)
+    const REGIME_MULT={
+      'TREND_EXPANSION':        {sl:1.5, tp:4.0},
+      'VOLATILITY_COMPRESSION': {sl:1.5, tp:3.0},
+      'TREND_EXHAUSTION':       {sl:1.5, tp:2.5},
+      'MEAN_REVERTING_CHOP':    {sl:1.0, tp:1.5},
+      'HIGH_CORRELATION_RISK':  {sl:1.2, tp:2.0},
+    };
+    const regMult=REGIME_MULT[d.regime||'']||{sl:1.5,tp:3.0};
+    // ATR estimado como 1% do preço (fallback sem posição)
+    const atrEst=p*0.01;
     const hasPos=!!ep;
-    // ATR estimado: distância SL/entry quando há posição, ou 1% como fallback
-    const atr=hasPos&&ep.stop_loss&&ep.entry_price
-      ? Math.abs(((ep.stop_loss-ep.entry_price)/ep.entry_price)*100).toFixed(1)
-      : '~1.0';
-    // SL/TP: usa ExitPlan quando posição aberta (inclui sl_pct/tp_pct da reversão)
-    const sl=hasPos?ep.stop_loss:null;
-    const tp=hasPos?ep.take_profit:null;
-    // Percentuais reais do ExitPlan (relativo ao entry_price, não ao preço atual)
-    const slPct=sl&&ep&&ep.entry_price?(((sl-ep.entry_price)/ep.entry_price)*100).toFixed(1):
-                sl&&p?(((sl-p)/p)*100).toFixed(1):'–';
-    const tpPct=tp&&ep&&ep.entry_price?(((tp-ep.entry_price)/ep.entry_price)*100).toFixed(1):
-                tp&&p?(((tp-p)/p)*100).toFixed(1):'–';
+    const sl=hasPos?ep.stop_loss:(p>0?p-atrEst*regMult.sl:null);
+    const tp=hasPos?ep.take_profit:(p>0?p+atrEst*regMult.tp:null);
+    const slPct=sl&&p?(((sl-p)/p)*100).toFixed(1):(-regMult.sl).toFixed(1);
+    const tpPct=tp&&p?(((tp-p)/p)*100).toFixed(1):('+'+regMult.tp.toFixed(1));
     const enPct=hasPos&&ep.entry_price&&p?(((p-ep.entry_price)/ep.entry_price)*100):null;
     const enPctStr=enPct!=null?(enPct>=0?'+':'')+enPct.toFixed(2)+'%':'–';
     const enPctCol=enPct!=null?(enPct>0?'#10b981':enPct<0?'#ef4444':'#6b7280'):'#6b7280';
@@ -1537,7 +1520,7 @@ function buildCards(prices,sym,exits,recentOrders=[]){
       <!-- Row 4: SL / Entry / TP -->
       <div class="sl-tp-row">
         <div class="sl-box">
-          <div class="slt-label">SL ${slPct!=='–'?'('+slPct+'%)':''}</div>
+          <div class="slt-label">SL (${slPct}%)</div>
           <div class="slt-val" style="color:#f87171">${sl?usd(sl,2):'–'}</div>
         </div>
         <div class="en-box">
@@ -1545,7 +1528,7 @@ function buildCards(prices,sym,exits,recentOrders=[]){
           <div class="slt-val" style="color:#60a5fa">${hasPos?usd(ep.entry_price,2):'–'}</div>
         </div>
         <div class="tp-box">
-          <div class="slt-label">TP ${tpPct!=='–'?'(+'+tpPct+'%)':''}</div>
+          <div class="slt-label">TP (+${tpPct}%)</div>
           <div class="slt-val" style="color:#34d399">${tp?usd(tp,2):'–'}</div>
         </div>
       </div>
@@ -2057,23 +2040,11 @@ async function updateAll(){
       'HIGH_CORRELATION_RISK':  'HIGH CORR',
       'BEAR_TREND':             'BEAR',
       'PANIC_LIQUIDATION':      'PANIC',
-      'REVERSAL_1H':            'REVERSÃO',
-      'TREND_UP':               'TREND ↗',
-      'TREND_DOWN':             'TREND ↘',
-      'VOL_SPIKE':              'VOL SPIKE',
-      'BTC_FLAT':               'BTC FLAT',
-      'BTC_NOT_TRENDING':       'BTC FLAT',
-      'TREND_FLAT':             'FLAT',
     };
     const label = regimeShortMap[r] || r.replace(/_/g,' ') || '–';
     let cls='regime-badge rb-other', arrow='·';
-    if(r==='TREND_UP')                 { cls='regime-badge rb-trend'; arrow='↗'; }
-    else if(r==='TREND_DOWN')          { cls='regime-badge rb-other'; arrow='↘'; }
-    else if(r==='VOL_SPIKE')           { cls='regime-badge rb-panic'; arrow='⚠'; }
-    else if(r==='BTC_FLAT'||r==='BTC_NOT_TRENDING') { arrow='⇄'; }
-    else if(r.includes('PANIC'))       { cls='regime-badge rb-panic'; arrow='⚠'; }
+    if(r.includes('PANIC'))            { cls='regime-badge rb-panic'; arrow='⚠'; }
     else if(r==='BEAR_TREND')          { cls='regime-badge rb-panic'; arrow='↓'; }
-    else if(r.includes('REVERSAL'))    { cls='regime-badge rb-trend'; arrow='↗'; }
     else if(r.includes('EXPANSION'))   { cls='regime-badge rb-trend'; arrow='↗'; }
     else if(r.includes('EXHAUSTION'))  { cls='regime-badge rb-other'; arrow='↘'; }
     else if(r.includes('CHOP'))        { cls='regime-badge rb-chop';  arrow='⇄'; }
@@ -2129,132 +2100,131 @@ async function updateAll(){
   if(exits?.plans) Object.assign(_c.exits,exits.plans);
   buildCards(_c.prices,_c.sym,_c.exits,[...(oOpen||[]),...(oRec||[])]);
 
-  // EMA Trend Diário v5.6 — painel Motor
+  // Motor Probabilístico
   if(sym&&Object.keys(sym).length){
     const latest=Object.values(sym)[0]||{};
-    const regime=(latest.regime||'TREND_UP');
-    const f=latest.factors||{};
+    const rg=(latest.regime||'AGUARDANDO').replace(/_/g,' ');
+    const subMap={
+      'TREND EXPANSION':        'Operação Agressiva — BULL confirmado',
+      'VOLATILITY COMPRESSION': 'Aguardando Rompimento',
+      'TREND EXHAUSTION':       'Operação Defensiva — Trend fraquejando',
+      'MEAN REVERTING CHOP':    'Operação Conservadora — Mercado lateral',
+      'HIGH CORRELATION RISK':  'Reduzir Exposição — Alta correlação',
+      'BEAR TREND':             'Entradas bloqueadas — Downtrend ativo',
+      'PANIC LIQUIDATION':      'Proteger Capital — Pânico detectado',
+    };
+    const subTxt=subMap[rg]||'Analisando condições...';
 
-    // Regime box
+    // Fix 1: Regime box cor correta (usa rg com espaço, não underscore)
     const box=document.getElementById('motor-regime-box');
     let boxCls='motor-regime-box', arrow='⇄';
-    if(regime==='TREND_UP')         { boxCls+=' rb-trend'; arrow='↗'; }
-    else if(regime==='TREND_DOWN')  { boxCls+=' rb-other'; arrow='↘'; }
-    else if(regime==='VOL_SPIKE')   { boxCls+=' rb-panic'; arrow='⚠'; }
-    else if(regime==='BTC_FLAT'||regime==='BTC_NOT_TRENDING') { arrow='⇄'; }
+    if(rg.includes('PANIC'))      { boxCls+=' rb-panic'; arrow='⚠'; }
+    else if(rg.includes('BEAR'))  { boxCls+=' rb-panic'; arrow='↓'; }  // BEAR = vermelho
+    else if(rg.includes('EXPANSION')){ boxCls+=' rb-trend'; arrow='↗'; }
+    else if(rg.includes('EXHAUSTION')){ boxCls+=' rb-other'; arrow='↘'; }
+    else if(rg.includes('CHOP'))  { arrow='⇄'; }
     box.className=boxCls;
+    document.getElementById('motor-regime').textContent=`${arrow} ${rg} — ${subTxt}`;
 
-    // Subtítulo dinâmico
-    const distPct = (f.dist_pct||0)*100;
-    const volAnn  = (f.vol_ann||0)*100;
-    const subMap={
-      'SIGNAL':            `LONG ativo — BTC +${distPct.toFixed(1)}% acima da EMA50D ✓`,
-      'TREND_FLAT':        regime==='VOL_SPIKE' ? `Vol ${volAnn.toFixed(0)}% aa ≥ 80% — aguardando em USDT`
-                                                : `BTC abaixo da EMA50D (${distPct.toFixed(1)}%) — aguardando em USDT`,
-      'BTC_NOT_TRENDING':  'BTC abaixo da EMA50D — ETH/SOL bloqueados',
-      'NO_CANDLES':        'Aguardando dados diários do MarketEngine...',
-    };
-    const subTxt = subMap[latest.result] || (regime==='TREND_UP'?'BTC em alta — posição LONG':'Aguardando tendência de alta...');
-    const regLbl = regime==='TREND_UP'?'TREND UP':regime==='TREND_DOWN'?'TREND DOWN':regime==='VOL_SPIKE'?'VOL SPIKE':'EMA TREND';
-    document.getElementById('motor-regime').textContent=`${arrow} ${regLbl} — ${subTxt}`;
-
-    // Badge
+    // Fix 2: Risk Engine badge — verde quando Normal (risco controlado)
     const mb=document.getElementById('motor-badge');
     if(latest.result==='SIGNAL'){
-      mb.textContent='LONG ativo'; mb.className='hbadge hbadge-green';
-    } else if(regime==='VOL_SPIKE'){
-      mb.textContent='vol spike'; mb.className='hbadge hbadge-red';
-    } else if(regime==='TREND_UP'){
-      mb.textContent='em alta'; mb.className='hbadge hbadge-green';
+      mb.textContent='sinal'; mb.className='hbadge hbadge-green';
+    } else if(rg.includes('BEAR')||rg.includes('PANIC')){
+      mb.textContent='bloqueado'; mb.className='hbadge hbadge-red';
     } else {
-      mb.textContent='aguardando'; mb.className='hbadge hbadge-gray';
+      mb.textContent='normal'; mb.className='hbadge hbadge-green';  // verde = sem alertas
     }
 
-    // ── Fatores do Trend ──────────────────────────────────────────────────
-    const hasSig = latest.result==='SIGNAL';
-    const distPctF = f.dist_pct||0;  // % acima da EMA50D
-    const volAnnF  = f.vol_ann||0;   // vol anualizada
-    const posPctF  = f.pos_pct||0;   // % do capital alocado
-    const ema50dF  = f.ema50d||0;    // valor da EMA50D
+    // Fatores do score (barras)
+    const f=latest.factors||{};
+    const m1=f.m1_momentum   ||f.momentum  ||0;
+    const m2=f.m2_consistency||f.m2_structure||f.structure||0;
+    const m3=f.m3_volume     ||f.volume    ||0;
+    const m4=f.m4_regime_str ||f.m4_regime ||f.regime   ||0;
+    const m5=f.m5_candle     ||0;
+    const factors={m1,m2,m3,m4,m5};
+    ['m1','m2','m3','m4','m5'].forEach(k=>{
+      const v=factors[k],pct=(v*100).toFixed(1)+'%';
+      const wEl=document.getElementById('w-'+k);
+      const bEl=document.getElementById('wb-'+k);
+      if(wEl) wEl.textContent=pct;
+      if(bEl) bEl.style.width=(v*100).toFixed(1)+'%';
+    });
 
-    // Barra Distância EMA: verde quando positivo, vermelho quando negativo
-    const distAbs = Math.abs(distPctF);
-    const distCol = distPctF>=0?'var(--green)':'var(--red)';
-    const bEl1=document.getElementById('wb-m1'), wEl1=document.getElementById('w-m1');
-    if(bEl1){ bEl1.style.width=Math.min(distAbs/0.10*100,100).toFixed(1)+'%'; bEl1.style.background=distCol; }
-    if(wEl1) wEl1.textContent=distPctF!==0?((distPctF>=0?'+':'')+( distPctF*100).toFixed(1)+'%'):'–';
-
-    // Barra Vol: amarela (normal) → laranja/vermelha quando alta
-    const volCol = volAnnF>=0.8?'var(--red)':volAnnF>=0.5?'var(--yellow)':'var(--green)';
-    const bEl2=document.getElementById('wb-m2'), wEl2=document.getElementById('w-m2');
-    if(bEl2){ bEl2.style.width=Math.min(volAnnF/0.8*100,100).toFixed(1)+'%'; bEl2.style.background=volCol; }
-    if(wEl2) wEl2.textContent=volAnnF>0?(volAnnF*100).toFixed(0)+'%':'–';
-
-    // Barra Posição
-    const bEl3=document.getElementById('wb-m3'), wEl3=document.getElementById('w-m3');
-    if(bEl3) bEl3.style.width=(posPctF/0.33*100).toFixed(1)+'%';
-    if(wEl3) wEl3.textContent=posPctF>0?(posPctF*100).toFixed(0)+'%':'flat';
-
-    // EMA50D valor
-    const bEl4=document.getElementById('wb-m4'), wEl4=document.getElementById('w-m4');
-    if(bEl4) bEl4.style.width='0%';
-    if(wEl4) wEl4.textContent=ema50dF>0?'$'+ema50dF.toLocaleString('pt-BR',{maximumFractionDigits:0}):'–';
-
-    // ── Condições (3 checks para Trend) ──────────────────────────────────
-    const btcLong = hasSig || (regime==='TREND_UP' && distPctF>0);
-    const volOkT  = volAnnF>0 && volAnnF<0.8;
-    const setRC=(id,ok)=>{
-      const el=document.getElementById(id); if(!el) return;
-      el.style.background=ok?'var(--green)':'#374151';
-      el.style.boxShadow=ok?'0 0 6px rgba(16,185,129,0.5)':'none';
+    // Kelly bar + notional
+    const KELLY_CAP={
+      'TREND EXPANSION':0.12,'VOLATILITY COMPRESSION':0.08,
+      'MEAN REVERTING CHOP':0.06,'HIGH CORRELATION RISK':0.04,
+      'TREND EXHAUSTION':0.06,'BEAR TREND':0,'PANIC LIQUIDATION':0,
     };
-    setRC('rc1', btcLong);
-    setRC('rc2', volOkT);
-    setRC('rc3', hasSig);
-    // rc4-rc6 não existem mais (só 3 condições no trend)
-    ['rc4','rc5','rc6'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
-
-    // ── Kelly: usa pos_pct diretamente (vol-target sizing) ────────────────
-    const cap=0.33;
-    const effKelly=posPctF;
+    const rawKelly=(latest.calibrated||0)*0.25;
+    const cap=KELLY_CAP[rg]??0.08;
+    const effKelly=Math.min(rawKelly,cap);
     const tv=portfolio?.total_value||0;
     const notional=tv*effKelly;
+
     const kFill=document.getElementById('motor-kelly-fill');
     const kCap=document.getElementById('motor-kelly-cap-line');
     const kVal=document.getElementById('motor-kelly-val');
     const kCapLbl=document.getElementById('motor-kelly-cap-lbl');
-    // Quando aguardando: barra mostra capacidade potencial (8%)
-    const kDisplay = hasSig ? effKelly/cap : 0;
-    if(kFill) kFill.style.width=(kDisplay*100).toFixed(1)+'%';
-    if(kCap)  kCap.style.left='100%';
-    if(kVal)  kVal.textContent=hasSig?(effKelly*100).toFixed(1)+'%':'–';
-    if(kCapLbl) kCapLbl.textContent='33%';
+    if(kFill) kFill.style.width=(rawKelly*100).toFixed(1)+'%';
+    if(kCap)  kCap.style.left=(cap*100).toFixed(1)+'%';
+    if(kVal)  kVal.textContent=(effKelly*100).toFixed(1)+'%';
+    if(kCapLbl) kCapLbl.textContent=(cap*100).toFixed(0)+'%';
     const notEl=document.getElementById('motor-notional');
-    if(notEl) notEl.textContent=notional>0?'~'+usd(notional,0):'flat';
+    if(notEl) notEl.textContent=notional>0?'~'+usd(notional,0):'–';
 
-    // ── Score: distância da EMA50D (força do sinal de tendência) ─────────
-    const rawScore = hasSig?(latest.score||0)*100 : Math.min(Math.abs(distPctF)/0.05*100, 99);
+    // Score atual + SL/TP reference
+    const rawScore=(latest.score||0)*100;
+    const thr=(latest.threshold||0.56)*100;
     const sFill=document.getElementById('motor-score-fill');
     const sNow=document.getElementById('motor-score-now');
     const sThr=document.getElementById('motor-score-thr');
+    if(sFill){
+      const col=rawScore>=thr?'var(--green)':rawScore>=thr*0.85?'var(--yellow)':'var(--red)';
+      sFill.style.width=Math.min(rawScore,100).toFixed(1)+'%';
+      sFill.style.background=col;
+    }
+    if(sNow) sNow.textContent=rawScore.toFixed(1)+'%';
+    if(sThr) sThr.textContent=thr.toFixed(1)+'%';
     const sThrLine=document.getElementById('motor-score-thr-line');
-    const scoreCol=hasSig&&rawScore>=50?'var(--green)':hasSig?'var(--yellow)':'var(--muted)';
-    if(sFill){ sFill.style.width=Math.min(rawScore,100).toFixed(1)+'%'; sFill.style.background=scoreCol; }
-    if(sNow)  sNow.textContent=(distPctF*100).toFixed(1)+'%';
-    if(sThr)  sThr.textContent='dist. EMA';
-    if(sThrLine) sThrLine.style.left='0%'; // limiar = 100% da barra
+    if(sThrLine) sThrLine.style.left=Math.min(thr,100).toFixed(1)+'%';
 
-    // ── SL/TP ─────────────────────────────────────────────────────────────
-    const slPctF=f.sl_pct||0, tpPctF=f.tp_pct||0;
+    // SL/TP dinâmicos por regime (espelho de position_monitor.py)
+    const MOTOR_REGIME_MULT={
+      'TREND EXPANSION':        {sl:1.5, tp:4.0},
+      'VOLATILITY COMPRESSION': {sl:1.5, tp:3.0},
+      'TREND EXHAUSTION':       {sl:1.5, tp:2.5},
+      'MEAN REVERTING CHOP':    {sl:1.0, tp:1.5},
+      'HIGH CORRELATION RISK':  {sl:1.2, tp:2.0},
+    };
+    const motorReg=(latest.regime||'').replace(/_/g,' ');
+    const motorMult=MOTOR_REGIME_MULT[motorReg]||{sl:1.5,tp:3.0};
     const slEl=document.getElementById('motor-sl');
     const tpEl=document.getElementById('motor-tp');
-    if(slEl) slEl.textContent=slPctF>0?`-${(slPctF*100).toFixed(1)}%`:'0.8–6%';
-    if(tpEl) tpEl.textContent=tpPctF>0?`+${(tpPctF*100).toFixed(1)}%`:'1.5× SL';
+    if(slEl) slEl.textContent=`-${motorMult.sl.toFixed(1)}% ATR`;
+    if(tpEl) tpEl.textContent=`+${motorMult.tp.toFixed(1)}% ATR`;
 
-    // ── Zonas: dimm todas (não aplicável) ─────────────────────────────────
-    ['tz-hold','tz-reduce','tz-normal','tz-agg'].forEach(id=>{
-      const el=document.getElementById(id); if(!el) return;
-      el.style.boxShadow=''; el.style.opacity='0.3'; el.style.transform='';
+    // Threshold zone highlight — first boundary = actual threshold (regime-dependent)
+    const thrVal=parseFloat(thr.toFixed(1));
+    const holdLbl=document.getElementById('tz-hold-lbl');
+    const reduceLbl=document.getElementById('tz-reduce-lbl');
+    if(holdLbl)   holdLbl.textContent=`<${thrVal.toFixed(1)}%`;
+    if(reduceLbl) reduceLbl.textContent=`${thrVal.toFixed(1)}–65%`;
+    const zones=[
+      {id:'tz-hold',  min:0,       max:thrVal},
+      {id:'tz-reduce',min:thrVal,  max:65},
+      {id:'tz-normal',min:65,     max:75},
+      {id:'tz-agg',   min:75,     max:100},
+    ];
+    zones.forEach(z=>{
+      const el=document.getElementById(z.id); if(!el) return;
+      const active=rawScore>=z.min&&rawScore<z.max;
+      el.style.boxShadow=active?'0 0 0 2px rgba(255,255,255,0.35)':'';
+      el.style.opacity=active?'1':'0.55';
+      if(active) el.style.transform='scale(1.04)';
+      else el.style.transform='';
     });
   }
   // Motor risk bars (from portfolio)
@@ -2275,80 +2245,53 @@ async function updateAll(){
     if(wrStat) wrStat.textContent=wrN>=40?'saudável':wrN>=25?'moderado':'abaixo do esperado';
   }
 
-  // Market Breadth — EMA Trend v5.6
+  // Market Breadth
   if(log){
     const s=log.stats||{};
     const total=s.total_evaluations||1,signals=s.signals_generated||0,rate=s.signal_rate_pct||0,epm=s.evals_per_minute||0;
     const entries=log.entries||[];
+    const scores=entries.map(e=>e.score).filter(Boolean);
+    const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0;
+    const avgPct=Math.round(avg*100);
 
-    // Score Médio = % de símbolos em TREND_UP (força do sinal de tendência)
-    const trendUpCount  = entries.filter(e=>e.regime==='TREND_UP').length;
-    const totalEntries  = entries.length || 1;
-    const trendUpPct    = Math.round(trendUpCount / totalEntries * 100);
-
-    // Distância média da EMA50D (positivo = acima, negativo = abaixo)
-    const distPcts = entries.map(e=>((e.factors?.dist_pct)||0)*100).filter(v=>v!==0);
-    const avgDistPct = distPcts.length ? distPcts.reduce((a,b)=>a+b,0)/distPcts.length : 0;
-
-    // Big bar: % dos símbolos acima da EMA50D (0–100%)
+    // Big bar com label interno e cor dinâmica
     const bigFill=document.getElementById('mb-big-fill');
     const bigLabel=document.getElementById('mb-big-label');
-    const bigPct=Math.min(trendUpPct,100);
-    const barCol=bigPct>=66?'linear-gradient(90deg,#059669,#34d399)':bigPct>=33?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#3b82f6,#60a5fa)';
-    if(bigFill){ bigFill.style.width=bigPct+'%'; bigFill.style.background=barCol; }
-    if(bigLabel){ bigLabel.textContent=bigPct+'%'; }
+    const barCol=avgPct>=65?'linear-gradient(90deg,#059669,#34d399)':avgPct>=40?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#dc2626,#f87171)';
+    if(bigFill){ bigFill.style.width=avgPct+'%'; bigFill.style.background=barCol; }
+    if(bigLabel){ bigLabel.textContent=avgPct+'%'; }
 
-    // Badge: BULL (todos acima), MISTO, FLAT
+    // Overall badge
     const mbBadge=document.getElementById('mb-overall-badge');
-    if(mbBadge){
-      if(bigPct>=66){ mbBadge.textContent='BULL'; mbBadge.className='hbadge hbadge-green'; }
-      else if(bigPct>=33){ mbBadge.textContent='MISTO'; mbBadge.className='hbadge hbadge-yellow'; }
-      else { mbBadge.textContent='FLAT'; mbBadge.className='hbadge hbadge-gray'; }
-    }
+    if(mbBadge){ mbBadge.textContent=avgPct>=65?'FORTE':avgPct>=40?'MODERADO':'FRACO'; mbBadge.className='hbadge '+(avgPct>=65?'hbadge-green':avgPct>=40?'hbadge-yellow':'hbadge-red'); }
 
-    // Métricas
+    // 4 metrics
     function mbMetric(fillId,valId,statId,value,maxVal,color,statusFn){
-      const el=document.getElementById(fillId); if(el){ el.style.width=Math.min(value/maxVal,1)*100+'%'; el.style.background=color; }
+      const f=document.getElementById(fillId); if(f){ f.style.width=Math.min(value/maxVal,1)*100+'%'; f.style.background=color; }
       const v=document.getElementById(valId); if(v) v.textContent=value.toFixed(1)+'%';
       const st=document.getElementById(statId); if(st) st.textContent=statusFn(value);
     }
-
-    // Score Médio = % símbolos TREND_UP
-    mbMetric('mbf-score','mbv-score','mbs-score',trendUpPct,100,'var(--blue)',v=>v>=66?'bull':v>=33?'misto':'flat');
-    const scoreLabel=document.getElementById('mbv-score');
-    if(scoreLabel) scoreLabel.textContent=trendUpPct+'% em alta';
-
-    // Taxa de Sinais = % de avaliações que resultaram em SIGNAL
-    mbMetric('mbf-rate','mbv-rate','mbs-rate',rate,100,'var(--green)',v=>v>5?'ativo':v>0?'baixo':'em espera');
-
-    // Regime Atual
+    mbMetric('mbf-score','mbv-score','mbs-score',avgPct,100,'var(--blue)',v=>v>=65?'forte':v>=40?'moderado':'fraco');
+    mbMetric('mbf-rate','mbv-rate','mbs-rate',rate,100,'var(--green)',v=>v>5?'ativo':v>0?'baixo':'inativo');
+    // Regime score (100=trend, 50=chop, 0=panic)
     const latestEntry=entries[0]||{};
-    const lr=latestEntry.regime||'';
-    const rScore=lr==='TREND_UP'?85:lr==='TREND_DOWN'?30:lr==='VOL_SPIKE'?10:lr.includes('BTC_FLAT')?45:lr.includes('EXPANSION')?85:lr.includes('CHOP')?40:lr.includes('PANIC')?5:50;
-    const rLabel=lr==='TREND_UP'?'trend up':lr==='TREND_DOWN'?'trend down':lr==='VOL_SPIKE'?'vol spike':lr.includes('BTC_FLAT')?'btc flat':'lateral';
-    mbMetric('mbf-regime','mbv-regime','mbs-regime',rScore,100,'var(--green)',()=>rLabel);
+    const rScore=latestEntry.regime?.includes('EXPANSION')?85:latestEntry.regime?.includes('CHOP')?40:latestEntry.regime?.includes('PANIC')?5:50;
+    mbMetric('mbf-regime','mbv-regime','mbs-regime',rScore,100,'var(--yellow)',v=>v>=70?'expansão':v>=40?'lateral':'risco');
     document.getElementById('mbv-regime').textContent=(latestEntry.regime||'–').replace(/_/g,' ').toLowerCase();
-
     mbMetric('mbf-epm','mbv-epm','mbs-epm',Math.min(epm,10),10,'var(--purple)',v=>v>=3?'ativo':v>=1?'baixo':'inativo');
     document.getElementById('mbv-epm').textContent=epm.toFixed(1)+'/min';
 
-    // Gate: para reversão, entrada é controlada pelas 6 condições (não breadth)
-    // Mostra se algum símbolo está próximo do setup
+    // Gate status box
     const gateBox=document.getElementById('mb-gate-box');
     const gateTxt=document.getElementById('mb-gate-txt');
     const gateScore=document.getElementById('mb-gate-score');
     if(gateBox&&gateTxt&&gateScore){
-      const hasTrendUp = entries.some(e=>e.regime==='TREND_UP'&&e.result==='SIGNAL');
-      const anyTrendUp = entries.some(e=>e.regime==='TREND_UP');
-      const volSpike   = entries.some(e=>e.regime==='VOL_SPIKE');
-      const col = hasTrendUp?'rgba(16,185,129,':volSpike?'rgba(239,68,68,':'rgba(59,130,246,';
-      gateBox.style.background=col+'0.08)';
-      gateBox.style.border=`1px solid ${col}0.25)`;
-      gateTxt.style.color=hasTrendUp?'var(--green)':volSpike?'var(--red)':'var(--blue)';
-      if(hasTrendUp)    gateTxt.textContent='✓ TREND UP — BTC acima da EMA50D, posição LONG ativa';
-      else if(volSpike) gateTxt.textContent='⚠ VOL SPIKE — Volatilidade alta, aguardando em USDT';
-      else              gateTxt.textContent='→ BTC abaixo da EMA50D — aguardando tendência de alta';
-      gateScore.textContent=(latestEntry.regime||'–').replace(/_/g,' ');
+      const open=avgPct>=40;
+      gateBox.style.background=open?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)';
+      gateBox.style.border=`1px solid ${open?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`;
+      gateTxt.style.color=open?'var(--green)':'var(--red)';
+      gateTxt.textContent=open?'✓ Compras liberadas — Breadth acima do mínimo':'✗ Compras bloqueadas — Breadth abaixo do mínimo';
+      gateScore.textContent=avgPct+'%';
     }
     // Feed stats
     document.getElementById('feed-stats').textContent=`${s.total_evaluations||0} aval · ${rate}% sinais · ${epm.toFixed(1)}/min · uptime ${(s.uptime_minutes||0).toFixed(0)}min`;

@@ -77,8 +77,8 @@ class StrategyRunner:
         self._running = True
         self._queue = self._bus.subscribe(Topic.MARKET)
 
-        # Pré-popula last_candle_ts e dispara avaliação imediata no boot
-        # para popular o dashboard sem esperar a próxima hora fechar
+        # Pré-popula last_candle_ts com o candle mais recente de cada símbolo
+        # sem avaliar — bot aguarda a PRÓXIMA hora fechar antes de agir
         await self._seed_last_candle_ts()
 
         self._task = asyncio.create_task(
@@ -115,35 +115,12 @@ class StrategyRunner:
                     pass
 
             # Usa o mais recente entre Redis e o candle calculado
+            # Nunca avalia no boot — sempre aguarda a próxima hora fechar
             ts = max(redis_ts, last_closed_ts) if redis_ts else last_closed_ts
             self._last_candle_ts[symbol] = ts
             await self._cache.set(f"last_candle_ts:{symbol}", ts.isoformat(), ttl=10800)
-            logger.info("StrategyRunner: %s — seed: %s UTC (próxima avaliação na virada da hora)",
+            logger.info("StrategyRunner: %s — aguardando próxima hora (seed: %s UTC)",
                         symbol, ts.strftime("%Y-%m-%d %H:%M"))
-
-        # Avaliação diferida no boot — aguarda MarketEngine buscar candles da OKX
-        # O MarketEngine faz primeira poll em ~15s; aguardamos 35s para garantir
-        asyncio.create_task(self._warm_start(symbols), name="strategy_warm_start")
-
-    async def _warm_start(self, symbols: set[str]) -> None:
-        """
-        Avaliação diferida no boot — aguarda o MarketEngine carregar candles da OKX.
-        Roda 35s após o start para garantir que a primeira poll (15s) completou.
-        Popula o signal_audit_log imediatamente, sem esperar a próxima hora fechar.
-        """
-        await asyncio.sleep(35)
-        logger.info("StrategyRunner: warm-start — avaliando %d símbolos...", len(symbols))
-        for symbol in sorted(symbols):
-            try:
-                candles = self._market.get_candles(symbol, "1H")
-                if len(candles) < 22:
-                    logger.info("StrategyRunner: warm-start %s — %d candles (insuficiente)",
-                                symbol, len(candles))
-                    continue
-                await self._evaluate_all(symbol)
-                logger.info("StrategyRunner: warm-start %s — OK", symbol)
-            except Exception as exc:
-                logger.warning("StrategyRunner: warm-start %s falhou: %s", symbol, exc)
 
     async def stop(self) -> None:
         self._running = False

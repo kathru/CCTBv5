@@ -39,7 +39,7 @@ from ..risk.engine import RiskContext, RiskEngine
 from ..risk.kill_switch import KillSwitch
 from ..strategies.meta_layer import MetaStrategyLayer
 from ..strategies.ml.inference import MLInferenceEngine
-from ..strategies.trend.trend_strategy import TrendStrategy
+from ..strategies.momentum.momentum_strategy import MomentumStrategy
 from ..strategies.runner import StrategyRunner
 from ..watchdog.heartbeat import HeartbeatWatchdog
 from ..watchdog.resource_watchdog import ResourceWatchdog
@@ -150,9 +150,9 @@ class TradingLoop:
             market=self._market,
             cache=self._cache,
         )
-        v56 = TrendStrategy(symbols=SYMBOLS)
-        self._runner.register(v56)
-        self._meta.register(v56.strategy_id)
+        v4 = MomentumStrategy(symbols=SYMBOLS)
+        self._runner.register(v4)
+        self._meta.register(v4.strategy_id)
 
         # ── Alerts ────────────────────────────────────────────
         self._alert_channel = create_alert_channel(
@@ -398,33 +398,23 @@ class TradingLoop:
 
     async def _process_signal(self, event: SignalEvent) -> None:
         """
-        Processa sinal da TrendStrategy v5.6 (Long + Flat — Brasil):
-          LONG  → compra spot quando BTC > EMA50D
-          FLAT  → vende spot quando BTC < EMA50D ou vol spike
-
-          Pipeline: RiskEngine → Sizing (vol-target) → OMS
+        Processa um sinal aprovado pela estratégia:
+          1. RiskEngine — verifica limites de drawdown, exposição, cooldown
+          2. Sizing     — calcula quantidade usando kelly_fraction e preço atual
+          3. OMS        — cria e submete ordem de mercado
         """
+        # Modo monitor: sinais avaliados e logados, mas nenhuma ordem executada
         if settings.monitor_only:
             logger.debug(
-                "[MONITOR_ONLY] %s %s score=%.3f regime=%s",
-                event.signal.direction, event.signal.symbol,
-                event.signal.calibrated_score, event.signal.regime,
+                "[MONITOR_ONLY] Sinal recebido mas não executado: %s %s score=%.3f",
+                event.signal.direction, event.signal.symbol, event.signal.calibrated_score,
             )
             return
 
         from ..core.models.signal import SignalDirection
 
-        signal = event.signal
-
-        # ── FLAT: fecha posição spot se existir ──────────────────────────────
-        if signal.direction == SignalDirection.FLAT:
-            await self._close_spot_position(signal.symbol, reason=signal.regime)
-            return
-
-        # ── LONG via spot ─────────────────────────────────────────────────────
-        is_exit = False
-        open_orders    = self._oms.get_open_orders()
-        existing_plans = getattr(self._position_monitor, '_plans', {})
+        signal  = event.signal
+        is_exit = signal.direction in (SignalDirection.SHORT, SignalDirection.FLAT)
 
         open_orders    = self._oms.get_open_orders()
         existing_plans = getattr(self._position_monitor, '_plans', {})
@@ -509,18 +499,13 @@ class TradingLoop:
         kelly    = signal.kelly_fraction or 0.05
         regime   = getattr(signal, "regime", "MEAN_REVERTING_CHOP")
 
-        # Cap máximo de Kelly por regime
+        # Cap máximo de Kelly por família de regime (segurança extra)
         KELLY_CAP = {
-            "TREND_UP":               0.33,   # v5.6: vol-target sizing (já calibrado pela estratégia)
-            "BTC_FLAT":               0.00,   # BTC não confirma → não entra
-            "VOL_SPIKE":              0.00,   # vol alta → não entra
-            "TREND_DOWN":             0.00,   # sinal de saída → não entra long
             "TREND_EXPANSION":        0.15,
             "VOLATILITY_COMPRESSION": 0.12,
             "TREND_EXHAUSTION":       0.10,
             "MEAN_REVERTING_CHOP":    0.08,
             "HIGH_CORRELATION_RISK":  0.05,
-            "REVERSAL_1H":            0.08,
         }
         kelly     = min(kelly, KELLY_CAP.get(regime, 0.08))
         notional  = portfolio_value * kelly
@@ -541,12 +526,6 @@ class TradingLoop:
             kelly * 100, KELLY_CAP.get(regime, 0.08) * 100,
         )
 
-        # Registra fatores do sinal no PositionMonitor ANTES do fill chegar
-        # → ExitPlan usará sl_pct/tp_pct relativos ao fill_price real (reversão 1.5:1)
-        signal_factors = getattr(signal, "factors", {}) or {}
-        if signal_factors.get("sl_pct") and signal_factors.get("tp_pct"):
-            self._position_monitor.set_pending_signal_factors(signal.symbol, signal_factors)
-
         # 3. Criar e submeter ordem via OMS
         await self._oms.create_order_from_signal(event, quantity)
 
@@ -560,46 +539,6 @@ class TradingLoop:
                     f"Qty: {quantity} | Notional: ${notional:.0f}"
                 ),
             )
-
-    # ── v5.6: Fechar posição spot (Long + Flat — sem derivativos) ────────────
-
-    async def _close_spot_position(self, sym: str, reason: str = "FLAT") -> None:
-        """
-        Fecha posição spot para um símbolo quando sinal FLAT é emitido.
-        Triggered quando: BTC < EMA50D | vol spike | BTC não confirma.
-        """
-        if sym not in self._positions:
-            return   # sem posição, nada a fazer
-
-        open_orders = self._oms.get_open_orders()
-        sell_pending = any(
-            o.symbol == sym and str(getattr(o, "side", "")).lower() in ("sell", "short")
-            for o in open_orders
-        )
-        if sell_pending:
-            logger.debug("Venda já pendente para %s — FLAT ignorado", sym)
-            return
-
-        pos = self._positions[sym]
-        qty = round(pos.quantity, QTY_PRECISION.get(sym, 4))
-        if qty < MIN_QTY.get(sym, 0.0001):
-            return
-
-        # Cria evento de saída
-        from ..core.models.signal import SignalDirection
-        from ..core.models import Signal
-        from datetime import UTC, datetime
-        flat_sig = Signal(
-            strategy_id="trend_v56", symbol=sym,
-            direction=SignalDirection.FLAT,
-            timestamp=datetime.now(UTC),
-            score=0.0, calibrated_score=0.0, confidence=0.0,
-            expected_value=0.0, kelly_fraction=0.0,
-            regime=reason, timeframe="1D", factors={"reason": reason},
-        )
-        fake_event = SignalEvent(signal=flat_sig)
-        await self._oms.create_order_from_signal(fake_event, qty)
-        logger.info("FLAT %s qty=%.6f reason=%s (EMA50D cross / vol spike)", sym, qty, reason)
 
     # ── Resumo diário Discord ─────────────────────────────────────────────────
 

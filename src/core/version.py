@@ -1,58 +1,49 @@
 """
-Version module — derives semantic version from git history.
+Version module — reads version from _version.txt at project root.
 
   X.Y.Z
-  ├── X  Major version (hardcoded — architecture generation)
-  ├── Y  Minor version (hardcoded — current evolution milestone/phase series)
-  └── Z  Patch (commit count — auto-increments with every commit)
+  ├── X  Major version (architecture generation)
+  ├── Y  Minor version (current phase series — bump manually on milestone)
+  └── Z  Patch (increments per phase commit — updated manually in _version.txt)
 
-Scheme: v5.6.x
-  5 = CCTBv5 architecture
-  6 = Phase series 6.x (Equity Analytics, Distribution, Reality Check, ...)
-  x = commit count — each phase commit produces v5.6.1, v5.6.2, ...
+_version.txt is the single source of truth.
+  • Updated manually on each phase commit (e.g. "5.6.270")
+  • Deployed to container via docker cp alongside code changes
+  • No git dependency — works regardless of container git history
+
+Fallback chain:
+  1. _version.txt  (preferred — explicitly controlled)
+  2. _git_patch + hardcoded MINOR  (Docker build-time bake)
+  3. "5.6.0"  (last resort)
 """
 
 import logging
-import subprocess
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 MAJOR = 5
-MINOR = 6  # Hardcoded: current phase series (bump manually for next major milestone)
+MINOR = 6  # Current phase series — bump manually for next milestone
 
-# Files written by Dockerfile build stage from git metadata
-_BUILD_DIR = Path(__file__).parent.parent.parent  # /app
-_PATCH_FILE  = _BUILD_DIR / "_git_patch"
-
-
-def _read_file(path: Path, default: str = "0") -> str:
-    try:
-        return path.read_text().strip() or default
-    except Exception:
-        return default
-
-
-def _run(cmd: list[str], default: str = "0") -> str:
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
-        return result.stdout.strip() or default
-    except Exception:
-        return default
+_BUILD_DIR   = Path(__file__).parent.parent.parent  # /app
+_VERSION_FILE = _BUILD_DIR / "_version.txt"
+_PATCH_FILE   = _BUILD_DIR / "_git_patch"
 
 
 def get_version() -> str:
-    """Return X.Y.Z version string.
+    """Return X.Y.Z version string from _version.txt."""
+    # Priority 1: explicit _version.txt (updated per deploy)
+    if _VERSION_FILE.exists():
+        v = _VERSION_FILE.read_text().strip()
+        if v:
+            return v
 
-    Z (patch) is read from a file generated at Docker build time (from git).
-    Falls back to live git commit count when running outside Docker (dev mode).
-    """
+    # Priority 2: _git_patch baked at Docker build time
     if _PATCH_FILE.exists():
-        patch = _read_file(_PATCH_FILE)
-    else:
-        patch = _run(["git", "rev-list", "--count", "HEAD"], default="0")
+        patch = _PATCH_FILE.read_text().strip() or "0"
+        return f"{MAJOR}.{MINOR}.{patch}"
 
-    return f"{MAJOR}.{MINOR}.{patch}"
+    return f"{MAJOR}.{MINOR}.0"
 
 
 def get_version_info() -> dict:

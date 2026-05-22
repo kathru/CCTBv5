@@ -593,27 +593,27 @@
         <span style="font-size:0.62rem;color:var(--text)">Momentum (M1)</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m1" style="height:15px;border-radius:7px;background:#3b82f6;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.65rem;font-weight:700;color:#3b82f6;text-align:right" id="w-m1">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 25%</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 20%</span>
 
         <span style="font-size:0.62rem;color:var(--text)">Estrutura (M2)</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m2" style="height:15px;border-radius:7px;background:#10b981;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.65rem;font-weight:700;color:#10b981;text-align:right" id="w-m2">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 25%</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 20%</span>
 
         <span style="font-size:0.62rem;color:var(--text)">Volume (M3)</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:15px;border-radius:7px;background:#f59e0b;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.65rem;font-weight:700;color:#f59e0b;text-align:right" id="w-m3">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 20%</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 16%</span>
 
         <span style="font-size:0.62rem;color:var(--text)">Regime (M4)</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m4" style="height:15px;border-radius:7px;background:#8b5cf6;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.65rem;font-weight:700;color:#8b5cf6;text-align:right" id="w-m4">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 20%</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 16%</span>
 
         <span style="font-size:0.62rem;color:var(--text)">Candle (M5)</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m5" style="height:15px;border-radius:7px;background:#f97316;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.65rem;font-weight:700;color:#f97316;text-align:right" id="w-m5">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 8%</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 7%</span>
 
         <span style="font-size:0.62rem;color:var(--text)">Futures (M6)</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m6" style="height:15px;border-radius:7px;background:#06b6d4;transition:width 0.5s;width:0%"></div></div>
@@ -2144,7 +2144,7 @@ function renderGovernance(status, drift, live, schema){
   if(drift&&driftEl){
     const features=drift.features||{};
     const keys=Object.keys(features);
-    const FLABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'};
+    const FLABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)'};
     if(!keys.length && drift.overall_status==='no_baseline'){
       driftEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Baseline não encontrado — rode feature_analysis.py</div>';
       if(driftBadge){ driftBadge.textContent='sem baseline'; driftBadge.className='hbadge hbadge-gray'; }
@@ -2197,7 +2197,7 @@ function renderGovernance(status, drift, live, schema){
       liveEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Sem dados ao vivo ainda</div>';
     } else {
       const schemaFeats=schema?.features||{};
-      const FLIVE={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'};
+      const FLIVE={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)'};
       // Badge indicador de fonte
       const srcLabel = isBaseline
         ? '<span style="font-size:0.58rem;color:#f59e0b;margin-left:6px">· referência baseline (aguardando obs. ao vivo)</span>'
@@ -2242,7 +2242,7 @@ function renderGovernance(status, drift, live, schema){
           const lb=f.lookback||0;
           const safe=f.leakage_safe;
           return`<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:7px 9px;text-align:center;">
-            <div style="font-size:0.65rem;font-weight:700;color:var(--text);margin-bottom:3px">${{'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'}[k]||k.replace('_',' ')}</div>
+            <div style="font-size:0.65rem;font-weight:700;color:var(--text);margin-bottom:3px">${{'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)'}[k]||k.replace('_',' ')}</div>
             <div style="font-size:1rem;font-weight:900;color:var(--blue)">${w}%</div>
             <div style="font-size:0.58rem;color:var(--muted);margin-top:2px">lb:${lb} · ${safe?'<span style="color:var(--green)">safe</span>':'<span style="color:var(--red)">⚠</span>'}</div>
           </div>`;
@@ -2276,7 +2276,7 @@ function renderImportance(data){
   const sorted=keys.sort((a,b)=>(feats[b].relative_importance||0)-(feats[a].relative_importance||0));
   const maxImp=Math.max(...sorted.map(k=>Math.max(feats[k].relative_importance||0,0)),0.01);
 
-  const FEAT_LABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)'};
+  const FEAT_LABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)'};
   el.innerHTML=sorted.map(k=>{
     const f=feats[k];
     const label=FEAT_LABELS[k]||k;

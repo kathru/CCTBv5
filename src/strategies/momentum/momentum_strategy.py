@@ -143,15 +143,18 @@ class MomentumStrategy(BaseStrategy):
         threshold  = REGIME_THRESHOLDS.get(regime, 0.56)
         kelly_mult = REGIME_KELLY_MULT.get(regime, 0.5)
 
+        # ── Score e fatores — calculados SEMPRE (mesmo em regime bloqueado) ──
+        # Garantia: o dashboard sempre exibe M1-M7 com valores reais,
+        # independente do resultado final. Permite diagnóstico contínuo.
+        score, factors = self._score_signal(ctx, regime)
+        calibrated     = self._calibrate(score)
+
         if regime in BLOCKED_REGIMES:
             _log("REGIME_BLOCKED",
                  f"Regime bloqueado: {regime} (sem entradas LONG em bear/panic)",
-                 regime=regime, threshold=threshold)
+                 regime=regime, score=score, calibrated=calibrated,
+                 threshold=threshold, factors=factors)
             return None
-
-        # ── Filtro 2: score bruto ────────────────────────────
-        score, factors = self._score_signal(ctx, regime)
-        calibrated     = self._calibrate(score)
 
         if score < threshold:
             # Calcula direção tentativa mesmo em SCORE_LOW (só para info no log)

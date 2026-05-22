@@ -540,7 +540,7 @@
               </div>
               <div id="motor-score-thr-line" style="position:absolute;top:0;bottom:0;left:56%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;"></div>
             </div>
-            <div style="font-size:0.58rem;color:rgba(255,255,255,0.3);margin-top:2px">thr <span id="motor-score-thr">56%</span></div>
+            <div style="font-size:0.58rem;color:rgba(255,255,255,0.3);margin-top:2px"><span id="motor-score-thr">dist. EMA</span></div>
           </div>
         </div>
       </div>
@@ -2161,11 +2161,13 @@ async function updateAll(){
     // Badge
     const mb=document.getElementById('motor-badge');
     if(latest.result==='SIGNAL'){
-      mb.textContent='sinal ✓'; mb.className='hbadge hbadge-green';
-    } else if(rg.includes('BEAR')||rg.includes('PANIC')){
-      mb.textContent='bloqueado'; mb.className='hbadge hbadge-red';
+      mb.textContent='LONG ativo'; mb.className='hbadge hbadge-green';
+    } else if(regime==='VOL_SPIKE'){
+      mb.textContent='vol spike'; mb.className='hbadge hbadge-red';
+    } else if(regime==='TREND_UP'){
+      mb.textContent='em alta'; mb.className='hbadge hbadge-green';
     } else {
-      mb.textContent='monitorando'; mb.className='hbadge hbadge-gray';
+      mb.textContent='aguardando'; mb.className='hbadge hbadge-gray';
     }
 
     // ── Fatores do Trend ──────────────────────────────────────────────────
@@ -2273,47 +2275,48 @@ async function updateAll(){
     if(wrStat) wrStat.textContent=wrN>=40?'saudável':wrN>=25?'moderado':'abaixo do esperado';
   }
 
-  // Market Breadth — adaptado para Estratégia de Reversão 1H
+  // Market Breadth — EMA Trend v5.6
   if(log){
     const s=log.stats||{};
     const total=s.total_evaluations||1,signals=s.signals_generated||0,rate=s.signal_rate_pct||0,epm=s.evals_per_minute||0;
     const entries=log.entries||[];
 
-    // Para reversão: Score Médio = proximidade ao setup (fall_pct / 3%)
-    // Usa fall_pct das últimas avaliações como proxy de "quão próximo estamos"
-    const fallPcts=entries.map(e=>(e.factors?.fall_pct||0)/0.03*100).filter(v=>v>0);
-    const avgFallPct=fallPcts.length?Math.round(fallPcts.reduce((a,b)=>a+b,0)/fallPcts.length):0;
+    // Score Médio = % de símbolos em TREND_UP (força do sinal de tendência)
+    const trendUpCount  = entries.filter(e=>e.regime==='TREND_UP').length;
+    const totalEntries  = entries.length || 1;
+    const trendUpPct    = Math.round(trendUpCount / totalEntries * 100);
 
-    // Proximidade máxima: melhor símbolo (o mais próximo do setup)
-    const maxFallPct=fallPcts.length?Math.round(Math.max(...fallPcts)):0;
+    // Distância média da EMA50D (positivo = acima, negativo = abaixo)
+    const distPcts = entries.map(e=>((e.factors?.dist_pct)||0)*100).filter(v=>v!==0);
+    const avgDistPct = distPcts.length ? distPcts.reduce((a,b)=>a+b,0)/distPcts.length : 0;
 
-    // Big bar: mostra melhor proximidade (qualquer símbolo)
+    // Big bar: % dos símbolos acima da EMA50D (0–100%)
     const bigFill=document.getElementById('mb-big-fill');
     const bigLabel=document.getElementById('mb-big-label');
-    const bigPct=Math.min(maxFallPct,100);
-    const barCol=bigPct>=100?'linear-gradient(90deg,#059669,#34d399)':bigPct>=60?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#3b82f6,#60a5fa)';
+    const bigPct=Math.min(trendUpPct,100);
+    const barCol=bigPct>=66?'linear-gradient(90deg,#059669,#34d399)':bigPct>=33?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#3b82f6,#60a5fa)';
     if(bigFill){ bigFill.style.width=bigPct+'%'; bigFill.style.background=barCol; }
     if(bigLabel){ bigLabel.textContent=bigPct+'%'; }
 
-    // Badge: PRONTO (≥100%), PRÓXIMO (≥60%), AGUARDANDO (<60%)
+    // Badge: BULL (todos acima), MISTO, FLAT
     const mbBadge=document.getElementById('mb-overall-badge');
     if(mbBadge){
-      if(bigPct>=100){ mbBadge.textContent='PRONTO'; mbBadge.className='hbadge hbadge-green'; }
-      else if(bigPct>=60){ mbBadge.textContent='PRÓXIMO'; mbBadge.className='hbadge hbadge-yellow'; }
-      else { mbBadge.textContent='AGUARDANDO'; mbBadge.className='hbadge hbadge-gray'; }
+      if(bigPct>=66){ mbBadge.textContent='BULL'; mbBadge.className='hbadge hbadge-green'; }
+      else if(bigPct>=33){ mbBadge.textContent='MISTO'; mbBadge.className='hbadge hbadge-yellow'; }
+      else { mbBadge.textContent='FLAT'; mbBadge.className='hbadge hbadge-gray'; }
     }
 
-    // 4 métricas
+    // Métricas
     function mbMetric(fillId,valId,statId,value,maxVal,color,statusFn){
-      const f=document.getElementById(fillId); if(f){ f.style.width=Math.min(value/maxVal,1)*100+'%'; f.style.background=color; }
+      const el=document.getElementById(fillId); if(el){ el.style.width=Math.min(value/maxVal,1)*100+'%'; el.style.background=color; }
       const v=document.getElementById(valId); if(v) v.textContent=value.toFixed(1)+'%';
       const st=document.getElementById(statId); if(st) st.textContent=statusFn(value);
     }
 
-    // Score Médio = proximidade média ao limiar de 3%
-    mbMetric('mbf-score','mbv-score','mbs-score',Math.min(avgFallPct,100),100,'var(--blue)',v=>v>=100?'limiar':v>=60?'próximo':'aguardando');
+    // Score Médio = % símbolos TREND_UP
+    mbMetric('mbf-score','mbv-score','mbs-score',trendUpPct,100,'var(--blue)',v=>v>=66?'bull':v>=33?'misto':'flat');
     const scoreLabel=document.getElementById('mbv-score');
-    if(scoreLabel) scoreLabel.textContent=avgFallPct.toFixed(0)+'%';
+    if(scoreLabel) scoreLabel.textContent=trendUpPct+'% em alta';
 
     // Taxa de Sinais = % de avaliações que resultaram em SIGNAL
     mbMetric('mbf-rate','mbv-rate','mbs-rate',rate,100,'var(--green)',v=>v>5?'ativo':v>0?'baixo':'em espera');

@@ -67,6 +67,8 @@ class TrendStrategy(BaseStrategy):
     _btc_vol:     float = 0.0
     # Cache histórico de candles diários por símbolo
     _daily_cache: dict = {}
+    # Controle de deduplicação diária: {symbol: date} — avalia 1× por dia
+    _last_eval_day: dict = {}
 
     def __init__(self, symbols: list[str]) -> None:
         super().__init__(strategy_id="trend_v56", symbols=symbols)
@@ -191,7 +193,16 @@ class TrendStrategy(BaseStrategy):
         3. Decide sinal: LONG / SHORT / FLAT
         4. Calcula position sizing via vol-target
         """
-        sym = ctx.symbol
+        sym      = ctx.symbol
+        today    = datetime.now(UTC).date()
+
+        # ── Deduplicação diária ───────────────────────────────────────────────
+        # A TrendStrategy usa EMA50D (diário) — só faz sentido avaliar 1× por dia.
+        # O warm-start no boot é permitido (today != last_eval_day na primeira vez).
+        # Avaliações subsequentes no mesmo dia retornam None silenciosamente.
+        last_day = TrendStrategy._last_eval_day.get(sym)
+        if last_day == today:
+            return None   # já avaliou hoje — aguarda próximo dia UTC
 
         # Agrega candles 1H ao vivo → diários
         candles_oldest = list(reversed(ctx.candles_1h))
@@ -231,6 +242,9 @@ class TrendStrategy(BaseStrategy):
         # ── Sinal ─────────────────────────────────────────────────────────────
         trend_up = price > ema50d
         vol_ok   = vol_ann < VOL_CAP
+
+        # Marca que já avaliamos hoje (impede avaliações duplicadas na mesma hora)
+        TrendStrategy._last_eval_day[sym] = today
 
         # Atualiza âncora BTC para ETH/SOL
         if sym == "BTC-USDT":

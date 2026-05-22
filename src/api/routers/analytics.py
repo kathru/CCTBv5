@@ -920,3 +920,284 @@ async def get_reality_check(request: Request) -> dict:
         "alpha":        ALPHA,
         "computed_at":  datetime.now(UTC).isoformat(),
     }
+
+
+# ── Phase 9 — Meta-Overfitting ────────────────────────────────────────────────
+#
+# Referência: López de Prado (2018) "Advances in Financial Machine Learning"
+#   Cap. 8: The Deflated Sharpe Ratio
+#   Cap. 11: Feature Importance
+#
+# Implementação 100% stdlib (sem scipy/numpy) usando math.erf para CDF normal.
+
+_EULER_MASCHERONI = 0.5772156649
+
+
+def _norm_cdf(x: float) -> float:
+    """Função distribuição acumulada normal padrão via math.erf."""
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+
+def _norm_ppf(p: float) -> float:
+    """
+    Inversa da CDF normal (percent-point function) — aproximação racional.
+    Erro < 4.5e-4 para p ∈ (0, 1).  Abramowitz & Stegun 26.2.17.
+    """
+    p = max(1e-10, min(1 - 1e-10, p))
+    if p < 0.5:
+        t = math.sqrt(-2.0 * math.log(p))
+        sign = -1
+    else:
+        t = math.sqrt(-2.0 * math.log(1 - p))
+        sign = 1
+    c0, c1, c2 = 2.515517, 0.802853, 0.010328
+    d1, d2, d3 = 1.432788, 0.189269, 0.001308
+    num   = c0 + c1 * t + c2 * t * t
+    denom = 1 + d1 * t + d2 * t * t + d3 * t * t * t
+    return sign * (t - num / denom)
+
+
+def _moments(returns: list[float]) -> tuple[float, float, float, float]:
+    """Retorna (mean, std, skewness, excess_kurtosis) de uma série."""
+    n    = len(returns)
+    mean = sum(returns) / n
+    if n < 2:
+        return mean, 0.0, 0.0, 0.0
+    var  = sum((x - mean) ** 2 for x in returns) / (n - 1)
+    std  = math.sqrt(var) if var > 0 else 1e-10
+    skew = sum(((x - mean) / std) ** 3 for x in returns) / n
+    kurt = sum(((x - mean) / std) ** 4 for x in returns) / n - 3.0
+    return mean, std, skew, kurt
+
+
+def _deflated_sharpe(
+    sr_hat: float,
+    returns: list[float],
+    n_trials: int,
+    sr_benchmark: float | None = None,
+) -> dict:
+    """
+    Deflated Sharpe Ratio (DSR) — López de Prado (2018).
+
+    Ajusta o Sharpe observado por:
+      1. Não-normalidade dos retornos (skewness + kurtosis)
+      2. Viés de seleção (n_trials tentativas de estratégia/parâmetros)
+
+    DSR = Φ( (SR_hat - SR*) * sqrt(T-1) / sqrt(1 - γ₃*SR_hat + γ₄/4 * SR_hat²) )
+
+    SR* (expected max Sharpe sob H0) = E[max Sharpe de n_trials N(0,1)/sqrt(T)]
+        ≈ Z(1 - 1/n) onde Z é a CDF inversa normal
+
+    Returns: dict com dsr, sr_star, significant (DSR > 0.95)
+    """
+    n = len(returns)
+    if n < MIN_TRADES or sr_hat is None:
+        return {"dsr": None, "sr_star": None, "significant": None,
+                "adjustment": None, "n_obs": n}
+
+    _, _, skew, kurt = _moments(returns)
+
+    # SR* benchmark: Sharpe máximo esperado de n_trials tentativas aleatórias
+    if sr_benchmark is not None:
+        sr_star = sr_benchmark
+    else:
+        # Fórmula simplificada: E[max Z | n_trials] ≈ Φ⁻¹(1 - 1/n_trials)
+        # Escalado para a magnitude dos dados: divide por sqrt(n-1)
+        z_max  = _norm_ppf(1.0 - 1.0 / max(n_trials, 2))
+        z_max2 = _norm_ppf(1.0 - 1.0 / (max(n_trials, 2) * math.e))
+        sr_star = ((1 - _EULER_MASCHERONI) * z_max + _EULER_MASCHERONI * z_max2) / math.sqrt(n - 1)
+
+    # Ajuste de não-normalidade: σ² efetivo = 1 - γ₃*SR + (γ₄/4)*SR²
+    variance_adj = 1.0 - skew * sr_hat + (kurt / 4.0) * sr_hat ** 2
+    if variance_adj <= 0:
+        variance_adj = 1e-6
+
+    # DSR
+    dsr_z   = (sr_hat - sr_star) * math.sqrt(n - 1) / math.sqrt(variance_adj)
+    dsr     = round(_norm_cdf(dsr_z), 4)
+    significant = dsr >= (1 - ALPHA)  # DSR ≥ 0.95 → edge real
+
+    return {
+        "dsr":          dsr,
+        "sr_star":      round(sr_star, 4),
+        "dsr_z":        round(dsr_z, 4),
+        "significant":  significant,
+        "skewness":     round(skew, 4),
+        "excess_kurtosis": round(kurt, 4),
+        "variance_adj": round(variance_adj, 4),
+        "n_obs":        n,
+        "n_trials":     n_trials,
+    }
+
+
+def _min_track_record(sr_hat: float, returns: list[float],
+                      alpha: float = ALPHA) -> dict:
+    """
+    Minimum Track Record Length — quantos trades são necessários para
+    rejeitar H0 (Sharpe ≤ 0) com confiança (1-α).
+
+    MinTRL = 1 + (1 - γ₃*SR + (γ₄/4)*SR²) * (Φ⁻¹(1-α)/SR)²
+    """
+    n = len(returns)
+    if sr_hat is None or sr_hat == 0 or n < MIN_TRADES:
+        return {"min_trl": None, "current_n": n, "sufficient": None}
+
+    _, _, skew, kurt = _moments(returns)
+    variance_adj = max(1e-6, 1.0 - skew * sr_hat + (kurt / 4.0) * sr_hat ** 2)
+    z_alpha      = _norm_ppf(1.0 - alpha)
+
+    if sr_hat > 0:
+        min_trl = 1 + variance_adj * (z_alpha / sr_hat) ** 2
+    else:
+        # Sharpe negativo: MinTRL "infinito" → sem track record suficiente
+        min_trl = float("inf")
+
+    sufficient = n >= min_trl if math.isfinite(min_trl) else False
+    return {
+        "min_trl":    round(min_trl, 1) if math.isfinite(min_trl) else None,
+        "current_n":  n,
+        "sufficient": sufficient,
+        "gap":        None if not math.isfinite(min_trl) else max(0, round(min_trl - n, 1)),
+    }
+
+
+def _is_oos_split(trades: list[dict], split: float = 0.7) -> dict:
+    """
+    Divide trades em IS (primeiros split%) e OOS (restantes).
+    Compara Sharpe, WR e Expectancy nos dois períodos.
+    Ratio IS_Sharpe / OOS_Sharpe > 1 indica degradação (possível overfit).
+    """
+    n = len(trades)
+    if n < MIN_TRADES * 2:
+        return {"sufficient": False, "n_is": 0, "n_oos": 0}
+
+    n_is  = max(MIN_TRADES, int(n * split))
+    n_oos = n - n_is
+    if n_oos < MIN_TRADES:
+        return {"sufficient": False, "n_is": n_is, "n_oos": n_oos}
+
+    def _metrics(subset: list[dict]) -> dict:
+        pcts  = [t["pnl_pct"] for t in subset]
+        pnls  = [t["pnl"]     for t in subset]
+        wins  = [p for p in pnls if p > 0]
+        losses= [p for p in pnls if p <= 0]
+        wr    = len(wins) / len(pnls) if pnls else 0
+        aw    = sum(wins)   / len(wins)   if wins   else 0
+        al    = sum(losses) / len(losses) if losses else 0
+        exp   = wr * aw + (1 - wr) * al
+        sh    = _sharpe(pcts)
+        return {"sharpe": sh, "win_rate": round(wr, 4),
+                "expectancy": round(exp, 2), "n": len(subset)}
+
+    is_m  = _metrics(trades[:n_is])
+    oos_m = _metrics(trades[n_is:])
+
+    # Degradation ratio: OOS_Sharpe / IS_Sharpe (1.0 = sem degradação)
+    deg_ratio = None
+    if is_m["sharpe"] and oos_m["sharpe"] and is_m["sharpe"] != 0:
+        deg_ratio = round(oos_m["sharpe"] / is_m["sharpe"], 3)
+
+    # Classificação
+    if deg_ratio is None:
+        overfit_signal = "INSUFFICIENT"
+    elif deg_ratio >= 0.5:
+        overfit_signal = "LOW"       # OOS retém ≥ 50% do IS Sharpe
+    elif deg_ratio >= 0.0:
+        overfit_signal = "MODERATE"  # degradação entre 0 e 50%
+    else:
+        overfit_signal = "HIGH"      # OOS inverte sinal → overfit severo
+
+    return {
+        "sufficient":    True,
+        "split_pct":     split,
+        "n_is":          n_is,
+        "n_oos":         n_oos,
+        "is_metrics":    is_m,
+        "oos_metrics":   oos_m,
+        "degradation_ratio": deg_ratio,
+        "overfit_signal":    overfit_signal,
+    }
+
+
+@router.get("/meta_overfitting")
+async def get_meta_overfitting(
+    request: Request,
+    n_trials: int = Query(default=10, ge=1, le=1000,
+                          description="Nº de configurações/estratégias testadas"),
+) -> dict:
+    """
+    Phase 9 — Meta-Overfitting Analysis (López de Prado framework).
+
+    Retorna:
+    - dsr           : Deflated Sharpe Ratio (ajustado por não-normalidade + n_trials)
+    - min_trl       : Mínimo de trades para rejeitar H0 com 95% de confiança
+    - is_oos        : Comparação In-Sample vs Out-of-Sample (split 70/30)
+    - verdict       : Semáforo por critério + overall
+    """
+    db     = request.app.state.db
+    orders = await _get_filled_orders(db)
+    trades = _pair_trades(orders)
+
+    n        = len(trades)
+    pnl_pcts = [t["pnl_pct"] for t in trades]
+    sr_hat   = _sharpe(pnl_pcts)
+
+    if n < MIN_TRADES:
+        return {
+            "n_trades":        n,
+            "min_required":    MIN_TRADES,
+            "sufficient_data": False,
+            "computed_at":     datetime.now(UTC).isoformat(),
+        }
+
+    # ── DSR ─────────────────────────────────────────────────────────────────
+    dsr_result = _deflated_sharpe(sr_hat, pnl_pcts, n_trials)
+
+    # ── MinTRL ──────────────────────────────────────────────────────────────
+    min_trl_result = _min_track_record(sr_hat, pnl_pcts)
+
+    # ── IS/OOS ──────────────────────────────────────────────────────────────
+    is_oos_result = _is_oos_split(trades)
+
+    # ── Verdict ─────────────────────────────────────────────────────────────
+    dsr_ok    = dsr_result.get("significant") is True
+    trl_ok    = min_trl_result.get("sufficient") is True
+    overfit   = is_oos_result.get("overfit_signal", "INSUFFICIENT")
+    overfit_ok = overfit == "LOW"
+
+    def _v(ok): return "GREEN" if ok else ("GREY" if ok is None else "RED")
+
+    n_green = sum([dsr_ok, trl_ok, overfit_ok])
+    overall = "GREEN" if n_green == 3 else ("YELLOW" if n_green >= 1 else "RED")
+
+    verdict = {
+        "dsr_significant": {
+            "status": _v(dsr_ok),
+            "value":  dsr_result.get("dsr"),
+            "note":   "DSR ≥ 0.95 → edge real após ajuste de seleção",
+        },
+        "track_record_sufficient": {
+            "status": _v(trl_ok),
+            "value":  min_trl_result.get("current_n"),
+            "note":   f"Precisa ≥ {min_trl_result.get('min_trl')} trades",
+        },
+        "low_overfit": {
+            "status": _v(overfit_ok),
+            "value":  is_oos_result.get("degradation_ratio"),
+            "note":   f"Overfit: {overfit}",
+        },
+        "overall": overall,
+    }
+
+    return {
+        "n_trades":        n,
+        "sufficient_data": True,
+        "sr_hat":          sr_hat,
+        "n_trials":        n_trials,
+        "dsr":             dsr_result,
+        "min_trl":         min_trl_result,
+        "is_oos":          is_oos_result,
+        "verdict":         verdict,
+        "alpha":           ALPHA,
+        "computed_at":     datetime.now(UTC).isoformat(),
+    }

@@ -1161,6 +1161,110 @@
 
 </div>
 
+<!-- ══ META-OVERFITTING — Phase 9 ══════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="dot" style="background:var(--purple)"></div>
+  Meta-Overfitting
+  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 9 · DSR · MinTRL · IS/OOS · López de Prado</span>
+  <span id="mo-overall-badge" style="margin-left:auto;font-size:0.6rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
+</div>
+<div class="grid g31">
+
+  <!-- Deflated Sharpe Ratio -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:6px">Deflated Sharpe Ratio</div>
+    <div style="font-size:0.55rem;color:var(--muted);margin-bottom:12px;line-height:1.5">
+      Ajusta o Sharpe por não-normalidade (skew/kurt) e viés de seleção<br>
+      <span style="color:var(--fg)">DSR ≥ 0.95</span> → edge real com 95% de confiança
+    </div>
+    <!-- DSR gauge -->
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="font-size:0.55rem;color:var(--muted)">DSR</div>
+      <div style="font-size:2.8rem;font-weight:900;line-height:1;" id="mo-dsr">–</div>
+      <div style="font-size:0.65rem;margin-top:4px;" id="mo-dsr-verdict">–</div>
+    </div>
+    <!-- Barra DSR (0 → 1) -->
+    <div style="position:relative;height:10px;background:rgba(255,255,255,0.06);border-radius:5px;margin-bottom:10px;overflow:hidden;">
+      <div style="position:absolute;left:0;top:0;height:100%;width:95%;background:rgba(255,255,255,0.06);border-right:1px dashed rgba(255,255,255,0.2);"></div>
+      <div id="mo-dsr-bar" style="position:absolute;left:0;top:0;height:100%;border-radius:5px;transition:width 0.5s;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.6rem;">
+      <div><span style="color:var(--muted)">SR_hat</span><br><span id="mo-sr-hat" style="font-weight:700">–</span></div>
+      <div><span style="color:var(--muted)">SR* (benchmark)</span><br><span id="mo-sr-star" style="font-weight:700">–</span></div>
+      <div><span style="color:var(--muted)">Skewness</span><br><span id="mo-skew">–</span></div>
+      <div><span style="color:var(--muted)">Kurtosis exc.</span><br><span id="mo-kurt">–</span></div>
+      <div><span style="color:var(--muted)">N tentativas</span><br><span id="mo-n-trials">–</span></div>
+      <div><span style="color:var(--muted)">N observações</span><br><span id="mo-n-obs">–</span></div>
+    </div>
+  </div>
+
+  <!-- MinTRL + IS/OOS -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Track Record & IS/OOS</div>
+
+    <!-- MinTRL -->
+    <div style="margin-bottom:12px;">
+      <div style="font-size:0.6rem;color:var(--muted);margin-bottom:6px">Minimum Track Record Length</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="text-align:center;">
+          <div style="font-size:0.5rem;color:var(--muted)">Precisamos</div>
+          <div style="font-size:1.6rem;font-weight:900;" id="mo-min-trl">–</div>
+          <div style="font-size:0.5rem;color:var(--muted)">trades</div>
+        </div>
+        <div style="flex:1">
+          <div style="position:relative;height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;">
+            <div id="mo-trl-bar" style="height:100%;border-radius:4px;transition:width 0.5s;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:0.5rem;color:var(--muted);margin-top:2px;">
+            <span>0</span>
+            <span id="mo-trl-progress">–</span>
+          </div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:0.5rem;color:var(--muted)">Temos</div>
+          <div style="font-size:1.6rem;font-weight:900;" id="mo-trl-current">–</div>
+          <div style="font-size:0.5rem;color:var(--muted)">trades</div>
+        </div>
+      </div>
+      <div style="font-size:0.6rem;margin-top:4px;" id="mo-trl-verdict">–</div>
+    </div>
+
+    <!-- IS/OOS -->
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+      <div style="font-size:0.6rem;color:var(--muted);margin-bottom:8px">IS/OOS Split 70/30</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.6rem;margin-bottom:8px;">
+        <div style="background:rgba(255,255,255,0.03);border-radius:6px;padding:8px;">
+          <div style="font-size:0.55rem;color:var(--muted);margin-bottom:4px">In-Sample</div>
+          <div>Sharpe: <span id="mo-is-sharpe" style="font-weight:700">–</span></div>
+          <div>WR: <span id="mo-is-wr">–</span></div>
+          <div>N: <span id="mo-is-n">–</span></div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border-radius:6px;padding:8px;">
+          <div style="font-size:0.55rem;color:var(--muted);margin-bottom:4px">Out-of-Sample</div>
+          <div>Sharpe: <span id="mo-oos-sharpe" style="font-weight:700">–</span></div>
+          <div>WR: <span id="mo-oos-wr">–</span></div>
+          <div>N: <span id="mo-oos-n">–</span></div>
+        </div>
+      </div>
+      <div style="font-size:0.6rem;">
+        Degradação: <span id="mo-deg-ratio" style="font-weight:700">–</span>
+        &nbsp;|&nbsp;Overfit: <span id="mo-overfit-signal" style="font-weight:700">–</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verdict + Interpretação -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Diagnóstico</div>
+    <div id="mo-verdict-rows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+      <div style="font-size:0.55rem;color:var(--muted);margin-bottom:6px">O que fazer</div>
+      <div id="mo-recommendation" style="font-size:0.62rem;line-height:1.6;color:var(--fg);"></div>
+    </div>
+  </div>
+
+</div>
+
 <!-- ══ GRÁFICOS ════════════════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Evolução & Distribuição</div>
 <div class="grid g21">
@@ -2240,6 +2344,146 @@ let _distReturnChart=null, _distHoldingChart=null;
 
 // ── Phase 8 — Reality Check ──────────────────────────────────────────────────
 
+// ── Phase 9 — Meta-Overfitting ───────────────────────────────────────────────
+
+function buildMetaOverfitting(mo){
+  if(!mo||!mo.sufficient_data) return;
+
+  const setT=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v??'–';};
+  const setC=(id,v,col)=>{const e=document.getElementById(id);if(e){e.textContent=v??'–';if(col)e.style.color=col;}};
+
+  // ── Overall badge ────────────────────────────────────────────────────
+  const overall = mo.verdict?.overall||'GREY';
+  const badgeEl = document.getElementById('mo-overall-badge');
+  if(badgeEl){
+    const cfg={GREEN:{bg:'rgba(16,185,129,0.15)',c:'var(--green)',t:'✓ ROBUSTO'},
+               YELLOW:{bg:'rgba(234,179,8,0.15)',c:'var(--yellow)',t:'⚠ ATENÇÃO'},
+               RED:{bg:'rgba(239,68,68,0.15)',c:'var(--red)',t:'✗ OVERFIT / INSUF.'},
+               GREY:{bg:'rgba(100,100,100,0.1)',c:'var(--muted)',t:'– DADOS INSUF.'}};
+    const s=cfg[overall]||cfg.GREY;
+    badgeEl.textContent=s.t; badgeEl.style.background=s.bg; badgeEl.style.color=s.c;
+  }
+
+  // ── DSR ──────────────────────────────────────────────────────────────
+  const dsr = mo.dsr||{};
+  const dsrVal = dsr.dsr;
+  const dsrCol = dsrVal==null?'var(--muted)':dsrVal>=0.95?'var(--green)':dsrVal>=0.5?'var(--yellow)':'var(--red)';
+  setC('mo-dsr', dsrVal!=null?dsrVal.toFixed(4):null, dsrCol);
+
+  const dsrV = document.getElementById('mo-dsr-verdict');
+  if(dsrV){
+    if(dsrVal==null) dsrV.textContent='Dados insuficientes';
+    else if(dsrVal>=0.95){dsrV.textContent='✓ Edge confirmado (DSR ≥ 0.95)';dsrV.style.color='var(--green)';}
+    else if(dsrVal>=0.5){dsrV.textContent=`⚠ Inconclusivo (DSR = ${dsrVal.toFixed(3)})`;dsrV.style.color='var(--yellow)';}
+    else{dsrV.textContent=`✗ Sem edge após ajuste (DSR = ${dsrVal!=null?dsrVal.toFixed(3):'–'})`;dsrV.style.color='var(--red)';}
+  }
+
+  // Barra DSR
+  const dsrBarEl=document.getElementById('mo-dsr-bar');
+  if(dsrBarEl&&dsrVal!=null){
+    dsrBarEl.style.width=Math.round(Math.min(1,Math.max(0,dsrVal))*100)+'%';
+    dsrBarEl.style.background=dsrCol;
+  }
+
+  setT('mo-sr-hat',  mo.sr_hat!=null?mo.sr_hat.toFixed(4):null);
+  setT('mo-sr-star', dsr.sr_star!=null?dsr.sr_star.toFixed(4):null);
+  setT('mo-skew',    dsr.skewness!=null?dsr.skewness.toFixed(3):null);
+  setT('mo-kurt',    dsr.excess_kurtosis!=null?dsr.excess_kurtosis.toFixed(3):null);
+  setT('mo-n-trials',mo.n_trials);
+  setT('mo-n-obs',   dsr.n_obs);
+
+  // ── MinTRL ───────────────────────────────────────────────────────────
+  const trl = mo.min_trl||{};
+  const minT = trl.min_trl;
+  const curT = trl.current_n||0;
+  setT('mo-min-trl',    minT!=null?Math.ceil(minT):'∞');
+  setT('mo-trl-current',curT);
+  setT('mo-trl-progress',curT+'/'+(minT!=null?Math.ceil(minT):'∞'));
+
+  const trlBarEl=document.getElementById('mo-trl-bar');
+  if(trlBarEl){
+    const pct=minT!=null?Math.min(100,Math.round(curT/minT*100)):0;
+    trlBarEl.style.width=pct+'%';
+    trlBarEl.style.background=pct>=100?'var(--green)':pct>=50?'var(--yellow)':'var(--red)';
+  }
+
+  const trlV=document.getElementById('mo-trl-verdict');
+  if(trlV){
+    if(trl.sufficient){trlV.textContent='✓ Track record suficiente';trlV.style.color='var(--green)';}
+    else if(minT!=null){
+      const gap=Math.ceil(minT-curT);
+      trlV.textContent=`Faltam ~${gap} trades para 95% de confiança`;trlV.style.color='var(--yellow)';
+    } else {
+      trlV.textContent='✗ Sharpe negativo — MinTRL indefinido';trlV.style.color='var(--red)';
+    }
+  }
+
+  // ── IS/OOS ───────────────────────────────────────────────────────────
+  const io = mo.is_oos||{};
+  if(io.sufficient){
+    const im=io.is_metrics||{}, om=io.oos_metrics||{};
+    const shCol=s=>s==null?'var(--muted)':s>0?'var(--green)':'var(--red)';
+    setC('mo-is-sharpe',  im.sharpe!=null?im.sharpe.toFixed(3):null, shCol(im.sharpe));
+    setT('mo-is-wr',      im.win_rate!=null?(im.win_rate*100).toFixed(1)+'%':null);
+    setT('mo-is-n',       im.n);
+    setC('mo-oos-sharpe', om.sharpe!=null?om.sharpe.toFixed(3):null, shCol(om.sharpe));
+    setT('mo-oos-wr',     om.win_rate!=null?(om.win_rate*100).toFixed(1)+'%':null);
+    setT('mo-oos-n',      om.n);
+
+    const dr=io.degradation_ratio;
+    const drCol=dr==null?'var(--muted)':dr>=0.5?'var(--green)':dr>=0?'var(--yellow)':'var(--red)';
+    setC('mo-deg-ratio', dr!=null?dr.toFixed(3):null, drCol);
+    const ofSignal=io.overfit_signal||'–';
+    const ofCol={LOW:'var(--green)',MODERATE:'var(--yellow)',HIGH:'var(--red)',INSUFFICIENT:'var(--muted)'}[ofSignal]||'var(--muted)';
+    setC('mo-overfit-signal', ofSignal, ofCol);
+  }
+
+  // ── Verdict rows ─────────────────────────────────────────────────────
+  const vEl=document.getElementById('mo-verdict-rows');
+  if(vEl&&mo.verdict){
+    const items=[
+      ['dsr_significant','DSR significativo'],
+      ['track_record_sufficient','Track record'],
+      ['low_overfit','Overfit baixo'],
+    ];
+    const cfg={GREEN:{icon:'✓',c:'var(--green)'},RED:{icon:'✗',c:'var(--red)'},
+               YELLOW:{icon:'⚠',c:'var(--yellow)'},GREY:{icon:'–',c:'var(--muted)'}};
+    vEl.innerHTML=items.map(([key,label])=>{
+      const v=mo.verdict[key]||{};
+      const s=cfg[v.status]||cfg.GREY;
+      return `<div style="display:flex;align-items:flex-start;gap:8px;">
+        <span style="color:${s.c};font-size:0.8rem;line-height:1.2;">${s.icon}</span>
+        <div style="flex:1;font-size:0.6rem;">
+          <div style="font-weight:600;color:${s.c}">${label}</div>
+          <div style="color:var(--muted)">${v.note||''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Recomendação dinâmica ────────────────────────────────────────────
+  const recEl=document.getElementById('mo-recommendation');
+  if(recEl){
+    const o=mo.verdict?.overall;
+    const trl_=mo.min_trl||{};
+    const io_=mo.is_oos||{};
+    let recs=[];
+    if(o==='RED'){
+      recs.push('🔴 Estratégia não tem edge estatístico demonstrável.');
+      if(trl_.min_trl&&!trl_.sufficient) recs.push(`📊 Acumular ~${Math.ceil(trl_.min_trl)} trades antes de qualquer conclusão.`);
+      if(io_.overfit_signal==='HIGH') recs.push('⚠ OOS muito pior que IS: rever parâmetros ou expandir dados.');
+      recs.push('🔧 Prioridade: melhorar fatores M1-M5 ou threshold de sinal.');
+    } else if(o==='YELLOW'){
+      recs.push('🟡 Edge inconclusivo — mais dados necessários.');
+      if(trl_.gap) recs.push(`📊 Faltam ${Math.ceil(trl_.gap)} trades para MinTRL.`);
+    } else if(o==='GREEN'){
+      recs.push('✅ Edge estatisticamente robusto.');
+      recs.push('📈 Próximo passo: dimensionamento de posição e gestão de risco.');
+    }
+    recEl.innerHTML=recs.map(r=>`<div style="margin-bottom:4px">${r}</div>`).join('');
+  }
+}
+
 function buildRealityCheck(rc){
   if(!rc||!rc.sufficient_data) return;
 
@@ -2575,10 +2819,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -2588,6 +2832,7 @@ async function updateSlow(){
     fetchJSON('/api/analytics/rolling?window=10'),
     fetchJSON('/api/analytics/distribution'),
     fetchJSON('/api/analytics/reality_check'),
+    fetchJSON('/api/analytics/meta_overfitting?n_trials=10'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -2603,6 +2848,7 @@ async function updateSlow(){
   if(rolling)   _slowData.rolling=rolling;
   if(dist)      _slowData.dist=dist;
   if(rc)        _slowData.rc=rc;
+  if(mo)        _slowData.mo=mo;
 }
 
 async function updateAll(){
@@ -2617,12 +2863,13 @@ async function updateAll(){
   ]);
 
   // Slow data vem do cache — atualizado em paralelo pelo loop lento
-  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc}=_slowData;
+  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo}=_slowData;
   if(recon)   updateReconciler(recon);
   if(equity)  buildEquityCharts(equity);
   if(rolling) buildRollingCharts(rolling);
   if(dist)    buildDistributionPanel(dist);
   if(rc)      buildRealityCheck(rc);
+  if(mo)      buildMetaOverfitting(mo);
 
   // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS
   const hasPrices = prices && Object.keys(prices).length > 0;

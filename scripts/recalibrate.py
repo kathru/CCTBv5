@@ -394,8 +394,8 @@ def score_signal(closes: list[float], highs: list[float],
     # M8 Volatility State — calculado de candles
     m8 = _compute_m8_recal(closes, highs, lows)
 
-    return (m1*0.18 + m2*0.18 + m3*0.14 + m4*0.14 +
-            m5*0.06 + m6*0.10 + m7*0.09 + m8*0.11)
+    return (m1*0.10 + m2*0.20 + m3*0.25 + m4*0.05 +
+            m5*0.08 + m6*0.10 + m7*0.09 + m8*0.13)
 
 
 def platt_calibrate(score: float, A: float, B: float) -> float:

@@ -117,56 +117,58 @@ class FeatureSchema:
 
 # Schema atual (v2 = scoring model v2 com 5 fatores)
 CURRENT_SCHEMA = FeatureSchema(
-    version="2.1.0",
+    version="2.2.0",
     model_id="momentum_scoring_v2",
     created_at="2026-05-22",
     lookback_candles=25,
-    notes="7 fatores. Phase 10: M6 Futures Flow (funding+OI). Phase 11: M7 Relative Strength (RS vs BTC + leadership).",
+    notes="8 fatores. Pesos ajustados por evidência empírica (feature_analysis 2026-05-22): M3↑25% M2=20% M8↑13% M5↑8% | M1↓10% M4↓5%. Spearman: M3=+0.017 M8=+0.229 M1=-0.048 M4=-0.057.",
     features={
+        # Pesos ajustados por evidência empírica — feature_analysis 2026-05-22
+        # Spearman: M3=+0.017 M2=+0.001 M8=+0.229 | M1=-0.048 M4=-0.057
         "m1_momentum": FeatureDef(
-            weight=0.20,
+            weight=0.10,   # reduzido: correlação negativa com retorno futuro
             description="Momentum adaptativo: média ponderada de retornos 1/5/10/20 candles 1H, normalizado por ATR",
             lookback=21,
             leakage_safe=True,
         ),
         "m2_consistency": FeatureDef(
-            weight=0.20,
+            weight=0.20,   # mantido: correlação levemente positiva
             description="Consistência de tendência: % candles bullish + higher-highs E higher-lows graduais",
             lookback=10,
             leakage_safe=True,
         ),
         "m3_volume": FeatureDef(
-            weight=0.16,
+            weight=0.25,   # aumentado: único fator com importância empírica clara (62% rel.imp)
             description="Confirmação por volume: ratio + tendência de volume + candle direcional",
             lookback=20,
             leakage_safe=True,
         ),
         "m4_regime_str": FeatureDef(
-            weight=0.16,
+            weight=0.05,   # reduzido ao mínimo: correlação negativa mais forte (-0.057)
             description="Força do regime: distância SMA5-SMA20 normalizada, blend com regime fixo",
             lookback=20,
             leakage_safe=True,
         ),
         "m5_candle": FeatureDef(
-            weight=0.07,
+            weight=0.08,   # leve aumento: importância permutação marginal positiva
             description="Estrutura do candle: posição do close no range dos últimos 3 candles (Williams %R style)",
             lookback=3,
             leakage_safe=True,
         ),
         "m6_futures": FeatureDef(
-            weight=0.11,
+            weight=0.10,   # mantido: dado externo, spearman não mensurável em backtest
             description="Futures Flow: funding rate (perp) + variação de Open Interest. Lê sinal do mercado de derivativos sem operar futuros.",
             lookback=1,
             leakage_safe=True,
         ),
         "m7_rel_strength": FeatureDef(
-            weight=0.09,
+            weight=0.09,   # mantido: dado externo, spearman não mensurável em backtest
             description="Relative Strength vs BTC: RS 1h/5h/24h ponderado + BTC leadership score + tendência de RS",
             lookback=25,
             leakage_safe=True,
         ),
         "m8_vol_state": FeatureDef(
-            weight=0.11,
+            weight=0.13,   # aumentado: spearman +0.229 — maior correlação observada
             description="Volatility State Machine: 5 estados (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC) via ATR + BB + dir_consistency",
             lookback=20,
             leakage_safe=True,

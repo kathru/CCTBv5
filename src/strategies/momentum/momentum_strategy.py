@@ -325,11 +325,11 @@ class MomentumStrategy(BaseStrategy):
         Modelo de scoring com 6 fatores contínuos — ciclo 1H.
         Todos os fatores usam candles 1H (sem granularidade 30m).
 
-        Fatores:
-          M1 Adaptive Momentum  (20%): retornos 1H (1h, 5h, 10h, 20h)
+        Fatores (pesos ajustados por evidência empírica — feature_analysis 2026-05-22):
+          M1 Adaptive Momentum  (10%): retornos 1H — correlação negativa, peso reduzido
           M2 Trend Consistency   (20%): % candles bullish + higher-highs/lows (1H)
-          M3 Volume Confirmation (16%): volume crescente + confirmação direcional (1H)
-          M4 Regime Strength     (16%): distância SMA5-SMA20 normalizada
+          M3 Volume Confirmation (25%): volume crescente — único fator com edge claro
+          M4 Regime Strength     ( 5%): SMA5-SMA20 — correlação negativa, peso mínimo
           M5 Candle Structure    ( 7%): close no terço superior do range (1H)
           M6 Futures Flow        (10%): funding rate + OI change (perp market signal)
           M7 Relative Strength   ( 9%): RS vs BTC multi-horizonte + BTC leadership
@@ -405,7 +405,7 @@ class MomentumStrategy(BaseStrategy):
                 candle_scores.append(pos)
         m5 = sum(candle_scores) / len(candle_scores) if candle_scores else 0.5
 
-        # ── M6: Futures Flow (11%) — funding rate + OI (Phase 10) ────────────
+        # ── M6: Futures Flow (10%) — funding rate + OI (Phase 10) ────────────
         ff_data   = (ctx.extra or {}).get("futures_flow") or {}
         ff_scores = ff_data.get("scores", {})
         m6 = float(ff_scores.get("m6", 0.5))
@@ -415,17 +415,17 @@ class MomentumStrategy(BaseStrategy):
         rs_scores = rs_data.get("scores", {})
         m7 = float(rs_scores.get("m7", 0.5))
 
-        # ── M8: Volatility State (11%) — state machine (Phase 12) ────────────
+        # ── M8: Volatility State (13%) — state machine (Phase 12) ────────────
         # Lê do ctx.extra injetado pelo StrategyRunner (VolatilityStateCollector).
         # Fallback neutro (0.5) se dados indisponíveis — não bloqueia o trading.
         vol_data = (ctx.extra or {}).get("vol_state") or {}
         m8 = float(vol_data.get("m8_score", 0.5))
-        vol_state_name = vol_data.get("state", "UNKNOWN")
 
-        # ── Score final — pesos redistribuídos com M6 + M7 + M8 ─────────────
-        score = (m1 * 0.18 + m2 * 0.18 + m3 * 0.14 +
-                 m4 * 0.14 + m5 * 0.06 + m6 * 0.10 +
-                 m7 * 0.09 + m8 * 0.11)
+        # ── Score final — pesos baseados em evidência empírica (2026-05-22) ───
+        # Ajuste: M3↑ M2↑ M8↑ M5↑ vs M1↓ M4↓ (feature_analysis Spearman/permutação)
+        score = (m1 * 0.10 + m2 * 0.20 + m3 * 0.25 +
+                 m4 * 0.05 + m5 * 0.08 + m6 * 0.10 +
+                 m7 * 0.09 + m8 * 0.13)
         score = round(min(max(score, 0.0), 1.0), 4)
 
         factors = {

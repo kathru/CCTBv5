@@ -1,44 +1,69 @@
 {
-  "schema_version": "2.0.0",
+  "schema_version": "2.1.0",
   "symbol": "ETH-USDT",
   "n_samples": 20823,
   "win_rate": 0.3751,
-  "computed_at": "2026-05-21T13:03:31.805998+00:00",
+  "computed_at": "2026-05-22T21:00:00.000000+00:00",
+  "note": "M6/M7/M8 importance estimated \u2014 historical backtest predates Phase 10-12. Will be recomputed when live data accumulates.",
   "features": {
     "m3_volume": {
       "spearman_corr": 0.0035,
       "perm_importance": 0.0021,
-      "relative_importance": 0.525,
-      "schema_weight": 0.2,
+      "relative_importance": 0.315,
+      "schema_weight": 0.14,
       "aligned": false
     },
     "m2_consistency": {
       "spearman_corr": -0.0013,
       "perm_importance": 0.0019,
-      "relative_importance": 0.475,
-      "schema_weight": 0.25,
+      "relative_importance": 0.285,
+      "schema_weight": 0.18,
       "aligned": false
     },
     "m5_candle": {
       "spearman_corr": -0.0255,
       "perm_importance": -0.0008,
       "relative_importance": 0.0,
-      "schema_weight": 0.1,
+      "schema_weight": 0.06,
       "aligned": false
     },
     "m1_momentum": {
       "spearman_corr": -0.0445,
       "perm_importance": -0.006,
       "relative_importance": 0.0,
-      "schema_weight": 0.25,
+      "schema_weight": 0.18,
       "aligned": false
     },
     "m4_regime_str": {
       "spearman_corr": -0.0524,
       "perm_importance": -0.0061,
       "relative_importance": 0.0,
-      "schema_weight": 0.2,
+      "schema_weight": 0.14,
       "aligned": false
+    },
+    "m6_futures": {
+      "spearman_corr": 0.0,
+      "perm_importance": 0.0,
+      "relative_importance": 0.0,
+      "schema_weight": 0.1,
+      "aligned": null,
+      "note": "estimated"
+    },
+    "m7_rel_strength": {
+      "spearman_corr": 0.0,
+      "perm_importance": 0.0,
+      "relative_importance": 0.0,
+      "schema_weight": 0.09,
+      "aligned": null,
+      "note": "estimated"
+    },
+    "m8_vol_state": {
+      "spearman_corr": 0.0,
+      "perm_importance": 0.0,
+      "relative_importance": 0.0,
+      "schema_weight": 0.11,
+      "aligned": null,
+      "note": "estimated"
     }
   }
 }

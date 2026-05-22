@@ -3,7 +3,7 @@
   "symbol": "ETH-USDT",
   "n_samples": 20823,
   "win_rate": 0.3751,
-  "computed_at": "2026-05-22T20:30:00.000000+00:00",
+  "computed_at": "2026-05-22T21:00:00.000000+00:00",
   "features": {
     "m1_momentum": {
       "mean": 0.514,
@@ -64,7 +64,7 @@
       "p75": 0.61,
       "p90": 0.67,
       "n": 20823,
-      "note": "estimated \u2014 Phase 10"
+      "note": "estimated Phase 10"
     },
     "m7_rel_strength": {
       "mean": 0.5,
@@ -75,7 +75,18 @@
       "p75": 0.59,
       "p90": 0.66,
       "n": 20823,
-      "note": "estimated \u2014 Phase 11"
+      "note": "estimated Phase 11"
+    },
+    "m8_vol_state": {
+      "mean": 0.565,
+      "std": 0.17,
+      "p10": 0.35,
+      "p25": 0.35,
+      "p50": 0.65,
+      "p75": 0.7,
+      "p90": 0.8,
+      "n": 20823,
+      "note": "estimated Phase 12 (COMPRESSED=0.65 TREND=0.70 EXPANDING=0.80 MR=0.35 CHAOTIC=0.20)"
     }
   }
 }

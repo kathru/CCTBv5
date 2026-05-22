@@ -46,13 +46,15 @@ class StrategyRunner:
         market: MarketEngine,
         cache: Cache,
         portfolio_value: float = 0.0,
-        futures_flow=None,  # FuturesFlowCollector | None
+        futures_flow=None,       # FuturesFlowCollector | None  (M6)
+        relative_strength=None,  # RelativeStrengthCollector | None  (M7)
     ) -> None:
         self._bus = bus
         self._market = market
         self._cache = cache
         self._portfolio_value = portfolio_value
-        self._futures_flow = futures_flow   # injeta M6 no contexto
+        self._futures_flow = futures_flow          # injeta M6 no contexto
+        self._relative_strength = relative_strength  # injeta M7 no contexto
         self._strategies: dict[str, BaseStrategy] = {}
         self._queue: asyncio.Queue | None = None
         self._task: asyncio.Task | None = None
@@ -233,14 +235,22 @@ class StrategyRunner:
         open_positions = [pos_data] if pos_data else []
 
         # ── M6: Futures Flow (Phase 10) ───────────────────────────────────────
-        # Lê do Redis o dado coletado pelo FuturesFlowCollector (15min cache).
-        # Fallback seguro: ctx.extra["futures_flow"] = None → strategy usa 0.5
         futures_flow_data = None
         if self._futures_flow is not None:
             try:
                 futures_flow_data = await self._futures_flow.get_flow(symbol)
             except Exception as exc:
                 logger.debug("futures_flow.get_flow(%s) falhou: %s", symbol, exc)
+
+        # ── M7: Relative Strength (Phase 11) ─────────────────────────────────
+        # Lê do Redis o dado coletado pelo RelativeStrengthCollector (15min).
+        # Fallback neutro (0.5) se dados indisponíveis.
+        rs_data = None
+        if self._relative_strength is not None:
+            try:
+                rs_data = await self._relative_strength.get_rs(symbol)
+            except Exception as exc:
+                logger.debug("relative_strength.get_rs(%s) falhou: %s", symbol, exc)
 
         return StrategyContext(
             symbol=symbol,
@@ -250,7 +260,10 @@ class StrategyRunner:
             ticker=None,
             portfolio_value=self._portfolio_value,
             open_positions=open_positions,
-            extra={"futures_flow": futures_flow_data},
+            extra={
+                "futures_flow":      futures_flow_data,
+                "relative_strength": rs_data,
+            },
         )
 
     async def _publish_signal(self, signal: Signal) -> None:

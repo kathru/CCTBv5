@@ -618,12 +618,17 @@
         <span style="font-size:0.62rem;color:var(--text)">Futures (M6)</span>
         <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m6" style="height:15px;border-radius:7px;background:#06b6d4;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.65rem;font-weight:700;color:#06b6d4;text-align:right" id="w-m6">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 12%</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 11%</span>
+
+        <span style="font-size:0.62rem;color:var(--text)">Rel. Strength (M7)</span>
+        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m7" style="height:15px;border-radius:7px;background:#a78bfa;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.65rem;font-weight:700;color:#a78bfa;text-align:right" id="w-m7">–</span>
+        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 10%</span>
       </div>
     </div>
 
     <!-- M6 sub-scores compactos -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:12px;margin-top:-4px;">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;margin-top:-4px;">
       <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.15);border-radius:5px;padding:5px;text-align:center;">
         <div style="font-size:0.48rem;color:var(--muted)">Funding Rate</div>
         <div style="font-size:0.75rem;font-weight:700;color:#06b6d4" id="m6-funding">–</div>
@@ -637,6 +642,23 @@
       <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.15);border-radius:5px;padding:5px;text-align:center;">
         <div style="font-size:0.48rem;color:var(--muted)">Sentiment</div>
         <div style="font-size:0.6rem;font-weight:700;color:#06b6d4;line-height:1.2" id="m6-sentiment">–</div>
+      </div>
+    </div>
+    <!-- M7 sub-scores compactos -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:12px;">
+      <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:5px;padding:5px;text-align:center;">
+        <div style="font-size:0.48rem;color:var(--muted)">RS 1h</div>
+        <div style="font-size:0.75rem;font-weight:700;color:#a78bfa" id="m7-rs1h">–</div>
+        <div style="font-size:0.48rem;color:var(--muted)" id="m7-rs1h-raw">–</div>
+      </div>
+      <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:5px;padding:5px;text-align:center;">
+        <div style="font-size:0.48rem;color:var(--muted)">Leadership</div>
+        <div style="font-size:0.75rem;font-weight:700;color:#a78bfa" id="m7-lead">–</div>
+        <div style="font-size:0.48rem;color:var(--muted)" id="m7-lead-lbl">BTC</div>
+      </div>
+      <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:5px;padding:5px;text-align:center;">
+        <div style="font-size:0.48rem;color:var(--muted)">RS Trend</div>
+        <div style="font-size:0.75rem;font-weight:700;color:#a78bfa" id="m7-trend">–</div>
       </div>
     </div>
 
@@ -2842,10 +2864,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -2857,6 +2879,7 @@ async function updateSlow(){
     fetchJSON('/api/analytics/reality_check'),
     fetchJSON('/api/analytics/meta_overfitting?n_trials=10'),
     fetchJSON('/api/analytics/futures_flow'),
+    fetchJSON('/api/analytics/relative_strength'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -2874,6 +2897,7 @@ async function updateSlow(){
   if(rc)        _slowData.rc=rc;
   if(mo)        _slowData.mo=mo;
   if(ff)        _slowData.ff=ff;
+  if(rs)        _slowData.rs=rs;
 }
 
 // ── Phase 10 — Futures Flow ──────────────────────────────────────────────────
@@ -2922,6 +2946,39 @@ function updateFuturesFlow(ff, sym){
   }
 }
 
+// ── Phase 11 — Relative Strength ─────────────────────────────────────────────
+
+function updateRelativeStrength(rs, sym){
+  if(!rs||!rs.summary) return;
+  const s = rs.summary;
+
+  // Usa símbolo ativo (primeiro do log ou BTC)
+  const activeSym = (sym && Object.keys(sym).length ? Object.keys(sym)[0] : 'BTC-USDT');
+  const symData   = (rs.by_symbol||{})[activeSym] || Object.values(rs.by_symbol||{})[0] || {};
+  const scores    = symData.scores || {};
+
+  const setT=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v??'–';};
+  const setC=(id,v,col)=>{const e=document.getElementById(id);if(e){e.textContent=v??'–';if(col)e.style.color=col;}};
+
+  // RS 1h score
+  const rs1h = scores.rs_1h;
+  const rs1hCol = rs1h==null?'#a78bfa':rs1h>0.6?'var(--green)':rs1h<0.4?'var(--red)':'#a78bfa';
+  setC('m7-rs1h', rs1h!=null?rs1h.toFixed(3):null, rs1hCol);
+  const rawRs = symData.rs_1h;
+  setT('m7-rs1h-raw', rawRs!=null?'×'+rawRs.toFixed(3):null);
+
+  // Leadership
+  const lead = scores.leadership;
+  const leadCol = lead==null?'#a78bfa':lead>0.6?'var(--green)':lead<0.4?'var(--red)':'#a78bfa';
+  setC('m7-lead', lead!=null?lead.toFixed(3):null, leadCol);
+  setT('m7-lead-lbl', s.btc_leading===true?'↑ lidera':s.btc_leading===false?'↓ fraco':'BTC');
+
+  // RS Trend
+  const rsTrend = scores.rs_trend;
+  const trendCol = rsTrend==null?'#a78bfa':rsTrend>0.55?'var(--green)':rsTrend<0.45?'var(--red)':'#a78bfa';
+  setC('m7-trend', rsTrend!=null?rsTrend.toFixed(3):null, trendCol);
+}
+
 async function updateAll(){
   // Fast data (sempre fresco)
   const [health,version,system,portfolio,perf,prices,sym,exits,log,funnel,wd,pos,oOpen,oRec]=await Promise.all([
@@ -2934,7 +2991,7 @@ async function updateAll(){
   ]);
 
   // Slow data vem do cache — atualizado em paralelo pelo loop lento
-  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff}=_slowData;
+  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs}=_slowData;
   if(recon)   updateReconciler(recon);
   if(equity)  buildEquityCharts(equity);
   if(rolling) buildRollingCharts(rolling);
@@ -2942,6 +2999,7 @@ async function updateAll(){
   if(rc)      buildRealityCheck(rc);
   if(mo)      buildMetaOverfitting(mo);
   if(ff)      updateFuturesFlow(ff, sym);
+  if(rs)      updateRelativeStrength(rs, sym);
 
   // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS
   const hasPrices = prices && Object.keys(prices).length > 0;
@@ -3089,9 +3147,10 @@ async function updateAll(){
     const m3=f.m3_volume     ||f.volume    ||0;
     const m4=f.m4_regime_str ||f.m4_regime ||f.regime   ||0;
     const m5=f.m5_candle     ||0;
-    const m6=f.m6_futures    ||0;
-    const factors={m1,m2,m3,m4,m5,m6};
-    ['m1','m2','m3','m4','m5','m6'].forEach(k=>{
+    const m6=f.m6_futures     ||0;
+    const m7=f.m7_rel_strength||0;
+    const factors={m1,m2,m3,m4,m5,m6,m7};
+    ['m1','m2','m3','m4','m5','m6','m7'].forEach(k=>{
       const v=factors[k],pct=(v*100).toFixed(1)+'%';
       const wEl=document.getElementById('w-'+k);
       const bEl=document.getElementById('wb-'+k);

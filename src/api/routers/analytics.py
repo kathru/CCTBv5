@@ -1268,3 +1268,58 @@ async def get_futures_flow(request: Request) -> dict:
         "summary":    summary,
         "computed_at": datetime.now(UTC).isoformat(),
     }
+
+
+# ── Phase 11 — Relative Strength ─────────────────────────────────────────────
+
+SYMBOLS_RS = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
+
+
+@router.get("/relative_strength")
+async def get_relative_strength(request: Request) -> dict:
+    """
+    Phase 11 — Relative Strength: RS vs BTC, BTC leadership, M7 score.
+
+    Lê do Redis os dados coletados pelo RelativeStrengthCollector (cache 15min).
+    """
+    cache = request.app.state.cache
+    by_symbol: dict[str, dict] = {}
+
+    for symbol in SYMBOLS_RS:
+        raw = await cache.get(f"relative_strength:{symbol}")
+        if raw:
+            by_symbol[symbol] = raw if isinstance(raw, dict) else json.loads(raw)
+
+    # Sumário: qual símbolo tem maior RS? BTC liderando?
+    m7_scores    = {s: d["scores"]["m7"]        for s, d in by_symbol.items() if d.get("scores")}
+    leaderships  = [d["scores"]["leadership"]   for d in by_symbol.values() if d.get("scores")]
+    rs_1h_values = {s: d.get("rs_1h", 1.0)     for s, d in by_symbol.items()}
+
+    btc_leading = None
+    if leaderships:
+        avg_lead = sum(leaderships) / len(leaderships)
+        btc_leading = avg_lead >= 0.55
+
+    # Símbolo com maior força relativa
+    strongest = max(m7_scores, key=m7_scores.get) if m7_scores else None
+    weakest   = min(m7_scores, key=m7_scores.get) if m7_scores else None
+
+    summary = {
+        "avg_m7":       round(sum(m7_scores.values()) / len(m7_scores), 4) if m7_scores else None,
+        "btc_leading":  btc_leading,
+        "strongest_rs": strongest,
+        "weakest_rs":   weakest,
+        "has_data":     len(by_symbol) > 0,
+        "market_context": (
+            "BTC liderando — maré alta favorece alts" if btc_leading
+            else "BTC fraco — risco de alt underperformance" if btc_leading is False
+            else "Sem dados"
+        ),
+    }
+
+    return {
+        "by_symbol":   by_symbol,
+        "rs_1h":       rs_1h_values,
+        "summary":     summary,
+        "computed_at": datetime.now(UTC).isoformat(),
+    }

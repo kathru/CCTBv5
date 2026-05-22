@@ -28,6 +28,7 @@ from ..alerts.listener import AlertListener
 from ..exchange.okx.client import OKXClient
 from ..market.engine import MarketEngine
 from ..market.futures_flow import FuturesFlowCollector
+from ..market.relative_strength import RelativeStrengthCollector
 from ..metrics.infra_metrics import InfraMetrics
 from ..oms.execution_router import ExecutionRouter
 from ..oms.order_manager import OrderManager
@@ -152,12 +153,20 @@ class TradingLoop:
             symbols=SYMBOLS,
         )
 
+        # ── Relative Strength Collector (Phase 11) — M7 data source ──────────
+        self._rel_strength = RelativeStrengthCollector(
+            market=self._market,
+            cache=self._cache,
+            symbols=SYMBOLS,
+        )
+
         # ── Strategy Runner ───────────────────────────────────
         self._runner = StrategyRunner(
             bus=self._bus,
             market=self._market,
             cache=self._cache,
             futures_flow=self._futures_flow,
+            relative_strength=self._rel_strength,
         )
         v4 = MomentumStrategy(symbols=SYMBOLS)
         self._runner.register(v4)
@@ -252,6 +261,7 @@ class TradingLoop:
         await self._resource_watchdog.start()
         await self._market.start()
         await self._futures_flow.start()     # Phase 10: M6 data antes do runner
+        await self._rel_strength.start()    # Phase 11: M7 data antes do runner
         await self._runner.start()
         await self._position_monitor.start()
         await self._reconciler.start()
@@ -371,6 +381,7 @@ class TradingLoop:
 
         await self._market.stop()
         await self._futures_flow.stop()
+        await self._rel_strength.stop()
         await self._runner.stop()
         await self._position_monitor.stop()
         await self._reconciler.stop()

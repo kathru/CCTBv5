@@ -323,12 +323,13 @@ class MomentumStrategy(BaseStrategy):
         Todos os fatores usam candles 1H (sem granularidade 30m).
 
         Fatores:
-          M1 Adaptive Momentum  (22%): retornos 1H (1h, 5h, 10h, 20h)
-          M2 Trend Consistency   (22%): % candles bullish + higher-highs/lows (1H)
-          M3 Volume Confirmation (18%): volume crescente + confirmação direcional (1H)
-          M4 Regime Strength     (18%): distância SMA5-SMA20 normalizada
-          M5 Candle Structure    ( 8%): close no terço superior do range (1H)
-          M6 Futures Flow        (12%): funding rate + OI change (perp market signal)
+          M1 Adaptive Momentum  (20%): retornos 1H (1h, 5h, 10h, 20h)
+          M2 Trend Consistency   (20%): % candles bullish + higher-highs/lows (1H)
+          M3 Volume Confirmation (16%): volume crescente + confirmação direcional (1H)
+          M4 Regime Strength     (16%): distância SMA5-SMA20 normalizada
+          M5 Candle Structure    ( 7%): close no terço superior do range (1H)
+          M6 Futures Flow        (11%): funding rate + OI change (perp market signal)
+          M7 Relative Strength   (10%): RS vs BTC multi-horizonte + BTC leadership
         """
         # Candles 1H — única granularidade em ciclo 1H
         closes  = [c.close  for c in ctx.candles_1h[:21]]
@@ -400,16 +401,21 @@ class MomentumStrategy(BaseStrategy):
                 candle_scores.append(pos)
         m5 = sum(candle_scores) / len(candle_scores) if candle_scores else 0.5
 
-        # ── M6: Futures Flow (12%) — funding rate + OI (Phase 10) ────────────
-        # Lê do ctx.extra injetado pelo StrategyRunner (FuturesFlowCollector).
-        # Fallback neutro (0.5) se dados indisponíveis — não bloqueia o trading.
-        ff_data  = (ctx.extra or {}).get("futures_flow") or {}
+        # ── M6: Futures Flow (11%) — funding rate + OI (Phase 10) ────────────
+        ff_data   = (ctx.extra or {}).get("futures_flow") or {}
         ff_scores = ff_data.get("scores", {})
         m6 = float(ff_scores.get("m6", 0.5))
 
-        # ── Score final — pesos redistribuídos com M6 ────────────────────────
-        score = (m1 * 0.22 + m2 * 0.22 + m3 * 0.18 +
-                 m4 * 0.18 + m5 * 0.08 + m6 * 0.12)
+        # ── M7: Relative Strength (10%) — RS vs BTC + leadership (Phase 11) ─
+        # Lê do ctx.extra injetado pelo StrategyRunner (RelativeStrengthCollector).
+        # Fallback neutro (0.5) se dados indisponíveis — não bloqueia o trading.
+        rs_data   = (ctx.extra or {}).get("relative_strength") or {}
+        rs_scores = rs_data.get("scores", {})
+        m7 = float(rs_scores.get("m7", 0.5))
+
+        # ── Score final — pesos redistribuídos com M6 + M7 ───────────────────
+        score = (m1 * 0.20 + m2 * 0.20 + m3 * 0.16 +
+                 m4 * 0.16 + m5 * 0.07 + m6 * 0.11 + m7 * 0.10)
         score = round(min(max(score, 0.0), 1.0), 4)
 
         factors = {
@@ -419,10 +425,15 @@ class MomentumStrategy(BaseStrategy):
             "m4_regime_str":  round(m4, 3),
             "m5_candle":      round(m5, 3),
             "m6_futures":     round(m6, 3),
-            # Sub-scores M6 para diagnóstico no dashboard
+            "m7_rel_strength":round(m7, 3),
+            # Sub-scores M6
             "m6_funding":     round(float(ff_scores.get("funding",       0.5)), 3),
             "m6_oi_change":   round(float(ff_scores.get("oi_change",     0.5)), 3),
             "m6_fr_trend":    round(float(ff_scores.get("funding_trend", 0.5)), 3),
+            # Sub-scores M7
+            "m7_rs_1h":       round(float(rs_scores.get("rs_1h",      0.5)), 3),
+            "m7_leadership":  round(float(rs_scores.get("leadership",  0.5)), 3),
+            "m7_rs_trend":    round(float(rs_scores.get("rs_trend",    0.5)), 3),
         }
         # Registra features no drift monitor (nunca bloqueia o trading)
         try:

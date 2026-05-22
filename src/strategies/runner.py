@@ -77,13 +77,14 @@ class StrategyRunner:
         self._running = True
         self._queue = self._bus.subscribe(Topic.MARKET)
 
-        # Pré-popula last_candle_ts com o candle mais recente de cada símbolo
-        # sem avaliar — bot aguarda a PRÓXIMA hora fechar antes de agir
+        # Pré-popula last_candle_ts e agenda warm-start para popular o dashboard
         await self._seed_last_candle_ts()
 
         self._task = asyncio.create_task(
             self._consume(), name="strategy_runner"
         )
+        # Avalia 35s após boot (MarketEngine já terá candles) — popula signal_log
+        asyncio.create_task(self._warm_start(), name="strategy_warm_start")
         logger.info(
             "StrategyRunner started with %d strategies",
             len(self._strategies),
@@ -121,6 +122,23 @@ class StrategyRunner:
             await self._cache.set(f"last_candle_ts:{symbol}", ts.isoformat(), ttl=10800)
             logger.info("StrategyRunner: %s — aguardando próxima hora (seed: %s UTC)",
                         symbol, ts.strftime("%Y-%m-%d %H:%M"))
+
+    async def _warm_start(self) -> None:
+        """Avalia todos os símbolos 35s após o boot para popular o dashboard imediatamente."""
+        await asyncio.sleep(35)
+        symbols: set[str] = set()
+        for s in self._strategies.values():
+            symbols.update(s.symbols)
+        logger.info("StrategyRunner: warm-start — avaliando %d símbolos...", len(symbols))
+        for symbol in sorted(symbols):
+            try:
+                candles = self._market.get_candles(symbol, "1H")
+                if len(candles) < 22:
+                    continue
+                await self._evaluate_all(symbol)
+                logger.info("StrategyRunner: warm-start %s — OK", symbol)
+            except Exception as exc:
+                logger.warning("StrategyRunner: warm-start %s falhou: %s", symbol, exc)
 
     async def stop(self) -> None:
         self._running = False

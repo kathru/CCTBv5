@@ -1069,6 +1069,98 @@
 
 </div>
 
+<!-- ══ REALITY CHECK — Phase 8 ════════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="dot" style="background:var(--red)"></div>
+  Reality Check
+  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 8 · bootstrap · permutação · stress de fees</span>
+  <span id="rc-overall-badge" style="margin-left:auto;font-size:0.6rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
+</div>
+<div class="grid g31">
+
+  <!-- Bootstrap IC 95% -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Bootstrap IC 95% <span style="font-size:0.55rem;color:var(--muted);font-weight:400">(1 000 reamostras)</span></div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <!-- Sharpe -->
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:3px;">
+          <span style="color:var(--muted)">Sharpe Ratio</span>
+          <span id="rc-sharpe-real" style="font-weight:700">–</span>
+        </div>
+        <div style="position:relative;height:20px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
+          <div id="rc-sharpe-bar" style="position:absolute;top:0;height:100%;background:rgba(59,130,246,0.4);border-radius:4px;"></div>
+          <div style="position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:0 6px;line-height:20px;font-size:0.55rem;">
+            <span id="rc-sharpe-lo">–</span><span id="rc-sharpe-hi">–</span>
+          </div>
+        </div>
+        <div style="font-size:0.55rem;color:var(--muted);margin-top:2px">IC 95%: [<span id="rc-sharpe-ci">–</span>]</div>
+      </div>
+      <!-- Win Rate -->
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:3px;">
+          <span style="color:var(--muted)">Win Rate</span>
+          <span id="rc-wr-real" style="font-weight:700">–</span>
+        </div>
+        <div style="position:relative;height:20px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
+          <div id="rc-wr-bar" style="position:absolute;top:0;height:100%;background:rgba(16,185,129,0.4);border-radius:4px;"></div>
+          <div style="position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:0 6px;line-height:20px;font-size:0.55rem;">
+            <span id="rc-wr-lo">–</span><span id="rc-wr-hi">–</span>
+          </div>
+        </div>
+        <div style="font-size:0.55rem;color:var(--muted);margin-top:2px">IC 95%: [<span id="rc-wr-ci">–</span>]</div>
+      </div>
+      <!-- Expectancy -->
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:3px;">
+          <span style="color:var(--muted)">Expectancy</span>
+          <span id="rc-exp-real" style="font-weight:700">–</span>
+        </div>
+        <div style="font-size:0.55rem;color:var(--muted)">IC: [<span id="rc-exp-ci">–</span>]</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Permutation Test -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Permutation Test <span style="font-size:0.55rem;color:var(--muted);font-weight:400">(H₀: resultado aleatório)</span></div>
+    <div style="text-align:center;padding:12px 0;">
+      <div style="font-size:0.55rem;color:var(--muted);margin-bottom:4px">p-value</div>
+      <div style="font-size:2.4rem;font-weight:900;line-height:1;" id="rc-pvalue">–</div>
+      <div style="font-size:0.6rem;margin-top:6px;" id="rc-pvalue-verdict">–</div>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.6rem;">
+      <div>
+        <div style="color:var(--muted);font-size:0.55rem">Sharpe Real</div>
+        <div style="font-weight:700" id="rc-perm-real-sharpe">–</div>
+      </div>
+      <div>
+        <div style="color:var(--muted);font-size:0.55rem">Sharpe Perm. Média</div>
+        <div style="font-weight:700" id="rc-perm-mean-sharpe">–</div>
+      </div>
+      <div>
+        <div style="color:var(--muted);font-size:0.55rem">Perm. P95</div>
+        <div style="font-weight:700" id="rc-perm-p95">–</div>
+      </div>
+      <div>
+        <div style="color:var(--muted);font-size:0.55rem">N Permutações</div>
+        <div style="font-weight:700" id="rc-perm-n">–</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fee Stress -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Fee Stress Test</div>
+    <div id="rc-fee-rows" style="display:flex;flex-direction:column;gap:6px;"></div>
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:8px;">
+      <div style="font-size:0.55rem;color:var(--muted)">Verdict</div>
+      <div id="rc-fee-verdict" style="font-size:0.65rem;margin-top:4px;"></div>
+    </div>
+  </div>
+
+</div>
+
 <!-- ══ GRÁFICOS ════════════════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Evolução & Distribuição</div>
 <div class="grid g21">
@@ -2146,6 +2238,123 @@ function renderWfo(data){
 let _equityChart=null, _underwaterChart=null, _rollingWrChart=null, _rollingSharpeChart=null;
 let _distReturnChart=null, _distHoldingChart=null;
 
+// ── Phase 8 — Reality Check ──────────────────────────────────────────────────
+
+function buildRealityCheck(rc){
+  if(!rc||!rc.sufficient_data) return;
+
+  // ── Overall badge ──────────────────────────────────────────────────────
+  const overall = rc.verdict?.overall||'GREY';
+  const badgeEl = document.getElementById('rc-overall-badge');
+  if(badgeEl){
+    const cfg = {GREEN:{bg:'rgba(16,185,129,0.15)',c:'var(--green)',t:'✓ EDGE REAL'},
+                 YELLOW:{bg:'rgba(234,179,8,0.15)',c:'var(--yellow)',t:'⚠ INCONCLUSIVO'},
+                 RED:{bg:'rgba(239,68,68,0.15)',c:'var(--red)',t:'✗ SEM EDGE'},
+                 GREY:{bg:'rgba(100,100,100,0.1)',c:'var(--muted)',t:'– DADOS INSUF.'}};
+    const s = cfg[overall]||cfg.GREY;
+    badgeEl.textContent=s.t; badgeEl.style.background=s.bg; badgeEl.style.color=s.c;
+  }
+
+  // ── Bootstrap ─────────────────────────────────────────────────────────
+  const rm = rc.real_metrics||{};
+  const bs = rc.bootstrap||{};
+
+  const setT=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v??'–';};
+  const setC=(id,v,pos,neg)=>{const e=document.getElementById(id);if(e){e.textContent=v??'–';if(v!=null)e.style.color=v>0?pos:neg;}};
+
+  // Sharpe
+  setC('rc-sharpe-real', rc.real_metrics.sharpe!=null?rc.real_metrics.sharpe.toFixed(3):null,
+       'var(--green)','var(--red)');
+  const sh=bs.sharpe||{};
+  setT('rc-sharpe-lo', sh.ci_low!=null?sh.ci_low.toFixed(3):null);
+  setT('rc-sharpe-hi', sh.ci_high!=null?sh.ci_high.toFixed(3):null);
+  setT('rc-sharpe-ci', sh.ci_low!=null?`${sh.ci_low.toFixed(3)}, ${sh.ci_high.toFixed(3)}`:null);
+  // Barra visual — mapeia [-5,+5] → [0,100%]
+  const barEl=document.getElementById('rc-sharpe-bar');
+  if(barEl&&sh.ci_low!=null&&sh.ci_high!=null){
+    const lo=Math.max(-5,sh.ci_low), hi=Math.min(5,sh.ci_high);
+    const leftPct  = Math.round((lo+5)/10*100);
+    const widthPct = Math.round((hi-lo)/10*100);
+    barEl.style.left=leftPct+'%'; barEl.style.width=widthPct+'%';
+    barEl.style.background = sh.ci_low>0?'rgba(16,185,129,0.5)':
+                             sh.ci_high<0?'rgba(239,68,68,0.5)':'rgba(234,179,8,0.4)';
+  }
+
+  // Win Rate
+  const wr=bs.win_rate||{};
+  const wrReal=rc.real_metrics.win_rate;
+  setT('rc-wr-real', wrReal!=null?(wrReal*100).toFixed(1)+'%':null);
+  setT('rc-wr-lo',   wr.ci_low!=null?(wr.ci_low*100).toFixed(1)+'%':null);
+  setT('rc-wr-hi',   wr.ci_high!=null?(wr.ci_high*100).toFixed(1)+'%':null);
+  setT('rc-wr-ci',   wr.ci_low!=null?`${(wr.ci_low*100).toFixed(1)}%, ${(wr.ci_high*100).toFixed(1)}%`:null);
+  const wrBarEl=document.getElementById('rc-wr-bar');
+  if(wrBarEl&&wr.ci_low!=null){
+    const widthPct=Math.round((wr.ci_high-wr.ci_low)*100);
+    const leftPct=Math.round(wr.ci_low*100);
+    wrBarEl.style.left=leftPct+'%'; wrBarEl.style.width=widthPct+'%';
+    wrBarEl.style.background=wr.ci_low>0.5?'rgba(16,185,129,0.5)':'rgba(234,179,8,0.4)';
+  }
+
+  // Expectancy
+  const ex=bs.expectancy||{};
+  setC('rc-exp-real', rc.real_metrics.expectancy!=null?rc.real_metrics.expectancy.toFixed(2):null,
+       'var(--green)','var(--red)');
+  setT('rc-exp-ci',   ex.ci_low!=null?`${ex.ci_low.toFixed(4)}, ${ex.ci_high.toFixed(4)}`:null);
+
+  // ── Permutation ──────────────────────────────────────────────────────
+  const perm = rc.permutation||{};
+  const pvEl  = document.getElementById('rc-pvalue');
+  if(pvEl&&perm.p_value!=null){
+    pvEl.textContent = perm.p_value.toFixed(4);
+    pvEl.style.color = perm.significant?'var(--green)':'var(--red)';
+  }
+  const pvVerdEl = document.getElementById('rc-pvalue-verdict');
+  if(pvVerdEl){
+    if(perm.p_value==null) pvVerdEl.textContent='Dados insuficientes';
+    else if(perm.significant){
+      pvVerdEl.textContent='✓ Edge estatisticamente significativo (p < 0.05)';
+      pvVerdEl.style.color='var(--green)';
+    } else {
+      pvVerdEl.textContent=`✗ Resultado pode ser acaso (p = ${perm.p_value?.toFixed(4)})`;
+      pvVerdEl.style.color='var(--red)';
+    }
+  }
+  setT('rc-perm-real-sharpe', rc.real_metrics.sharpe!=null?rc.real_metrics.sharpe.toFixed(3):null);
+  setT('rc-perm-mean-sharpe', perm.perm_sharpe_mean!=null?perm.perm_sharpe_mean.toFixed(3):null);
+  setT('rc-perm-p95',  perm.perm_sharpe_p95!=null?perm.perm_sharpe_p95.toFixed(3):null);
+  setT('rc-perm-n',    perm.n_permutations);
+
+  // ── Fee Stress ───────────────────────────────────────────────────────
+  const feeEl = document.getElementById('rc-fee-rows');
+  if(feeEl && rc.fee_stress){
+    feeEl.innerHTML = rc.fee_stress.map(f=>{
+      const col = f.profitable?'var(--green)':'var(--red)';
+      const icon = f.profitable?'✓':'✗';
+      const pnl  = f.total_pnl>=0?'+$'+f.total_pnl.toFixed(0):'-$'+Math.abs(f.total_pnl).toFixed(0);
+      const wr   = (f.win_rate*100).toFixed(0)+'%';
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:0.6rem;">
+        <span style="width:34px;text-align:center;padding:1px 4px;border-radius:3px;border:1px solid ${col}33;color:${col};font-weight:700;">${f.fee_multiplier}×</span>
+        <span style="color:${col};font-size:0.7rem;">${icon}</span>
+        <span style="flex:1;color:var(--muted)">P&L: <span style="color:${col};font-weight:600">${pnl}</span></span>
+        <span style="color:var(--muted)">WR: ${wr}</span>
+        <span style="color:var(--muted)">${f.sharpe!=null?'SR:'+f.sharpe.toFixed(2):''}</span>
+      </div>`;
+    }).join('');
+  }
+
+  const feeVerdEl = document.getElementById('rc-fee-verdict');
+  if(feeVerdEl && rc.fee_stress){
+    const lastOk = [...rc.fee_stress].reverse().find(f=>f.profitable);
+    if(lastOk){
+      feeVerdEl.textContent = `Estratégia lucrativa até ${lastOk.fee_multiplier}× fees`;
+      feeVerdEl.style.color = lastOk.fee_multiplier>=2?'var(--green)':'var(--yellow)';
+    } else {
+      feeVerdEl.textContent = 'Não lucrativa nem com fees atuais';
+      feeVerdEl.style.color = 'var(--red)';
+    }
+  }
+}
+
 function buildEquityCharts(eq){
   if(!eq) return;
   const labels  = eq.labels||[];
@@ -2366,10 +2575,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -2378,6 +2587,7 @@ async function updateSlow(){
     fetchJSON('/api/analytics/equity_curve'),
     fetchJSON('/api/analytics/rolling?window=10'),
     fetchJSON('/api/analytics/distribution'),
+    fetchJSON('/api/analytics/reality_check'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -2392,6 +2602,7 @@ async function updateSlow(){
   if(equity)    _slowData.equity=equity;
   if(rolling)   _slowData.rolling=rolling;
   if(dist)      _slowData.dist=dist;
+  if(rc)        _slowData.rc=rc;
 }
 
 async function updateAll(){
@@ -2406,11 +2617,12 @@ async function updateAll(){
   ]);
 
   // Slow data vem do cache — atualizado em paralelo pelo loop lento
-  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist}=_slowData;
+  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc}=_slowData;
   if(recon)   updateReconciler(recon);
   if(equity)  buildEquityCharts(equity);
   if(rolling) buildRollingCharts(rolling);
   if(dist)    buildDistributionPanel(dist);
+  if(rc)      buildRealityCheck(rc);
 
   // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS
   const hasPrices = prices && Object.keys(prices).length > 0;

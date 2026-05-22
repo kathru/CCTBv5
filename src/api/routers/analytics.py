@@ -690,3 +690,233 @@ async def get_distribution(request: Request) -> dict:
         "mae_mfe_note": "MAE/MFE full tracking requires intra-trade candle storage (Phase 10+)",
         "computed_at":  datetime.now(UTC).isoformat(),
     }
+
+
+# ── Phase 8 — Reality Check ───────────────────────────────────────────────────
+
+import random as _random
+
+N_BOOTSTRAP  = 1000   # iterações bootstrap
+N_PERMUTE    = 1000   # iterações permutação
+ALPHA        = 0.05   # nível de significância → IC 95%
+
+
+def _bootstrap_metric(values: list[float], metric_fn, n: int = N_BOOTSTRAP) -> dict:
+    """
+    Bootstrap com reposição: retorna média, IC 95% inferior/superior e std.
+    metric_fn recebe list[float] e retorna float|None.
+    """
+    if len(values) < MIN_TRADES:
+        return {"mean": None, "ci_low": None, "ci_high": None, "std": None}
+
+    results = []
+    for _ in range(n):
+        sample = [_random.choice(values) for _ in range(len(values))]
+        v = metric_fn(sample)
+        if v is not None:
+            results.append(v)
+
+    if not results:
+        return {"mean": None, "ci_low": None, "ci_high": None, "std": None}
+
+    results.sort()
+    lo = int(ALPHA / 2 * len(results))
+    hi = int((1 - ALPHA / 2) * len(results)) - 1
+    mean = sum(results) / len(results)
+    std  = (sum((x - mean) ** 2 for x in results) / len(results)) ** 0.5
+    return {
+        "mean":    round(mean, 4),
+        "ci_low":  round(results[max(0, lo)], 4),
+        "ci_high": round(results[min(len(results)-1, hi)], 4),
+        "std":     round(std, 4),
+    }
+
+
+def _permutation_pvalue(pnl_pcts: list[float], real_sharpe: float | None,
+                        n: int = N_PERMUTE) -> dict:
+    """
+    Testa H0: a sequência real de P&Ls não é melhor que uma aleatória.
+    p-value = fração de permutações com Sharpe >= real Sharpe.
+    p < 0.05 → edge estatisticamente significativo.
+    """
+    if real_sharpe is None or len(pnl_pcts) < MIN_TRADES:
+        return {"p_value": None, "significant": None, "n_permutations": n,
+                "perm_sharpe_mean": None, "perm_sharpe_p95": None}
+
+    shuffled = pnl_pcts[:]
+    perm_sharpes: list[float] = []
+    for _ in range(n):
+        _random.shuffle(shuffled)
+        s = _sharpe(shuffled)
+        if s is not None:
+            perm_sharpes.append(s)
+
+    if not perm_sharpes:
+        return {"p_value": None, "significant": None, "n_permutations": n,
+                "perm_sharpe_mean": None, "perm_sharpe_p95": None}
+
+    count_ge = sum(1 for s in perm_sharpes if s >= real_sharpe)
+    p_value  = round(count_ge / len(perm_sharpes), 4)
+
+    perm_sharpes.sort()
+    p95_idx = int(0.95 * len(perm_sharpes))
+
+    return {
+        "p_value":          p_value,
+        "significant":      p_value < ALPHA,
+        "n_permutations":   n,
+        "perm_sharpe_mean": round(sum(perm_sharpes) / len(perm_sharpes), 4),
+        "perm_sharpe_p95":  round(perm_sharpes[min(p95_idx, len(perm_sharpes)-1)], 4),
+    }
+
+
+def _fee_stress(trades: list[dict], multipliers: list[float]) -> list[dict]:
+    """
+    Para cada multiplicador de fee, recalcula P&L total, WR e Expectancy.
+    Permite saber em quantas vezes o custo de transação destruiria o edge.
+    """
+    results = []
+    for mult in multipliers:
+        stressed_pnls = []
+        for t in trades:
+            extra_fee = t["fee"] * (mult - 1)   # custo adicional vs baseline
+            stressed_pnl = t["pnl"] - extra_fee
+            stressed_pnls.append(stressed_pnl)
+
+        wins   = [p for p in stressed_pnls if p > 0]
+        losses = [p for p in stressed_pnls if p <= 0]
+        n      = len(stressed_pnls)
+        wr     = round(len(wins) / n, 4) if n else 0
+        avg_w  = sum(wins)   / len(wins)   if wins   else 0
+        avg_l  = sum(losses) / len(losses) if losses else 0
+        exp    = round(wr * avg_w + (1 - wr) * avg_l, 2) if n >= MIN_TRADES else None
+        total  = round(sum(stressed_pnls), 2)
+        pcts   = [p / t["entry_px"] / t["qty"] if t["entry_px"] * t["qty"] > 0 else 0
+                  for p, t in zip(stressed_pnls, trades)]
+        sh     = _sharpe(pcts)
+
+        results.append({
+            "fee_multiplier": mult,
+            "total_pnl":      total,
+            "win_rate":       wr,
+            "expectancy":     exp,
+            "sharpe":         sh,
+            "profitable":     total > 0,
+        })
+    return results
+
+
+@router.get("/reality_check")
+async def get_reality_check(request: Request) -> dict:
+    """
+    Phase 8 — Reality Check: valida estatisticamente se o edge é real.
+
+    Retorna:
+    - bootstrap     : IC 95% de Sharpe, WR e Expectancy por reamostragem
+    - permutation   : p-value (H0: sequência aleatória tão boa quanto real)
+    - fee_stress    : impacto de 1×/2×/3×/5× fees na lucratividade
+    - verdict       : resumo semáforo (GREEN/YELLOW/RED) por critério
+    """
+    db     = request.app.state.db
+    orders = await _get_filled_orders(db)
+    trades = _pair_trades(orders)
+
+    n = len(trades)
+    pnl_pcts = [t["pnl_pct"] for t in trades]
+    pnls     = [t["pnl"]     for t in trades]
+    wins     = [p for p in pnls if p > 0]
+
+    if n < MIN_TRADES:
+        return {
+            "n_trades":       n,
+            "min_required":   MIN_TRADES,
+            "sufficient_data": False,
+            "computed_at":    datetime.now(UTC).isoformat(),
+        }
+
+    # ── Métricas reais ──────────────────────────────────────────────────────
+    real_sharpe     = _sharpe(pnl_pcts)
+    real_wr         = round(len(wins) / n, 4)
+    avg_w           = sum(wins) / len(wins) if wins else 0
+    losses          = [p for p in pnls if p <= 0]
+    avg_l           = sum(losses) / len(losses) if losses else 0
+    real_expectancy = round(real_wr * avg_w + (1 - real_wr) * avg_l, 2)
+
+    # ── Bootstrap ───────────────────────────────────────────────────────────
+    def _wr(pcts):
+        p = [x for x in pcts if x > 0]
+        return len(p) / len(pcts) if pcts else None
+
+    def _exp(pcts):
+        # pcts aqui são retornos em fração (não $), precisamos de pnl_pct em $
+        # reutilizamos a ideia mas mapeando de volta
+        w = [x for x in pcts if x > 0]
+        l = [x for x in pcts if x <= 0]
+        if not pcts:
+            return None
+        wr_ = len(w) / len(pcts)
+        aw  = sum(w) / len(w) if w else 0
+        al  = sum(l) / len(l) if l else 0
+        return wr_ * aw + (1 - wr_) * al
+
+    bs_sharpe     = _bootstrap_metric(pnl_pcts, _sharpe)
+    bs_wr         = _bootstrap_metric(pnl_pcts, _wr)
+    bs_expectancy = _bootstrap_metric(pnl_pcts, _exp)
+
+    # ── Permutation test ────────────────────────────────────────────────────
+    perm = _permutation_pvalue(pnl_pcts, real_sharpe)
+
+    # ── Fee stress ──────────────────────────────────────────────────────────
+    fee_stress = _fee_stress(trades, [1.0, 1.5, 2.0, 3.0, 5.0])
+
+    # ── Verdict ─────────────────────────────────────────────────────────────
+    def _signal(condition: bool | None, *, invert: bool = False) -> str:
+        if condition is None:
+            return "GREY"
+        ok = not condition if invert else condition
+        return "GREEN" if ok else "RED"
+
+    sharpe_ok    = real_sharpe is not None and real_sharpe > 0
+    pvalue_ok    = perm["p_value"] is not None and perm["p_value"] < ALPHA
+    ci_positive  = bs_sharpe["ci_low"] is not None and bs_sharpe["ci_low"] > 0
+    fee2x_ok     = fee_stress[2]["profitable"] if len(fee_stress) > 2 else None
+
+    verdict = {
+        "sharpe_positive":    {"status": _signal(sharpe_ok),   "value": real_sharpe,
+                               "note": "Sharpe > 0"},
+        "pvalue_significant": {"status": _signal(pvalue_ok),   "value": perm["p_value"],
+                               "note": f"p < {ALPHA} → edge real"},
+        "ci_positive":        {"status": _signal(ci_positive), "value": bs_sharpe["ci_low"],
+                               "note": "IC 95% inferior > 0"},
+        "survives_2x_fees":   {"status": _signal(fee2x_ok),    "value": fee_stress[2]["total_pnl"] if len(fee_stress)>2 else None,
+                               "note": "Lucrativo com 2× fees"},
+        "overall": "GREEN" if all(v["status"]=="GREEN" for v in [
+                        {"status": _signal(sharpe_ok)},
+                        {"status": _signal(pvalue_ok)},
+                        {"status": _signal(ci_positive)},
+                    ]) else ("YELLOW" if any(v["status"]=="GREEN" for v in [
+                        {"status": _signal(sharpe_ok)},
+                        {"status": _signal(pvalue_ok)},
+                    ]) else "RED"),
+    }
+
+    return {
+        "n_trades":        n,
+        "sufficient_data": True,
+        "real_metrics": {
+            "sharpe":       real_sharpe,
+            "win_rate":     real_wr,
+            "expectancy":   real_expectancy,
+        },
+        "bootstrap": {
+            "sharpe":     bs_sharpe,
+            "win_rate":   bs_wr,
+            "expectancy": bs_expectancy,
+            "n_iterations": N_BOOTSTRAP,
+        },
+        "permutation":  perm,
+        "fee_stress":   fee_stress,
+        "verdict":      verdict,
+        "alpha":        ALPHA,
+        "computed_at":  datetime.now(UTC).isoformat(),
+    }

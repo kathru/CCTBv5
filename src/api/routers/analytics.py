@@ -1386,6 +1386,29 @@ async def get_volatility_state(request: Request) -> dict:
     }
 
 
+# ── Phase 14 — Advanced Risk ──────────────────────────────────────────────────
+
+@router.get("/advanced_risk")
+async def get_advanced_risk(request: Request) -> dict:
+    """
+    Phase 14 — Advanced Risk: correlação, VaR, stress, circuit breakers, liquidez.
+    Lê do Redis o snapshot calculado pelo AdvancedRiskManager (cache 15min).
+    """
+    cache = request.app.state.cache
+    raw   = await cache.get("advanced_risk")
+
+    if not raw:
+        return {
+            "has_data":     False,
+            "message":      "AdvancedRiskManager ainda não rodou — aguarde 15min após boot",
+            "computed_at":  datetime.now(UTC).isoformat(),
+        }
+
+    data = raw if isinstance(raw, dict) else json.loads(raw)
+    data["has_data"] = True
+    return data
+
+
 # ── Phase 13 — Meta Regime ────────────────────────────────────────────────────
 
 @router.get("/meta_regime")

@@ -1330,6 +1330,50 @@
 
 </div>
 
+<!-- ══ ADVANCED RISK — Phase 14 ═══════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="dot" style="background:var(--red)"></div>
+  Risco Avançado
+  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 14 · correlação · VaR · circuit breakers · liquidez</span>
+  <span id="ar-cb-badge" style="margin-left:auto;font-size:0.6rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
+</div>
+<div class="grid g22">
+
+  <!-- Circuit Breakers -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Circuit Breakers</div>
+    <div id="ar-cb-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+  </div>
+
+  <!-- Correlação + VaR -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Correlação Cross-Asset</div>
+    <!-- Matriz simplificada -->
+    <div id="ar-corr-pairs" style="margin-bottom:12px;"></div>
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+      <div class="clabel" style="margin-bottom:8px;font-size:0.6rem;">VaR Portfolio</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:0.6rem;text-align:center;">
+        <div><div style="color:var(--muted);font-size:0.5rem">VaR 95%</div><div id="ar-var95" style="font-weight:800;font-size:1rem;">–</div></div>
+        <div><div style="color:var(--muted);font-size:0.5rem">CVaR 95%</div><div id="ar-cvar95" style="font-weight:800;font-size:1rem;">–</div></div>
+        <div><div style="color:var(--muted);font-size:0.5rem">N Trades</div><div id="ar-var-n" style="font-weight:800;font-size:1rem;">–</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stress Scenarios -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Stress Scenarios</div>
+    <div id="ar-stress-list" style="display:flex;flex-direction:column;gap:5px;"></div>
+  </div>
+
+  <!-- Liquidez -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Liquidez por Símbolo</div>
+    <div id="ar-liq-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+
+</div>
+
 <!-- ══ META-REGIME — Phase 13 ═════════════════════════════════════════════ -->
 <div class="section-hdr">
   <div class="dot" style="background:var(--green)"></div>
@@ -2937,10 +2981,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -2955,6 +2999,7 @@ async function updateSlow(){
     fetchJSON('/api/analytics/relative_strength'),
     fetchJSON('/api/analytics/volatility_state'),
     fetchJSON('/api/analytics/meta_regime'),
+    fetchJSON('/api/analytics/advanced_risk'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -2975,6 +3020,7 @@ async function updateSlow(){
   if(rs)        _slowData.rs=rs;
   if(vs)        _slowData.vs=vs;
   if(mr)        _slowData.mr=mr;
+  if(ar)        _slowData.ar=ar;
 }
 
 // ── Phase 10 — Futures Flow ──────────────────────────────────────────────────
@@ -3061,6 +3107,136 @@ function updateVolatilityState(vs, sym){
 }
 
 // ── Phase 11 — Relative Strength ─────────────────────────────────────────────
+
+// ── Phase 14 — Advanced Risk ─────────────────────────────────────────────────
+
+function buildAdvancedRisk(ar){
+  if(!ar||!ar.has_data) return;
+
+  const setT=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v??'–';};
+  const setC=(id,v,col)=>{const e=document.getElementById(id);if(e){e.textContent=v??'–';if(col)e.style.color=col;}};
+
+  // ── Circuit Breakers ────────────────────────────────────────────────────
+  const cb    = ar.circuit_breakers||{};
+  const cbAny = cb.any_active||false;
+  const badgeEl = document.getElementById('ar-cb-badge');
+  if(badgeEl){
+    badgeEl.textContent  = cbAny ? '⚠ ATIVO' : '✓ OK';
+    badgeEl.style.background = cbAny ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)';
+    badgeEl.style.color  = cbAny ? 'var(--red)' : 'var(--green)';
+  }
+
+  const cbEl = document.getElementById('ar-cb-list');
+  if(cbEl && cb.checklist){
+    const CB_LABELS = {
+      'all_assets_crash': 'Crash Todos Ativos',
+      'weekly_drawdown':  'Weekly Drawdown',
+      'high_correlation': 'Alta Correlação',
+    };
+    const rows = [];
+    // Símbolo-específicos
+    ['BTC-USDT','ETH-USDT','SOL-USDT'].forEach(sym=>{
+      const key='consec_loss_'+sym;
+      const v=cb.checklist[key];
+      if(!v) return;
+      const ok=!v.triggered;
+      rows.push(`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+        <span style="font-size:0.75rem;color:${ok?'var(--green)':'var(--red)'};">${ok?'✓':'✗'}</span>
+        <div style="flex:1;font-size:0.6rem;">
+          <span style="font-weight:600">Losses Consec. ${sym.replace('-USDT','')}</span>
+          <span style="color:var(--muted);margin-left:6px">${v.consec_losses}/${v.threshold}</span>
+          ${v.triggered&&v.pause_remaining_h?`<span style="color:var(--yellow);margin-left:4px">(${v.pause_remaining_h}h restantes)</span>`:''}
+        </div>
+      </div>`);
+    });
+    // Portfolio-level
+    Object.entries(cb.checklist).filter(([k])=>!k.startsWith('consec_loss')).forEach(([key,v])=>{
+      const label=CB_LABELS[key]||key;
+      const ok=!v.triggered;
+      const detail=v.type==='WEEKLY_DD'?`DD: ${(v.current_dd_pct||0).toFixed(2)}% (thr ${v.threshold_pct}%)`:
+                   v.type==='HIGH_CORR'?`Corr: ${(v.max_corr||0).toFixed(3)} × mult ${(v.sizing_mult||1).toFixed(2)}`:
+                   v.type==='ALL_CRASH'?`${v.crash_count}/${Object.keys(v.returns_1h||{}).length} em queda`:
+                   v.action||'';
+      rows.push(`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+        <span style="font-size:0.75rem;color:${ok?'var(--green)':'var(--red)'};">${ok?'✓':'✗'}</span>
+        <div style="flex:1;font-size:0.6rem;">
+          <span style="font-weight:600">${label}</span>
+          <span style="color:var(--muted);margin-left:6px">${detail}</span>
+        </div>
+      </div>`);
+    });
+    cbEl.innerHTML = rows.join('') || '<span style="color:var(--muted);font-size:0.6rem">Nenhum dado</span>';
+  }
+
+  // ── Correlação ──────────────────────────────────────────────────────────
+  const corr = ar.correlation||{};
+  const corrEl = document.getElementById('ar-corr-pairs');
+  if(corrEl && corr.pairs){
+    const maxC=Math.max(...corr.pairs.map(p=>Math.abs(p.corr||0)),0.01);
+    corrEl.innerHTML=corr.pairs.map(p=>{
+      const c=Math.abs(p.corr||0);
+      const col=c>=0.85?'var(--red)':c>=0.60?'var(--yellow)':'var(--green)';
+      const pct=Math.round(c/maxC*100);
+      return `<div style="margin-bottom:5px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.58rem;margin-bottom:2px;">
+          <span style="color:var(--muted)">${p.sym1.replace('-USDT','')}//${p.sym2.replace('-USDT','')}</span>
+          <span style="color:${col};font-weight:700">${c.toFixed(3)}</span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;">
+          <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── VaR ─────────────────────────────────────────────────────────────────
+  const varD = ar.var||{};
+  if(varD.available){
+    const var95=varD.var_95; const cvar95=varD.cvar_95;
+    setC('ar-var95',  var95!=null?((var95||0)*100).toFixed(2)+'%':null,  var95>0.02?'var(--red)':'var(--green)');
+    setC('ar-cvar95', cvar95!=null?((cvar95||0)*100).toFixed(2)+'%':null, cvar95>0.03?'var(--red)':'var(--yellow)');
+    setT('ar-var-n', varD.n_trades);
+  } else {
+    setT('ar-var95','N/A'); setT('ar-cvar95','N/A'); setT('ar-var-n',varD.n_trades||0);
+  }
+
+  // ── Stress ──────────────────────────────────────────────────────────────
+  const stEl = document.getElementById('ar-stress-list');
+  if(stEl && ar.stress?.scenarios){
+    stEl.innerHTML=ar.stress.scenarios.map(s=>{
+      const col=s.severity==='CRÍTICO'?'var(--red)':s.severity==='ALTO'?'var(--orange)':'var(--yellow)';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.58rem;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+        <div>
+          <div style="font-weight:600">${s.name}</div>
+          <div style="color:var(--muted);font-size:0.5rem">${s.description}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="color:${col};font-weight:700">${s.portfolio_impact_pct>0?'+':''}${s.portfolio_impact_pct}%</div>
+          <div style="color:var(--muted);font-size:0.5rem">${s.severity}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Liquidez ─────────────────────────────────────────────────────────────
+  const liqEl = document.getElementById('ar-liq-list');
+  if(liqEl && ar.liquidity?.by_symbol){
+    liqEl.innerHTML=Object.entries(ar.liquidity.by_symbol).map(([sym,d])=>{
+      if(!d.available && d.available===false) return `<div style="font-size:0.6rem;color:var(--muted)">${sym}: sem dados</div>`;
+      const col=d.illiquid?'var(--red)':d.ratio<0.8?'var(--yellow)':'var(--green)';
+      const pct=Math.min(100,Math.round((d.ratio||0)*100));
+      return `<div>
+        <div style="display:flex;justify-content:space-between;font-size:0.58rem;margin-bottom:2px;">
+          <span>${sym.replace('-USDT','')}</span>
+          <span style="color:${col};font-weight:700">×${(d.ratio||0).toFixed(2)} vol ${d.illiquid?'🔴 ILÍQUIDO':''}</span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;">
+          <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
 
 // ── Phase 13 — Meta Regime ───────────────────────────────────────────────────
 
@@ -3205,7 +3381,8 @@ async function updateAll(){
   if(ff)      updateFuturesFlow(ff, sym);
   if(rs)      updateRelativeStrength(rs, sym);
   if(vs)      updateVolatilityState(vs, sym);
-  const {mr}=_slowData;
+  const {mr,ar}=_slowData;
+  if(ar)      buildAdvancedRisk(ar);
   if(mr)      buildMetaRegime(mr);
 
   // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS

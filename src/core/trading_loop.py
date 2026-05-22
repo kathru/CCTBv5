@@ -39,6 +39,7 @@ from ..persistence import Cache, Database
 from ..portfolio.engine import PortfolioEngine
 from ..recovery.boot import BootSequence
 from ..recovery.periodic_reconciler import PeriodicReconciler
+from ..risk.advanced_risk import AdvancedRiskManager
 from ..risk.engine import RiskContext, RiskEngine
 from ..risk.kill_switch import KillSwitch
 from ..strategies.meta_layer import MetaStrategyLayer
@@ -169,6 +170,12 @@ class TradingLoop:
             symbols=SYMBOLS,
         )
 
+        # ── Advanced Risk Manager (Phase 14) ─────────────────────────────────
+        self._adv_risk = AdvancedRiskManager(
+            market=self._market,
+            cache=self._cache,
+        )
+
         # ── Meta Regime Detector (Phase 13) — macro threshold modulator ───────
         self._meta_regime = MetaRegimeDetector(
             market=self._market,
@@ -261,6 +268,9 @@ class TradingLoop:
             logger.error("TradingLoop: boot failed — not starting")
             return False
 
+        # Injeta DB no AdvancedRiskManager (disponível pós-boot)
+        self._adv_risk.set_db(self._db)
+
         if self._app_state:
             self._app_state.ws_watchdog       = self._ws_watchdog
             self._app_state.heartbeat_watchdog = self._heartbeat
@@ -282,6 +292,7 @@ class TradingLoop:
         await self._rel_strength.start()    # Phase 11: M7 data antes do runner
         await self._vol_state.start()       # Phase 12: M8 data antes do runner
         await self._meta_regime.start()     # Phase 13: macro regime antes do runner
+        await self._adv_risk.start()        # Phase 14: advanced risk
         await self._runner.start()
         await self._position_monitor.start()
         await self._reconciler.start()
@@ -404,6 +415,7 @@ class TradingLoop:
         await self._rel_strength.stop()
         await self._vol_state.stop()
         await self._meta_regime.stop()
+        await self._adv_risk.stop()
         await self._runner.stop()
         await self._position_monitor.stop()
         await self._reconciler.stop()
@@ -511,7 +523,16 @@ class TradingLoop:
             )
             return
 
-        # 1. Avaliação de risco
+        # 1a. Phase 14 — Circuit breakers avançados
+        cb_result = await self._adv_risk.check_circuit_breakers(signal.symbol)
+        if not cb_result["allowed"]:
+            logger.warning(
+                "CIRCUIT BREAKER ativo: %s symbol=%s — %s",
+                cb_result.get("cb_type"), signal.symbol, cb_result.get("reason"),
+            )
+            return
+
+        # 1b. Avaliação de risco (RiskEngine padrão)
         portfolio_value = self._portfolio.state.total_value or 85_000.0
         risk_ctx = RiskContext(
             portfolio_value=portfolio_value,
@@ -540,7 +561,9 @@ class TradingLoop:
             return
 
         # Kelly já vem ajustado pelo regime_mult da estratégia
-        kelly    = signal.kelly_fraction or 0.05
+        # Phase 14: aplica multiplicador dos circuit breakers (corr/liquidez/weeklyDD)
+        adv_kelly_mult = cb_result.get("kelly_mult", 1.0)
+        kelly    = (signal.kelly_fraction or 0.05) * adv_kelly_mult
         regime   = getattr(signal, "regime", "MEAN_REVERTING_CHOP")
 
         # Cap máximo de Kelly por família de regime (segurança extra)

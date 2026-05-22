@@ -32,9 +32,10 @@ COPY --from=builder /install /usr/local
 RUN echo -n "$GIT_MINOR" > /app/_git_minor && echo -n "$GIT_PATCH" > /app/_git_patch
 
 # Copy application code
-COPY src/     ./src/
-COPY infra/   ./infra/
-COPY main.py  .
+COPY src/          ./src/
+COPY infra/        ./infra/
+COPY main.py       .
+COPY _version.txt  .
 
 # Non-root user for security
 RUN useradd -m -u 1000 cctb && \

@@ -493,3 +493,200 @@ async def export_equity_csv(request: Request):
         )
     return PlainTextResponse("\n".join(lines), media_type="text/csv",
                              headers={"Content-Disposition": "attachment; filename=equity_curve.csv"})
+
+
+# ── Phase 7 — Distribution Analytics ─────────────────────────────────────────
+
+def _histogram(values: list[float], n_bins: int = 10) -> dict:
+    """Gera histograma simples: retorna bins, counts e labels."""
+    if not values:
+        return {"bins": [], "counts": [], "labels": []}
+    vmin, vmax = min(values), max(values)
+    if vmin == vmax:
+        return {"bins": [vmin], "counts": [len(values)], "labels": [f"{vmin:.3f}"]}
+    width = (vmax - vmin) / n_bins
+    bins   = [vmin + i * width for i in range(n_bins + 1)]
+    counts = [0] * n_bins
+    for v in values:
+        idx = min(int((v - vmin) / width), n_bins - 1)
+        counts[idx] += 1
+    labels = [f"{bins[i]:.3f}" for i in range(n_bins)]
+    return {"bins": [round(b, 6) for b in bins[:-1]], "counts": counts, "labels": labels}
+
+
+def _holding_hours(entry_ts, exit_ts) -> float | None:
+    """Duração em horas entre entry e exit."""
+    try:
+        if entry_ts is None or exit_ts is None:
+            return None
+        e = entry_ts.timestamp() if hasattr(entry_ts, "timestamp") else float(entry_ts)
+        x = exit_ts.timestamp()  if hasattr(exit_ts,  "timestamp") else float(exit_ts)
+        return round((x - e) / 3600, 2)
+    except Exception:
+        return None
+
+
+def _streak_analysis(pnls: list[float]) -> dict:
+    """Calcula sequências de wins/losses consecutivos."""
+    if not pnls:
+        return {"max_win_streak": 0, "max_loss_streak": 0,
+                "current_streak": 0, "current_streak_type": "none"}
+    max_win = max_loss = cur = 0
+    cur_type = "win" if pnls[0] > 0 else "loss"
+
+    for p in pnls:
+        kind = "win" if p > 0 else "loss"
+        if kind == cur_type:
+            cur += 1
+        else:
+            cur = 1
+            cur_type = kind
+        if kind == "win":
+            max_win  = max(max_win,  cur)
+        else:
+            max_loss = max(max_loss, cur)
+
+    return {
+        "max_win_streak":    max_win,
+        "max_loss_streak":   max_loss,
+        "current_streak":    cur,
+        "current_streak_type": cur_type,
+    }
+
+
+def _regime_contribution(trades: list[dict]) -> dict:
+    """
+    Cruza trades com signal_audit_log pelo símbolo para obter regime no momento
+    da entrada. Estratégia: busca o audit entry mais próximo (≤ 2h antes) do entry_ts.
+    """
+    entries = list(signal_audit_log._entries)
+    # Indexa por símbolo para busca eficiente
+    by_sym: dict[str, list] = {}
+    for e in entries:
+        by_sym.setdefault(e.symbol, []).append(e)
+
+    regime_pnl: dict[str, dict] = {}
+    for t in trades:
+        sym = t["symbol"]
+        entry_ts = t.get("entry_ts")
+        if entry_ts is None:
+            regime = "UNKNOWN"
+        else:
+            # Busca audit entry mais próximo antes do entry_ts
+            entry_epoch = entry_ts.timestamp() if hasattr(entry_ts, "timestamp") else float(entry_ts)
+            candidates  = [
+                e for e in by_sym.get(sym, [])
+                if hasattr(e.timestamp, "timestamp")
+                and abs(e.timestamp.timestamp() - entry_epoch) <= 7200  # ± 2h
+            ]
+            if candidates:
+                closest = min(candidates, key=lambda e: abs(e.timestamp.timestamp() - entry_epoch))
+                regime  = closest.regime or "UNKNOWN"
+            else:
+                regime = "UNKNOWN"
+
+        r = regime_pnl.setdefault(regime, {"pnl": 0.0, "trades": 0, "wins": 0})
+        r["pnl"]    += t["pnl"]
+        r["trades"] += 1
+        if t["pnl"] > 0:
+            r["wins"] += 1
+
+    # Normaliza
+    for rname, r in regime_pnl.items():
+        r["pnl"]      = round(r["pnl"], 2)
+        r["win_rate"] = round(r["wins"] / r["trades"], 3) if r["trades"] else 0
+        r["avg_pnl"]  = round(r["pnl"] / r["trades"], 2)  if r["trades"] else 0
+
+    return regime_pnl
+
+
+@router.get("/distribution")
+async def get_distribution(request: Request) -> dict:
+    """
+    Phase 7 — Distribution Analytics.
+
+    Retorna:
+    - return_dist       : histograma de P&L% por trade (10 bins)
+    - holding_dist      : histograma de duração em horas
+    - regime_contrib    : P&L, trades, WR por regime de mercado
+    - streaks           : max win/loss streak, streak atual
+    - extremes          : top 5 melhores e piores trades
+    - summary           : skewness, kurtosis, % acima da média
+    """
+    db     = request.app.state.db
+    orders = await _get_filled_orders(db)
+    trades = _pair_trades(orders)
+
+    pnl_pcts = [t["pnl_pct"] * 100 for t in trades]   # em %
+    pnls     = [t["pnl"]     for t in trades]
+    holdings = [
+        h for t in trades
+        if (h := _holding_hours(t.get("entry_ts"), t.get("exit_ts"))) is not None
+    ]
+
+    # ── Histograma de retornos (%) ────────────────────────────────────────────
+    return_dist = _histogram(pnl_pcts, n_bins=10)
+
+    # ── Histograma de holding time (horas) ───────────────────────────────────
+    holding_dist = _histogram(holdings, n_bins=8)
+
+    # ── Regime contribution ───────────────────────────────────────────────────
+    regime_contrib = _regime_contribution(trades)
+
+    # ── Streaks ───────────────────────────────────────────────────────────────
+    streaks = _streak_analysis(pnls)
+
+    # ── Extremos ──────────────────────────────────────────────────────────────
+    sorted_trades = sorted(trades, key=lambda t: t["pnl"])
+    def _fmt(t: dict) -> dict:
+        ts = t.get("exit_ts")
+        label = ts.strftime("%d/%m %H:%M") if hasattr(ts, "strftime") else "?"
+        return {
+            "symbol":  t["symbol"],
+            "pnl":     round(t["pnl"], 2),
+            "pnl_pct": round(t["pnl_pct"] * 100, 3),
+            "holding_h": _holding_hours(t.get("entry_ts"), t.get("exit_ts")),
+            "exit_at": label,
+        }
+    worst = [_fmt(t) for t in sorted_trades[:5]]
+    best  = [_fmt(t) for t in sorted_trades[-5:][::-1]]
+
+    # ── Estatísticas de distribuição ──────────────────────────────────────────
+    skewness = kurtosis = above_avg_pct = None
+    if len(pnl_pcts) >= MIN_TRADES:
+        mean = statistics.mean(pnl_pcts)
+        std  = statistics.stdev(pnl_pcts) if len(pnl_pcts) > 1 else 0
+        if std > 0:
+            # Pearson skewness (3 * (mean - median) / std)
+            med      = statistics.median(pnl_pcts)
+            skewness = round(3 * (mean - med) / std, 3)
+            # Excess kurtosis (Fisher)
+            n = len(pnl_pcts)
+            if n >= 4:
+                kurt_num = sum(((x - mean) / std) ** 4 for x in pnl_pcts) / n
+                kurtosis = round(kurt_num - 3, 3)
+        above_avg_pct = round(100 * sum(1 for x in pnl_pcts if x > mean) / len(pnl_pcts), 1)
+
+    avg_holding_h = round(statistics.mean(holdings), 2) if holdings else None
+    med_holding_h = round(statistics.median(holdings), 2) if holdings else None
+
+    return {
+        "n_trades":         len(trades),
+        "return_dist":      return_dist,
+        "holding_dist":     holding_dist,
+        "regime_contrib":   regime_contrib,
+        "streaks":          streaks,
+        "best_trades":      best,
+        "worst_trades":     worst,
+        "summary": {
+            "skewness":        skewness,
+            "excess_kurtosis": kurtosis,
+            "above_avg_pct":   above_avg_pct,
+            "avg_holding_h":   avg_holding_h,
+            "median_holding_h": med_holding_h,
+            "avg_pnl_pct":     round(statistics.mean(pnl_pcts), 4) if pnl_pcts else None,
+            "median_pnl_pct":  round(statistics.median(pnl_pcts), 4) if pnl_pcts else None,
+        },
+        "mae_mfe_note": "MAE/MFE full tracking requires intra-trade candle storage (Phase 10+)",
+        "computed_at":  datetime.now(UTC).isoformat(),
+    }

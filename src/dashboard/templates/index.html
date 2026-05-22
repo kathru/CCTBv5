@@ -985,6 +985,90 @@
 
 </div>
 
+<!-- ══ DISTRIBUIÇÃO & DIAGNÓSTICO — Phase 7 ══════════════════════════════ -->
+<div class="section-hdr">
+  <div class="dot" style="background:var(--orange)"></div>
+  Distribuição & Diagnóstico
+  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 7 · padrões estatísticos</span>
+</div>
+<div class="grid g21">
+
+  <!-- Histograma de Retornos + Holding Time -->
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+      <div class="clabel" style="margin:0">Distribuição de Retornos</div>
+      <span id="dist-skew-lbl" style="font-size:0.6rem;color:var(--muted)">–</span>
+    </div>
+    <!-- 4 mini-KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">
+      <div style="text-align:center;">
+        <div style="font-size:0.5rem;color:var(--muted)">Skewness</div>
+        <div style="font-size:0.95rem;font-weight:700;" id="dist-skew">–</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:0.5rem;color:var(--muted)">Kurtosis</div>
+        <div style="font-size:0.95rem;font-weight:700;" id="dist-kurt">–</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:0.5rem;color:var(--muted)">Méd Ret%</div>
+        <div style="font-size:0.95rem;font-weight:700;" id="dist-avg-ret">–</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:0.5rem;color:var(--muted)">Acima Méd</div>
+        <div style="font-size:0.95rem;font-weight:700;" id="dist-above-avg">–</div>
+      </div>
+    </div>
+    <div style="font-size:0.55rem;color:var(--muted);margin-bottom:3px">P&L% por trade</div>
+    <div style="position:relative;height:90px;"><canvas id="dist-return-chart"></canvas></div>
+    <div style="font-size:0.55rem;color:var(--muted);margin-top:8px;margin-bottom:3px">Holding Time (horas)</div>
+    <div style="position:relative;height:70px;"><canvas id="dist-holding-chart"></canvas></div>
+    <div style="margin-top:6px;display:flex;gap:16px;font-size:0.6rem;color:var(--muted);">
+      <span>Média: <span id="dist-avg-hold" style="color:var(--fg)">–</span>h</span>
+      <span>Mediana: <span id="dist-med-hold" style="color:var(--fg)">–</span>h</span>
+    </div>
+  </div>
+
+  <!-- Regime Contribution + Streaks -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Regime & Streaks</div>
+    <!-- Regime bars -->
+    <div id="dist-regime-bars" style="margin-bottom:12px;"></div>
+    <!-- Streaks -->
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;margin-top:4px;">
+      <div style="font-size:0.6rem;color:var(--muted);margin-bottom:8px">Sequências</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;">
+        <div>
+          <div style="font-size:0.5rem;color:var(--muted)">Max Wins</div>
+          <div style="font-size:1.1rem;font-weight:800;color:var(--green)" id="streak-max-win">–</div>
+        </div>
+        <div>
+          <div style="font-size:0.5rem;color:var(--muted)">Max Losses</div>
+          <div style="font-size:1.1rem;font-weight:800;color:var(--red)" id="streak-max-loss">–</div>
+        </div>
+        <div>
+          <div style="font-size:0.5rem;color:var(--muted)">Atual</div>
+          <div style="font-size:1rem;font-weight:700;" id="streak-current">–</div>
+        </div>
+      </div>
+    </div>
+    <!-- Melhores / Piores trades -->
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;margin-top:10px;">
+      <div style="font-size:0.6rem;color:var(--muted);margin-bottom:6px">Extremos (Top 3)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <div>
+          <div style="font-size:0.55rem;color:var(--green);margin-bottom:4px">▲ Melhores</div>
+          <div id="dist-best-trades" style="font-size:0.6rem;"></div>
+        </div>
+        <div>
+          <div style="font-size:0.55rem;color:var(--red);margin-bottom:4px">▼ Piores</div>
+          <div id="dist-worst-trades" style="font-size:0.6rem;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
 <!-- ══ GRÁFICOS ════════════════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Evolução & Distribuição</div>
 <div class="grid g21">
@@ -2060,6 +2144,7 @@ function renderWfo(data){
 // ── Phase 6 — Equity Analytics ──────────────────────────────────────────────
 
 let _equityChart=null, _underwaterChart=null, _rollingWrChart=null, _rollingSharpeChart=null;
+let _distReturnChart=null, _distHoldingChart=null;
 
 function buildEquityCharts(eq){
   if(!eq) return;
@@ -2186,11 +2271,105 @@ function buildRollingCharts(roll){
   }
 }
 
+// ── Phase 7 — Distribution Analytics ────────────────────────────────────────
+
+function buildDistributionPanel(dist){
+  if(!dist||!dist.n_trades) return;
+  const s = dist.summary||{};
+
+  // KPIs
+  const setEl = (id, val, cls) => { const el=document.getElementById(id); if(el){el.textContent=val; if(cls)el.style.color=cls;} };
+  const skew = s.skewness;
+  setEl('dist-skew', skew!=null ? skew.toFixed(3) : '–', skew>0?'var(--green)':skew<0?'var(--red)':null);
+  setEl('dist-kurt', s.excess_kurtosis!=null ? s.excess_kurtosis.toFixed(3) : '–');
+  setEl('dist-avg-ret', s.avg_pnl_pct!=null ? s.avg_pnl_pct.toFixed(3)+'%' : '–',
+        s.avg_pnl_pct>0?'var(--green)':'var(--red)');
+  setEl('dist-above-avg', s.above_avg_pct!=null ? s.above_avg_pct+'%' : '–');
+  setEl('dist-avg-hold',  s.avg_holding_h!=null  ? s.avg_holding_h  : '–');
+  setEl('dist-med-hold',  s.median_holding_h!=null? s.median_holding_h : '–');
+
+  const skewLabel = skew==null?'':'skew '+(skew>0?'positiva ▶ mais wins extremos':'negativa ◀ mais losses extremos');
+  setEl('dist-skew-lbl', skewLabel);
+
+  // Histograma retornos
+  const rd = dist.return_dist||{};
+  const ctx1 = document.getElementById('dist-return-chart');
+  if(ctx1 && rd.labels){
+    if(_distReturnChart) _distReturnChart.destroy();
+    const colors = rd.bins.map(b => b>=0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)');
+    _distReturnChart = new Chart(ctx1,{
+      type:'bar',
+      data:{labels:rd.labels, datasets:[{data:rd.counts, backgroundColor:colors, borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>'P&L: '+i[0].label+'%',label:i=>'Trades: '+i.raw}}},
+        scales:{x:{display:true,ticks:{font:{size:8},maxRotation:45}},
+                y:{display:true,ticks:{font:{size:8}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+    });
+  }
+
+  // Histograma holding time
+  const hd = dist.holding_dist||{};
+  const ctx2 = document.getElementById('dist-holding-chart');
+  if(ctx2 && hd.labels){
+    if(_distHoldingChart) _distHoldingChart.destroy();
+    _distHoldingChart = new Chart(ctx2,{
+      type:'bar',
+      data:{labels:hd.labels, datasets:[{data:hd.counts, backgroundColor:'rgba(59,130,246,0.6)', borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>'Hold: '+i[0].label+'h',label:i=>'Trades: '+i.raw}}},
+        scales:{x:{display:true,ticks:{font:{size:8},maxRotation:45}},
+                y:{display:true,ticks:{font:{size:8}},grid:{color:'rgba(255,255,255,0.04)'}}}}
+    });
+  }
+
+  // Regime bars
+  const rc = dist.regime_contrib||{};
+  const rcEl = document.getElementById('dist-regime-bars');
+  if(rcEl && Object.keys(rc).length){
+    const maxAbs = Math.max(...Object.values(rc).map(r=>Math.abs(r.pnl)),1);
+    rcEl.innerHTML = Object.entries(rc).sort((a,b)=>b[1].pnl-a[1].pnl).map(([regime,r])=>{
+      const pct = Math.round(Math.abs(r.pnl)/maxAbs*100);
+      const col = r.pnl>=0 ? 'var(--green)' : 'var(--red)';
+      const sign = r.pnl>=0?'+':'';
+      return `<div style="margin-bottom:6px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.58rem;margin-bottom:2px;">
+          <span style="color:var(--muted)">${regime}</span>
+          <span>${r.trades}t · WR ${(r.win_rate*100).toFixed(0)}% · <span style="color:${col}">${sign}$${Math.abs(r.avg_pnl).toFixed(0)}/t</span></span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;">
+          <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Streaks
+  const st = dist.streaks||{};
+  setEl('streak-max-win',  st.max_win_streak  ?? '–');
+  setEl('streak-max-loss', st.max_loss_streak ?? '–');
+  const curEl = document.getElementById('streak-current');
+  if(curEl){
+    curEl.textContent = (st.current_streak||0)+'×'+(st.current_streak_type||'');
+    curEl.style.color = st.current_streak_type==='win' ? 'var(--green)' : 'var(--red)';
+  }
+
+  // Extremos (top 3)
+  const fmtTrade = t => `<div style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+    <span style="color:var(--muted);font-size:0.55rem">${t.symbol.replace('-USDT','')} ${t.exit_at}</span><br>
+    <span style="font-weight:700">${t.pnl>=0?'+':''}$${Math.abs(t.pnl).toFixed(0)}</span>
+    <span style="color:var(--muted);font-size:0.55rem"> (${t.pnl_pct.toFixed(2)}%)</span>
+  </div>`;
+  const bestEl  = document.getElementById('dist-best-trades');
+  const worstEl = document.getElementById('dist-worst-trades');
+  if(bestEl  && dist.best_trades)  bestEl.innerHTML  = dist.best_trades.slice(0,3).map(fmtTrade).join('');
+  if(worstEl && dist.worst_trades) worstEl.innerHTML = dist.worst_trades.slice(0,3).map(fmtTrade).join('');
+}
+
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -2198,6 +2377,7 @@ async function updateSlow(){
     fetchJSON('/api/reconciler/status'),
     fetchJSON('/api/analytics/equity_curve'),
     fetchJSON('/api/analytics/rolling?window=10'),
+    fetchJSON('/api/analytics/distribution'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -2211,6 +2391,7 @@ async function updateSlow(){
   if(recon)     _slowData.recon=recon;
   if(equity)    _slowData.equity=equity;
   if(rolling)   _slowData.rolling=rolling;
+  if(dist)      _slowData.dist=dist;
 }
 
 async function updateAll(){
@@ -2225,10 +2406,11 @@ async function updateAll(){
   ]);
 
   // Slow data vem do cache — atualizado em paralelo pelo loop lento
-  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling}=_slowData;
+  const {calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist}=_slowData;
   if(recon)   updateReconciler(recon);
   if(equity)  buildEquityCharts(equity);
   if(rolling) buildRollingCharts(rolling);
+  if(dist)    buildDistributionPanel(dist);
 
   // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS
   const hasPrices = prices && Object.keys(prices).length > 0;

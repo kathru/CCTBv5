@@ -57,7 +57,10 @@ class SignalAuditEntry:
             "result":      self.result,
             "detail":      self.detail,
             "icon":        RESULT_ICON.get(self.result, "⚪"),
-            "factors":     {k: round(v, 3) for k, v in self.factors.items()},
+            "factors":     {
+                k: round(v, 3) if isinstance(v, (int, float)) else v
+                for k, v in self.factors.items()
+            },
         }
 
 

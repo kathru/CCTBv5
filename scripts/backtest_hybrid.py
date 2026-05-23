@@ -402,7 +402,10 @@ async def main() -> None:
     print(f"  Momentum: 3 velas bullish + vol + SMA20 suporte | apenas BTC+ETH")
     print(f"  Macro: SMA100 filter (bloqueia bear market estrutural)")
     print(sep)
-    print(f"  {'Mês':<8} {'P&L':>10} {'Trades':>7} {'Rev':>5} {'Mom':>5} {'WR':>7} {'Fees':>8} {'Status'}")
+    print(
+        f"  {'Mês':<8} {'P&L':>10} {'Trades':>7} {'Rev':>5} {'Mom':>5}"
+        f" {'WR':>7} {'Fees':>8} {'Status'}"
+    )
     print(sep2)
 
     monthly = []
@@ -471,7 +474,10 @@ async def main() -> None:
         p  = sym_pnl[sym]
         ag = p / t if t > 0 else 0
         sign = "+" if p >= 0 else ""
-        print(f"  {sym:<12}  P&L: {sign}${p:>8.2f}  trades: {t:>3}  WR: {wr:>5.1%}  avg: {sign}${ag:>6.2f}")
+        print(
+            f"  {sym:<12}  P&L: {sign}${p:>8.2f}  trades: {t:>3}"
+            f"  WR: {wr:>5.1%}  avg: {sign}${ag:>6.2f}"
+        )
 
     # ── Comparativo vs puro reversal ─────────────────────────────────────────
     print()
@@ -480,9 +486,16 @@ async def main() -> None:
     print(sep)
     print(f"  {'Estratégia':<25} {'P&L':>10} {'Trades':>8} {'WR':>7} {'Fees':>9} {'Meses+':>8}")
     print(f"  {'─'*25} {'─'*10} {'─'*8} {'─'*7} {'─'*9} {'─'*8}")
-    print(f"  {'Reversal puro':<25} {'$-2,276':>10} {'197':>8} {'39.1%':>7} {'$1,088':>9} {'4/16':>8}")
+    print(
+        f"  {'Reversal puro':<25} {'$-2,276':>10} {'197':>8}"
+        f" {'39.1%':>7} {'$1,088':>9} {'4/16':>8}"
+    )
     sign_h = "+" if total_pnl >= 0 else ""
-    print(f"  {'Híbrido (novo)':<25} {sign_h+'$'+f'{total_pnl:,.0f}':>10} {str(total_trades):>8} {overall_wr:.1%:>7} {'$'+f'{total_fees:,.0f}':>9} {str(pos_months)+'/16':>8}")
+    print(
+        f"  {'Híbrido (novo)':<25} {sign_h+'$'+f'{total_pnl:,.0f}':>10}"
+        f" {str(total_trades):>8} {overall_wr:.1%:>7}"
+        f" {'$'+f'{total_fees:,.0f}':>9} {str(pos_months)+'/16':>8}"
+    )
     print(sep)
 
     # ── Veredicto ─────────────────────────────────────────────────────────────

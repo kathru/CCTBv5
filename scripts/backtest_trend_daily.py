@@ -191,7 +191,10 @@ def run_backtest():
                     cost  = delta * price * (1 + FEE_ONE_SIDE)
                 if delta > 0.000001:
                     fee = delta * price * FEE_ONE_SIDE
-                    avg_px[sym] = (avg_px[sym]*qty[sym] + price*delta) / (qty[sym]+delta) if qty[sym] > 0 else price
+                    avg_px[sym] = (
+                        (avg_px[sym]*qty[sym] + price*delta) / (qty[sym]+delta)
+                        if qty[sym] > 0 else price
+                    )
                     qty[sym]    += delta
                     capital     -= cost
                     monthly[ym]["trades"] += 1
@@ -289,8 +292,11 @@ def main():
     print(f"  {'Estratégia':<28} {'Capital Final':>14} {'Retorno':>9} {'Meses+':>7}")
     print(f"  {'─'*28} {'─'*14} {'─'*9} {'─'*7}")
     print(f"  {'Buy & Hold BTC':<28} ${bh_final:>12,.2f}   {BH_BTC_RET:>+6.1f}%      —")
-    print(f"  {'Reversal 1H':<28} ${rev_final:>12,.2f}   {REVERSAL_PNL/INITIAL_CAPITAL*100:>+6.1f}%   4/16")
-    print(f"  {'EWMA Trend Daily (novo)':<28} ${final:>12,.2f}   {sign}{ret_pct:>5.1f}%  {pos_m}/16")
+    rev_ret = REVERSAL_PNL/INITIAL_CAPITAL*100
+    print(f"  {'Reversal 1H':<28} ${rev_final:>12,.2f}   {rev_ret:>+6.1f}%   4/16")
+    print(
+        f"  {'EWMA Trend Daily (novo)':<28} ${final:>12,.2f}   {sign}{ret_pct:>5.1f}%  {pos_m}/16"
+    )
 
     alpha_vs_bh = ret_pct - BH_BTC_RET
     print(sep)

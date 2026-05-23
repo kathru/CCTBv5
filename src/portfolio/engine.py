@@ -114,11 +114,15 @@ class PortfolioEngine:
             realized_pnl=total_realized,
             unrealized_pnl=total_unrealized,
             daily_pnl=total_unrealized,
-            total_return_pct=(total_value - self._state.initial_capital) / self._state.initial_capital
-                if self._state.initial_capital > 0 else 0.0,
+            total_return_pct=(
+                (total_value - self._state.initial_capital) / self._state.initial_capital
+                if self._state.initial_capital > 0 else 0.0
+            ),
             portfolio_beta=self._calc_beta(open_positions, positions_dict),
             avg_correlation=self._calc_avg_correlation(open_positions),
-            concentration_risk=self._calc_concentration(open_positions, positions_dict, total_notional),
+            concentration_risk=self._calc_concentration(
+                open_positions, positions_dict, total_notional
+            ),
             positions=positions_dict,
             updated_at=_now(),
         )

@@ -52,7 +52,10 @@ async def main() -> None:
         try:
             fill_ts   = int(o.get("fillTime") or o.get("uTime") or 0)
             ctime     = int(o.get("cTime") or fill_ts)
-            fa = datetime.fromtimestamp(fill_ts / 1000, tz=timezone.utc) if fill_ts else datetime.now(timezone.utc)
+            fa = (
+                datetime.fromtimestamp(fill_ts / 1000, tz=timezone.utc)
+                if fill_ts else datetime.now(timezone.utc)
+            )
             ca = datetime.fromtimestamp(ctime   / 1000, tz=timezone.utc) if ctime   else fa
 
             client_id = o.get("clOrdId") or o.get("ordId")
@@ -100,9 +103,14 @@ async def main() -> None:
     print(f"\nResultado: {imported} importadas | {skipped} ignoradas")
     print("\n=== ORDERS TABLE ===")
     for r in rows:
-        print(f"  {r['strategy_id']:<20} {r['side']:<5} n={r['n']}  vol=${float(r['vol'] or 0):,.2f}  fees=${float(r['fees'] or 0):.4f}")
+        print(
+            f"  {r['strategy_id']:<20} {r['side']:<5} n={r['n']}"
+            f"  vol=${float(r['vol'] or 0):,.2f}  fees=${float(r['fees'] or 0):.4f}"
+        )
 
-    total_fees = await db.fetchrow("SELECT SUM(fees_paid) as f FROM orders WHERE strategy_id='okx_import'")
+    total_fees = await db.fetchrow(
+        "SELECT SUM(fees_paid) as f FROM orders WHERE strategy_id='okx_import'"
+    )
     print(f"\nTotal fees importadas: ${float(total_fees['f'] or 0):.4f}")
 
     await db.disconnect()

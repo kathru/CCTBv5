@@ -317,7 +317,10 @@ async def run() -> None:
         result = await engine.run(candles, warmup=apr_idx)
         results.append(result)
 
-        pnl_s = f"+${result.total_pnl:.2f}" if result.total_pnl >= 0 else f"-${abs(result.total_pnl):.2f}"
+        pnl_s = (
+            f"+${result.total_pnl:.2f}" if result.total_pnl >= 0
+            else f"-${abs(result.total_pnl):.2f}"
+        )
         print(f"\n  {sym}: {result.total_trades} trades | WR={result.win_rate:.1%} | "
               f"PnL={pnl_s} | PF={result.profit_factor:.2f}")
 
@@ -340,7 +343,10 @@ async def run() -> None:
             print(f"    Nenhum setup válido encontrado no período")
             continue
         print(f"    Trades   : {res.total_trades}")
-        print(f"    Win Rate : {res.win_rate:.1%}  ({res.winning_trades}W / {res.total_trades-res.winning_trades}L)")
+        print(
+            f"    Win Rate : {res.win_rate:.1%}"
+            f"  ({res.winning_trades}W / {res.total_trades-res.winning_trades}L)"
+        )
         print(f"    PF       : {res.profit_factor:.2f}")
         print(f"    P&L      : {pnl_s}  ({res.total_return_pct:.2%})")
         print(f"    Fees     : ${res.total_fees:.2f}")

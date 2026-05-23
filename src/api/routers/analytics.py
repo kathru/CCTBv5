@@ -258,8 +258,14 @@ async def get_quantitative(request: Request) -> dict:
         "profit_factor":  profit_factor,
         "avg_win":        round(avg_win,  2) if wins   else None,
         "avg_loss":       round(avg_loss, 2) if losses else None,
-        "avg_win_pct":    round(sum(t["pnl_pct"] for t in trades if t["pnl"] > 0) / len(wins), 4) if wins else None,
-        "avg_loss_pct":   round(sum(t["pnl_pct"] for t in trades if t["pnl"] <= 0) / len(losses), 4) if losses else None,
+        "avg_win_pct":    (
+            round(sum(t["pnl_pct"] for t in trades if t["pnl"] > 0) / len(wins), 4)
+            if wins else None
+        ),
+        "avg_loss_pct":   (
+            round(sum(t["pnl_pct"] for t in trades if t["pnl"] <= 0) / len(losses), 4)
+            if losses else None
+        ),
 
         # Risk-adjusted
         "sharpe":         sharpe,
@@ -514,8 +520,11 @@ async def export_equity_csv(request: Request):
             f"{i},{t['symbol']},{entry_s},{exit_s},"
             f"{t['pnl']:.2f},{t['pnl_pct']:.6f},{equity:.2f},{dd:.6f}"
         )
-    return PlainTextResponse("\n".join(lines), media_type="text/csv",
-                             headers={"Content-Disposition": "attachment; filename=equity_curve.csv"})
+    return PlainTextResponse(
+        "\n".join(lines),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=equity_curve.csv"},
+    )
 
 
 # ── Phase 7 — Distribution Analytics ─────────────────────────────────────────
@@ -596,7 +605,9 @@ def _regime_contribution(trades: list[dict]) -> dict:
             regime = "UNKNOWN"
         else:
             # Busca audit entry mais próximo antes do entry_ts
-            entry_epoch = entry_ts.timestamp() if hasattr(entry_ts, "timestamp") else float(entry_ts)
+            entry_epoch = (
+                entry_ts.timestamp() if hasattr(entry_ts, "timestamp") else float(entry_ts)
+            )
             candidates  = [
                 e for e in by_sym.get(sym, [])
                 if hasattr(e.timestamp, "timestamp")
@@ -909,8 +920,11 @@ async def get_reality_check(request: Request) -> dict:
                                "note": f"p < {ALPHA} → edge real"},
         "ci_positive":        {"status": _signal(ci_positive), "value": bs_sharpe["ci_low"],
                                "note": "IC 95% inferior > 0"},
-        "survives_2x_fees":   {"status": _signal(fee2x_ok),    "value": fee_stress[2]["total_pnl"] if len(fee_stress)>2 else None,
-                               "note": "Lucrativo com 2× fees"},
+        "survives_2x_fees":   {
+            "status": _signal(fee2x_ok),
+            "value": fee_stress[2]["total_pnl"] if len(fee_stress) > 2 else None,
+            "note": "Lucrativo com 2× fees",
+        },
         "overall": "GREEN" if all(v["status"]=="GREEN" for v in [
                         {"status": _signal(sharpe_ok)},
                         {"status": _signal(pvalue_ok)},
@@ -1254,8 +1268,12 @@ async def get_futures_flow(request: Request) -> dict:
 
     # Sumário agregado — M6 médio, funding médio
     m6_scores   = [d["scores"]["m6"]       for d in by_symbol.values() if d.get("scores")]
-    fundings    = [d["funding_rate_pct"]    for d in by_symbol.values() if d.get("funding_rate_pct") is not None]
-    oi_changes  = [d["oi_change_pct"]       for d in by_symbol.values() if d.get("oi_change_pct") is not None]
+    fundings    = [
+        d["funding_rate_pct"] for d in by_symbol.values() if d.get("funding_rate_pct") is not None
+    ]
+    oi_changes  = [
+        d["oi_change_pct"] for d in by_symbol.values() if d.get("oi_change_pct") is not None
+    ]
 
     summary = {
         "avg_m6":           round(sum(m6_scores)  / len(m6_scores),  4) if m6_scores  else None,
@@ -1544,9 +1562,19 @@ async def get_market_signals(request: Request) -> dict:
             result["by_symbol"][symbol] = sym_data
     if result["by_symbol"]:
         result["has_data"] = True
-        m6 = [d["m6"]["scores"]["m6"] for d in result["by_symbol"].values() if d.get("m6",{}).get("scores")]
-        m7 = [d["m7"]["scores"]["m7"] for d in result["by_symbol"].values() if d.get("m7",{}).get("scores")]
-        m8 = [d["m8"]["m8_score"]      for d in result["by_symbol"].values() if d.get("m8",{}).get("m8_score") is not None]
+        m6 = [
+            d["m6"]["scores"]["m6"]
+            for d in result["by_symbol"].values() if d.get("m6", {}).get("scores")
+        ]
+        m7 = [
+            d["m7"]["scores"]["m7"]
+            for d in result["by_symbol"].values() if d.get("m7", {}).get("scores")
+        ]
+        m8 = [
+            d["m8"]["m8_score"]
+            for d in result["by_symbol"].values()
+            if d.get("m8", {}).get("m8_score") is not None
+        ]
         result["summary"] = {
             "avg_m6": round(sum(m6)/len(m6),4) if m6 else None,
             "avg_m7": round(sum(m7)/len(m7),4) if m7 else None,

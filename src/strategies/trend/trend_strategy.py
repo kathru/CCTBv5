@@ -256,7 +256,8 @@ class TrendStrategy(BaseStrategy):
             if TrendStrategy._btc_signal != "LONG":
                 self._audit(sym, "BTC_NOT_TRENDING",
                             f"BTC sinal={TrendStrategy._btc_signal} — ETH/SOL bloqueados",
-                            regime="BTC_FLAT", factors={"ema50d": round(ema50d,4), "vol_ann": round(vol_ann,4)})
+                            regime="BTC_FLAT",
+                            factors={"ema50d": round(ema50d, 4), "vol_ann": round(vol_ann, 4)})
                 return Signal(
                     strategy_id=self._strategy_id, symbol=sym,
                     direction=SignalDirection.FLAT,
@@ -313,10 +314,13 @@ class TrendStrategy(BaseStrategy):
             "pos_pct": round(pos_pct, 4), "dist_pct": round(dist_pct, 4),
             "mode": "long",
         }
-        self._audit(sym, "SIGNAL",
-                    f"LONG: preço +{dist_pct*100:.1f}% acima EMA50D | vol {vol_ann*100:.0f}% aa | pos {pos_pct*100:.0f}%",
-                    regime="TREND_UP", score=raw_score, calibrated=calibrated,
-                    ev=raw_score*2.0-(1-raw_score), direction="LONG", factors=sig_factors)
+        self._audit(
+            sym, "SIGNAL",
+            f"LONG: preço +{dist_pct*100:.1f}% acima EMA50D"
+            f" | vol {vol_ann*100:.0f}% aa | pos {pos_pct*100:.0f}%",
+            regime="TREND_UP", score=raw_score, calibrated=calibrated,
+            ev=raw_score*2.0-(1-raw_score), direction="LONG", factors=sig_factors,
+        )
 
         return Signal(
             strategy_id=self._strategy_id, symbol=sym,

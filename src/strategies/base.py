@@ -31,7 +31,8 @@ class StrategyContext:
     candles_6h: list[Candle]
     ticker: Ticker | None
     portfolio_value: float
-    candles_30m: list[Candle] = field(default_factory=list)  # mantido por compatibilidade (vazio em ciclo 1H)
+    # mantido por compatibilidade (vazio em ciclo 1H)
+    candles_30m: list[Candle] = field(default_factory=list)
     open_positions: list[dict] = field(default_factory=list)
     extra: dict = field(default_factory=dict)   # regime, breadth, etc.
 

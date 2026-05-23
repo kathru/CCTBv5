@@ -93,7 +93,9 @@ class ExchangeSync:
 
             logger.info(
                 "ExchangeSync: ativos válidos — %s | Total=%.2f USD",
-                " | ".join(f"{d['ccy']}={d['cashBal']:.4f}(~${d['usdValue']:.2f})" for d in details),
+                " | ".join(
+                    f"{d['ccy']}={d['cashBal']:.4f}(~${d['usdValue']:.2f})" for d in details
+                ),
                 summary["total_equity_usd"],
             )
 
@@ -246,8 +248,14 @@ class ExchangeSync:
             if o["symbol"] not in TRADING_SYMBOLS:
                 continue
             try:
-                filled_at  = datetime.fromtimestamp(o["uTime"] / 1000, tz=UTC) if o["uTime"] else datetime.now(UTC)
-                created_at = datetime.fromtimestamp(o["cTime"] / 1000, tz=UTC) if o["cTime"] else filled_at
+                filled_at  = (
+                    datetime.fromtimestamp(o["uTime"] / 1000, tz=UTC) if o["uTime"]
+                    else datetime.now(UTC)
+                )
+                created_at = (
+                    datetime.fromtimestamp(o["cTime"] / 1000, tz=UTC) if o["cTime"]
+                    else filled_at
+                )
                 fee = abs(o.get("fee", 0))
 
                 async with self._db.acquire() as conn:

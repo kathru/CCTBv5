@@ -121,25 +121,37 @@ CURRENT_SCHEMA = FeatureSchema(
     model_id="momentum_scoring_v2",
     created_at="2026-05-22",
     lookback_candles=25,
-    notes="8 fatores (M4 com peso 0). Cleanup 2026-05-22: M1↓2% M4=0% (Spearman negativo) | M3↑30% M8↑21% (Spearman positivo). CooldownEngine desativado — AdvancedRiskManager é árbitro único de cooldown.",
+    notes=(
+        "8 fatores (M4 com peso 0). Cleanup 2026-05-22: M1↓2% M4=0% (Spearman negativo)"
+        " | M3↑30% M8↑21% (Spearman positivo)."
+        " CooldownEngine desativado — AdvancedRiskManager é árbitro único de cooldown."
+    ),
     features={
         # Pesos ajustados por evidência empírica — feature_analysis 2026-05-22
         # Spearman: M3=+0.017 M2=+0.001 M8=+0.229 | M1=-0.048 M4=-0.057
         "m1_momentum": FeatureDef(
             weight=0.02,   # quase descartado: Spearman=-0.048 (correlação negativa)
-            description="Momentum adaptativo: média ponderada de retornos 1/5/10/20 candles 1H, normalizado por ATR",
+            description=(
+                "Momentum adaptativo: média ponderada de retornos 1/5/10/20 candles 1H,"
+                " normalizado por ATR"
+            ),
             lookback=21,
             leakage_safe=True,
         ),
         "m2_consistency": FeatureDef(
             weight=0.20,   # mantido: correlação levemente positiva
-            description="Consistência de tendência: % candles bullish + higher-highs E higher-lows graduais",
+            description=(
+                "Consistência de tendência: % candles bullish + higher-highs E higher-lows graduais"
+            ),
             lookback=10,
             leakage_safe=True,
         ),
         "m3_volume": FeatureDef(
-            weight=0.30,   # dominante: único fator com edge empírico claro (Spearman=+0.229, 62% rel.imp)
-            description="Confirmação por volume: ratio + tendência de volume + candle direcional",
+            # dominante: único fator com edge empírico claro (Spearman=+0.229, 62% rel.imp)
+            weight=0.30,
+            description=(
+                "Confirmação por volume: ratio + tendência de volume + candle direcional"
+            ),
             lookback=20,
             leakage_safe=True,
         ),
@@ -151,25 +163,38 @@ CURRENT_SCHEMA = FeatureSchema(
         ),
         "m5_candle": FeatureDef(
             weight=0.08,   # leve aumento: importância permutação marginal positiva
-            description="Estrutura do candle: posição do close no range dos últimos 3 candles (Williams %R style)",
+            description=(
+                "Estrutura do candle: posição do close no range dos últimos 3 candles"
+                " (Williams %R style)"
+            ),
             lookback=3,
             leakage_safe=True,
         ),
         "m6_futures": FeatureDef(
             weight=0.10,   # mantido: dado externo, spearman não mensurável em backtest
-            description="Futures Flow: funding rate (perp) + variação de Open Interest. Lê sinal do mercado de derivativos sem operar futuros.",
+            description=(
+                "Futures Flow: funding rate (perp) + variação de Open Interest."
+                " Lê sinal do mercado de derivativos sem operar futuros."
+            ),
             lookback=1,
             leakage_safe=True,
         ),
         "m7_rel_strength": FeatureDef(
             weight=0.09,   # mantido: dado externo, spearman não mensurável em backtest
-            description="Relative Strength vs BTC: RS 1h/5h/24h ponderado + BTC leadership score + tendência de RS",
+            description=(
+                "Relative Strength vs BTC: RS 1h/5h/24h ponderado + BTC leadership score"
+                " + tendência de RS"
+            ),
             lookback=25,
             leakage_safe=True,
         ),
         "m8_vol_state": FeatureDef(
             weight=0.21,   # reforçado: Spearman=+0.229 empatado com M3 — peso máximo
-            description="Volatility State Machine: 5 estados (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC) via ATR + BB + dir_consistency",
+            description=(
+                "Volatility State Machine: 5 estados"
+                " (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC)"
+                " via ATR + BB + dir_consistency"
+            ),
             lookback=20,
             leakage_safe=True,
         ),
@@ -203,7 +228,10 @@ class LeakageGuard:
         """
         # Regra 1: feature não pode usar candles além do índice atual
         if candle_index + forward_candles >= total_candles:
-            return False, f"Sem espaço para label forward: {candle_index} + {forward_candles} >= {total_candles}"
+            return False, (
+                f"Sem espaço para label forward: {candle_index} + {forward_candles}"
+                f" >= {total_candles}"
+            )
 
         # Regra 2: feature value deve estar no range esperado
         if feature_name in CURRENT_SCHEMA.features:
@@ -564,7 +592,9 @@ class FeatureImportance:
             """Acurácia simples: score > median → prediz win."""
             scores = [predict_win(f) for f in feat_list]
             median = sorted(scores)[len(scores)//2]
-            correct = sum(1 for s, lbl in zip(scores, lbls, strict=False) if (s > median) == (lbl == 1))
+            correct = sum(
+                1 for s, lbl in zip(scores, lbls, strict=False) if (s > median) == (lbl == 1)
+            )
             return correct / len(lbls)
 
         baseline_acc = accuracy(features_list, labels)

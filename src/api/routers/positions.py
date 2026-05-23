@@ -25,7 +25,9 @@ async def get_open_positions(request: Request) -> list[dict]:
         pos["current_price"]  = round(price, 4)
         pos["notional"]       = round(notional, 4)
         pos["unrealized_pnl"] = round(unrealized, 4)
-        pos["pnl_pct"]        = round(unrealized / (entry * qty) * 100, 2) if entry * qty > 0 else 0.0
+        pos["pnl_pct"]        = (
+            round(unrealized / (entry * qty) * 100, 2) if entry * qty > 0 else 0.0
+        )
         # Formata qty sem decimais excessivos
         pos["quantity"]       = round(qty, 6)
         pos["avg_entry_price"]= round(entry, 4)

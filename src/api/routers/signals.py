@@ -41,7 +41,9 @@ async def get_calibration() -> dict:
 
 
 @router.get("/funnel")
-async def get_signal_funnel(window: int = Query(default=0, description="Minutos (0=todos)")) -> dict:  # noqa: ARG001
+async def get_signal_funnel(  # noqa: ARG001
+    window: int = Query(default=0, description="Minutos (0=todos)"),
+) -> dict:
     """Funil de filtragem: onde cada sinal é bloqueado."""
     return {
         "all_time": signal_audit_log.funnel(window_minutes=None),

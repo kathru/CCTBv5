@@ -315,9 +315,11 @@ class MomentumStrategy(BaseStrategy):
         else:
             trend_6h = "CHOP"
 
-        family_1h = ("BULL" if regime_1h in {"TREND_EXPANSION", "VOLATILITY_COMPRESSION", "TREND_EXHAUSTION"}
-                     else "BEAR" if regime_1h in {"BEAR_TREND", "PANIC_LIQUIDATION"}
-                     else "CHOP")
+        family_1h = (
+            "BULL" if regime_1h in {"TREND_EXPANSION", "VOLATILITY_COMPRESSION", "TREND_EXHAUSTION"}
+            else "BEAR" if regime_1h in {"BEAR_TREND", "PANIC_LIQUIDATION"}
+            else "CHOP"
+        )
 
         # 6H BEAR + 1H BEAR → bloqueio total (ambos confirmam downtrend)
         if family_1h == "BEAR" and trend_6h == "BEAR":
@@ -367,7 +369,10 @@ class MomentumStrategy(BaseStrategy):
         vols_1h = [c.volume for c in ctx.candles_1h[:20]]
 
         # ── M1: Adaptive Momentum (25%) — retornos 1H multi-horizonte ─
-        atr_20 = sum(highs[i] - lows[i] for i in range(min(10, len(highs)))) / min(10, len(highs)) if highs else closes[0] * 0.01
+        atr_20 = (
+            sum(highs[i] - lows[i] for i in range(min(10, len(highs)))) / min(10, len(highs))
+            if highs else closes[0] * 0.01
+        )
         norm   = max(atr_20 * 2, closes[0] * 0.005)
 
         # Horizonte curto (1h, 5h) — captura momentum recente
@@ -399,7 +404,9 @@ class MomentumStrategy(BaseStrategy):
         avg_vol_20 = sum(vols[:20]) / 20 if len(vols) >= 20 else avg_vol_5
 
         vol_ratio = min(vols[0] / avg_vol_5, 3.0) / 3.0 if avg_vol_5 > 0 else 0.5
-        vol_trend = (sum(vols[:3]) / sum(vols[3:6])) if len(vols) >= 6 and sum(vols[3:6]) > 0 else 1.0
+        vol_trend = (
+            (sum(vols[:3]) / sum(vols[3:6])) if len(vols) >= 6 and sum(vols[3:6]) > 0 else 1.0
+        )
         vol_trend = min(max(vol_trend, 0.3), 2.0)
         vol_trend_score = (vol_trend - 0.3) / 1.7
 
@@ -491,7 +498,9 @@ class MomentumStrategy(BaseStrategy):
             "m7_rs_trend":    round(float(rs_scores.get("rs_trend",    0.5)), 3),
             # Sub-scores M8 — apenas numéricos (strings não são aceitas em factors)
             "m8_atr_pct":     round(float(vol_data.get("metrics", {}).get("atr_pct",        0)), 3),
-            "m8_dir_consist": round(float(vol_data.get("metrics", {}).get("dir_consistency", 0.5)), 3),
+            "m8_dir_consist": round(
+                float(vol_data.get("metrics", {}).get("dir_consistency", 0.5)), 3
+            ),
         }
         # Registra features no drift monitor (nunca bloqueia o trading)
         try:

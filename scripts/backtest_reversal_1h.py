@@ -271,7 +271,10 @@ async def run() -> None:
         result = await engine.run(candles, warmup=apr_idx)
         results.append(result)
 
-        pnl_s = f"+${result.total_pnl:.2f}" if result.total_pnl >= 0 else f"-${abs(result.total_pnl):.2f}"
+        pnl_s = (
+            f"+${result.total_pnl:.2f}" if result.total_pnl >= 0
+            else f"-${abs(result.total_pnl):.2f}"
+        )
         print(f"  → {result.total_trades} trades | WR={result.win_rate:.1%} | "
               f"PnL={pnl_s} | PF={result.profit_factor:.2f}")
 
@@ -295,7 +298,10 @@ async def run() -> None:
             continue
 
         print(f"    Trades      : {res.total_trades}")
-        print(f"    Win Rate    : {res.win_rate:.1%}  ({res.winning_trades}W / {res.total_trades - res.winning_trades}L)")
+        print(
+            f"    Win Rate    : {res.win_rate:.1%}"
+            f"  ({res.winning_trades}W / {res.total_trades - res.winning_trades}L)"
+        )
         print(f"    Profit Fac. : {res.profit_factor:.2f}")
         print(f"    P&L         : {pnl_s}  ({res.total_return_pct:.2%})")
         print(f"    Fees        : ${res.total_fees:.2f}")
@@ -341,15 +347,30 @@ async def run() -> None:
     print(f"  ─────────────────────────────────────────────────────────────────────")
     print(f"  {'Estratégia':<24} {'Trades':>7} {'P&L':>12} {'Fees':>9} {'Retorno':>9} {'WR':>6}")
     print(f"  {'─'*24} {'─'*7} {'─'*12} {'─'*9} {'─'*9} {'─'*6}")
-    print(f"  {'1H Momentum orig.':<24} {'157':>7} {'   -$959.94':>12} {'$  760.76':>9} {'   -0.99%':>9} {'~35%':>6}")
-    print(f"  {'1H Dip (bloq.Exh)':<24} {' 92':>7} {'   -$201.59':>12} {'$  450.88':>9} {'   -0.21%':>9} {'~38%':>6}")
-    print(f"  {'4H Dip (1% min)':<24} {' 41':>7} {' -$1,163.27':>12} {'$  220.21':>9} {'   -1.20%':>9} {'~30%':>6}")
-    print(f"  {'4H Reversão (corr.)':<24} {'  7':>7} {'    +$194.94':>12} {'$   37.86':>9} {'   +0.20%':>9} {'71.4%':>6}")
+    print(
+        f"  {'1H Momentum orig.':<24} {'157':>7} {'   -$959.94':>12}"
+        f" {'$  760.76':>9} {'   -0.99%':>9} {'~35%':>6}"
+    )
+    print(
+        f"  {'1H Dip (bloq.Exh)':<24} {' 92':>7} {'   -$201.59':>12}"
+        f" {'$  450.88':>9} {'   -0.21%':>9} {'~38%':>6}"
+    )
+    print(
+        f"  {'4H Dip (1% min)':<24} {' 41':>7} {' -$1,163.27':>12}"
+        f" {'$  220.21':>9} {'   -1.20%':>9} {'~30%':>6}"
+    )
+    print(
+        f"  {'4H Reversão (corr.)':<24} {'  7':>7} {'    +$194.94':>12}"
+        f" {'$   37.86':>9} {'   +0.20%':>9} {'71.4%':>6}"
+    )
     pnl_cmp  = f"+${grand['pnl']:,.2f}" if grand["pnl"] >= 0 else f"-${abs(grand['pnl']):,.2f}"
     ret_cmp  = f"+{ret:.2%}" if ret >= 0 else f"{ret:.2%}"
     wr_cmp   = f"{wr_all:.1%}"
     trades_c = str(grand["trades"])
-    print(f"  {'1H Reversão (novo)':<24} {trades_c:>7} {pnl_cmp:>12} ${grand['fees']:>8,.2f} {ret_cmp:>9} {wr_cmp:>6}")
+    print(
+        f"  {'1H Reversão (novo)':<24} {trades_c:>7} {pnl_cmp:>12}"
+        f" ${grand['fees']:>8,.2f} {ret_cmp:>9} {wr_cmp:>6}"
+    )
     print(f"  {'─'*24} {'─'*7} {'─'*12} {'─'*9} {'─'*9} {'─'*6}")
 
 

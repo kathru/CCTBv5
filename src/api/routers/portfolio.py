@@ -223,7 +223,9 @@ async def portfolio_summary(request: Request) -> dict:
     # OKB e BRL são ativos watch-only, não representam risco de trading
     notional_trading = notional_bot + notional_sync   # só BTC/ETH/SOL
     notional_all     = total_value - cash_value       # total incl. OKB/BRL (para donut)
-    exposure_pct     = notional_trading / total_value if total_value > 0 and notional_trading > 0 else 0.0
+    exposure_pct     = (
+        notional_trading / total_value if total_value > 0 and notional_trading > 0 else 0.0
+    )
     total_return_pct = (total_value - initial) / initial if initial > 0 else 0.0
     liquid_total  = total_value
 

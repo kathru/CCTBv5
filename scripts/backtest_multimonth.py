@@ -296,7 +296,10 @@ async def main() -> None:
 
     # Consistência: % de meses positivos (excluindo meses sem trades)
     active_months = [m for m in monthly if m["trades"] > 0]
-    pos_active = sum(1 for m in active_months if m["pnl"] > 0) / len(active_months) if active_months else 0
+    pos_active = (
+        sum(1 for m in active_months if m["pnl"] > 0) / len(active_months)
+        if active_months else 0
+    )
 
     print()
     print(sep)
@@ -310,13 +313,25 @@ async def main() -> None:
     print(f"  Win Rate global  : {overall_wr:.1%}")
     print(f"  Total fees       : ${total_fees:,.2f}")
     print(sep2)
-    print(f"  Meses positivos  : {positive_months} / {len(monthly)}  ({positive_months/len(monthly):.0%})")
-    print(f"  Meses negativos  : {negative_months} / {len(monthly)}  ({negative_months/len(monthly):.0%})")
+    print(
+        f"  Meses positivos  : {positive_months} / {len(monthly)}"
+        f"  ({positive_months/len(monthly):.0%})"
+    )
+    print(
+        f"  Meses negativos  : {negative_months} / {len(monthly)}"
+        f"  ({negative_months/len(monthly):.0%})"
+    )
     print(f"  Meses sem trades : {zero_months} / {len(monthly)}")
     print(f"  Consist. (ativos): {pos_active:.0%} dos meses com trades foram positivos")
     print(sep2)
-    print(f"  Melhor mês       : {best['year']}/{best['month']:02d}  +${best['pnl']:,.2f}  ({best['trades']} trades)")
-    print(f"  Pior mês         : {worst['year']}/{worst['month']:02d}  ${worst['pnl']:,.2f}  ({worst['trades']} trades)")
+    print(
+        f"  Melhor mês       : {best['year']}/{best['month']:02d}"
+        f"  +${best['pnl']:,.2f}  ({best['trades']} trades)"
+    )
+    print(
+        f"  Pior mês         : {worst['year']}/{worst['month']:02d}"
+        f"  ${worst['pnl']:,.2f}  ({worst['trades']} trades)"
+    )
     print(sep)
 
     # ── Análise por símbolo ───────────────────────────────────────────────────

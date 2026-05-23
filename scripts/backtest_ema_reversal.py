@@ -161,7 +161,10 @@ def run():
                     entry = rev_pos[sym]["entry"]
                     pnl   = (price - entry) * rev_pos[sym]["qty"] * rev_pos[sym]["fill"]
                     fee   = rev_pos[sym]["qty"] * price * FEE
-                    capital += rev_pos[sym]["qty"]*price*rev_pos[sym]["fill"] - fee + (pnl - rev_pos[sym]["qty"]*price*rev_pos[sym]["fill"])
+                    capital += (
+                        rev_pos[sym]["qty"] * price * rev_pos[sym]["fill"] - fee
+                        + (pnl - rev_pos[sym]["qty"] * price * rev_pos[sym]["fill"])
+                    )
                     monthly[ym]["pnl"] += pnl - fee
                     monthly[ym]["fees"] += fee
                     monthly[ym]["trades"] += 1
@@ -169,15 +172,21 @@ def run():
 
                 # Sizing vol-target
                 pos_pct    = min(VOL_TARGET/vol_ann, MAX_POS)
-                total_eq   = capital + sum(pos[s]*daily[s][sym_idx[s].get(day_ts,0)]["close"]
-                                           if day_ts in sym_idx[s] else 0 for s in SYMBOLS if pos[s]>0)
+                total_eq   = capital + sum(
+                    pos[s]*daily[s][sym_idx[s].get(day_ts, 0)]["close"]
+                    if day_ts in sym_idx[s] else 0
+                    for s in SYMBOLS if pos[s] > 0
+                )
                 target_qty = max(total_eq, INITIAL_CAPITAL*0.3) * pos_pct / price
                 delta      = target_qty - pos[sym]
 
                 if abs(delta)*price > capital*0.02:
                     if delta > 0 and capital > delta*price*(1+FEE):
                         fee = delta*price*FEE
-                        avg_px[sym] = (avg_px[sym]*pos[sym]+price*delta)/(pos[sym]+delta) if pos[sym]>0 else price
+                        avg_px[sym] = (
+                            (avg_px[sym]*pos[sym]+price*delta)/(pos[sym]+delta)
+                            if pos[sym] > 0 else price
+                        )
                         pos[sym]   += delta
                         capital    -= delta*price + fee
                         monthly[ym]["fees"]   += fee
@@ -241,7 +250,9 @@ def run():
                         sma20_h   = sum(closes_h[:20])/20
                         current_h = closes_h[0]
 
-                        sig = reversal_signal(closes_h, highs_h, lows_h, volumes_h, sma20_h, current_h)
+                        sig = reversal_signal(
+                            closes_h, highs_h, lows_h, volumes_h, sma20_h, current_h,
+                        )
                         if sig:
                             sl_pct, tp_pct = sig
                             entry   = price  # executa no open do dia seguinte (aproximado)
@@ -314,7 +325,10 @@ def main():
 
     print(sep)
     print(f"  Capital final : ${final:>12,.2f}")
-    print(f"  P&L total     : {'+'if total>=0 else ''}${abs(total):>10,.2f}  ({'+'if ret>=0 else ''}{ret:.2f}%)")
+    print(
+        f"  P&L total     : {'+'if total>=0 else ''}${abs(total):>10,.2f}"
+        f"  ({'+'if ret>=0 else ''}{ret:.2f}%)"
+    )
     print(f"  Total trades  : {trades} (trend:{trend_t} | reversal:{rev_t})")
     print(f"  Total fees    : ${fees:>10,.2f}")
     print(f"  Meses +/-     : {pos_m}/{neg_m}")

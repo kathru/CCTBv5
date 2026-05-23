@@ -116,7 +116,10 @@ def _compute_score_subset(candles_window: list[dict],
     avg5  = sum(volumes[:5])/5   if len(volumes)>=5  else volumes[0] if volumes else 1
     avg20 = sum(volumes[:20])/20 if len(volumes)>=20 else avg5
     vr    = min(volumes[0]/avg5, 3.0)/3.0 if avg5>0 else 0.5
-    vt    = min(max(sum(volumes[:3])/sum(volumes[3:6]),0.3),2.0) if len(volumes)>=6 and sum(volumes[3:6])>0 else 1.0
+    vt    = (
+        min(max(sum(volumes[:3])/sum(volumes[3:6]), 0.3), 2.0)
+        if len(volumes) >= 6 and sum(volumes[3:6]) > 0 else 1.0
+    )
     cc    = 1.0 if closes[0]>opens[0] and volumes[0]>avg20 else 0.4
     all_vals["m3_volume"] = vr*0.4 + (vt-0.3)/1.7*0.3 + cc*0.3
 
@@ -288,8 +291,12 @@ def main() -> None:
 
     # Melhor sub-ensemble
     results_with_sharpe = [r for r in results if r["oos"].get("sharpe") is not None]
-    best = max(results_with_sharpe, key=lambda r: r["oos"]["sharpe"]) if results_with_sharpe else None
-    worst = min(results_with_sharpe, key=lambda r: r["oos"]["sharpe"]) if results_with_sharpe else None
+    best = (
+        max(results_with_sharpe, key=lambda r: r["oos"]["sharpe"]) if results_with_sharpe else None
+    )
+    worst = (
+        min(results_with_sharpe, key=lambda r: r["oos"]["sharpe"]) if results_with_sharpe else None
+    )
 
     log.info("\n══ RESULTADO FINAL ══════════════════════════════════════════")
     log.info("  Símbolo       : %s", args.symbol)

@@ -205,7 +205,10 @@ class AlertListener:
                     if event.divergences_found > 0:
                         await self._channel.warning(
                             title="⚠️ Divergências na Reconciliação",
-                            message=event.detail or "Divergências encontradas entre estado local e exchange.",
+                            message=(
+                                event.detail
+                                or "Divergências encontradas entre estado local e exchange."
+                            ),
                             divergences=str(event.divergences_found),
                             resolved=str(event.resolved),
                         )

@@ -179,10 +179,16 @@ def main():
     print(sep)
     print("  CAPITAL FINAL (partindo de $96.592,87)")
     print(sep2)
-    print(f"  Buy & Hold BTC puro   : ${INITIAL_CAPITAL * (1 + bh_btc_ret/100):>12,.2f}  ({bh_btc_ret:>+.1f}%)")
-    print(f"  Buy & Hold Portf. 1/3 : ${bh_final:>12,.2f}  ({(bh_final-INITIAL_CAPITAL)/INITIAL_CAPITAL*100:>+.1f}%)")
-    print(f"  Trend Follow 50D BTC  : ${tf_final:>12,.2f}  ({(tf_final-INITIAL_CAPITAL)/INITIAL_CAPITAL*100:>+.1f}%)")
-    print(f"  Reversal 1H (nosso)   : ${rev_final:>12,.2f}  ({(rev_final-INITIAL_CAPITAL)/INITIAL_CAPITAL*100:>+.1f}%)")
+    bh_ret_pct = (bh_final-INITIAL_CAPITAL)/INITIAL_CAPITAL*100
+    tf_ret_pct = (tf_final-INITIAL_CAPITAL)/INITIAL_CAPITAL*100
+    rev_ret_pct = (rev_final-INITIAL_CAPITAL)/INITIAL_CAPITAL*100
+    print(
+        f"  Buy & Hold BTC puro   : ${INITIAL_CAPITAL * (1 + bh_btc_ret/100):>12,.2f}"
+        f"  ({bh_btc_ret:>+.1f}%)"
+    )
+    print(f"  Buy & Hold Portf. 1/3 : ${bh_final:>12,.2f}  ({bh_ret_pct:>+.1f}%)")
+    print(f"  Trend Follow 50D BTC  : ${tf_final:>12,.2f}  ({tf_ret_pct:>+.1f}%)")
+    print(f"  Reversal 1H (nosso)   : ${rev_final:>12,.2f}  ({rev_ret_pct:>+.1f}%)")
     print(sep)
 
     # Análise por tipo de mês
@@ -214,7 +220,7 @@ def main():
     print(f"  Trend Following 50D:")
     tf_ret = (tf_final - INITIAL_CAPITAL) / INITIAL_CAPITAL * 100
     if tf_ret > (rev_final - INITIAL_CAPITAL) / INITIAL_CAPITAL * 100:
-        print(f"  → SUPERA nossa estratégia em {tf_ret:.1f}% vs {(rev_final-INITIAL_CAPITAL)/INITIAL_CAPITAL*100:.1f}%")
+        print(f"  → SUPERA nossa estratégia em {tf_ret:.1f}% vs {rev_ret_pct:.1f}%")
         print(f"  → Uma regra simples (preço > SMA50D = long) é melhor que nossa complexidade")
     else:
         print(f"  → Nossa estratégia bate o trend following")

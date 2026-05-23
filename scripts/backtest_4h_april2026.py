@@ -195,9 +195,13 @@ async def run_backtest() -> None:
                             else "BEAR" if len(c6h) >= 5 and c6h[4] > 0
                             and (c6h[0] - c6h[4]) / c6h[4] < -0.03
                             else "CHOP")
-                fam = ("BULL" if regime_1h in {"TREND_EXPANSION","VOLATILITY_COMPRESSION","TREND_EXHAUSTION"}
-                       else "BEAR" if regime_1h in {"BEAR_TREND","PANIC_LIQUIDATION"}
-                       else "CHOP")
+                fam = (
+                    "BULL" if regime_1h in {
+                        "TREND_EXPANSION", "VOLATILITY_COMPRESSION", "TREND_EXHAUSTION",
+                    }
+                    else "BEAR" if regime_1h in {"BEAR_TREND", "PANIC_LIQUIDATION"}
+                    else "CHOP"
+                )
                 if fam == "BEAR" and trend_6h == "BEAR":
                     regime = "BEAR_TREND"
                 elif fam == "BULL" and trend_6h == "BEAR":
@@ -237,7 +241,10 @@ async def run_backtest() -> None:
             avg5  = sum(vols[:5])/5   if len(vols)>=5  else vols[0] if vols else 1
             avg20 = sum(vols[:20])/20 if len(vols)>=20 else avg5
             vr    = min(vols[0]/avg5,3.0)/3.0 if avg5>0 else 0.5
-            vt    = min(max(sum(vols[:3])/sum(vols[3:6]),0.3),2.0) if len(vols)>=6 and sum(vols[3:6])>0 else 1.0
+            vt    = (
+                min(max(sum(vols[:3])/sum(vols[3:6]), 0.3), 2.0)
+                if len(vols) >= 6 and sum(vols[3:6]) > 0 else 1.0
+            )
             cc    = 1.0 if closes[0]>opens[0] and vols[0]>avg20 else 0.4
             m3    = vr*0.4 + (vt-0.3)/1.7*0.3 + cc*0.3
 
@@ -329,7 +336,10 @@ async def run_backtest() -> None:
         result = await engine.run(candles, warmup=apr_idx)
         results.append(result)
 
-        pnl_s = f"+${result.total_pnl:.2f}" if result.total_pnl >= 0 else f"-${abs(result.total_pnl):.2f}"
+        pnl_s = (
+            f"+${result.total_pnl:.2f}" if result.total_pnl >= 0
+            else f"-${abs(result.total_pnl):.2f}"
+        )
         print(f"  → {result.total_trades} trades | WR={result.win_rate:.1%} | "
               f"PnL={pnl_s} | PF={result.profit_factor:.2f}")
 
@@ -350,14 +360,20 @@ async def run_backtest() -> None:
         print(f"\n  ── {res.symbol} ──")
         print(f"    Trades      : {res.total_trades}")
         if res.total_trades > 0:
-            print(f"    Win Rate    : {res.win_rate:.1%}  ({res.winning_trades}W / {res.total_trades - res.winning_trades}L)")
+            print(
+                f"    Win Rate    : {res.win_rate:.1%}"
+                f"  ({res.winning_trades}W / {res.total_trades - res.winning_trades}L)"
+            )
             print(f"    Profit Fac. : {res.profit_factor:.2f}")
             print(f"    P&L         : {pnl_s}  ({res.total_return_pct:.2%})")
             print(f"    Fees totais : ${res.total_fees:.2f}")
             print(f"    Expectancy  : ${res.expectancy:.2f}/trade")
             print(f"    Avg Win     : ${res.avg_win:.2f}")
             print(f"    Avg Loss    : ${res.avg_loss:.2f}")
-            print(f"\n    {'Entrada':<16} {'Saída':<16} {'Regime':<26} {'Entry':>9} {'Exit':>9} {'P&L':>9}")
+            print(
+                f"\n    {'Entrada':<16} {'Saída':<16} {'Regime':<26}"
+                f" {'Entry':>9} {'Exit':>9} {'P&L':>9}"
+            )
             print(f"    {'─'*16} {'─'*16} {'─'*26} {'─'*9} {'─'*9} {'─'*9}")
             for t in sorted(res.trades, key=lambda x: x.entry_time):
                 pnl_t = f"+${t.pnl:.2f}" if t.pnl >= 0 else f"-${abs(t.pnl):.2f}"

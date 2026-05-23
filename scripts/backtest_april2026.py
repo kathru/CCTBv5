@@ -89,7 +89,11 @@ async def run_backtest() -> None:
             i for i, c in enumerate(candles)
             if c.timestamp.timestamp() * 1000 >= APR_START
         )
-        print(f"\n  {sym}: {len(candles)} candles ({candles[0].timestamp:%d/%m} → {candles[-1].timestamp:%d/%m}), abril começa no índice {apr_idx}")
+        print(
+            f"\n  {sym}: {len(candles)} candles"
+            f" ({candles[0].timestamp:%d/%m} → {candles[-1].timestamp:%d/%m}),"
+            f" abril começa no índice {apr_idx}"
+        )
 
         # Position size: regime-aware (usamos base 8% como proxy)
         # O engine respeita kelly via position_size_pct
@@ -107,8 +111,14 @@ async def run_backtest() -> None:
         results.append(result)
 
         # Resumo por símbolo imediato
-        pnl_s = f"+${result.total_pnl:.2f}" if result.total_pnl >= 0 else f"-${abs(result.total_pnl):.2f}"
-        print(f"  → {result.total_trades} trades | WR={result.win_rate:.1%} | PnL={pnl_s} | PF={result.profit_factor:.2f}")
+        pnl_s = (
+            f"+${result.total_pnl:.2f}" if result.total_pnl >= 0
+            else f"-${abs(result.total_pnl):.2f}"
+        )
+        print(
+            f"  → {result.total_trades} trades | WR={result.win_rate:.1%}"
+            f" | PnL={pnl_s} | PF={result.profit_factor:.2f}"
+        )
 
     # ── Relatório detalhado por símbolo ───────────────────────────────────────
     print(f"\n{sep}")
@@ -130,7 +140,10 @@ async def run_backtest() -> None:
         print(f"\n  ── {res.symbol} ──")
         print(f"    Trades      : {res.total_trades}")
         if res.total_trades > 0:
-            print(f"    Win Rate    : {res.win_rate:.1%}  ({res.winning_trades}W / {res.total_trades - res.winning_trades}L)")
+            print(
+                f"    Win Rate    : {res.win_rate:.1%}"
+                f"  ({res.winning_trades}W / {res.total_trades - res.winning_trades}L)"
+            )
             print(f"    Profit Fac. : {res.profit_factor:.2f}")
             print(f"    P&L         : {pnl_s}  ({res.total_return_pct:.2%})")
             print(f"    Fees totais : ${res.total_fees:.2f}")
@@ -141,13 +154,20 @@ async def run_backtest() -> None:
             print(f"    Avg Fill    : {res.avg_fill_ratio:.1%}")
 
             # Lista de trades
-            print(f"\n    {'Entrada':<16} {'Saída':<16} {'Regime':<26} {'Qty':>9} {'Entry':>9} {'Exit':>9} {'P&L':>9}")
+            print(
+                f"\n    {'Entrada':<16} {'Saída':<16} {'Regime':<26}"
+                f" {'Qty':>9} {'Entry':>9} {'Exit':>9} {'P&L':>9}"
+            )
             print(f"    {'─'*16} {'─'*16} {'─'*26} {'─'*9} {'─'*9} {'─'*9} {'─'*9}")
             for t in sorted(res.trades, key=lambda x: x.entry_time):
                 pnl_t = f"+${t.pnl:.2f}" if t.pnl >= 0 else f"-${abs(t.pnl):.2f}"
                 exit_s = t.exit_time.strftime("%d/%m %H:%M") if t.exit_time else "timeout"
                 regime = t.signal.regime if t.signal else "–"
-                print(f"    {t.entry_time.strftime('%d/%m %H:%M'):<16} {exit_s:<16} {regime:<26} {t.quantity:>9.5f} ${t.entry_price:>8,.2f} ${t.exit_price:>8,.2f} {pnl_t:>9}")
+                print(
+                    f"    {t.entry_time.strftime('%d/%m %H:%M'):<16} {exit_s:<16}"
+                    f" {regime:<26} {t.quantity:>9.5f}"
+                    f" ${t.entry_price:>8,.2f} ${t.exit_price:>8,.2f} {pnl_t:>9}"
+                )
         else:
             print(f"    Nenhum trade executado no período")
 

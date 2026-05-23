@@ -104,8 +104,12 @@ class TradingLoop:
         _has_demo = bool(settings.okx_demo_api_key and settings.okx_demo_secret_key)
         self._okx = OKXClient(
             api_key=settings.okx_demo_api_key if (_paper and _has_demo) else settings.okx_api_key,
-            secret_key=settings.okx_demo_secret_key if (_paper and _has_demo) else settings.okx_secret_key,
-            passphrase=settings.okx_demo_passphrase if (_paper and _has_demo) else settings.okx_passphrase,
+            secret_key=(
+                settings.okx_demo_secret_key if (_paper and _has_demo) else settings.okx_secret_key
+            ),
+            passphrase=(
+                settings.okx_demo_passphrase if (_paper and _has_demo) else settings.okx_passphrase
+            ),
             paper_trading=_paper,
         )
         if _paper and _has_demo:
@@ -505,7 +509,8 @@ class TradingLoop:
                 return
             # Bloqueia se já há ordem de venda pendente para o símbolo
             sell_pending = any(
-                o.symbol == signal.symbol and str(getattr(o, "side", "")).lower() in ("sell", "short")
+                o.symbol == signal.symbol
+                and str(getattr(o, "side", "")).lower() in ("sell", "short")
                 for o in open_orders
             )
             if sell_pending:
@@ -855,7 +860,10 @@ class TradingLoop:
                     order.client_order_id, order.symbol, order.quantity, price,
                 )
                 await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
-                asyncio.create_task(self._oms._persist(order), name=f"persist_fill_{order.client_order_id[:8]}")
+                asyncio.create_task(
+                    self._oms._persist(order),
+                    name=f"persist_fill_{order.client_order_id[:8]}",
+                )
                 await self._on_fill_update_portfolio(order)
 
             elif eid:
@@ -880,7 +888,10 @@ class TradingLoop:
                         )
                         await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
                         # Persiste fill no DB e atualiza portfolio
-                        asyncio.create_task(self._oms._persist(order), name=f"persist_fill_{order.client_order_id[:8]}")
+                        asyncio.create_task(
+                            self._oms._persist(order),
+                            name=f"persist_fill_{order.client_order_id[:8]}",
+                        )
                         await self._on_fill_update_portfolio(order)
                 except TimeoutError:
                     logger.debug("Fill check timeout eid=%s", eid)
@@ -1056,7 +1067,10 @@ class TradingLoop:
         asyncio.create_task(
             self._alert_channel.warning(
                 title="⚠️ WebSocket Temporariamente Indisponível",
-                message="Conexão com OKX perdida. Usando polling REST como fallback. Trading continua.",
+                message=(
+                    "Conexão com OKX perdida. Usando polling REST como fallback."
+                    " Trading continua."
+                ),
             ),
             name="discord_ws_dead",
         )

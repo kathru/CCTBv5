@@ -426,7 +426,9 @@ class AdvancedRiskManager:
             curr_raw = await self._cache.get("portfolio:equity")
             if hwm_raw and curr_raw:
                 hwm  = float(hwm_raw)
-                curr = float(curr_raw) if isinstance(curr_raw, (int, float)) else float(str(curr_raw))
+                curr = (
+                    float(curr_raw) if isinstance(curr_raw, (int, float)) else float(str(curr_raw))
+                )
                 weekly_dd = (curr - hwm) / hwm if hwm > 0 else 0.0
                 dd_triggered = weekly_dd < -CB_WEEKLY_DD_PCT
                 results["weekly_drawdown"] = {
@@ -557,7 +559,10 @@ class AdvancedRiskManager:
             h = cb_sym.get("pause_remaining_h", 0)
             return {
                 "allowed":    False,
-                "reason":     f"CONSEC_LOSS — {cb_sym.get('consec_losses')} losses consecutivos (pausa {h:.1f}h)",
+                "reason":     (
+                    f"CONSEC_LOSS — {cb_sym.get('consec_losses')} losses consecutivos"
+                    f" (pausa {h:.1f}h)"
+                ),
                 "kelly_mult": 0.0,
                 "cb_type":    "CONSEC_LOSS",
             }

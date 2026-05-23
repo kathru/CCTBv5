@@ -272,7 +272,10 @@ class OKXClient:
         OKX demo suporta SWAP com x-simulated-trading: 1.
         """
         path      = "/api/v5/trade/order"
-        cl_ord_id = (client_order_id or "").replace("-", "")[:32] or "cctb" + str(int(datetime.now(UTC).timestamp()))[-8:]
+        cl_ord_id = (
+            (client_order_id or "").replace("-", "")[:32]
+            or "cctb" + str(int(datetime.now(UTC).timestamp()))[-8:]
+        )
         body_dict = {
             "instId":  symbol,
             "tdMode":  "cross",     # cross-margin (não isolated)

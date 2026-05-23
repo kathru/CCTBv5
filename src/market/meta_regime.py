@@ -159,7 +159,8 @@ class MetaRegimeDetector:
             result = self._compute()
             await self._cache.set("meta_regime", json.dumps(result), ttl=REDIS_TTL)
             logger.info(
-                "MetaRegime → %s (conf=%.2f) | btc_trend=%.3f corr=%.3f breadth=%.2f vol=%.3f dom=%.3f",
+                "MetaRegime → %s (conf=%.2f) | btc_trend=%.3f corr=%.3f"
+                " breadth=%.2f vol=%.3f dom=%.3f",
                 result["regime"], result["confidence"],
                 *result["features_raw"].values(),
             )
@@ -183,7 +184,9 @@ class MetaRegimeDetector:
 
         # ── Feature 1: BTC trend score ────────────────────────────────────────
         # Retorno BTC nas últimas 20H → sigmoid para [0,1]
-        btc_ret_20h = (btc_closes[0] - btc_closes[20]) / btc_closes[20] if btc_closes[20] > 0 else 0.0
+        btc_ret_20h = (
+            (btc_closes[0] - btc_closes[20]) / btc_closes[20] if btc_closes[20] > 0 else 0.0
+        )
         btc_trend = round(_sigmoid(btc_ret_20h, k=15), 4)
 
         # ── Feature 2: Cross-asset correlation ───────────────────────────────
@@ -227,7 +230,10 @@ class MetaRegimeDetector:
 
         # ── Feature 5: BTC dominance ──────────────────────────────────────────
         # BTC return 5H vs média dos outros símbolos
-        btc_ret_5h = (btc_closes[0] - btc_closes[5]) / btc_closes[5] if len(btc_closes) > 5 and btc_closes[5] > 0 else 0.0
+        btc_ret_5h = (
+            (btc_closes[0] - btc_closes[5]) / btc_closes[5]
+            if len(btc_closes) > 5 and btc_closes[5] > 0 else 0.0
+        )
         alt_rets = []
         for _sym, candles in candle_map.items():
             if sym == BTC:

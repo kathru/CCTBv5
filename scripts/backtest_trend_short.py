@@ -278,7 +278,10 @@ def main():
 
     # Resultados mensais lado a lado
     print()
-    print(f"  {'Mês':<8} {'B&H BTC':>9} {'Rev 1H':>8} {'Trend L':>8} {'Trend L+S':>10} {'Melhor':>8}")
+    print(
+        f"  {'Mês':<8} {'B&H BTC':>9} {'Rev 1H':>8}"
+        f" {'Trend L':>8} {'Trend L+S':>10} {'Melhor':>8}"
+    )
     print(sep2)
 
     rev_monthly = {
@@ -304,8 +307,13 @@ def main():
         ym = (y, m)
         s_ms, e_ms = month_bounds(y, m)
         btc_m = [c for c in daily_btc if s_ms <= c["ts"] <= e_ms]
-        bh = (btc_m[-1]["close"]-btc_m[0]["open"])/btc_m[0]["open"]*INITIAL_CAPITAL/100*100 if btc_m else 0
-        bh_pct = (btc_m[-1]["close"]-btc_m[0]["open"])/btc_m[0]["open"]*100 if btc_m else 0
+        bh = (
+            (btc_m[-1]["close"]-btc_m[0]["open"])/btc_m[0]["open"]*INITIAL_CAPITAL/100*100
+            if btc_m else 0
+        )
+        bh_pct = (
+            (btc_m[-1]["close"]-btc_m[0]["open"])/btc_m[0]["open"]*100 if btc_m else 0
+        )
 
         rev_p   = rev_monthly.get(ym, 0)
         long_p  = trend_long_monthly.get(ym, 0)
@@ -334,13 +342,27 @@ def main():
     print(sep)
     print(f"  {'Estratégia':<28} {'Capital Final':>14} {'Retorno':>9} {'Meses+':>8} {'Fees':>9}")
     print(f"  {'─'*28} {'─'*14} {'─'*9} {'─'*8} {'─'*9}")
-    print(f"  {'Buy & Hold BTC':<28} ${bh_total:>12,.0f}   {PREV_RESULTS['buy_hold']:>+6.1f}%       —        —")
-    print(f"  {'Reversal 1H':<28} ${INITIAL_CAPITAL+pnl_l*0-2276.31:>12,.0f}   {PREV_RESULTS['reversal']:>+6.1f}%    4/16  $1,088")
+    print(
+        f"  {'Buy & Hold BTC':<28} ${bh_total:>12,.0f}"
+        f"   {PREV_RESULTS['buy_hold']:>+6.1f}%       —        —"
+    )
+    rev_cap = INITIAL_CAPITAL + pnl_l*0 - 2276.31
+    print(
+        f"  {'Reversal 1H':<28} ${rev_cap:>12,.0f}"
+        f"   {PREV_RESULTS['reversal']:>+6.1f}%    4/16  $1,088"
+    )
 
     final_l = r_long["final_capital"]
     final_b = r_both["final_capital"]
-    print(f"  {'Trend Long Only':<28} ${final_l:>12,.0f}   {(final_l-INITIAL_CAPITAL)/INITIAL_CAPITAL*100:>+6.1f}%  {pos_l:>2}/16  ${fees_l:>6,.0f}")
-    print(f"  {'Trend Long + SHORT ★':<28} ${final_b:>12,.0f}   {ret_b:>+6.1f}%  {pos_b:>2}/16  ${fees_b+fund_b:>6,.0f}")
+    long_ret = (final_l-INITIAL_CAPITAL)/INITIAL_CAPITAL*100
+    print(
+        f"  {'Trend Long Only':<28} ${final_l:>12,.0f}"
+        f"   {long_ret:>+6.1f}%  {pos_l:>2}/16  ${fees_l:>6,.0f}"
+    )
+    print(
+        f"  {'Trend Long + SHORT ★':<28} ${final_b:>12,.0f}"
+        f"   {ret_b:>+6.1f}%  {pos_b:>2}/16  ${fees_b+fund_b:>6,.0f}"
+    )
     print(sep)
 
     # Veredicto
@@ -354,12 +376,15 @@ def main():
         print(f"     Retorno: +{ret_b:.1f}% vs Buy&Hold {PREV_RESULTS['buy_hold']:.1f}%")
         print(f"     Alpha vs Buy&Hold   : +{alpha:.1f}pp")
         print(f"     Alpha vs Reversal   : +{alpha_rev:.1f}pp")
-        print(f"     Alpha vs Trend Long : +{ret_b-(final_l-INITIAL_CAPITAL)/INITIAL_CAPITAL*100:.1f}pp")
+        print(f"     Alpha vs Trend Long : +{ret_b - long_ret:.1f}pp")
         print(f"     Consistência        : {pos_b}/16 meses positivos")
         print()
         print(f"  ✅ IMPLEMENTAR v5.6: EMA50D + SHORT via OKX Perpetuals")
     elif ret_b > PREV_RESULTS["reversal"]:
-        print(f"  ⚠️  SHORT MELHORA MAS NÃO RESOLVE — {ret_b:.1f}% vs reversal {PREV_RESULTS['reversal']:.1f}%")
+        print(
+            f"  ⚠️  SHORT MELHORA MAS NÃO RESOLVE"
+            f" — {ret_b:.1f}% vs reversal {PREV_RESULTS['reversal']:.1f}%"
+        )
         print(f"     Alpha vs Buy&Hold: +{alpha:.1f}pp")
         print(f"     Revisar parâmetros antes de implementar.")
     else:

@@ -164,7 +164,9 @@ class FuturesFlowCollector:
             self._last_oi[symbol] = oi_now
 
         # ── Scores ───────────────────────────────────────────────────────────
-        funding_score      = _score_funding(funding_rate)        if funding_rate is not None else 0.5
+        funding_score      = (
+            _score_funding(funding_rate) if funding_rate is not None else 0.5
+        )
         oi_change_score    = _score_oi_change(oi_now, oi_prev)   if oi_now > 0 else 0.5
         funding_trend_score = _score_funding_trend(funding_history) if funding_history else 0.5
 
@@ -179,10 +181,14 @@ class FuturesFlowCollector:
             "symbol":              symbol,
             "swap_symbol":         swap,
             "funding_rate":        round(funding_rate, 8) if funding_rate is not None else None,
-            "funding_rate_pct":    round(funding_rate * 100, 5) if funding_rate is not None else None,
+            "funding_rate_pct":    (
+                round(funding_rate * 100, 5) if funding_rate is not None else None
+            ),
             "funding_history":     [round(f, 8) for f in funding_history],
             "oi_usd":              round(oi_now, 0) if oi_now else None,
-            "oi_change_pct":       round((oi_now - oi_prev) / oi_prev * 100, 3) if oi_prev > 0 else None,
+            "oi_change_pct":       (
+                round((oi_now - oi_prev) / oi_prev * 100, 3) if oi_prev > 0 else None
+            ),
             "scores": {
                 "funding":       round(funding_score, 4),
                 "oi_change":     round(oi_change_score, 4),

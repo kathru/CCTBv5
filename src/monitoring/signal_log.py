@@ -217,7 +217,9 @@ class SignalAuditLog:
         by_sym: dict[str, dict] = {}
         entries_src = self._entries if window_minutes is None else [
             e for e in self._entries
-            if e.timestamp.timestamp() >= (datetime.now(UTC).timestamp() - (window_minutes or 0) * 60)
+            if e.timestamp.timestamp() >= (
+                datetime.now(UTC).timestamp() - (window_minutes or 0) * 60
+            )
         ]
         for e in entries_src:
             s = by_sym.setdefault(e.symbol, {})

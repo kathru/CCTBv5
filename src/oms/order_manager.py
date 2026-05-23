@@ -182,7 +182,10 @@ class OrderManager:
                     OrderSubmittedEvent(order=order),
                 )
                 import asyncio
-                asyncio.create_task(self._persist(order), name=f"persist_submitted_{order.client_order_id[:8]}")
+                asyncio.create_task(
+                    self._persist(order),
+                    name=f"persist_submitted_{order.client_order_id[:8]}",
+                )
                 logger.info(
                     "Order SUBMITTED coid=%s exchange_id=%s",
                     order.client_order_id, exchange_id,
@@ -229,8 +232,13 @@ class OrderManager:
             )
             await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order, fill=fill))
             import asyncio
-            asyncio.create_task(self._persist(order), name=f"persist_filled_{order.client_order_id[:8]}")
-            logger.info("Order FILLED coid=%s avg_px=%.4f", order.client_order_id, order.avg_fill_price)
+            asyncio.create_task(
+                self._persist(order),
+                name=f"persist_filled_{order.client_order_id[:8]}",
+            )
+            logger.info(
+                "Order FILLED coid=%s avg_px=%.4f", order.client_order_id, order.avg_fill_price,
+            )
         else:
             order.status = OrderStatus.PARTIAL
             await self._bus.publish(

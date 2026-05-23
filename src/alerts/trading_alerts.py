@@ -35,6 +35,7 @@ class TradingAlertsManager:
         self._last_dd_critical:  bool  = False   # flag 3% disparado
         self._last_wr_warning:   bool  = False   # flag WR < 30%
         self._trades_today:      int   = 0
+        self._wins_today:        int   = 0
         self._pnl_today:         float = 0.0
 
     # ── Helpers ────────────────────────────────────────────────────────────────
@@ -113,6 +114,8 @@ class TradingAlertsManager:
 
         self._trades_today += 1
         self._pnl_today    += pnl
+        if pnl >= 0:
+            self._wins_today += 1
 
         await self._ch.send(Alert(
             level=AlertLevel.INFO if win else AlertLevel.WARNING,
@@ -192,7 +195,10 @@ class TradingAlertsManager:
             await self._ch.send(Alert(
                 level=AlertLevel.CRITICAL,
                 title="🚨 Drawdown Crítico — 3% atingido",
-                message="Circuit breaker de drawdown diário ativado. **Novas entradas bloqueadas.**",
+                message=(
+                    "Circuit breaker de drawdown diário ativado. "
+                    "**Novas entradas bloqueadas.**"
+                ),
                 fields={
                     "Drawdown":  f"{daily_dd_pct*100:.2f}%",
                     "Portfolio": f"${total_value:,.0f}",
@@ -234,7 +240,10 @@ class TradingAlertsManager:
             await self._ch.send(Alert(
                 level=AlertLevel.WARNING,
                 title="⚠️ Win Rate Degradado",
-                message=f"Win rate das últimas {n_trades} operações caiu abaixo de 30%. Modelo pode precisar de recalibração.",
+                message=(
+                    f"Win rate das últimas {n_trades} operações caiu abaixo de 30%. "
+                    "Modelo pode precisar de recalibração."
+                ),
                 fields={
                     "Win Rate":  f"{win_rate*100:.1f}%",
                     "Trades":    str(n_trades),
@@ -250,4 +259,5 @@ class TradingAlertsManager:
     def reset_daily_stats(self) -> None:
         """Reseta contadores diários (chamar em _maybe_send_daily_summary)."""
         self._trades_today = 0
+        self._wins_today   = 0
         self._pnl_today    = 0.0

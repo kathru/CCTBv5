@@ -220,6 +220,16 @@ class StrategyRunner:
                 continue
             try:
                 self._eval_count += 1
+                # Persiste contador diário de avaliações no Redis
+                try:
+                    raw = await self._cache.get("signals:daily_evals")
+                    await self._cache.set(
+                        "signals:daily_evals",
+                        str((int(raw) if raw else 0) + 1),
+                        ttl=90000,
+                    )
+                except Exception:
+                    pass
                 ctx = await self._build_context(symbol)
                 signal = await strategy.evaluate(ctx)
                 if signal is not None:
@@ -290,6 +300,16 @@ class StrategyRunner:
 
     async def _publish_signal(self, signal: Signal) -> None:
         self._signal_count += 1
+        # Persiste contador diário de sinais disparados no Redis
+        try:
+            raw = await self._cache.get("signals:daily_fired")
+            await self._cache.set(
+                "signals:daily_fired",
+                str((int(raw) if raw else 0) + 1),
+                ttl=90000,
+            )
+        except Exception:
+            pass
         await self._bus.publish(Topic.SIGNAL, SignalEvent(signal=signal))
         logger.info(
             "Signal published strategy=%s symbol=%s direction=%s score=%.3f",

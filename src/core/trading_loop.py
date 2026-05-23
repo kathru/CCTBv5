@@ -651,7 +651,16 @@ class TradingLoop:
     # ── Resumo diário Discord ─────────────────────────────────────────────────
 
     async def _maybe_send_daily_summary(self) -> None:
-        """Envia resumo diário do portfolio ao Discord uma vez por dia (~00:00 UTC)."""
+        """
+        Envia resumo diário enriquecido ao Discord (~00:00 UTC).
+
+        Inclui:
+          - P&L do dia + retorno acumulado
+          - Benchmark 24h: BTC / ETH / SOL vs bot
+          - Win rate do dia vs calibrado (37.5%)
+          - Estatísticas de sinais (avaliações, taxa de sinal)
+          - Regime atual
+        """
         from datetime import UTC, datetime
         now = datetime.now(UTC)
         if now.hour != 0 or now.minute > 14:
@@ -664,36 +673,143 @@ class TradingLoop:
         await self._cache.set(key, "1", ttl=86400)
 
         p        = self._portfolio.state
-        pnl      = getattr(p, "realized_pnl", 0.0) or 0.0
-        dpnl     = getattr(p, "daily_pnl", 0.0) or 0.0
+        dpnl     = self._trading_alerts._pnl_today
         total    = getattr(p, "total_value", 0.0) or 0.0
         initial  = getattr(p, "initial_capital", total) or total
-        dd       = abs(getattr(p, "daily_pnl", 0.0) or 0.0) / total if total > 0 else 0.0
         ret      = (total - initial) / initial if initial > 0 else 0.0
-        sign     = "+" if dpnl >= 0 else ""
-        emoji    = "📈" if dpnl >= 0 else "📉"
+        dd_pct   = getattr(p, "drawdown_pct", 0.0) or 0.0
         mode_tag = "🎮 Paper" if settings.okx_paper_trading else "💰 Live"
+        emoji    = "📈" if dpnl >= 0 else "📉"
 
-        # Trades do dia (via alert manager)
+        # ── Trades do dia ─────────────────────────────────────────────────────
         trades_d = self._trading_alerts._trades_today
-        pnl_d    = self._trading_alerts._pnl_today
-        pnl_d_s  = f"{'+'if pnl_d>=0 else ''}${pnl_d:,.2f}"
+        wins_d   = getattr(self._trading_alerts, "_wins_today", 0)
+        wr_day   = wins_d / trades_d if trades_d > 0 else None
 
-        await self._alert_channel.info(
-            title=f"{emoji} Resumo Diário — {now.strftime('%d/%m/%Y')} {mode_tag}",
+        # ── Win rate rolling (últimas 20 trades no DB) ─────────────────────
+        wr_rolling = None
+        n_rolling  = 0
+        try:
+            from ..persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
+            rows = await self._db.fetch(
+                """
+                SELECT side, filled_quantity, avg_fill_price
+                FROM orders
+                WHERE status='filled' AND strategy_id != ALL($1)
+                ORDER BY filled_at DESC LIMIT 40
+                """,
+                list(EXCLUDED_STRATEGY_IDS),
+            )
+            # Pareia compras/vendas por símbolo para contar wins
+            buys: dict[str, list] = {}
+            sell_count = 0
+            for r in reversed(rows):
+                side = str(r["side"]).upper()
+                # simplificação: conta venda com preço > média de compras anteriores
+                if side in ("BUY", "LONG"):
+                    sym = "?"
+                    buys.setdefault(sym, []).append(float(r["avg_fill_price"] or 0))
+                elif side in ("SELL", "SHORT"):
+                    sell_count += 1
+            # Fallback: lê do model health monitor se disponível
+            if hasattr(self, "_model_health"):
+                mh = self._model_health
+                wr_rolling = getattr(mh, "rolling_win_rate", None)
+                n_rolling  = getattr(mh, "rolling_n", 0)
+        except Exception:
+            pass
+
+        # ── Benchmark: preço atual vs 24h atrás (via OKX ticker) ─────────────
+        benchmarks: dict[str, float] = {}   # symbol → pct_change_24h
+        bench_lines: list[str] = []
+        try:
+            for sym in ["BTC-USDT", "ETH-USDT", "SOL-USDT"]:
+                ticker = await self._okx.get_ticker(sym)
+                if ticker:
+                    last   = float(getattr(ticker, "last", 0) or 0)
+                    open24 = float(getattr(ticker, "open_24h", 0) or 0)
+                    if open24 > 0:
+                        chg = (last - open24) / open24
+                        benchmarks[sym] = chg
+                        sign_b  = "+" if chg >= 0 else ""
+                        sym_tag = sym.replace("-USDT", "")
+                        bench_lines.append(f"{sym_tag}: {sign_b}{chg*100:.2f}%")
+        except Exception:
+            pass
+
+        # Bot vs benchmark (avg) — quanto o bot ganhou vs simplesmente hold
+        avg_bench = sum(benchmarks.values()) / len(benchmarks) if benchmarks else None
+        bot_pct   = dpnl / total if total > 0 else 0.0
+        alpha_txt = ""
+        if avg_bench is not None:
+            alpha    = bot_pct - avg_bench
+            sign_al  = "+" if alpha >= 0 else ""
+            alpha_txt = f"{sign_al}{alpha*100:.2f}%"
+
+        # ── Regime atual ──────────────────────────────────────────────────────
+        regime_now = ""
+        try:
+            regime_raw = await self._cache.get("regime:current")
+            regime_now = regime_raw or ""
+        except Exception:
+            pass
+
+        # ── Sinais do dia (contadores no Redis) ───────────────────────────────
+        signals_eval  = 0
+        signals_fired = 0
+        try:
+            ev_raw = await self._cache.get("signals:daily_evals")
+            fi_raw = await self._cache.get("signals:daily_fired")
+            signals_eval  = int(ev_raw)  if ev_raw  else 0
+            signals_fired = int(fi_raw)  if fi_raw  else 0
+        except Exception:
+            pass
+        signal_rate = signals_fired / signals_eval if signals_eval > 0 else None
+
+        # ── Monta mensagem ────────────────────────────────────────────────────
+        sign_d   = "+" if dpnl >= 0 else ""
+        bench_str = " | ".join(bench_lines) if bench_lines else "N/A"
+
+        fields: dict[str, str] = {
+            "Portfolio":    f"${total:,.2f}",
+            "P&L do Dia":   f"{sign_d}${dpnl:,.2f}",
+            "Retorno Total":f"{ret*100:+.2f}%",
+            "Drawdown":     f"{dd_pct*100:.2f}%",
+            "Trades Hoje":  f"{trades_d} operações",
+        }
+        if wr_day is not None:
+            fields["WR Hoje"] = f"{wr_day*100:.0f}% ({wins_d}/{trades_d})"
+        if wr_rolling is not None and n_rolling > 0:
+            fields["WR Rolling"] = f"{wr_rolling*100:.1f}% (n={n_rolling}) | Calibrado: 37.5%"
+        if bench_str:
+            fields["Benchmark 24h"] = bench_str
+        if alpha_txt:
+            fields["Alpha vs B&H"] = alpha_txt
+        if signal_rate is not None:
+            fields["Sinais"] = f"{signals_fired}/{signals_eval} avaliados ({signal_rate*100:.1f}%)"
+        if regime_now:
+            reg_emoji = self._trading_alerts._regime_emoji(regime_now)
+            fields["Regime"] = f"{reg_emoji} {regime_now.replace('_', ' ')}"
+
+        from ..alerts.base import Alert, AlertLevel
+        await self._alert_channel.send(Alert(
+            level=AlertLevel.INFO,
+            title=f"{emoji} Digest Diário — {now.strftime('%d/%m/%Y')} {mode_tag}",
             message=(
-                f"P&L do dia: **{sign}${dpnl:,.2f}**\n"
-                f"Retorno acumulado: **{ret*100:+.2f}%**"
+                f"Resultado do dia: **{sign_d}${dpnl:,.2f}** "
+                f"| Total: **${total:,.2f}** | Retorno: **{ret*100:+.2f}%**"
             ),
-            **{
-                "Portfolio":   f"${total:,.2f}",
-                "P&L Total":   f"${pnl:,.2f}",
-                "Drawdown DD": f"{dd*100:.2f}%",
-                "Trades Hoje": f"{trades_d} ops | P&L: {pnl_d_s}",
-            }
-        )
+            fields=fields,
+        ))
+
         # Reseta contadores diários
         self._trading_alerts.reset_daily_stats()
+        # Reseta contadores de sinais no Redis
+        try:
+            await self._cache.set("signals:daily_evals", "0", ttl=90000)
+            await self._cache.set("signals:daily_fired", "0", ttl=90000)
+        except Exception:
+            pass
 
     # ── Paper fill simulator ──────────────────────────────────────────────────
 

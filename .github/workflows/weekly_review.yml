@@ -1,0 +1,31 @@
+name: Weekly Autonomous Review
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"   # Segunda-feira às 08:00 UTC
+  workflow_dispatch:        # permite rodar manualmente
+
+jobs:
+  review:
+    name: AI Performance Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install anthropic httpx python-dotenv
+
+      - name: Run autonomous review agent
+        env:
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          DISCORD_WEBHOOK_URL:  ${{ secrets.DISCORD_REVIEW_WEBHOOK_URL }}
+          ORACLE_API_BASE:      ${{ secrets.ORACLE_API_BASE }}    # https://137.131.220.216:8001
+          ORACLE_API_TOKEN:     ${{ secrets.ORACLE_API_TOKEN }}   # opcional, se houver auth
+        run: python scripts/autonomous_review.py

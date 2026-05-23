@@ -1548,7 +1548,8 @@ let _portfolioChart = null, _donutChart = null;
 // ── Chart window ───────────────────────────────────────────
 function setChartWindow(pts,btnId){
   _chartWindow=pts;
-  document.querySelectorAll('.chart-btn').forEach(b=>b.classList.remove('active'));
+  // Limpa apenas os botões do gráfico de evolução (não todos .chart-btn da página)
+  ['btn-1h','btn-6h','btn-1d'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
   document.getElementById('btn-'+btnId)?.classList.add('active');
   updatePortfolioChart();
 }
@@ -1636,34 +1637,53 @@ function pushPortfolioValue(value){
 
 function updatePortfolioChart(){
   if(!_portfolioChart) return;
-  const hist=_portfolioHistory;
-  if(!hist.values.length){
-    // Sem dados ainda — mostra estado vazio limpo
-    _portfolioChart.data.labels=[];
-    _portfolioChart.data.datasets[0].data=[];
-    delete _portfolioChart.options.scales.y.min;
-    delete _portfolioChart.options.scales.y.max;
-    _portfolioChart.update('none');
-    return;
+
+  // Fonte primária: equity curve por trade (persiste no backend, mostra variabilidade real)
+  const eq=_slowData?.equity;
+  let labels=[], values=[];
+
+  if(eq && eq.labels && eq.labels.length>1){
+    // Filtrar pelo janela de tempo selecionada
+    const windowMs = _chartWindow===60?3600000 : _chartWindow===360?21600000 : 86400000;
+    const cutoff   = Date.now() - windowMs;
+    const pairs    = eq.labels.map((l,i)=>({l, v:eq.equity[i]}))
+                              .filter(p=>new Date(p.l).getTime()>=cutoff);
+    if(pairs.length>1){
+      labels = pairs.map(p=>{
+        const d=new Date(p.l);
+        return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      });
+      values = pairs.map(p=>p.v);
+    }
   }
-  const n=Math.min(_chartWindow,hist.labels.length);
-  const labels=hist.labels.slice(-n);
-  const values=hist.values.slice(-n);
+
+  // Fallback: amostras em memória (1 ponto/min, acumuladas desde que a página abriu)
+  if(!values.length){
+    const hist=_portfolioHistory;
+    if(!hist.values.length){
+      _portfolioChart.data.labels=[];
+      _portfolioChart.data.datasets[0].data=[];
+      delete _portfolioChart.options.scales.y.min;
+      delete _portfolioChart.options.scales.y.max;
+      _portfolioChart.update('none');
+      return;
+    }
+    const n=Math.min(_chartWindow, hist.labels.length);
+    labels=hist.labels.slice(-n);
+    values=hist.values.slice(-n);
+  }
+
   _portfolioChart.data.labels=labels;
   _portfolioChart.data.datasets[0].data=values;
 
-  // Escala Y: padding de 0.1% acima e abaixo, mínimo 0.5 de range
   const minV=Math.min(...values), maxV=Math.max(...values);
   const range=Math.max(maxV-minV, minV*0.005, 0.5);
   const pad=range*0.15;
   _portfolioChart.options.scales.y.min=minV-pad;
   _portfolioChart.options.scales.y.max=maxV+pad;
 
-  // Cor da linha: verde se subiu, vermelho se caiu, azul se igual
   const first=values[0], last=values[values.length-1];
-  const lineColor=last>first?'#10b981':last<first?'#ef4444':'#3b82f6';
-  _portfolioChart.data.datasets[0].borderColor=lineColor;
-
+  _portfolioChart.data.datasets[0].borderColor=last>first?'#10b981':last<first?'#ef4444':'#3b82f6';
   _portfolioChart.update('none');
 }
 
@@ -2942,7 +2962,7 @@ async function updateSlow(){
   if(govImp)    _slowData.govImp=govImp;
   if(govWfo)    _slowData.govWfo=govWfo;
   if(recon)     _slowData.recon=recon;
-  if(equity)    _slowData.equity=equity;
+  if(equity)    { _slowData.equity=equity; updatePortfolioChart(); }
   if(rolling)   _slowData.rolling=rolling;
   if(dist)      _slowData.dist=dist;
   if(rc)        _slowData.rc=rc;

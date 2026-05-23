@@ -61,7 +61,7 @@ DEFAULT_MIN_SCORE   = 0.40
 LOOKBACK = 25   # candles de janela para score_signal (25 para M8 Bollinger 20 + buffer)
 
 REGIME_THRESHOLDS_DEFAULT: dict[str, float] = {
-    # v2.4.0 — sync com momentum_strategy.py REGIME_THRESHOLDS
+    # v2.5.0 — sync com momentum_strategy.py REGIME_THRESHOLDS
     "TREND_EXPANSION":        0.56,
     "VOLATILITY_COMPRESSION": 0.58,
     "TREND_EXHAUSTION":       0.99,   # bloqueado
@@ -507,12 +507,15 @@ def _compute_m6_recal(ts_ms: int, funding_lookup: dict[int, float]) -> float:
 def score_signal(closes: list[float], highs: list[float],
                  lows: list[float], opens: list[float],
                  volumes: list[float], regime: str,
-                 m6: float = 0.5, m7: float = 0.5) -> float:
+                 m6: float = 0.5, m7: float = 0.5,
+                 m9: float = 0.5) -> float:
     """
-    Score M1-M8 espelho de MomentumStrategy._score_signal().
-    Pesos v2.4.0: M1=2% M2=12% M3=35% M4=0% M5=6% M6=13% M7=12% M8=20%
-    M6 e M7 são injetados externamente por build_samples.
-    IMPORTANTE: manter em sync com momentum_strategy.py linha 445.
+    Score M1-M9 espelho de MomentumStrategy._score_signal().
+    Pesos v2.5.0: M1=2% M2=11% M3=33% M4=0% M5=6% M6=12% M7=11% M8=19% M9=6%
+    M6, M7 e M9 são injetados externamente por build_samples.
+    M9 usa neutro 0.5 na calibração histórica (dados históricos de sentimento
+    não disponíveis — não impacta a calibração, mantém simetria).
+    IMPORTANTE: manter em sync com momentum_strategy.py.
     """
     n = len(closes)
 
@@ -545,23 +548,22 @@ def score_signal(closes: list[float], highs: list[float],
     sma5  = sum(closes[:5])/5
     sma20 = sum(closes[:20])/20 if n>=20 else sma5
     dist  = (sma5-sma20)/sma20 if sma20>0 else 0
-    m4r   = min(max((dist+0.02)/0.04, 0.0), 1.0)
-    m4f   = 0.85 if sma5>sma20 else 0.45
-    m4    = m4r*0.6 + m4f*0.4
+    # M4 removido (peso 0%) — cálculo mantido por referência mas não usado
+    _ = min(max((dist+0.02)/0.04, 0.0), 1.0) * 0.6 + (0.85 if sma5 > sma20 else 0.45) * 0.4
 
     # M5 Candle Structure
     cs = [(closes[i]-lows[i])/(highs[i]-lows[i]) if highs[i]>lows[i] else 0.5
           for i in range(min(3, n))]
     m5 = sum(cs)/len(cs) if cs else 0.5
 
-    # M6 e M7 injetados externamente (calculados em build_samples)
+    # M6, M7 e M9 injetados externamente (calculados em build_samples)
     # M8 Volatility State — calculado de candles
     m8 = _compute_m8_recal(closes, highs, lows)
 
-    # Pesos v2.4.0 — espelho exato de momentum_strategy.py linha 445
-    # M4=0 (removido), soma = 2+12+35+0+6+13+12+20 = 100%
-    return (m1*0.02 + m2*0.12 + m3*0.35 +
-            m5*0.06 + m6*0.13 + m7*0.12 + m8*0.20)
+    # Pesos v2.5.0 — espelho exato de momentum_strategy.py
+    # M4=0 (removido), M9=0.5 neutro histórico, soma = 2+11+33+0+6+12+11+19+6 = 100%
+    return (m1*0.02 + m2*0.11 + m3*0.33 +
+            m5*0.06 + m6*0.12 + m7*0.11 + m8*0.19 + m9*0.06)
 
 
 def platt_calibrate(score: float, A: float, B: float) -> float:

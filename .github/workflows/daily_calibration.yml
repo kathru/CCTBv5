@@ -32,9 +32,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/calibration.db
-          key: calibration-db-1h-v2.4.0-${{ runner.os }}-${{ github.run_id }}
+          key: calibration-db-1h-v2.5.0-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
-            calibration-db-1h-v2.4.0-${{ runner.os }}-
+            calibration-db-1h-v2.5.0-${{ runner.os }}-
 
       # Bootstrap: só roda se o banco não existe ou está corrompido.
       # Usa o cache JSON dos candles 1H já baixados no repo.
@@ -88,7 +88,7 @@ jobs:
         if: always()
         with:
           path: data/calibration.db
-          key: calibration-db-1h-v2.4.0-${{ runner.os }}-${{ github.run_id }}
+          key: calibration-db-1h-v2.5.0-${{ runner.os }}-${{ github.run_id }}
 
       # Verifica se houve mudança nos modelos.
       - name: Check for model changes

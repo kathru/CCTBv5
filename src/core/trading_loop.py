@@ -30,6 +30,7 @@ from ..exchange.okx.client import OKXClient
 from ..market.engine import MarketEngine
 from ..market.futures_flow import FuturesFlowCollector
 from ..market.meta_regime import MetaRegimeDetector
+from ..market.news_sentiment import NewsSentimentCollector
 from ..market.relative_strength import RelativeStrengthCollector
 from ..market.volatility_state import VolatilityStateCollector
 from ..metrics.infra_metrics import InfraMetrics
@@ -172,6 +173,9 @@ class TradingLoop:
             symbols=SYMBOLS,
         )
 
+        # ── News Sentiment Collector (Phase 4) — M9 data source ──────────────
+        self._news_sentiment = NewsSentimentCollector(cache=self._cache)
+
         # ── Model Health Monitor (Phase 15.2) ────────────────────────────────
         from ..monitoring.signal_log import signal_audit_log as _sal
         self._model_health = ModelHealthMonitor(cache=self._cache, signal_log=_sal)
@@ -198,6 +202,7 @@ class TradingLoop:
             relative_strength=self._rel_strength,
             vol_state=self._vol_state,
             meta_regime=self._meta_regime,
+            news_sentiment=self._news_sentiment,
         )
         v4 = MomentumStrategy(symbols=SYMBOLS)
         self._runner.register(v4)
@@ -300,6 +305,11 @@ class TradingLoop:
         await self._rel_strength.start()    # Phase 11: M7 data antes do runner
         await self._vol_state.start()       # Phase 12: M8 data antes do runner
         await self._meta_regime.start()     # Phase 13: macro regime antes do runner
+        # Phase 4: M9 — warm-up síncrono + background loop
+        await self._news_sentiment.warm_up()
+        asyncio.create_task(
+            self._news_sentiment.run_forever(), name="news_sentiment_poll"
+        )
         await self._adv_risk.start()        # Phase 14: advanced risk
         await self._model_health.start()    # Phase 15.2: model health monitor
         await self._runner.start()
@@ -424,6 +434,7 @@ class TradingLoop:
         await self._rel_strength.stop()
         await self._vol_state.stop()
         await self._meta_regime.stop()
+        self._news_sentiment.stop()
         await self._adv_risk.stop()
         await self._model_health.stop()
         await self._runner.stop()

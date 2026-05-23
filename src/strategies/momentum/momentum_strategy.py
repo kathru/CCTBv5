@@ -6,7 +6,7 @@ Camadas de proteção:
   2. Sizing adaptativo por regime (Kelly multiplier)
   3. Confirmação multi-timeframe 1H + 6H
 
-Regimes e comportamento (v2.4.0 — 2026-05-23):
+Regimes e comportamento (v2.5.0 — 2026-05-23):
   TREND_EXPANSION      → BULL  : threshold 0.56, Kelly 100%, SL 1.5×ATR, TP 4.5×ATR, timeout 48h
   VOLATILITY_COMPRESSION       : threshold 0.58, Kelly 80%,  SL 1.0×ATR, TP 3.5×ATR, timeout 24h
   MEAN_REVERTING_CHOP  → CHOP  : threshold 0.68, Kelly 50%,  SL 0.7×ATR, TP 2.0×ATR, timeout 8h
@@ -338,15 +338,16 @@ class MomentumStrategy(BaseStrategy):
         Modelo de scoring com 6 fatores contínuos — ciclo 1H.
         Todos os fatores usam candles 1H (sem granularidade 30m).
 
-        Fatores (pesos v2.3.0 — cleanup 2026-05-22, evidência empírica):
+        Fatores (pesos v2.5.0 — M9 adicionado 2026-05-23):
           M1 Adaptive Momentum  ( 2%): correlação Spearman=-0.048 → peso residual
-          M2 Trend Consistency   (20%): % candles bullish + higher-highs/lows (1H)
-          M3 Volume Confirmation (28%): único fator com edge claro (Spearman=+0.229)
-          M4 Regime Strength     ( 0%): correlação Spearman=-0.057 → removido
-          M5 Candle Structure    ( 7%): close no terço superior do range (1H)
-          M6 Futures Flow        (10%): funding rate + OI change (perp market signal)
-          M7 Relative Strength   ( 9%): RS vs BTC multi-horizonte + BTC leadership
-          M8 Volatility State    (11%): state machine 5-estados (EXPANDING/TREND/...)
+          M2 Trend Consistency  (11%): % candles bullish + higher-highs/lows (1H)
+          M3 Volume Confirmation(33%): único fator com edge claro (Spearman=+0.229)
+          M4 Regime Strength    ( 0%): correlação Spearman=-0.057 → removido
+          M5 Candle Structure   ( 6%): close no terço superior do range (1H)
+          M6 Futures Flow       (12%): funding rate + OI change (perp market signal)
+          M7 Relative Strength  (11%): RS vs BTC multi-horizonte + BTC leadership
+          M8 Volatility State   (19%): state machine 5-estados (EXPANDING/TREND/...)
+          M9 News Sentiment     ( 6%): Fear&Greed Index + CoinGecko social sentiment
         """
         # Candles 1H — única granularidade em ciclo 1H
         closes  = [c.close  for c in ctx.candles_1h[:21]]
@@ -434,19 +435,26 @@ class MomentumStrategy(BaseStrategy):
         vol_data = (ctx.extra or {}).get("vol_state") or {}
         m8 = float(vol_data.get("m8_score", 0.5))
 
-        # ── Score final — pesos v2.4.0 (recalibração 2026-05-23) ───────────────
+        # ── M9: News Sentiment (Phase 4) — Fear&Greed + CoinGecko ────────────
+        # Combina Fear & Greed Index global + sentimento CoinGecko por moeda.
+        # Fallback neutro (0.5) se API indisponível — não bloqueia o trading.
+        news_data = (ctx.extra or {}).get("news_sentiment") or {}
+        m9 = float(news_data.get("m9_score", 0.5))
+
+        # ── Score final — pesos v2.5.0 (M9 adicionado 2026-05-23) ─────────────
         # M1  2% (Spearman=-0.048, residual)
-        # M2 12% (era 20% → -8%: correlação~0, reduzido mas mantido por diversificação)
-        # M3 35% (era 30% → +5%: #1 predictor empírico, PermImp positivo)
+        # M2 11% (era 12% → -1%: espaço para M9)
+        # M3 33% (era 35% → -2%: continua dominante, cede espaço para M9)
         # M4  0% (removido)
-        # M5  6% (era 8%  → -2%: ligeiramente negativo, reduzido)
-        # M6 13% (era 10% → +3%: funding rate real agora calibrado)
-        # M7 12% (era  9% → +3%: RS cross-symbol real agora calibrado)
-        # M8 20% (era 21% → -1%: mantido forte, pequeno ajuste)
-        # Soma: 2+12+35+0+6+13+12+20 = 100% ✓
-        score = (m1 * 0.02 + m2 * 0.12 + m3 * 0.35 +
-                 m5 * 0.06 + m6 * 0.13 +
-                 m7 * 0.12 + m8 * 0.20)
+        # M5  6% (mantido)
+        # M6 12% (era 13% → -1%: pequeno ajuste)
+        # M7 11% (era 12% → -1%: pequeno ajuste)
+        # M8 19% (era 20% → -1%: pequeno ajuste)
+        # M9  6% (NOVO: Fear&Greed + CoinGecko sentiment)
+        # Soma: 2+11+33+0+6+12+11+19+6 = 100% ✓
+        score = (m1 * 0.02 + m2 * 0.11 + m3 * 0.33 +
+                 m5 * 0.06 + m6 * 0.12 +
+                 m7 * 0.11 + m8 * 0.19 + m9 * 0.06)
         score = round(min(max(score, 0.0), 1.0), 4)
 
         factors = {
@@ -458,6 +466,11 @@ class MomentumStrategy(BaseStrategy):
             "m6_futures":     round(m6, 3),
             "m7_rel_strength":round(m7, 3),
             "m8_vol_state":   round(m8, 3),
+            "m9_sentiment":   round(m9, 3),
+            # Sub-scores M9
+            "m9_fng":         round(float(news_data.get("fng",           50.0)) / 100, 3),
+            "m9_coin_sent":   round(float(news_data.get("coin_sentiment", 0.5)), 3),
+            "m9_fng_class":   str(news_data.get("fng_class", "Neutral")),
             # Sub-scores M6
             "m6_funding":     round(float(ff_scores.get("funding",       0.5)), 3),
             "m6_oi_change":   round(float(ff_scores.get("oi_change",     0.5)), 3),

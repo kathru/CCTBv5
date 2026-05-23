@@ -50,6 +50,7 @@ class StrategyRunner:
         relative_strength=None,  # RelativeStrengthCollector | None  (M7)
         vol_state=None,          # VolatilityStateCollector | None   (M8)
         meta_regime=None,        # MetaRegimeDetector | None         (Phase 13)
+        news_sentiment=None,     # NewsSentimentCollector | None     (M9 Phase 4)
     ) -> None:
         self._bus = bus
         self._market = market
@@ -59,6 +60,7 @@ class StrategyRunner:
         self._relative_strength = relative_strength  # injeta M7 no contexto
         self._vol_state         = vol_state          # injeta M8 no contexto
         self._meta_regime       = meta_regime        # injeta meta regime no contexto
+        self._news_sentiment    = news_sentiment     # injeta M9 no contexto
         self._strategies: dict[str, BaseStrategy] = {}
         self._queue: asyncio.Queue | None = None
         self._task: asyncio.Task | None = None
@@ -282,6 +284,14 @@ class StrategyRunner:
             except Exception as exc:
                 logger.debug("meta_regime.get_regime() falhou: %s", exc)
 
+        # ── M9: News Sentiment (Phase 4) ─────────────────────────────────────
+        news_data = None
+        if self._news_sentiment is not None:
+            try:
+                news_data = await self._news_sentiment.get_scores(symbol)
+            except Exception as exc:
+                logger.debug("news_sentiment.get_scores(%s) falhou: %s", symbol, exc)
+
         return StrategyContext(
             symbol=symbol,
             candles_1h=candles_1h,
@@ -295,6 +305,7 @@ class StrategyRunner:
                 "relative_strength": rs_data,
                 "vol_state":         vol_data,
                 "meta_regime":       meta_regime_data,
+                "news_sentiment":    news_data,
             },
         )
 

@@ -65,6 +65,9 @@ jobs:
           PYTHONPATH: .
 
       # Baixa novos candles 1H da OKX e recalibra o Platt scaling.
+      # IMPORTANTE: se os pesos M1-M8 forem alterados em momentum_strategy.py,
+      # rode manualmente com: python scripts/recalibrate.py (após apagar samples do DB)
+      # para regenerar todas as amostras com os novos pesos antes do próximo CI.
       - name: Incremental calibration (novos candles 1H + recalibração)
         run: python scripts/recalibrate.py --incremental --gran 1H
         env:

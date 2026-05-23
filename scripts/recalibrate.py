@@ -510,8 +510,9 @@ def score_signal(closes: list[float], highs: list[float],
                  m6: float = 0.5, m7: float = 0.5) -> float:
     """
     Score M1-M8 espelho de MomentumStrategy._score_signal().
-    Pesos v2.3.0: M1=2% M2=20% M3=30% M4=0% M5=8% M6=10% M7=9% M8=21%
+    Pesos v2.4.0: M1=2% M2=12% M3=35% M4=0% M5=6% M6=13% M7=12% M8=20%
     M6 e M7 são injetados externamente por build_samples.
+    IMPORTANTE: manter em sync com momentum_strategy.py linha 445.
     """
     n = len(closes)
 
@@ -557,10 +558,10 @@ def score_signal(closes: list[float], highs: list[float],
     # M8 Volatility State — calculado de candles
     m8 = _compute_m8_recal(closes, highs, lows)
 
-    # Pesos v2.3.0 — espelho exato de momentum_strategy.py linha 445
-    # M4=0 (removido), soma = 2+20+30+0+8+10+9+21 = 100%
-    return (m1*0.02 + m2*0.20 + m3*0.30 +
-            m5*0.08 + m6*0.10 + m7*0.09 + m8*0.21)
+    # Pesos v2.4.0 — espelho exato de momentum_strategy.py linha 445
+    # M4=0 (removido), soma = 2+12+35+0+6+13+12+20 = 100%
+    return (m1*0.02 + m2*0.12 + m3*0.35 +
+            m5*0.06 + m6*0.13 + m7*0.12 + m8*0.20)
 
 
 def platt_calibrate(score: float, A: float, B: float) -> float:

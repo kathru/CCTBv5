@@ -104,7 +104,28 @@
         "wr_vs_prev": "0.0",
         "passed": true
       }
+    },
+    {
+      "version": "platt_v6",
+      "run_at": "2026-05-23T02:38:10.866055+00:00",
+      "mode": "incremental",
+      "platt_a": 0.368152,
+      "platt_b": -0.703781,
+      "n_samples": 38776,
+      "win_rate": 0.3748,
+      "symbols": [
+        "BTC-USDT",
+        "ETH-USDT",
+        "SOL-USDT"
+      ],
+      "delta_wr": 0.0003,
+      "delta_a": 0.033054,
+      "forward": 10,
+      "quality_gate": {
+        "wr_vs_prev": "+0.0003",
+        "passed": true
+      }
     }
   ],
-  "updated_at": "2026-05-23T02:30:59.502419+00:00"
+  "updated_at": "2026-05-23T02:38:10.866055+00:00"
 }

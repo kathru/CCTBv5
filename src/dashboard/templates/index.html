@@ -674,6 +674,36 @@
 
 </div>
 
+<!-- ══ GRÁFICOS ════════════════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Evolução & Distribuição</div>
+<div class="grid g21">
+
+  <!-- Evolução do Portfolio -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="clabel" style="margin:0">Evolução do Portfolio</div>
+      <div style="display:flex;gap:4px;">
+        <button class="chart-btn active" onclick="setChartWindow(60,'1h')"   id="btn-1h">1h</button>
+        <button class="chart-btn"        onclick="setChartWindow(360,'6h')"  id="btn-6h">6h</button>
+        <button class="chart-btn"        onclick="setChartWindow(1440,'1d')" id="btn-1d">1d</button>
+      </div>
+    </div>
+    <div style="position:relative;height:160px;">
+      <canvas id="portfolio-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Distribuição -->
+  <div class="card">
+    <div class="clabel">Distribuição do Portfolio</div>
+    <div style="max-width:200px;margin:0 auto;">
+      <canvas id="donut-chart" height="200"></canvas>
+    </div>
+    <div class="donut-legend" id="donut-legend"></div>
+  </div>
+
+</div>
+
 <!-- ══ POSIÇÕES + PLANOS ══════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--green)"></div>Posições & Planos de Saída</div>
 <div class="grid g11">
@@ -1419,37 +1449,6 @@
   </div>
 
 </div>
-
-<!-- ══ GRÁFICOS ════════════════════════════════════════════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Evolução & Distribuição</div>
-<div class="grid g21">
-
-  <!-- Evolução do Portfolio -->
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <div class="clabel" style="margin:0">Evolução do Portfolio</div>
-      <div style="display:flex;gap:4px;">
-        <button class="chart-btn active" onclick="setChartWindow(60,'1h')"   id="btn-1h">1h</button>
-        <button class="chart-btn"        onclick="setChartWindow(360,'6h')"  id="btn-6h">6h</button>
-        <button class="chart-btn"        onclick="setChartWindow(1440,'1d')" id="btn-1d">1d</button>
-      </div>
-    </div>
-    <div style="position:relative;height:160px;">
-      <canvas id="portfolio-chart"></canvas>
-    </div>
-  </div>
-
-  <!-- Distribuição -->
-  <div class="card">
-    <div class="clabel">Distribuição do Portfolio</div>
-    <div style="max-width:200px;margin:0 auto;">
-      <canvas id="donut-chart" height="200"></canvas>
-    </div>
-    <div class="donut-legend" id="donut-legend"></div>
-  </div>
-
-</div>
-
 
 <!-- Feature Governance (conteúdo — cabeçalho unificado com MLOps acima) -->
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;">

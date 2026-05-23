@@ -98,9 +98,11 @@ class ExchangeSync:
             )
 
             # ── 2. Separa crypto tradeable vs watch-only ─────────────────────
+            # Threshold de dust: ignora saldos < $1 USD para evitar posições fantasma
+            DUST_USD = 1.0
             for d in details:
                 ccy = d["ccy"]
-                if ccy in TRADING_CCYS and d["cashBal"] > 0:
+                if ccy in TRADING_CCYS and d["cashBal"] > 0 and d["usdValue"] >= DUST_USD:
                     symbol = f"{ccy}-USDT"
                     summary["crypto_positions"][symbol] = d["cashBal"]
                 elif ccy in WATCH_ONLY_CCYS or ccy == "USDT":

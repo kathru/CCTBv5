@@ -148,7 +148,7 @@ async def portfolio_summary(request: Request) -> dict:
         qty = float(bal.get("cashBal", 0.0))
         usd = float(bal.get("usdValue", 0.0))
 
-        if qty <= 1e-8 or usd <= 0:
+        if qty <= 1e-8 or usd < 1.0:  # ignora dust < $1
             continue  # sem saldo real nesse ativo
 
         # Preço atual = usdValue / qty (direto do OKX, mais preciso que cache)

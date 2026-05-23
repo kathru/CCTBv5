@@ -25,6 +25,7 @@ from pathlib import Path
 
 from ..alerts.discord import create_alert_channel
 from ..alerts.listener import AlertListener
+from ..alerts.trading_alerts import TradingAlertsManager
 from ..exchange.okx.client import OKXClient
 from ..market.engine import MarketEngine
 from ..market.futures_flow import FuturesFlowCollector
@@ -212,6 +213,8 @@ class TradingLoop:
             channel=self._alert_channel,
             cache=self._cache,
         )
+        # Manager de alertas de trading (regime, drawdown, WR, trades)
+        self._trading_alerts = TradingAlertsManager(self._alert_channel)
 
         # ── Watchdogs ─────────────────────────────────────────
         self._heartbeat = HeartbeatWatchdog(
@@ -603,16 +606,47 @@ class TradingLoop:
         # 3. Criar e submeter ordem via OMS
         await self._oms.create_order_from_signal(event, quantity)
 
-        # Alerta Discord para sinais reais
-        if not settings.okx_paper_trading:
-            await self._alert_channel.info(
-                title=f"Sinal: {signal.symbol}",
-                message=(
-                    f"Direção: {signal.direction} | "
-                    f"Score: {signal.calibrated_score:.3f} | "
-                    f"Qty: {quantity} | Notional: ${notional:.0f}"
-                ),
-            )
+        # Alerta Discord — trade executado (paper + live)
+        regime = getattr(signal, "regime", "")
+        asyncio.create_task(
+            self._trading_alerts.on_order_filled(
+                symbol=signal.symbol,
+                side=signal.direction,
+                quantity=float(quantity),
+                price=float(price),
+                notional=float(notional),
+                fees=float(notional * 0.001),  # estimativa 0.1% taker
+                strategy_id="momentum_v2",
+                regime=regime,
+                score=float(signal.calibrated_score or 0),
+            ),
+            name="discord_trade_alert",
+        )
+
+    # ── Alertas de trading (regime, DD, WR) ─────────────────────────────────
+    async def _check_trading_alerts(self) -> None:
+        """Verificações periódicas — regime, drawdown, win rate."""
+        try:
+            # Regime atual (via Redis do motor de sinais)
+            for sym in SYMBOLS:
+                sig_raw = await self._cache.get(f"signal:{sym}")
+                if sig_raw:
+                    import json as _json
+                    sig = _json.loads(sig_raw) if isinstance(sig_raw, str) else sig_raw
+                    regime = sig.get("regime", "")
+                    if regime:
+                        await self._trading_alerts.on_regime_check(regime)
+                    break  # checa só o primeiro símbolo disponível
+
+            # Drawdown diário
+            p = self._portfolio.state
+            daily_dd  = abs(getattr(p, "daily_pnl", 0.0) or 0.0)
+            total_val = getattr(p, "total_value", 0.0) or 1.0
+            dd_pct    = daily_dd / total_val if total_val > 0 else 0.0
+            await self._trading_alerts.on_drawdown_check(dd_pct, total_val)
+
+        except Exception as exc:
+            logger.debug("_check_trading_alerts error: %s", exc)
 
     # ── Resumo diário Discord ─────────────────────────────────────────────────
 
@@ -629,22 +663,37 @@ class TradingLoop:
             return
         await self._cache.set(key, "1", ttl=86400)
 
-        p = self._portfolio.state
-        pnl     = getattr(p, "realized_pnl", 0.0) or 0.0
-        dpnl    = getattr(p, "daily_pnl", 0.0) or 0.0
-        total   = getattr(p, "total_value", 0.0) or 0.0
-        dd      = getattr(p, "drawdown_pct", 0.0) or 0.0
-        ret     = getattr(p, "total_return_pct", 0.0) or 0.0
-        sign    = "+" if dpnl >= 0 else ""
-        emoji   = "📈" if dpnl >= 0 else "📉"
+        p        = self._portfolio.state
+        pnl      = getattr(p, "realized_pnl", 0.0) or 0.0
+        dpnl     = getattr(p, "daily_pnl", 0.0) or 0.0
+        total    = getattr(p, "total_value", 0.0) or 0.0
+        initial  = getattr(p, "initial_capital", total) or total
+        dd       = abs(getattr(p, "daily_pnl", 0.0) or 0.0) / total if total > 0 else 0.0
+        ret      = (total - initial) / initial if initial > 0 else 0.0
+        sign     = "+" if dpnl >= 0 else ""
+        emoji    = "📈" if dpnl >= 0 else "📉"
+        mode_tag = "🎮 Paper" if settings.okx_paper_trading else "💰 Live"
+
+        # Trades do dia (via alert manager)
+        trades_d = self._trading_alerts._trades_today
+        pnl_d    = self._trading_alerts._pnl_today
+        pnl_d_s  = f"{'+'if pnl_d>=0 else ''}${pnl_d:,.2f}"
+
         await self._alert_channel.info(
-            title=f"{emoji} Resumo Diário — {now.strftime('%d/%m/%Y')}",
+            title=f"{emoji} Resumo Diário — {now.strftime('%d/%m/%Y')} {mode_tag}",
             message=(
                 f"P&L do dia: **{sign}${dpnl:,.2f}**\n"
-                f"P&L total: ${pnl:,.2f} | Retorno: {ret*100:+.2f}%\n"
-                f"Portfolio: ${total:,.2f} | Drawdown: {dd*100:.2f}%"
+                f"Retorno acumulado: **{ret*100:+.2f}%**"
             ),
+            **{
+                "Portfolio":   f"${total:,.2f}",
+                "P&L Total":   f"${pnl:,.2f}",
+                "Drawdown DD": f"{dd*100:.2f}%",
+                "Trades Hoje": f"{trades_d} ops | P&L: {pnl_d_s}",
+            }
         )
+        # Reseta contadores diários
+        self._trading_alerts.reset_daily_stats()
 
     # ── Paper fill simulator ──────────────────────────────────────────────────
 
@@ -823,6 +872,8 @@ class TradingLoop:
                 await self._simulate_paper_fills()
                 # Resumo diário
                 await self._maybe_send_daily_summary()
+                # Alertas: regime + drawdown + win rate
+                await self._check_trading_alerts()
 
                 # Sincronização periódica de saldos OKX (a cada 5 min)
                 _sync_tick += 1

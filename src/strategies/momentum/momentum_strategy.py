@@ -154,12 +154,22 @@ class MomentumStrategy(BaseStrategy):
         meta_thr_mult    = float(meta_regime_data.get("threshold_mult", 1.0))
         threshold        = round(min(threshold * meta_thr_mult, 0.99), 4)
 
+        # ── Phase 5: Adaptive Threshold — percentil de ATR 1H ────────────────
+        # Ajusta o threshold com base na volatilidade recente relativa ao histórico.
+        # ATR alto (mercado agitado) → exige score maior → mult > 1.0
+        # ATR baixo (mercado calmo)  → threshold levemente reduzido → mult < 1.0
+        # Cap: [0.92, 1.12] — nunca bloqueia, nunca facilita demais.
+        atr_mult, atr_pct_now = self._atr_threshold_mult(ctx)
+        threshold = round(min(threshold * atr_mult, 0.99), 4)
+
         # ── Score e fatores — calculados SEMPRE (mesmo em regime bloqueado) ──
-        # Garantia: o dashboard sempre exibe M1-M7 com valores reais,
+        # Garantia: o dashboard sempre exibe M1-M9 com valores reais,
         # independente do resultado final. Permite diagnóstico contínuo.
         score, factors = self._score_signal(ctx, regime)
-        # Adiciona meta_thr_mult ao factors (calculado no evaluate, não no _score_signal)
+        # Adiciona moduladores ao factors para diagnóstico no dashboard
         factors["meta_thr_mult"] = round(meta_thr_mult, 3)
+        factors["atr_thr_mult"]  = round(atr_mult, 3)
+        factors["atr_pct_now"]   = round(atr_pct_now, 3)
         calibrated     = self._calibrate(score)
 
         if regime in BLOCKED_REGIMES:
@@ -489,6 +499,58 @@ class MomentumStrategy(BaseStrategy):
         except Exception as _gov_exc:
             logger.warning("governance.record_live falhou: %s", _gov_exc)
         return score, factors
+
+    # ── Phase 5: Adaptive Threshold por ATR percentil ────────────────────────
+
+    def _atr_threshold_mult(
+        self, ctx: StrategyContext, lookback: int = 50
+    ) -> tuple[float, float]:
+        """
+        Calcula multiplicador de threshold baseado no percentil do ATR atual
+        em relação ao histórico recente (últimos `lookback` candles 1H).
+
+        Lógica:
+          - Computa ATR de cada candle: high - low (True Range simplificado)
+          - Percentil do ATR atual dentro dos últimos `lookback` ATRs
+          - Mapeia percentil → multiplicador [0.92, 1.12]:
+              p0-p20  (ATR baixo / mercado calmo)     → ×0.92 a ×0.97  (facilita levemente)
+              p20-p50 (ATR normal)                     → ×0.97 a ×1.00  (neutro)
+              p50-p80 (ATR moderado)                   → ×1.00 a ×1.06  (eleva levemente)
+              p80-p100 (ATR alto / mercado agitado)    → ×1.06 a ×1.12  (eleva mais)
+
+        Retorna:
+            (mult, atr_percentile_0_to_1)
+        """
+        candles = ctx.candles_1h
+        n = min(lookback, len(candles))
+        if n < 5:
+            return 1.0, 0.5   # sem dados suficientes — neutro
+
+        # ATR = high - low (simplificado, suficiente para percentil relativo)
+        atrs = [c.high - c.low for c in candles[:n] if c.high > c.low]
+        if not atrs:
+            return 1.0, 0.5
+
+        atr_now = atrs[0]   # ATR do candle mais recente
+        sorted_atrs = sorted(atrs)
+        rank = sum(1 for a in sorted_atrs if a <= atr_now)
+        pct  = rank / len(sorted_atrs)   # percentil [0, 1]
+
+        # Interpolação linear por faixa
+        if pct <= 0.20:
+            # Baixa volatilidade: [0, 0.20] → [0.92, 0.97]
+            mult = 0.92 + (pct / 0.20) * 0.05
+        elif pct <= 0.50:
+            # Normal: [0.20, 0.50] → [0.97, 1.00]
+            mult = 0.97 + ((pct - 0.20) / 0.30) * 0.03
+        elif pct <= 0.80:
+            # Moderado: [0.50, 0.80] → [1.00, 1.06]
+            mult = 1.00 + ((pct - 0.50) / 0.30) * 0.06
+        else:
+            # Alta volatilidade: [0.80, 1.00] → [1.06, 1.12]
+            mult = 1.06 + ((pct - 0.80) / 0.20) * 0.06
+
+        return round(mult, 4), round(pct, 4)
 
     def _calibrate(self, score: float) -> float:
         return self._platt.calibrate(score)

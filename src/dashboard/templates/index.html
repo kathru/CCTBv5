@@ -506,6 +506,12 @@
           </div>
         </div>
       </div>
+      <!-- Moduladores de threshold: Meta Regime + ATR Adaptativo -->
+      <div id="motor-thr-mods" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;margin-bottom:2px;">
+        <span style="font-size:0.58rem;color:var(--muted)">Threshold modulado por:</span>
+        <span id="motor-meta-chip" style="font-size:0.58rem;padding:1px 7px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);color:var(--muted)">Meta –</span>
+        <span id="motor-atr-chip"  style="font-size:0.58rem;padding:1px 7px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);color:var(--muted)">ATR p50 –</span>
+      </div>
     </div>
 
     <!-- Métricas de risco estilo CCTBv4 -->
@@ -3879,6 +3885,28 @@ async function updateAll(){
     if(sThr) sThr.textContent=thr.toFixed(1)+'%';
     const sThrLine=document.getElementById('motor-score-thr-line');
     if(sThrLine) sThrLine.style.left=Math.min(thr,100).toFixed(1)+'%';
+
+    // Moduladores de threshold (Phase 5 + Phase 13)
+    const metaMult = f.meta_thr_mult||1.0;
+    const atrMult  = f.atr_thr_mult ||1.0;
+    const atrPct   = f.atr_pct_now  ||0.5;
+    const metaChip = document.getElementById('motor-meta-chip');
+    const atrChip  = document.getElementById('motor-atr-chip');
+    if(metaChip){
+      const metaSign = metaMult>1.005?'↑':metaMult<0.995?'↓':'=';
+      const metaCol  = metaMult>1.005?'#f59e0b':metaMult<0.995?'#10b981':'var(--muted)';
+      metaChip.textContent = `Meta ${metaSign}×${metaMult.toFixed(2)}`;
+      metaChip.style.color = metaCol;
+      metaChip.style.borderColor = metaCol+'44';
+    }
+    if(atrChip){
+      const atrSign  = atrMult>1.005?'↑':atrMult<0.995?'↓':'=';
+      const atrCol   = atrMult>1.05?'#ef4444':atrMult>1.01?'#f59e0b':atrMult<0.96?'#10b981':'var(--muted)';
+      const atrPctLbl= (atrPct*100).toFixed(0);
+      atrChip.textContent = `ATR p${atrPctLbl} ${atrSign}×${atrMult.toFixed(2)}`;
+      atrChip.style.color = atrCol;
+      atrChip.style.borderColor = atrCol+'44';
+    }
 
     // SL/TP dinâmicos por regime (espelho de position_monitor.py)
     const MOTOR_REGIME_MULT={

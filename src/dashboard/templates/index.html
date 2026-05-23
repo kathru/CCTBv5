@@ -341,6 +341,7 @@
     /* Signal feed v2 */
     .sfeed-item { padding:9px 10px; border-radius:9px; border:1px solid var(--border); background:rgba(255,255,255,0.02); margin-bottom:5px; transition:background 0.15s; }
     .sfeed-item:hover { background:rgba(255,255,255,0.04); border-color:var(--border2); }
+    .sfeed-item.sfeed-signal { border-color:rgba(16,185,129,0.35); background:rgba(16,185,129,0.05); }
     .sfeed-top { display:flex; align-items:center; gap:7px; margin-bottom:5px; }
     .sfeed-ts  { margin-left:auto; font-size:0.6rem; color:var(--muted); font-variant-numeric:tabular-nums; }
     .sfeed-tags { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
@@ -737,8 +738,8 @@
   </div>
 </div>
 
-<!-- ══ HISTÓRICO + FUNIL ═══════════════════════════════════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--yellow)"></div>Histórico & Funil de Filtragem<span class="cnt" id="funnel-exec-rate"></span></div>
+<!-- ══ HISTÓRICO + SIGNAL FEED ══════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--yellow)"></div>Histórico & Sinais</div>
 <div class="grid g11">
 
   <!-- Histórico de Trades -->
@@ -752,35 +753,47 @@
     </div>
   </div>
 
-  <!-- Funil de Filtragem -->
+  <!-- Signal Feed -->
   <div class="card">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-      <div style="font-size:0.72rem;font-weight:700;color:var(--muted)">Funil de Filtragem</div>
-      <div style="display:flex;gap:4px;margin-left:auto;">
-        <button class="chart-btn active" id="fn-btn-all" onclick="setFunnelWindow('all_time','fn-btn-all')">Total</button>
-        <button class="chart-btn"        id="fn-btn-6h"  onclick="setFunnelWindow('last_6h','fn-btn-6h')">6h</button>
-        <button class="chart-btn"        id="fn-btn-1h"  onclick="setFunnelWindow('last_1h','fn-btn-1h')">1h</button>
-      </div>
+    <div class="feed-hdr">
+      <div class="clabel" style="margin:0">Feed de Sinais</div>
+      <div class="feed-live"><div class="dot-live"></div><span id="feed-signal-rate">–</span></div>
     </div>
-    <div class="grid g11" style="gap:16px;">
-      <div>
-        <div id="funnel-steps" style="display:flex;flex-direction:column;gap:7px;">
-          <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando avaliações...</div>
-        </div>
-        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);">
-          <span>cada barra = % do total avaliado</span>
-          <span id="funnel-window-label">desde o início</span>
-        </div>
-      </div>
-      <div>
-        <div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Por Ativo</div>
-        <div id="funnel-by-symbol" style="display:flex;flex-direction:column;gap:10px;">
-          <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">–</div>
-        </div>
-      </div>
+    <div class="feed-wrap" id="signal-feed" style="max-height:400px;">
+      <div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>
     </div>
   </div>
 
+</div>
+
+<!-- ══ FUNIL DE FILTRAGEM ══════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--orange)"></div>Funil de Filtragem<span class="cnt" id="funnel-exec-rate"></span></div>
+<div class="card">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+    <div style="font-size:0.72rem;font-weight:700;color:var(--muted)">Onde os sinais são bloqueados</div>
+    <div style="display:flex;gap:4px;margin-left:auto;">
+      <button class="chart-btn active" id="fn-btn-all" onclick="setFunnelWindow('all_time','fn-btn-all')">Total</button>
+      <button class="chart-btn"        id="fn-btn-6h"  onclick="setFunnelWindow('last_6h','fn-btn-6h')">6h</button>
+      <button class="chart-btn"        id="fn-btn-1h"  onclick="setFunnelWindow('last_1h','fn-btn-1h')">1h</button>
+    </div>
+  </div>
+  <div class="grid g11" style="gap:16px;">
+    <div>
+      <div id="funnel-steps" style="display:flex;flex-direction:column;gap:7px;">
+        <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando avaliações...</div>
+      </div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);">
+        <span>cada barra = % do total avaliado</span>
+        <span id="funnel-window-label">desde o início</span>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Por Ativo</div>
+      <div id="funnel-by-symbol" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">–</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ══ QUANTITATIVE ANALYTICS ══════════════════════════════════ -->
@@ -1758,7 +1771,55 @@ function regimeTag(r){
   return`<span class="rtag rtag-chop">${r.replace(/_/g,' ')}</span>`;
 }
 
-// ── Signal feed v2 ─────────────────────────────────────────
+// ── Signal feed ────────────────────────────────────────────
+function buildSignalFeed(log){
+  const entries=(log?.entries||[]);
+  const stats=log?.stats||{};
+
+  // Taxa de execução no header
+  const rate=stats.signal_rate_pct??0;
+  const total=stats.total_evaluations||0;
+  const rateEl=document.getElementById('feed-signal-rate');
+  if(rateEl){
+    const col=rate>10?'var(--green)':rate>3?'var(--yellow)':'var(--muted)';
+    rateEl.innerHTML=`<span style="color:${col};font-weight:700">${rate.toFixed(1)}%</span> exec · ${total.toLocaleString('pt-BR')} aval.`;
+  }
+
+  if(!entries.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>';
+
+  const RESULT_COL={
+    'SIGNAL':'var(--green)','SCORE_LOW':'var(--yellow)','EV_LOW':'var(--orange)',
+    'REGIME_BLOCKED':'var(--red)','DIRECTION_FLAT':'var(--muted)',
+    'NO_CANDLES':'#2d3748','FALL_WEAK':'var(--muted)',
+  };
+  const RESULT_LBL={
+    'SIGNAL':'✓ SINAL','SCORE_LOW':'score baixo','EV_LOW':'EV baixo',
+    'REGIME_BLOCKED':'regime block','DIRECTION_FLAT':'direção plana',
+    'NO_CANDLES':'sem dados','FALL_WEAK':'sinal fraco',
+  };
+
+  return entries.map(e=>{
+    const col=RESULT_COL[e.result]||'var(--muted)';
+    const lbl=RESULT_LBL[e.result]||e.result;
+    const isSig=e.result==='SIGNAL';
+    const ts=new Date(e.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const score=e.score!=null?(e.score*100).toFixed(1)+'%':'–';
+    const sym=e.symbol.replace('-USDT','');
+    return`<div class="sfeed-item${isSig?' sfeed-signal':''}">
+      <div class="sfeed-top">
+        <span style="font-size:0.75rem;font-weight:800;color:var(--text)">${sym}</span>
+        ${regimeTag(e.regime)}
+        <span class="sfeed-ts">${ts}</span>
+      </div>
+      <div class="sfeed-tags">
+        <span style="font-size:0.62rem;padding:2px 8px;border-radius:5px;border:1px solid ${col}44;color:${col};font-weight:700">${lbl}</span>
+        <span class="spill">${score}</span>
+        ${isSig&&e.ev?`<span class="evpill ${e.ev>0?'pos':e.ev<0?'neg':'neu'}">EV ${e.ev>0?'+':''}${(e.ev*100).toFixed(2)}%</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ── Trade history ──────────────────────────────────────────
 function buildTradeHistory(orders, totalFilled){
   if(!orders||!orders.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Nenhum trade executado ainda</div>';
@@ -3943,14 +4004,9 @@ async function updateAll(){
   // Reconciler: atualiza a cada ciclo rápido (30s) via Redis cache
   fetchJSON('/api/reconciler/status').then(r=>{ if(r&&r.available) updateReconciler(r); });
 
-  // Signal feed v2
-  if(log){
-    const entries=log.entries||[];
-    const s=log.stats||{};
-    // Signal log stats (used by other panels — log.stats still available)
-    const totalEval=(log.stats||{}).total_evaluations||0;
-    const totalSig=(log.stats||{}).signals_generated||0;
-  }
+  // Signal feed
+  const feedEl=document.getElementById('signal-feed');
+  if(feedEl) feedEl.innerHTML=buildSignalFeed(log);
 
   // Trade history — usa endpoint dedicado /api/orders/filled (não mistura cancelled/pending)
   const filledOrders = oFilled?.orders || [];

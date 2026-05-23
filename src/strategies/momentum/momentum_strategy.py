@@ -23,6 +23,7 @@ from pathlib import Path
 from ...core.models import Signal, SignalDirection
 from ...monitoring.feature_governance import governance
 from ...monitoring.signal_log import SignalAuditEntry, signal_audit_log
+from ...oms.sizing_engine import SizingEngine
 from ..base import BaseStrategy, StrategyContext
 from ..ml.inference import PlattCalibrator
 
@@ -112,7 +113,8 @@ class MomentumStrategy(BaseStrategy):
 
     def __init__(self, symbols: list[str], strategy_id: str = "momentum_v2") -> None:
         super().__init__(strategy_id=strategy_id, symbols=symbols)
-        self._platt = PlattCalibrator(coef_path=MODELS_DIR / "calibration_coef.json")
+        self._platt  = PlattCalibrator(coef_path=MODELS_DIR / "calibration_coef.json")
+        self._sizing = SizingEngine()
 
     # ── Evaluation ────────────────────────────────────────────────────────────
 
@@ -210,22 +212,36 @@ class MomentumStrategy(BaseStrategy):
                  threshold=threshold, ev=ev, direction="FLAT", factors=factors)
             return None
 
-        # ── Camada 2: Kelly adaptativo por regime ────────────
+        # ── Camada 2: Kelly composto (Position Sizing Dinâmico) ─────────────
+        # base_kelly × regime_mult × drift_mult × vol_state_mult
+        #            × calibration_mult × score_mult
+        # Cada dimensão modula o sizing de forma independente.
+        # Size sobe quando edge sobe, cai agressivamente quando degrada.
         base_kelly = min(calibrated * 0.25, 0.15)
-        kelly      = round(base_kelly * kelly_mult, 4)
-        dir_str    = "LONG"
+        sizing     = self._sizing.compute(
+            base_kelly=base_kelly,
+            regime_mult=kelly_mult,
+            calibrated_score=calibrated,
+            vol_state_data=(ctx.extra or {}).get("vol_state"),
+            model_health_data=(ctx.extra or {}).get("model_health"),
+        )
+        kelly   = sizing.final_kelly
+        dir_str = "LONG"
+        # Adiciona breakdown do sizing aos factors para rastreabilidade no dashboard
+        factors.update(sizing.to_factors())
 
         _log("SIGNAL",
              f"BUY {regime} score={score:.3f} prob={calibrated:.3f} "
-             f"kelly={kelly:.1%} (mult={kelly_mult:.0%})",
+             f"kelly={kelly:.1%} [{sizing.summary()}]",
              regime=regime, score=score, calibrated=calibrated,
              threshold=threshold, ev=ev, direction=dir_str, factors=factors)
 
         logger.info(
             "SIGNAL %s %s regime=%s score=%.3f prob=%.3f "
-            "EV=%.3f kelly=%.1f%% (regime_mult=%.0f%%)",
+            "EV=%.3f kelly=%.1f%% | drift=%.2f vol=%s calib=%.2f score_m=%.2f",
             dir_str, symbol, regime, score, calibrated, ev,
-            kelly * 100, kelly_mult * 100,
+            kelly * 100,
+            sizing.drift_mult, sizing.vol_state, sizing.calibration_mult, sizing.score_mult,
         )
 
         return Signal(

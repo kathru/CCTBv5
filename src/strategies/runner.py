@@ -15,6 +15,7 @@ Deduplication rules:
 """
 
 import asyncio
+import json
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -292,6 +293,17 @@ class StrategyRunner:
             except Exception as exc:
                 logger.debug("news_sentiment.get_scores(%s) falhou: %s", symbol, exc)
 
+        # ── Model Health (Phase B — SizingEngine) ────────────────────────────
+        # PSI de features + WR drift live vs calibrado.
+        # Usado pelo SizingEngine para modular o Kelly dinamicamente.
+        model_health_data = None
+        try:
+            raw_mh = await self._cache.get("model_health")
+            if raw_mh:
+                model_health_data = raw_mh if isinstance(raw_mh, dict) else json.loads(raw_mh)
+        except Exception as exc:
+            logger.debug("model_health cache read falhou: %s", exc)
+
         return StrategyContext(
             symbol=symbol,
             candles_1h=candles_1h,
@@ -306,6 +318,7 @@ class StrategyRunner:
                 "vol_state":         vol_data,
                 "meta_regime":       meta_regime_data,
                 "news_sentiment":    news_data,
+                "model_health":      model_health_data,
             },
         )
 

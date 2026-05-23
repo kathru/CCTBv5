@@ -1,5 +1,5 @@
 """
-Backtest Engine — simulação realista de execução para validação de estratégias.
+Backtest Engine v2 — simulação realista com exit logic da Fase A/B/C.
 
 Princípio fundamental: mesmo código de estratégia que o live trading.
 Sem "backtest mode" — estratégias recebem StrategyContext e retornam Signal.
@@ -10,6 +10,16 @@ Componentes de simulação realista:
   3. Slippage     — Market impact proporcional a notional/volume
   4. Latency      — Sinal no close do candle N → execução no open do candle N+1
   5. Partial fills — Probabilidade baseada em volume relativo (não fixa)
+
+Exit Logic v2 (Fase A — convexidade):
+  6. Regime-aware SL/TP — multiplicadores por regime (TREND_EXPANSION, CHOP, etc.)
+  7. TP Conversion — em TREND_EXPANSION o TP vira partial exit + running mode
+  8. Trailing stop — conviction-adaptive (HOLD=2.0×, ALERT=0.5×)
+  9. Conviction proxy — SMA + ATR + estrutura HH/HL substituem timeout
+
+Sizing v2 (Fase B — sizing dinâmico):
+  10. Usa signal.kelly_fraction calculado pela SizingEngine
+  11. Vol state simplificado derivado dos candles (sem Redis)
 
 Nunca rodar no Oracle — apenas localmente.
 """
@@ -25,12 +35,83 @@ from ..strategies.base import BaseStrategy, StrategyContext
 logger = logging.getLogger(__name__)
 
 # ── OKX Spot Fee Schedule (Tier 1 — conta padrão) ────────────────────────────
-# https://www.okx.com/fees
-MAKER_FEE = 0.0010   # 0.10% maker (passive limit)
-TAKER_FEE = 0.0015   # 0.15% taker (market order) ← corrigido: 0.15% não 0.40%
-
-# Paper trading usa TAKER em todas as ordens (mercado)
+MAKER_FEE = 0.0010   # 0.10%
+TAKER_FEE = 0.0015   # 0.15%
 PAPER_FEE = TAKER_FEE
+
+# ── Exit logic — espelha position_monitor.py ─────────────────────────────────
+
+REGIME_MULT: dict[str, dict[str, float]] = {
+    "TREND_EXPANSION":        {"sl": 1.5, "tp": 4.5},
+    "VOLATILITY_COMPRESSION": {"sl": 1.0, "tp": 3.5},
+    "MEAN_REVERTING_CHOP":    {"sl": 0.7, "tp": 2.0},
+    "TREND_EXHAUSTION":       {"sl": 0.8, "tp": 2.5},
+    "HIGH_CORRELATION_RISK":  {"sl": 0.8, "tp": 2.0},
+    "BEAR_TREND":             {"sl": 0.5, "tp": 1.0},
+    "PANIC_LIQUIDATION":      {"sl": 0.5, "tp": 1.0},
+}
+
+REGIME_TRAIL_ACTIVATE: dict[str, float] = {
+    "TREND_EXPANSION":        1.2,
+    "VOLATILITY_COMPRESSION": 1.0,
+    "MEAN_REVERTING_CHOP":    1.5,
+    "TREND_EXHAUSTION":       0.8,
+    "HIGH_CORRELATION_RISK":  0.8,
+    "BEAR_TREND":             0.3,
+    "PANIC_LIQUIDATION":      0.2,
+}
+
+REGIME_PARTIAL_R: dict[str, float] = {
+    "TREND_EXPANSION":        3.0,
+    "VOLATILITY_COMPRESSION": 2.5,
+    "MEAN_REVERTING_CHOP":    1.5,
+    "TREND_EXHAUSTION":       1.5,
+    "HIGH_CORRELATION_RISK":  1.5,
+}
+
+REGIMES_CONVERT_TP = {"TREND_EXPANSION"}
+REGIMES_EMERGENCY  = {"PANIC_LIQUIDATION", "BEAR_TREND"}
+
+CONVICTION_HOLD  = 70.0
+CONVICTION_ALERT = 30.0
+LOW_CONVICTION_STREAK_EXIT = 3     # ciclos consecutivos < 30% → exit
+ABSOLUTE_BACKSTOP_CANDLES  = 720   # 30 dias de candles 1H
+
+
+# ── Estado interno da posição durante simulação ───────────────────────────────
+
+@dataclass
+class _PositionState:
+    """
+    Estado de gestão de saída para uma posição aberta no backtest.
+    Espelha ExitPlan do position_monitor.py — sem depender de Redis.
+    """
+    entry_regime:   str
+    atr:            float
+    stop_loss:      float
+    take_profit:    float
+    quantity:       float      # quantidade total original
+    qty_remaining:  float      # quantidade ainda aberta
+
+    trailing_stop:       float | None = None
+    trailing_activated:  bool  = False
+    partial_done:        bool  = False
+    running_mode:        bool  = False
+    tp_converted:        bool  = False
+
+    low_conviction_streak: int = 0
+    candles_held:          int = 0
+
+    @property
+    def r_value(self) -> float:
+        return self.stop_loss - self.take_profit  # negativo — só para cálculo interno
+
+    def sl_tp_from_regime(
+        self, entry_price: float, atr: float, regime: str
+    ) -> None:
+        mults    = REGIME_MULT.get(regime, {"sl": 1.0, "tp": 3.0})
+        self.stop_loss  = round(entry_price - atr * mults["sl"], 6)
+        self.take_profit = round(entry_price + atr * mults["tp"], 6)
 
 
 # ── BacktestTrade ─────────────────────────────────────────────────────────────
@@ -45,23 +126,28 @@ class BacktestTrade:
     side:         str          # "long" | "short"
     entry_fee:    float
     exit_fee:     float
-    slippage:     float        # slippage total em $
-    fill_ratio:   float        # 1.0 = cheio, 0.6 = 60% parcial
+    slippage:     float
+    fill_ratio:   float
     entry_time:   datetime
     exit_time:    datetime | None
 
-    # Componentes de custo detalhados (para análise)
-    spread_cost:   float = 0.0
-    market_impact: float = 0.0
-    latency_candles: int = 1   # sempre 1 no backtest (execução no próximo candle)
+    exit_reason:        str   = ""
+    entry_regime:       str   = ""
+    partial_pnl:        float = 0.0   # P&L da saída parcial (se houve)
+    had_running_mode:   bool  = False
+    candles_held:       int   = 0
+    spread_cost:        float = 0.0
+    market_impact:      float = 0.0
+    latency_candles:    int   = 1
 
     @property
     def pnl(self) -> float:
+        """P&L total incluindo saída parcial."""
         if self.side == "long":
             gross = (self.exit_price - self.entry_price) * self.quantity * self.fill_ratio
         else:
             gross = (self.entry_price - self.exit_price) * self.quantity * self.fill_ratio
-        return gross - self.entry_fee - self.exit_fee
+        return gross - self.entry_fee - self.exit_fee + self.partial_pnl
 
     @property
     def pnl_pct(self) -> float:
@@ -70,10 +156,11 @@ class BacktestTrade:
 
     @property
     def total_cost_pct(self) -> float:
-        """Custo total de execução como % do notional."""
         notional = self.entry_price * self.quantity
-        return (self.entry_fee + self.exit_fee + self.spread_cost + self.market_impact) / notional \
-               if notional > 0 else 0.0
+        return (
+            (self.entry_fee + self.exit_fee + self.spread_cost + self.market_impact)
+            / notional if notional > 0 else 0.0
+        )
 
 
 # ── BacktestResult ────────────────────────────────────────────────────────────
@@ -148,21 +235,44 @@ class BacktestResult:
     def avg_fill_ratio(self) -> float:
         return sum(t.fill_ratio for t in self.trades) / len(self.trades) if self.trades else 1.0
 
+    @property
+    def running_mode_exits(self) -> int:
+        return sum(1 for t in self.trades if t.had_running_mode)
+
+    @property
+    def avg_candles_held(self) -> float:
+        return sum(t.candles_held for t in self.trades) / len(self.trades) if self.trades else 0.0
+
     def summary(self) -> dict:
+        pnls = [t.pnl_pct * 100 for t in self.trades]
+        wins  = [p for p in pnls if p > 0]
+        losses = [p for p in pnls if p <= 0]
+
+        # Distribuição — detecta convexidade
+        best3  = sorted(pnls, reverse=True)[:3]
+        worst3 = sorted(pnls)[:3]
+
         return {
-            "symbol":            self.symbol,
-            "strategy_id":       self.strategy_id,
-            "total_trades":      self.total_trades,
-            "win_rate":          f"{self.win_rate:.1%}",
-            "profit_factor":     f"{self.profit_factor:.2f}",
-            "total_pnl":         f"${self.total_pnl:.2f}",
-            "total_return":      f"{self.total_return_pct:.2%}",
-            "expectancy":        f"${self.expectancy:.2f}",
-            "total_fees":        f"${self.total_fees:.2f}",
-            "total_slippage":    f"${self.total_slippage:.2f}",
-            "avg_fill_ratio":    f"{self.avg_fill_ratio:.1%}",
-            "avg_win":           f"${self.avg_win:.2f}",
-            "avg_loss":          f"${self.avg_loss:.2f}",
+            "symbol":             self.symbol,
+            "strategy_id":        self.strategy_id,
+            "total_trades":       self.total_trades,
+            "win_rate":           f"{self.win_rate:.1%}",
+            "profit_factor":      f"{self.profit_factor:.2f}",
+            "total_pnl":          f"${self.total_pnl:.2f}",
+            "total_return":       f"{self.total_return_pct:.2%}",
+            "expectancy":         f"${self.expectancy:.2f}",
+            "total_fees":         f"${self.total_fees:.2f}",
+            "total_slippage":     f"${self.total_slippage:.2f}",
+            "avg_fill_ratio":     f"{self.avg_fill_ratio:.1%}",
+            "avg_win":            f"${self.avg_win:.2f}",
+            "avg_loss":           f"${self.avg_loss:.2f}",
+            "avg_holding_candles": f"{self.avg_candles_held:.1f}h",
+            "running_mode_exits": self.running_mode_exits,
+            # Distribuição de retornos (convexidade)
+            "best_3_trades_pct":  [f"{v:.2f}%" for v in best3],
+            "worst_3_trades_pct": [f"{v:.2f}%" for v in worst3],
+            "avg_win_pct":        f"{sum(wins)/len(wins):.2f}%" if wins else "–",
+            "avg_loss_pct":       f"{sum(losses)/len(losses):.2f}%" if losses else "–",
         }
 
 
@@ -171,38 +281,23 @@ class BacktestResult:
 class SimulatedFillEngine:
     """
     Simulação realista de execução de ordens para backtesting.
-
-    Componentes:
-      1. Fees         — OKX maker/taker por tipo de ordem
-      2. Spread       — bid/ask gap proporcional ao ATR do candle
-      3. Slippage     — market impact: f(notional / volume_notional)
-      4. Latency      — execução no OPEN do próximo candle (não no close do sinal)
-      5. Partial fills — probabilidade proporcional ao volume relativo
-
-    Parâmetros calibrados para OKX Spot em ativos de alta liquidez (BTC/ETH/SOL).
+    Componentes: fees, spread, slippage, latência, partial fills.
     """
 
-    # Spread base por volatilidade (ATR como % do preço)
-    SPREAD_BASE       = 0.0002    # 0.02% em mercado calmo
-    SPREAD_ATR_FACTOR = 0.15      # 15% do ATR relativo vira spread adicional
-    SPREAD_MAX        = 0.002     # cap: nunca mais que 0.20%
-
-    # Market impact: quanto do volume do candle a ordem consome
-    IMPACT_BASE       = 0.0001    # 0.01% base sempre presente
-    IMPACT_VOL_FACTOR = 0.50      # 50% da participação no volume vira slippage
-
-    # Fill probability: função do volume relativo
-    FILL_PROB_BASE    = 0.80      # 80% base de fill
-    FILL_PROB_VOL_MIN = 0.50      # mínimo 50% em candles de volume baixo
+    SPREAD_BASE       = 0.0002
+    SPREAD_ATR_FACTOR = 0.15
+    SPREAD_MAX        = 0.002
+    IMPACT_BASE       = 0.0001
+    IMPACT_VOL_FACTOR = 0.50
+    FILL_PROB_BASE    = 0.80
+    FILL_PROB_VOL_MIN = 0.50
 
     def __init__(
         self,
         seed: int | None = 42,
-        fee_tier: str = "standard",    # "standard" | "vip1" | "vip2"
+        fee_tier: str = "standard",
     ) -> None:
         self._rng = random.Random(seed)
-
-        # Fee schedule por tier
         fees = {
             "standard": (MAKER_FEE, TAKER_FEE),
             "vip1":     (0.0008,    0.0010),
@@ -210,70 +305,40 @@ class SimulatedFillEngine:
         }
         self._maker_fee, self._taker_fee = fees.get(fee_tier, fees["standard"])
 
-    # ── Entry ────────────────────────────────────────────────────────────────
-
     def simulate_entry(
         self,
         signal:            Signal,
-        execution_candle:  Candle,   # candle N+1 (próximo após o sinal)
-        signal_candle:     Candle,   # candle N (onde o sinal foi gerado)
+        execution_candle:  Candle,
+        signal_candle:     Candle,
         capital:           float,
         position_size_pct: float,
     ) -> "BacktestTrade | None":
-        """
-        Simula entrada no candle N+1 (latência realista).
-        O sinal é gerado no close do candle N.
-        A ordem é executada no open do candle N+1.
-        """
-        # ── 1. Partial fill baseado em volume ─────────────────
         fill_ratio = self._simulate_fill(execution_candle, signal_candle)
         if fill_ratio == 0.0:
             return None
 
-        # ── 2. Preço base: open do próximo candle (latência) ──
         mid = execution_candle.open
-
-        # ── 3. Spread proporcional ao ATR ─────────────────────
         rel_atr = (signal_candle.high - signal_candle.low) / signal_candle.close \
                   if signal_candle.close > 0 else 0.001
-        spread = min(
-            self.SPREAD_BASE + self.SPREAD_ATR_FACTOR * rel_atr,
-            self.SPREAD_MAX,
-        )
-        spread_cost_pct = spread / 2   # metade do spread por lado
+        spread = min(self.SPREAD_BASE + self.SPREAD_ATR_FACTOR * rel_atr, self.SPREAD_MAX)
+        spread_cost_pct = spread / 2
 
-        # ── 4. Market impact (slippage) ───────────────────────
-        notional       = capital * position_size_pct
-        vol_notional   = execution_candle.volume * execution_candle.close
-        participation  = notional / vol_notional if vol_notional > 0 else 0.01
-        impact_pct     = self.IMPACT_BASE + self.IMPACT_VOL_FACTOR * participation
-        impact_pct     = min(impact_pct, 0.005)   # cap em 0.5% por ordem
-
-        # Ruído: variação aleatória ±50% do impacto calculado
-        noise_factor = self._rng.uniform(0.5, 1.5)
+        notional      = capital * position_size_pct
+        vol_notional  = execution_candle.volume * execution_candle.close
+        participation = notional / vol_notional if vol_notional > 0 else 0.01
+        impact_pct    = min(self.IMPACT_BASE + self.IMPACT_VOL_FACTOR * participation, 0.005)
+        noise_factor  = self._rng.uniform(0.5, 1.5)
         actual_impact = impact_pct * noise_factor
 
-        # ── 5. Preço de execução ──────────────────────────────
         total_adverse = spread_cost_pct + actual_impact
         if signal.direction == SignalDirection.LONG:
-            entry_price = mid * (1 + total_adverse)  # compra acima do mid
+            entry_price = mid * (1 + total_adverse)
         else:
-            entry_price = mid * (1 - total_adverse)  # vende abaixo do mid
+            entry_price = mid * (1 - total_adverse)
 
-        # ── 6. Quantidade e fees ──────────────────────────────
         actual_notional = notional * fill_ratio
         quantity        = actual_notional / entry_price if entry_price > 0 else 0.0
-        entry_fee       = actual_notional * self._taker_fee   # market order = taker
-
-        # ── 7. Slippage total em $ (para métricas) ────────────
-        slippage_total = actual_notional * actual_impact
-        spread_cost    = actual_notional * spread_cost_pct
-
-        logger.debug(
-            "Entry %s %s @ %.4f (open=%.4f spread=%.4f%% impact=%.4f%% fill=%.0f%%)",
-            signal.direction, signal.symbol,
-            entry_price, mid, spread * 100, actual_impact * 100, fill_ratio * 100,
-        )
+        entry_fee       = actual_notional * self._taker_fee
 
         return BacktestTrade(
             signal=signal,
@@ -283,91 +348,71 @@ class SimulatedFillEngine:
             side=signal.direction.value,
             entry_fee=entry_fee,
             exit_fee=0.0,
-            slippage=slippage_total,
+            slippage=actual_notional * actual_impact,
             fill_ratio=fill_ratio,
             entry_time=execution_candle.timestamp,
             exit_time=None,
-            spread_cost=spread_cost,
-            market_impact=slippage_total,
-            latency_candles=1,
+            entry_regime=getattr(signal, "regime", ""),
+            spread_cost=actual_notional * spread_cost_pct,
+            market_impact=actual_notional * actual_impact,
         )
-
-    # ── Exit ─────────────────────────────────────────────────────────────────
 
     def simulate_exit(
         self,
-        trade:       "BacktestTrade",
-        exit_candle: Candle,
-    ) -> "BacktestTrade":
+        trade:        "BacktestTrade",
+        exit_candle:  Candle,
+        qty_override: float | None = None,
+    ) -> float:
         """
-        Simula saída via stop/TP/timeout no candle de saída.
-        Saídas (stop loss, take profit) executam no OPEN do candle que atingiu o nível.
+        Simula saída e retorna o P&L da saída.
+        qty_override: para saídas parciais (quantidade a vender).
+        Modifica trade.exit_price, trade.exit_fee, trade.exit_time.
         """
-        # Saída no open do candle de saída (ou close se stop/TP intrabar)
-        if trade.side == "long":
-            # Stop hit: executa próximo ao low
-            # TP hit: executa próximo ao high
-            # Aproximação: usa close com spread/impact
-            exit_base = exit_candle.open
-        else:
-            exit_base = exit_candle.open
+        qty = qty_override or (trade.quantity * trade.fill_ratio)
 
-        # Spread e impact na saída (geralmente menor — liquidez alta em stops)
         rel_atr = (exit_candle.high - exit_candle.low) / exit_candle.close \
                   if exit_candle.close > 0 else 0.001
         spread = min(self.SPREAD_BASE + self.SPREAD_ATR_FACTOR * rel_atr, self.SPREAD_MAX)
 
+        exit_base     = exit_candle.open
         vol_notional  = exit_candle.volume * exit_candle.close
-        exit_notional = trade.quantity * exit_base * trade.fill_ratio
+        exit_notional = qty * exit_base
         participation = exit_notional / vol_notional if vol_notional > 0 else 0.005
         impact_pct    = min(self.IMPACT_BASE + self.IMPACT_VOL_FACTOR * participation, 0.003)
         noise_factor  = self._rng.uniform(0.5, 1.5)
-
         total_adverse = (spread / 2) + impact_pct * noise_factor
 
         if trade.side == "long":
-            exit_price = exit_base * (1 - total_adverse)   # vende abaixo do mid
+            exit_price = exit_base * (1 - total_adverse)
         else:
-            exit_price = exit_base * (1 + total_adverse)   # cobre acima do mid
+            exit_price = exit_base * (1 + total_adverse)
 
         exit_fee = exit_notional * self._taker_fee
 
-        trade.exit_price = exit_price
-        trade.exit_fee   = exit_fee
-        trade.exit_time  = exit_candle.timestamp
+        # P&L desta saída
+        if trade.side == "long":
+            gross_pnl = (exit_price - trade.entry_price) * qty
+        else:
+            gross_pnl = (trade.entry_price - exit_price) * qty
+        net_pnl = gross_pnl - exit_fee
 
-        # Acumula slippage e spread da saída
-        trade.slippage    += exit_notional * impact_pct * noise_factor
+        # Atualiza trade (última saída sobrescreve exit_price)
+        trade.exit_price  = exit_price
+        trade.exit_fee   += exit_fee
+        trade.exit_time   = exit_candle.timestamp
+        trade.slippage   += exit_notional * impact_pct * noise_factor
         trade.spread_cost += exit_notional * (spread / 2)
 
-        return trade
+        return net_pnl
 
-    # ── Fill simulation ───────────────────────────────────────────────────────
-
-    def _simulate_fill(
-        self,
-        execution_candle: Candle,
-        signal_candle:    Candle,
-    ) -> float:
-        """
-        Fill ratio baseado em volume relativo.
-        Alta liquidez (volume alto) → fill quase certo e completo.
-        Baixa liquidez → pode não preencher ou fill parcial.
-        """
-        # Probabilidade de fill proporcional ao volume relativo
+    def _simulate_fill(self, execution_candle: Candle, signal_candle: Candle) -> float:
         vol_ratio = execution_candle.volume / (signal_candle.volume + 1e-9)
-        fill_prob = min(
-            self.FILL_PROB_BASE * min(vol_ratio, 1.5),
-            0.95,
+        fill_prob = max(
+            min(self.FILL_PROB_BASE * min(vol_ratio, 1.5), 0.95),
+            self.FILL_PROB_VOL_MIN,
         )
-        fill_prob = max(fill_prob, self.FILL_PROB_VOL_MIN)
-
-        # Decide se a ordem preenche
         if self._rng.random() > fill_prob:
-            return 0.0   # sem fill
-
-        # Quantidade do fill: Beta(3,1) — skewed para fill completo
-        # Volume alto → parâmetro alpha maior → fill mais próximo de 1.0
+            return 0.0
         alpha = 2.0 + min(vol_ratio, 2.0)
         return self._rng.betavariate(alpha, 1.0)
 
@@ -377,7 +422,16 @@ class SimulatedFillEngine:
 class BacktestEngine:
     """
     Roda uma estratégia contra candles históricos com simulação realista.
-    Usa SimulatedFillEngine para execução com fees, spread, slippage, latency e partial fills.
+
+    Exit logic v2 (Fase A):
+      - Regime-aware SL/TP
+      - TP conversion em TREND_EXPANSION → running mode
+      - Trailing conviction-adaptive (proxy via SMA + ATR)
+      - Conviction proxy substitui timeout
+
+    Sizing v2 (Fase B):
+      - Usa signal.kelly_fraction (calculado pela SizingEngine na estratégia)
+      - Fallback para position_size_pct se kelly não disponível
     """
 
     def __init__(
@@ -385,7 +439,7 @@ class BacktestEngine:
         strategy:          BaseStrategy,
         symbol:            str,
         initial_capital:   float = 10000.0,
-        position_size_pct: float = 0.10,
+        position_size_pct: float = 0.10,   # fallback se kelly não disponível
         seed:              int   = 42,
         fee_tier:          str   = "standard",
     ) -> None:
@@ -401,20 +455,18 @@ class BacktestEngine:
         warmup:  int = 21,
     ) -> BacktestResult:
         """
-        Backtest completo com simulação realista.
+        Backtest completo com exit logic v2.
 
         Fluxo por candle i:
-          1. Verifica se posição aberta atingiu SL/TP (ATR-based)
-          2. Se sim: executa saída no open do candle i+1
-          3. Se posição fechada: avalia sinal com histórico até candle i
-          4. Se sinal: entra no open do candle i+1 (latência 1 candle)
-
-        Args:
-          candles: lista de candles confirmados (mais antigo primeiro)
-          warmup:  candles iniciais para aquecimento (não evaluados)
+          1. Se posição aberta: avalia exit state (SL, TP, trailing, conviction)
+             → saída parcial ou total
+          2. Se sem posição: avalia sinal
+          3. Entra no open do candle i+1 (latência 1 candle)
         """
         if len(candles) < warmup + 2:
-            raise ValueError(f"Precisa de ao menos {warmup + 2} candles, recebeu {len(candles)}")
+            raise ValueError(
+                f"Precisa de ao menos {warmup + 2} candles, recebeu {len(candles)}"
+            )
 
         result = BacktestResult(
             symbol=self._symbol,
@@ -426,116 +478,380 @@ class BacktestEngine:
 
         capital    = self._capital
         open_trade: BacktestTrade | None = None
+        pos_state:  _PositionState | None = None
 
-        for i in range(warmup, len(candles) - 1):   # -1: precisa do candle N+1
+        for i in range(warmup, len(candles) - 1):
             candle      = candles[i]
             next_candle = candles[i + 1]
-            history     = candles[:i + 1]
+            history     = candles[:i + 1]    # oldest first
+            newest_first = list(reversed(history))
 
-            # ── 1. Verificar saída da posição aberta ──────────
-            if open_trade:
-                should_exit, exit_reason = self._check_exit(open_trade, candle, history)
-                if should_exit:
-                    # Saída no open do PRÓXIMO candle (latência)
-                    closed = self._fill_engine.simulate_exit(open_trade, next_candle)
-                    capital += closed.pnl
-                    result.trades.append(closed)
+            # ── 1. Gerenciar posição aberta ──────────────────────────────────
+            if open_trade and pos_state:
+                pos_state.candles_held += 1
+
+                result_exit = self._evaluate_position(
+                    trade=open_trade,
+                    pos=pos_state,
+                    candle=candle,
+                    next_candle=next_candle,
+                    history=newest_first,
+                    capital=capital,
+                )
+
+                if result_exit == "partial":
+                    # Saída parcial: 50% — calcula P&L e continua
+                    qty_partial = round(pos_state.quantity * 0.50 * open_trade.fill_ratio, 8)
+                    partial_pnl = self._fill_engine.simulate_exit(
+                        open_trade, next_candle, qty_override=qty_partial
+                    )
+                    open_trade.partial_pnl += partial_pnl
+                    pos_state.partial_done  = True
+                    pos_state.qty_remaining = round(pos_state.qty_remaining - qty_partial, 8)
                     logger.debug(
-                        "Exit [%s] @ %.4f  pnl=%.2f  cap=%.2f",
-                        exit_reason, closed.exit_price, closed.pnl, capital,
+                        "Partial exit %s qty=%.4f pnl=%.2f",
+                        self._symbol, qty_partial, partial_pnl,
+                    )
+
+                elif result_exit in ("full", "stop", "trailing", "conviction",
+                                     "backstop", "emergency"):
+                    qty_rem = pos_state.qty_remaining * open_trade.fill_ratio
+                    self._fill_engine.simulate_exit(
+                        open_trade, next_candle, qty_override=qty_rem
+                    )
+                    open_trade.exit_reason      = result_exit
+                    open_trade.had_running_mode = pos_state.running_mode
+                    open_trade.candles_held     = pos_state.candles_held
+                    capital += open_trade.pnl
+                    result.trades.append(open_trade)
+                    logger.debug(
+                        "Exit [%s] %s @ %.4f  pnl=%.2f  cap=%.2f  held=%dh  run=%s",
+                        result_exit, self._symbol,
+                        open_trade.exit_price, open_trade.pnl,
+                        capital, pos_state.candles_held,
+                        "YES" if pos_state.running_mode else "no",
                     )
                     open_trade = None
+                    pos_state  = None
 
-            # ── 2. Avaliar novo sinal ─────────────────────────
+            # ── 2. Avaliar novo sinal ────────────────────────────────────────
             if open_trade is None:
-                candles_newest_first = list(reversed(history))
+                # Vol state simplificado (sem Redis) para o SizingEngine
+                vol_state_simple = _vol_state_from_candles(newest_first)
+
                 ctx = StrategyContext(
                     symbol=self._symbol,
-                    candles_1h=candles_newest_first,   # newest first
+                    candles_1h=newest_first,
                     candles_6h=[],
-                    candles_30m=candles_newest_first,  # backtest usa mesmos candles
+                    candles_30m=newest_first,
                     ticker=None,
                     portfolio_value=capital,
+                    extra={
+                        "vol_state":    vol_state_simple,
+                        "model_health": None,   # sem dados em backtest = neutro
+                        "meta_regime":  None,
+                        "futures_flow": None,
+                        "relative_strength": None,
+                        "news_sentiment":    None,
+                    },
                 )
                 signal = await self._strategy.evaluate(ctx)
 
                 if signal is not None:
-                    # Entrada no open do PRÓXIMO candle (latência 1 candle)
+                    # Sizing: usa kelly_fraction da SizingEngine (Fase B)
+                    kelly = getattr(signal, "kelly_fraction", None) or self._position_size_pct
+
                     trade = self._fill_engine.simulate_entry(
                         signal=signal,
                         execution_candle=next_candle,
                         signal_candle=candle,
                         capital=capital,
-                        position_size_pct=self._position_size_pct,
+                        position_size_pct=kelly,
                     )
                     if trade:
+                        atr = _calc_atr(newest_first)
+                        regime = getattr(signal, "regime", "MEAN_REVERTING_CHOP")
+                        pos_state = _PositionState(
+                            entry_regime=regime,
+                            atr=atr,
+                            stop_loss=0.0,
+                            take_profit=0.0,
+                            quantity=trade.quantity,
+                            qty_remaining=trade.quantity,
+                        )
+                        pos_state.sl_tp_from_regime(trade.entry_price, atr, regime)
                         open_trade = trade
                         logger.debug(
-                            "Entry @ %.4f  fill=%.0f%%  impact=%.4f%%",
-                            trade.entry_price,
-                            trade.fill_ratio * 100,
-                            trade.market_impact / (trade.entry_price * trade.quantity + 1e-9) * 100,
+                            "Entry %s @ %.4f  regime=%s  sl=%.4f  tp=%.4f  kelly=%.1f%%",
+                            self._symbol, trade.entry_price, regime,
+                            pos_state.stop_loss, pos_state.take_profit, kelly * 100,
                         )
 
-        # ── 3. Fechar posição aberta no fim dos dados ─────────
-        if open_trade and len(candles) > 0:
-            closed = self._fill_engine.simulate_exit(open_trade, candles[-1])
-            capital += closed.pnl
-            result.trades.append(closed)
+        # ── 3. Fechar posição aberta ao fim dos dados ────────────────────────
+        if open_trade and pos_state and len(candles) > 0:
+            qty_rem = pos_state.qty_remaining * open_trade.fill_ratio
+            self._fill_engine.simulate_exit(open_trade, candles[-1], qty_override=qty_rem)
+            open_trade.exit_reason      = "end_of_data"
+            open_trade.had_running_mode = pos_state.running_mode
+            open_trade.candles_held     = pos_state.candles_held
+            capital += open_trade.pnl
+            result.trades.append(open_trade)
 
         logger.info(
-            "Backtest %s: %d trades  WinR=%.1f%%  PnL=%.2f  Fees=%.2f  Slip=%.2f",
+            "Backtest %s: %d trades  WinR=%.1f%%  PnL=%.2f  "
+            "PF=%.2f  RunMode=%d  AvgHold=%.1fh",
             self._symbol,
             result.total_trades,
             result.win_rate * 100,
             result.total_pnl,
-            result.total_fees,
-            result.total_slippage,
+            result.profit_factor,
+            result.running_mode_exits,
+            result.avg_candles_held,
         )
         return result
 
-    def _check_exit(
+    # ── Avaliação de posição aberta ───────────────────────────────────────────
+
+    def _evaluate_position(
         self,
-        trade:   BacktestTrade,
-        candle:  Candle,
-        history: list[Candle],
-    ) -> tuple[bool, str]:
+        trade:       BacktestTrade,
+        pos:         _PositionState,
+        candle:      Candle,
+        next_candle: Candle,
+        history:     list[Candle],   # newest first
+        capital:     float,
+    ) -> str | None:
         """
-        Verifica se SL ou TP foram atingidos usando ATR dinâmico.
-        Retorna (deve_sair, motivo).
+        Avalia o estado de uma posição aberta em cada candle.
 
-        SL = entry - ATR_entry × 1.5
-        TP = entry + ATR_entry × 3.0
-        Timeout = 8h padrão (CHOP), verificado por contagem de candles
+        Retorna:
+          "stop"       — stop loss atingido
+          "trailing"   — trailing stop atingido
+          "full"       — take profit (outros regimes)
+          "partial"    — saída parcial (50%), posição continua
+          "conviction" — conviction proxy colapso
+          "backstop"   — 30 dias (720 candles)
+          "emergency"  — regime PANIC/BEAR
+          None         — manter posição
         """
-        if trade.side != "long":
-            return False, ""
+        price = candle.close   # proxy: avaliamos no close de cada candle
 
-        entry = trade.entry_price
+        # ── 1. Emergência ─────────────────────────────────────────────────────
+        current_regime = _detect_regime(history)
+        if current_regime in REGIMES_EMERGENCY:
+            return "emergency"
 
-        # ATR estimado: usa candles recentes (últimos 14)
-        recent = history[-14:] if len(history) >= 14 else history
-        if recent:
-            atr = sum(c.high - c.low for c in recent) / len(recent)
+        # ── 2. Stop Loss (safety net absoluta) ───────────────────────────────
+        effective_sl = pos.trailing_stop if pos.trailing_stop else pos.stop_loss
+        if candle.low <= effective_sl:
+            return "stop" if not pos.trailing_stop else "trailing"
+
+        # ── 3. Take Profit / TP Conversion ────────────────────────────────────
+        if candle.high >= pos.take_profit and not pos.tp_converted:
+            if pos.entry_regime in REGIMES_CONVERT_TP:
+                # TREND_EXPANSION: converte em running mode
+                if not pos.partial_done:
+                    # Retorna "partial" — o loop fará a saída parcial
+                    pos.tp_converted = True   # sinaliza conversão
+                    pos.running_mode = True
+                    # Trailing largo ao converter
+                    running_trail = round(price - pos.atr * 2.5, 6)
+                    pos.trailing_stop = running_trail
+                    pos.trailing_activated = True
+                    pos.take_profit = price * 99   # remove teto
+                    return "partial"
+                else:
+                    # Partial já foi feita antes (em 3R) — apenas converte
+                    pos.tp_converted = True
+                    pos.running_mode = True
+                    pos.take_profit  = price * 99
+                    if not pos.trailing_activated:
+                        pos.trailing_stop = round(price - pos.atr * 2.5, 6)
+                        pos.trailing_activated = True
+                    return None
+            else:
+                # Outros regimes: saída total no TP
+                return "full"
+
+        # ── 4. Backstop absoluto ──────────────────────────────────────────────
+        if pos.candles_held >= ABSOLUTE_BACKSTOP_CANDLES:
+            return "backstop"
+
+        # ── 5. Saída parcial por R (antes do TP) ─────────────────────────────
+        partial_r = REGIME_PARTIAL_R.get(pos.entry_regime, 2.5)
+        r_value   = trade.entry_price - pos.stop_loss
+        if r_value > 0:
+            partial_price = trade.entry_price + r_value * partial_r
+            if not pos.partial_done and candle.high >= partial_price:
+                return "partial"
+
+        # ── 6. Conviction proxy (substitui timeout) ───────────────────────────
+        conviction = _conviction_proxy(history, trade.entry_price)
+
+        if conviction < CONVICTION_ALERT:
+            pos.low_conviction_streak += 1
+            if pos.low_conviction_streak >= LOW_CONVICTION_STREAK_EXIT:
+                return "conviction"
         else:
-            atr = entry * 0.01
+            pos.low_conviction_streak = 0
 
-        stop = entry - atr * 1.5
-        take = entry + atr * 3.0
+        # Anti-bag-holding P1: trade negativo + conviction < 50%
+        if price < trade.entry_price and conviction < 50.0:
+            return "conviction"
 
-        # Candle atingiu o stop?
-        if candle.low <= stop:
-            return True, "stop_loss"
+        # Anti-bag-holding P3: queda > 8% + conviction < 60%
+        if price < trade.entry_price * 0.92 and conviction < 60.0:
+            return "conviction"
 
-        # Candle atingiu o take profit?
-        if candle.high >= take:
-            return True, "take_profit"
+        # ── 7. Trailing stop update ───────────────────────────────────────────
+        trail_r    = REGIME_TRAIL_ACTIVATE.get(pos.entry_regime, 1.0)
+        r_value    = trade.entry_price - pos.stop_loss
+        trail_trigger = trade.entry_price + r_value * trail_r
 
-        # Timeout: conta candles desde entrada
-        hold_candles = sum(
-            1 for c in history if c.timestamp >= trade.entry_time
-        )
-        if hold_candles >= 8:   # 8 candles 1H = 8 horas (CHOP default)
-            return True, "timeout"
+        # ATR multiplier baseado na conviction (proxy)
+        if conviction >= 85:
+            atr_mult = 2.5
+        elif conviction >= 70:
+            atr_mult = 2.0
+        elif conviction >= 50:
+            atr_mult = 1.0
+        else:
+            atr_mult = 0.5
+        if pos.running_mode:
+            atr_mult += 0.5
 
-        return False, ""
+        if price >= trail_trigger or pos.running_mode:
+            new_trail = round(price - pos.atr * atr_mult, 6)
+            current   = pos.trailing_stop or 0.0
+            if not pos.trailing_activated:
+                pos.trailing_stop = new_trail
+                pos.trailing_activated = True
+            elif new_trail > current:
+                pos.trailing_stop = new_trail
+            elif conviction < CONVICTION_HOLD:
+                # Aperta trailing quando conviction degrada
+                tighter = round(price - pos.atr * atr_mult, 6)
+                if tighter > current:
+                    pos.trailing_stop = tighter
+
+        return None
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _calc_atr(candles: list[Candle], period: int = 14) -> float:
+    """ATR dos últimos `period` candles (newest first)."""
+    if len(candles) < period:
+        return candles[0].close * 0.015 if candles else 100.0
+    trs = []
+    for i in range(period):
+        c = candles[i]
+        prev_close = candles[i + 1].close if i + 1 < len(candles) else c.close
+        tr = max(c.high - c.low, abs(c.high - prev_close), abs(c.low - prev_close))
+        trs.append(tr)
+    return sum(trs) / len(trs)
+
+
+def _detect_regime(candles: list[Candle]) -> str:
+    """Detecção de regime simplificada — espelha momentum_strategy._detect_regime_1h."""
+    if len(candles) < 20:
+        return "MEAN_REVERTING_CHOP"
+    closes  = [c.close  for c in candles[:20]]
+    volumes = [c.volume for c in candles[:20]]
+    sma5    = sum(closes[:5]) / 5
+    sma20   = sum(closes[:20]) / 20
+    avg_vol = sum(volumes) / len(volumes)
+    last_vol = volumes[0]
+
+    if len(closes) >= 2 and closes[1] > 0:
+        if (closes[0] - closes[1]) / closes[1] < -0.05:
+            return "PANIC_LIQUIDATION"
+
+    if sma5 > sma20:
+        if last_vol > avg_vol * 1.2:
+            return "TREND_EXPANSION"
+        if last_vol < avg_vol * 0.8:
+            return "TREND_EXHAUSTION"
+        return "VOLATILITY_COMPRESSION"
+
+    if len(closes) >= 11 and closes[10] > 0:
+        if (closes[0] - closes[10]) / closes[10] < -0.02:
+            return "BEAR_TREND"
+
+    highs = [c.high for c in candles[:5]]
+    lows  = [c.low  for c in candles[:5]]
+    atr5  = sum(hi - lo for hi, lo in zip(highs, lows, strict=True)) / 5
+    if closes[0] > 0 and atr5 / closes[0] > 0.030:
+        return "HIGH_CORRELATION_RISK"
+
+    return "MEAN_REVERTING_CHOP"
+
+
+def _conviction_proxy(candles: list[Candle], entry_price: float) -> float:
+    """
+    Proxy de conviction 0–100 baseado em candles (sem Redis).
+    Simplificação do HoldEngine para uso no backtest.
+
+    Componentes:
+      - Trend (50%): SMA5 > SMA20 + margin
+      - Structure (30%): Higher Highs + Higher Lows
+      - Vol health (20%): ATR atual vs ATR na entrada (proxy)
+    """
+    if len(candles) < 20:
+        return 70.0   # sem dados = neutro HOLD
+
+    closes = [c.close for c in candles[:20]]
+    highs  = [c.high  for c in candles[:6]]
+    lows   = [c.low   for c in candles[:6]]
+
+    # Trend
+    sma5  = sum(closes[:5]) / 5
+    sma20 = sum(closes[:20]) / 20
+    trend_score = 1.0 if sma5 > sma20 else 0.0
+    margin = (sma5 - sma20) / sma20 if sma20 > 0 else 0.0
+    margin_score = min(max((margin + 0.02) / 0.04, 0.0), 1.0)
+
+    # Structure: HH + HL
+    hh = sum(1 for i in range(min(4, len(highs)-1)) if highs[i] > highs[i+1])
+    hl = sum(1 for i in range(min(4, len(lows)-1))  if lows[i]  > lows[i+1])
+    structure = (hh + hl) / 8
+
+    # Vol health: ATR ratio
+    atr_now = sum(c.high - c.low for c in candles[:5]) / 5
+    atr_ref = sum(c.high - c.low for c in candles[5:15]) / 10 if len(candles) >= 15 else atr_now
+    atr_ratio = atr_now / atr_ref if atr_ref > 0 else 1.0
+    # Ratio > 2.5 = caótico (ruim), < 0.5 = muito comprimido, 0.8–1.5 = saudável
+    vol_health = min(max(1.0 - abs(atr_ratio - 1.0) * 0.6, 0.0), 1.0)
+
+    raw = trend_score * 0.30 + margin_score * 0.20 + structure * 0.30 + vol_health * 0.20
+    return round(max(0.0, min(100.0, raw * 100)), 1)
+
+
+def _vol_state_from_candles(candles: list[Candle]) -> dict:
+    """
+    Deriva vol state simplificado dos candles para o SizingEngine em backtest.
+    Sem Redis — usa apenas ATR ratio vs histórico recente.
+    """
+    if len(candles) < 10:
+        return {"state": "UNKNOWN", "m8_score": 0.5}
+
+    atr_now = sum(c.high - c.low for c in candles[:5]) / 5
+    atr_ref = sum(c.high - c.low for c in candles[5:20]) / min(15, len(candles) - 5)
+    ratio   = atr_now / atr_ref if atr_ref > 0 else 1.0
+
+    if ratio > 2.0:
+        state, score = "CHAOTIC", 0.10
+    elif ratio > 1.3:
+        state, score = "EXPANDING", 0.90
+    elif ratio > 0.9:
+        state, score = "TREND", 0.80
+    elif ratio > 0.6:
+        state, score = "COMPRESSED", 0.55
+    else:
+        state, score = "MEAN_REVERTING", 0.30
+
+    return {
+        "state":    state,
+        "m8_score": score,
+        "metrics":  {"atr_pct": round(atr_now / candles[0].close, 4) if candles[0].close else 0},
+    }

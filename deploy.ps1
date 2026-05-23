@@ -80,14 +80,16 @@ $VERSION   = "5.$GIT_MINOR.$GIT_PATCH"
 Write-Host ""
 Write-Host "  Versão: v$VERSION" -ForegroundColor Yellow
 
-# ── 4. Deploy LOCAL ────────────────────────────────────────────────────────────
+# ── 4. Deploy LOCAL — via monitor.ps1 (plugado no Oracle via SSH tunnel) ───────
 if (-not $OracleOnly) {
-    Write-Step "Rebuilding container LOCAL (localhost:8001)..."
+    Write-Step "Iniciando monitor local (SSH tunnel → Oracle)..."
     $env:GIT_MINOR = $GIT_MINOR
     $env:GIT_PATCH = $GIT_PATCH
-    docker compose up -d --build cctb
-    if ($LASTEXITCODE -ne 0) { Write-Fail "Build local falhou"; exit 1 }
-    Write-Ok "Local atualizado → http://localhost:8001"
+    # monitor.ps1 para o container atual, abre SSH tunnel e sobe novo container
+    # apontando para PostgreSQL e Redis do Oracle (dados reais).
+    & "$PROJECT_DIR\monitor.ps1"
+    if ($LASTEXITCODE -ne 0) { Write-Fail "Monitor local falhou"; exit 1 }
+    Write-Ok "Local (monitor only) → http://localhost:8001 | dados: Oracle"
 }
 
 # ── 5. Deploy ORACLE ───────────────────────────────────────────────────────────
@@ -101,17 +103,19 @@ if (-not $LocalOnly) {
 }
 
 # ── 6. Health check ────────────────────────────────────────────────────────────
-Write-Step "Verificando health (aguardando containers iniciarem)..."
-Start-Sleep -Seconds 20
+# Nota: monitor.ps1 já faz health check do local — aqui apenas confirmamos Oracle.
+Write-Step "Verificando health Oracle..."
+Start-Sleep -Seconds 5   # Oracle já estava up — só aguarda propagação do novo código
 
 if (-not $OracleOnly) {
+    # monitor.ps1 já validou o local — apenas exibe status atual
     try {
         $local_health = Invoke-RestMethod "http://localhost:8001/health" -TimeoutSec 10
-        $local_ok = $local_health.status -eq "ok"
-        if ($local_ok) { Write-Ok "Local: OK (v$($local_health.version))" }
-        else { Write-Fail "Local: DEGRADED" }
+        if ($local_health.status -eq "ok") {
+            Write-Ok "Local (monitor): OK (v$($local_health.version)) → Oracle"
+        }
     } catch {
-        Write-Host "  AVISO Local: sem resposta ainda (aguarde ~15s)" -ForegroundColor Yellow
+        Write-Host "  AVISO Local: aguardando tunnel SSH (~5s)" -ForegroundColor Yellow
     }
 }
 

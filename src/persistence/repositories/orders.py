@@ -93,6 +93,21 @@ class OrderRepository:
         )
         return [self._to_model(r) for r in rows]
 
+    async def get_filled(self, limit: int = 50) -> list[Order]:
+        """Retorna apenas ordens preenchidas (filled), mais recentes primeiro."""
+        rows = await self._db.fetch(
+            "SELECT * FROM orders WHERE status = 'filled' "
+            "ORDER BY COALESCE(filled_at, created_at) DESC "
+            "LIMIT $1",
+            limit,
+        )
+        return [self._to_model(r) for r in rows]
+
+    async def count_filled(self) -> int:
+        """Conta o total de ordens preenchidas no DB."""
+        row = await self._db.fetchrow("SELECT COUNT(*) FROM orders WHERE status = 'filled'")
+        return int(row[0]) if row else 0
+
     async def get_by_strategy(
         self, strategy_id: str, limit: int = 100
     ) -> list[Order]:

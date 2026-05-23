@@ -23,6 +23,15 @@ async def get_recent_orders(request: Request, strategy_id: str = "", limit: int 
     return [_serialize(o) for o in orders]
 
 
+@router.get("/filled")
+async def get_filled_orders(request: Request, limit: int = 50) -> dict:
+    """Retorna ordens preenchidas para o histórico de trades + total real."""
+    repo = OrderRepository(request.app.state.db)
+    orders = await repo.get_filled(limit=limit)
+    total  = await repo.count_filled()
+    return {"orders": [_serialize(o) for o in orders], "total": total}
+
+
 def _serialize(order) -> dict:
     return {
         "client_order_id": order.client_order_id,

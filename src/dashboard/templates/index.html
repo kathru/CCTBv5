@@ -3546,13 +3546,13 @@ function updateRelativeStrength(rs, sym){
 
 async function updateAll(){
   // Fast data (sempre fresco)
-  const [health,version,system,portfolio,perf,prices,sym,exits,log,funnel,wd,pos,oOpen,oRec]=await Promise.all([
+  const [health,version,system,portfolio,perf,prices,sym,exits,log,funnel,wd,pos,oOpen,oFilled]=await Promise.all([
     fetchJSON('/health'),fetchJSON('/version'),fetchJSON('/api/metrics/system'),
     fetchJSON('/api/portfolio/summary'),fetchJSON('/api/metrics/performance'),
     fetchJSON('/api/metrics/prices'),fetchJSON('/api/signals/symbols'),
     fetchJSON('/api/portfolio/exits'),fetchJSON('/api/signals/log?limit=30'),
     fetchJSON('/api/signals/funnel'),fetchJSON('/api/watchdog/status'),fetchJSON('/api/positions/open'),
-    fetchJSON('/api/orders/open'),fetchJSON('/api/orders/recent?limit=50'),
+    fetchJSON('/api/orders/open'),fetchJSON('/api/orders/filled?limit=50'),
   ]);
 
   // Slow data vem do cache — atualizado em paralelo pelo loop lento
@@ -3950,10 +3950,10 @@ async function updateAll(){
     const totalSig=(log.stats||{}).signals_generated||0;
   }
 
-  // Trade history — exibe as mais recentes, mas conta via perf (total real do DB)
-  const allOrders=[...(oOpen||[]),...(oRec||[])];
-  const totalFilled = perf?.total_trades || null;
-  document.getElementById('trade-history').innerHTML=buildTradeHistory(allOrders, totalFilled);
+  // Trade history — usa endpoint dedicado /api/orders/filled (não mistura cancelled/pending)
+  const filledOrders = oFilled?.orders || [];
+  const totalFilled  = oFilled?.total  || perf?.total_trades || null;
+  document.getElementById('trade-history').innerHTML=buildTradeHistory(filledOrders, totalFilled);
 }
 
 function init(){

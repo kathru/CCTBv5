@@ -115,22 +115,22 @@ class FeatureSchema:
             return None
 
 
-# Schema atual (v2 = scoring model v2 com 5 fatores)
+# Schema atual (v2.5.0 — M9 News Sentiment adicionado 2026-05-23)
 CURRENT_SCHEMA = FeatureSchema(
-    version="2.3.0",
+    version="2.5.0",
     model_id="momentum_scoring_v2",
-    created_at="2026-05-22",
+    created_at="2026-05-23",
     lookback_candles=25,
     notes=(
-        "8 fatores (M4 com peso 0). Cleanup 2026-05-22: M1↓2% M4=0% (Spearman negativo)"
-        " | M3↑30% M8↑21% (Spearman positivo)."
-        " CooldownEngine desativado — AdvancedRiskManager é árbitro único de cooldown."
+        "9 fatores (M4 peso 0, M9 novo). v2.5.0 2026-05-23: M9 News Sentiment"
+        " adicionado (Fear&Greed + CoinGecko, peso 6%)."
+        " Pesos redistribuídos: M2=11% M3=33% M6=12% M7=11% M8=19%."
     ),
     features={
-        # Pesos ajustados por evidência empírica — feature_analysis 2026-05-22
+        # Pesos v2.5.0 — sync com momentum_strategy.py
         # Spearman: M3=+0.017 M2=+0.001 M8=+0.229 | M1=-0.048 M4=-0.057
         "m1_momentum": FeatureDef(
-            weight=0.02,   # quase descartado: Spearman=-0.048 (correlação negativa)
+            weight=0.02,
             description=(
                 "Momentum adaptativo: média ponderada de retornos 1/5/10/20 candles 1H,"
                 " normalizado por ATR"
@@ -139,16 +139,16 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m2_consistency": FeatureDef(
-            weight=0.20,   # mantido: correlação levemente positiva
+            weight=0.11,   # v2.5.0: 12%→11% (espaço para M9)
             description=(
-                "Consistência de tendência: % candles bullish + higher-highs E higher-lows graduais"
+                "Consistência de tendência: % candles bullish"
+                " + higher-highs E higher-lows graduais"
             ),
             lookback=10,
             leakage_safe=True,
         ),
         "m3_volume": FeatureDef(
-            # dominante: único fator com edge empírico claro (Spearman=+0.229, 62% rel.imp)
-            weight=0.30,
+            weight=0.33,   # v2.5.0: 35%→33% (dominante, cede espaço para M9)
             description=(
                 "Confirmação por volume: ratio + tendência de volume + candle direcional"
             ),
@@ -156,13 +156,16 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m4_regime_str": FeatureDef(
-            weight=0.00,   # REMOVIDO: Spearman=-0.057 (o mais prejudicial) — peso zero
-            description="Força do regime: distância SMA5-SMA20 normalizada, blend com regime fixo",
+            weight=0.00,   # REMOVIDO: Spearman=-0.057 (o mais prejudicial)
+            description=(
+                "Força do regime: distância SMA5-SMA20 normalizada,"
+                " blend com regime fixo"
+            ),
             lookback=20,
             leakage_safe=True,
         ),
         "m5_candle": FeatureDef(
-            weight=0.08,   # leve aumento: importância permutação marginal positiva
+            weight=0.06,   # v2.5.0: mantido em 6%
             description=(
                 "Estrutura do candle: posição do close no range dos últimos 3 candles"
                 " (Williams %R style)"
@@ -171,7 +174,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m6_futures": FeatureDef(
-            weight=0.10,   # mantido: dado externo, spearman não mensurável em backtest
+            weight=0.12,   # v2.5.0: 13%→12%
             description=(
                 "Futures Flow: funding rate (perp) + variação de Open Interest."
                 " Lê sinal do mercado de derivativos sem operar futuros."
@@ -180,22 +183,31 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m7_rel_strength": FeatureDef(
-            weight=0.09,   # mantido: dado externo, spearman não mensurável em backtest
+            weight=0.11,   # v2.5.0: 12%→11%
             description=(
-                "Relative Strength vs BTC: RS 1h/5h/24h ponderado + BTC leadership score"
-                " + tendência de RS"
+                "Relative Strength vs BTC: RS 1h/5h/24h ponderado"
+                " + BTC leadership score + tendência de RS"
             ),
             lookback=25,
             leakage_safe=True,
         ),
         "m8_vol_state": FeatureDef(
-            weight=0.21,   # reforçado: Spearman=+0.229 empatado com M3 — peso máximo
+            weight=0.19,   # v2.5.0: 20%→19%
             description=(
                 "Volatility State Machine: 5 estados"
                 " (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC)"
                 " via ATR + BB + dir_consistency"
             ),
             lookback=20,
+            leakage_safe=True,
+        ),
+        "m9_sentiment": FeatureDef(
+            weight=0.06,   # NOVO v2.5.0: Fear&Greed Index + CoinGecko sentiment
+            description=(
+                "News Sentiment: Fear & Greed Index (alternative.me)"
+                " + CoinGecko social sentiment + price momentum 24h"
+            ),
+            lookback=1,
             leakage_safe=True,
         ),
     },

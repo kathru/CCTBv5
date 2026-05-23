@@ -102,6 +102,11 @@ EXIT_REGIMES = {"PANIC_LIQUIDATION", "BEAR_TREND"}
 # Só aciona se TODOS os outros mecanismos falharem silenciosamente.
 ABSOLUTE_BACKSTOP_DAYS = 30
 
+# Recovery grace period — ciclos sem conviction exit para posições recuperadas.
+# 6 ciclos × 30s = 3 minutos: tempo para o Hold Engine estabelecer baseline.
+# Durante a carência: SL, TP, trailing e regime emergency continuam ativos.
+RECOVERY_GRACE_CYCLES = 6
+
 # ── Fase A — TP Conversion (convexidade) ─────────────────────────────────────
 #
 # Em vez de fechar tudo no TP, em regimes de tendência o sistema converte:
@@ -159,6 +164,13 @@ class ExitPlan:
     conviction_history:    list  = field(default_factory=list)   # últimos 10
     conviction_components: dict  = field(default_factory=dict)
     low_conviction_streak: int   = 0
+
+    # Recovery grace period — posições recuperadas após restart precisam de
+    # N ciclos antes de conviction exits serem permitidos.
+    # Evita que o bot saia imediatamente após restart sem histórico de conviction.
+    # SL/TP/Trailing/Regime emergência continuam ativos durante a carência.
+    recovered:             bool  = False   # True = posição vinda de _recover_existing_positions
+    grace_cycles_remaining: int  = 0       # ciclos restantes de carência
 
     def __post_init__(self) -> None:
         sl_pct = self.signal_factors.get("sl_pct", 0.0)
@@ -341,6 +353,7 @@ class PositionMonitor:
         entry_price: float,
         strategy_id: str,
         signal_factors: dict | None = None,
+        recovered: bool = False,
     ) -> None:
         candles_1h = self._market.get_candles(symbol, "1H", limit=ATR_PERIOD + 5)
         atr    = _calc_atr(candles_1h, ATR_PERIOD) if len(candles_1h) >= ATR_PERIOD else 0.0
@@ -356,9 +369,18 @@ class PositionMonitor:
             entry_regime=regime,
             atr=atr,
             signal_factors=signal_factors or {},
+            recovered=recovered,
+            grace_cycles_remaining=RECOVERY_GRACE_CYCLES if recovered else 0,
         )
         self._plans[symbol] = plan
-        logger.info("ExitPlan criado: %s", plan.summary())
+
+        if recovered:
+            logger.info(
+                "ExitPlan RECUPERADO (carencia=%d ciclos): %s",
+                RECOVERY_GRACE_CYCLES, plan.summary(),
+            )
+        else:
+            logger.info("ExitPlan criado: %s", plan.summary())
 
     async def _recover_existing_positions(self) -> None:
         positions = self._portfolio.state.positions
@@ -372,7 +394,10 @@ class PositionMonitor:
             quantity    = float(pos.get("quantity", 0))
             strat_id    = pos.get("strategy_id", "recovered")
             if entry_price > 0 and quantity > 0:
-                await self._create_plan(symbol, quantity, entry_price, strat_id)
+                await self._create_plan(
+                    symbol, quantity, entry_price, strat_id,
+                    recovered=True,
+                )
 
     # ── Loop principal ────────────────────────────────────────────────────────
 
@@ -569,11 +594,23 @@ class PositionMonitor:
         )
 
         logger.debug(
-            "%s conviction=%.0f state=%s streak=%d",
-            symbol, conviction.score, conviction.state, plan.low_conviction_streak,
+            "%s conviction=%.0f state=%s streak=%d grace=%d",
+            symbol, conviction.score, conviction.state,
+            plan.low_conviction_streak, plan.grace_cycles_remaining,
         )
 
-        if conviction.state == "EXIT":
+        # Recovery grace period — posições recuperadas após restart aguardam
+        # RECOVERY_GRACE_CYCLES ciclos antes de conviction exits serem permitidos.
+        # Previne saída imediata após restart (sem histórico de conviction).
+        # SL, TP, trailing e regime emergency continuam ativos durante a carência.
+        if plan.grace_cycles_remaining > 0:
+            plan.grace_cycles_remaining -= 1
+            if conviction.state == "EXIT":
+                logger.info(
+                    "%s conviction EXIT ignorado — carência ativa (%d ciclos restantes)",
+                    symbol, plan.grace_cycles_remaining,
+                )
+        elif conviction.state == "EXIT":
             await self._exit(
                 plan, price, plan.qty_remaining,
                 reason=conviction.exit_reason or "conviction_exit",

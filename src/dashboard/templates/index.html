@@ -3671,7 +3671,7 @@ async function updateAll(){
   // Crypto cards
   if(prices) Object.assign(_c.prices,prices);
   if(exits?.plans) Object.assign(_c.exits,exits.plans);
-  buildCards(_c.prices,_c.sym,_c.exits,[...(oOpen||[]),...(oRec||[])]);
+  buildCards(_c.prices,_c.sym,_c.exits,[...(oOpen||[]),...(oFilled?.orders||[])]);
 
   // Motor Probabilístico
   if(sym&&Object.keys(sym).length){
@@ -3849,7 +3849,7 @@ async function updateAll(){
 
   // Orders
   const seen=new Set(),all=[];
-  for(const o of [...(oOpen||[]),...(oRec||[])]){const id=o.client_order_id||JSON.stringify(o);if(!seen.has(id)){seen.add(id);all.push(o);}}
+  for(const o of [...(oOpen||[]),...(oFilled?.orders||[])]){const id=o.client_order_id||JSON.stringify(o);if(!seen.has(id)){seen.add(id);all.push(o);}}
   // Usa total real do DB; mostra quantas estão em tela se for diferente
   const totalOrdersDb = perf?.total_orders_db || all.length;
   const ordShowing = all.length < totalOrdersDb ? ` / ${totalOrdersDb} total` : '';

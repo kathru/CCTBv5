@@ -1496,3 +1496,43 @@ async def get_meta_regime(request: Request) -> dict:
     data = raw if isinstance(raw, dict) else json.loads(raw)
     data["has_data"] = True
     return data
+
+
+# ── Cleanup: endpoint consolidado M6+M7+M8 ───────────────────────────────────
+
+SYMBOLS_ALL = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
+
+
+@router.get("/market_signals")
+async def get_market_signals(request: Request) -> dict:
+    """
+    Endpoint consolidado — M6 (Futures Flow) + M7 (Relative Strength) + M8 (Vol State).
+    Substitui /futures_flow + /relative_strength + /volatility_state numa única chamada.
+    """
+    cache = request.app.state.cache
+    result: dict = {"has_data": False, "by_symbol": {}, "summary": {}}
+    for symbol in SYMBOLS_ALL:
+        sym_data: dict = {}
+        ff = await cache.get(f"futures_flow:{symbol}")
+        if ff:
+            sym_data["m6"] = ff if isinstance(ff, dict) else json.loads(ff)
+        rs = await cache.get(f"relative_strength:{symbol}")
+        if rs:
+            sym_data["m7"] = rs if isinstance(rs, dict) else json.loads(rs)
+        vs = await cache.get(f"vol_state:{symbol}")
+        if vs:
+            sym_data["m8"] = vs if isinstance(vs, dict) else json.loads(vs)
+        if sym_data:
+            result["by_symbol"][symbol] = sym_data
+    if result["by_symbol"]:
+        result["has_data"] = True
+        m6 = [d["m6"]["scores"]["m6"] for d in result["by_symbol"].values() if d.get("m6",{}).get("scores")]
+        m7 = [d["m7"]["scores"]["m7"] for d in result["by_symbol"].values() if d.get("m7",{}).get("scores")]
+        m8 = [d["m8"]["m8_score"]      for d in result["by_symbol"].values() if d.get("m8",{}).get("m8_score") is not None]
+        result["summary"] = {
+            "avg_m6": round(sum(m6)/len(m6),4) if m6 else None,
+            "avg_m7": round(sum(m7)/len(m7),4) if m7 else None,
+            "avg_m8": round(sum(m8)/len(m8),4) if m8 else None,
+        }
+    result["computed_at"] = datetime.now(UTC).isoformat()
+    return result

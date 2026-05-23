@@ -32,8 +32,12 @@ Ciclo: 15 minutos. Cache Redis: `meta_regime` TTL=1800s.
 import asyncio
 import json
 import logging
-import math
 from datetime import UTC, datetime
+
+from .indicators import euclidean as _euclidean
+from .indicators import pearson as _pearson
+from .indicators import returns_1h as _returns_1h
+from .indicators import sigmoid as _sigmoid
 
 logger = logging.getLogger(__name__)
 
@@ -84,35 +88,8 @@ REGIME_COLOR: dict[str, str] = {
 
 # ── Helpers matemáticos ───────────────────────────────────────────────────────
 
-def _sigmoid(x: float, k: float = 20.0) -> float:
-    """Sigmoid centrado em 0 → [0, 1]."""
-    return 1.0 / (1.0 + math.exp(-k * x))
 
 
-def _pearson(xs: list[float], ys: list[float]) -> float:
-    """Correlação de Pearson entre duas séries."""
-    n = min(len(xs), len(ys))
-    if n < 3:
-        return 0.5
-    sx = sum(xs[:n])
-    sy = sum(ys[:n])
-    sxy = sum(xs[i] * ys[i] for i in range(n))
-    sx2 = sum(x * x for x in xs[:n])
-    sy2 = sum(y * y for y in ys[:n])
-    num = n * sxy - sx * sy
-    den = math.sqrt(max(0, (n * sx2 - sx * sx) * (n * sy2 - sy * sy)))
-    return num / den if den > 0 else 0.0
-
-
-def _euclidean(a: list[float], b: list[float]) -> float:
-    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b, strict=False)))
-
-
-def _returns_1h(closes: list[float], horizon: int = 24) -> list[float]:
-    """Série de retornos 1H (mais recente primeiro)."""
-    n = min(horizon, len(closes) - 1)
-    return [(closes[i] - closes[i + 1]) / closes[i + 1]
-            for i in range(n) if closes[i + 1] > 0]
 
 
 def classify_macro_regime(features: list[float]) -> tuple[str, dict]:

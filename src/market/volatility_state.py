@@ -29,8 +29,10 @@ Cache Redis: `vol_state:{symbol}` TTL=1800s.
 import asyncio
 import json
 import logging
-import math
 from datetime import UTC, datetime
+
+from .indicators import atr as _atr_fn
+from .indicators import bollinger as _bollinger_fn
 
 logger = logging.getLogger(__name__)
 
@@ -64,30 +66,6 @@ STATE_COLOR: dict[str, str] = {
 }
 
 
-def _atr(highs: list[float], lows: list[float], closes: list[float],
-         period: int = 14) -> float:
-    """Average True Range sobre N períodos."""
-    n = min(period, len(highs) - 1)
-    if n <= 0:
-        return (highs[0] - lows[0]) if highs else 0.0
-    trs = []
-    for i in range(n):
-        h, lo, c_prev = highs[i], lows[i], closes[i + 1]
-        tr = max(h - lo, abs(h - c_prev), abs(lo - c_prev))
-        trs.append(tr)
-    return sum(trs) / len(trs) if trs else 0.0
-
-
-def _bollinger(closes: list[float], period: int = 20) -> tuple[float, float, float]:
-    """Retorna (upper, middle, lower) de Bollinger Bands."""
-    n = min(period, len(closes))
-    if n < 2:
-        c = closes[0]
-        return c, c, c
-    window = closes[:n]
-    mid = sum(window) / n
-    std = math.sqrt(sum((x - mid) ** 2 for x in window) / n)
-    return mid + 2 * std, mid, mid - 2 * std
 
 
 def _classify_state(
@@ -168,11 +146,11 @@ def compute_vol_state(
     price = closes[0]
 
     # ATR atual (14 períodos) vs ATR anterior (14 períodos, offset 7)
-    atr_now  = _atr(highs, lows, closes, period=14)
-    atr_prev = _atr(highs[7:], lows[7:], closes[7:], period=14)
+    atr_now  = _atr_fn(highs, lows, closes, 14)
+    atr_prev = _atr_fn(highs[7:], lows[7:], closes[7:], 14)
 
     # Bollinger Bands (20 períodos)
-    bb_upper, bb_mid, bb_lower = _bollinger(closes, period=20)
+    bb_upper, bb_mid, bb_lower = _bollinger_fn(closes, 20)
     bb_width_pct = (bb_upper - bb_lower) / price if price > 0 else 0.0
 
     # Consistência direcional: % candles na mesma direção nos últimos 10

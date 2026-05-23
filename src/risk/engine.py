@@ -9,9 +9,14 @@ Decision flow:
   1. Kill switch (overrides everything)
   2. Daily drawdown limit
   3. Drawdown acceleration
-  4. Total exposure limit
-  5. Strategy cooldown (per strategy)
+  4. Peak drawdown limit
   → Emit RiskEvaluatedEvent with action
+
+NOTE: CooldownEngine foi desativado (Phase cleanup).
+O controle de consecutive losses é feito pelo AdvancedRiskManager
+(circuit_breaker:consec_loss) com thresholds e persistência Redis.
+Ter dois sistemas de cooldown com thresholds diferentes (3 vs 5 losses)
+criava conflito operacional — AdvancedRiskManager é o árbitro único.
 """
 
 import logging
@@ -21,7 +26,6 @@ from ..core.bus import EventBus
 from ..core.events import KillSwitchEvent, RiskAction, RiskEvaluatedEvent, Topic
 from ..core.events.risk_events import KillSwitchMode
 from ..core.models import Position
-from .cooldown import CooldownEngine
 from .drawdown import DrawdownEngine
 from .exposure import ExposureEngine
 from .kill_switch import KillSwitch
@@ -49,13 +53,11 @@ class RiskEngine:
         kill_switch: KillSwitch,
         exposure: ExposureEngine | None = None,
         drawdown: DrawdownEngine | None = None,
-        cooldown: CooldownEngine | None = None,
     ) -> None:
         self._bus = bus
         self._kill_switch = kill_switch
         self._exposure = exposure or ExposureEngine()
         self._drawdown = drawdown or DrawdownEngine()
-        self._cooldown = cooldown or CooldownEngine()
 
     async def evaluate(self, ctx: RiskContext) -> RiskAction:
         """
@@ -114,26 +116,15 @@ class RiskEngine:
             self._kill_switch.trigger_soft(reason=reason)
             return RiskAction.CLOSE, reason
 
-        # 5. Strategy cooldown
-        if ctx.strategy_id:
-            allowed, reason = self._cooldown.is_allowed(ctx.strategy_id)
-            if not allowed:
-                return RiskAction.SUSPEND, reason
+        # 5. (CooldownEngine removido — AdvancedRiskManager é o árbitro único)
 
         return RiskAction.NORMAL, ""
 
     def record_trade_result(
         self, strategy_id: str, is_win: bool
     ) -> None:
-        """Called by OMS after each fill to update cooldown state."""
-        if is_win:
-            self._cooldown.record_win(strategy_id)
-        else:
-            activated = self._cooldown.record_loss(strategy_id)
-            if activated:
-                logger.warning(
-                    "Cooldown activated strategy=%s", strategy_id
-                )
+        """Mantido por compatibilidade — cooldown gerenciado pelo AdvancedRiskManager."""
+        pass  # noqa: unnecessary but kept for API compatibility
 
     def trigger_kill_switch(
         self, mode: str, reason: str

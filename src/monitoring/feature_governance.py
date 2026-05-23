@@ -117,16 +117,16 @@ class FeatureSchema:
 
 # Schema atual (v2 = scoring model v2 com 5 fatores)
 CURRENT_SCHEMA = FeatureSchema(
-    version="2.2.0",
+    version="2.3.0",
     model_id="momentum_scoring_v2",
     created_at="2026-05-22",
     lookback_candles=25,
-    notes="8 fatores. Pesos ajustados por evidência empírica (feature_analysis 2026-05-22): M3↑25% M2=20% M8↑13% M5↑8% | M1↓10% M4↓5%. Spearman: M3=+0.017 M8=+0.229 M1=-0.048 M4=-0.057.",
+    notes="8 fatores (M4 com peso 0). Cleanup 2026-05-22: M1↓2% M4=0% (Spearman negativo) | M3↑30% M8↑21% (Spearman positivo). CooldownEngine desativado — AdvancedRiskManager é árbitro único de cooldown.",
     features={
         # Pesos ajustados por evidência empírica — feature_analysis 2026-05-22
         # Spearman: M3=+0.017 M2=+0.001 M8=+0.229 | M1=-0.048 M4=-0.057
         "m1_momentum": FeatureDef(
-            weight=0.10,   # reduzido: correlação negativa com retorno futuro
+            weight=0.02,   # quase descartado: Spearman=-0.048 (correlação negativa)
             description="Momentum adaptativo: média ponderada de retornos 1/5/10/20 candles 1H, normalizado por ATR",
             lookback=21,
             leakage_safe=True,
@@ -138,13 +138,13 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m3_volume": FeatureDef(
-            weight=0.25,   # aumentado: único fator com importância empírica clara (62% rel.imp)
+            weight=0.30,   # dominante: único fator com edge empírico claro (Spearman=+0.229, 62% rel.imp)
             description="Confirmação por volume: ratio + tendência de volume + candle direcional",
             lookback=20,
             leakage_safe=True,
         ),
         "m4_regime_str": FeatureDef(
-            weight=0.05,   # reduzido ao mínimo: correlação negativa mais forte (-0.057)
+            weight=0.00,   # REMOVIDO: Spearman=-0.057 (o mais prejudicial) — peso zero
             description="Força do regime: distância SMA5-SMA20 normalizada, blend com regime fixo",
             lookback=20,
             leakage_safe=True,
@@ -168,7 +168,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m8_vol_state": FeatureDef(
-            weight=0.13,   # aumentado: spearman +0.229 — maior correlação observada
+            weight=0.21,   # reforçado: Spearman=+0.229 empatado com M3 — peso máximo
             description="Volatility State Machine: 5 estados (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC) via ATR + BB + dir_consistency",
             lookback=20,
             leakage_safe=True,

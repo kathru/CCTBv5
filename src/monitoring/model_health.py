@@ -28,7 +28,7 @@ Ciclo: 15 minutos. Cache Redis: `model_health` TTL=1800s.
 import asyncio
 import json
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -258,8 +258,6 @@ class ModelHealthMonitor:
 
         stats = self._signal_log.stats()
         total = stats.get("total_evaluations", 0)
-        signals_generated = stats.get("signals_generated", 0)
-
         if total < MIN_OBS:
             return {"score": 50, "live_wr": None, "calibrated_wr": calibrated_wr,
                     "diff": None, "status": f"aguardando ({total} obs)", "n_signals": 0}
@@ -310,7 +308,6 @@ class ModelHealthMonitor:
         live_avg = sum(scores) / len(scores)
 
         # Baseline: score médio esperado (de recalibrate.py, avg_score = 0.531)
-        calib = _load_json(CALIB_PATH)
         # Não temos avg_score direto — usa a média dos fatores do baseline como proxy
         bl_features = baseline.get("features", {})
         if bl_features:

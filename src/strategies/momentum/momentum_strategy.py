@@ -336,11 +336,11 @@ class MomentumStrategy(BaseStrategy):
         Modelo de scoring com 6 fatores contínuos — ciclo 1H.
         Todos os fatores usam candles 1H (sem granularidade 30m).
 
-        Fatores (pesos ajustados por evidência empírica — feature_analysis 2026-05-22):
-          M1 Adaptive Momentum  (10%): retornos 1H — correlação negativa, peso reduzido
+        Fatores (pesos v2.3.0 — cleanup 2026-05-22, evidência empírica):
+          M1 Adaptive Momentum  ( 2%): correlação Spearman=-0.048 → peso residual
           M2 Trend Consistency   (20%): % candles bullish + higher-highs/lows (1H)
-          M3 Volume Confirmation (25%): volume crescente — único fator com edge claro
-          M4 Regime Strength     ( 5%): SMA5-SMA20 — correlação negativa, peso mínimo
+          M3 Volume Confirmation (28%): único fator com edge claro (Spearman=+0.229)
+          M4 Regime Strength     ( 0%): correlação Spearman=-0.057 → removido
           M5 Candle Structure    ( 7%): close no terço superior do range (1H)
           M6 Futures Flow        (10%): funding rate + OI change (perp market signal)
           M7 Relative Strength   ( 9%): RS vs BTC multi-horizonte + BTC leadership
@@ -432,11 +432,19 @@ class MomentumStrategy(BaseStrategy):
         vol_data = (ctx.extra or {}).get("vol_state") or {}
         m8 = float(vol_data.get("m8_score", 0.5))
 
-        # ── Score final — pesos baseados em evidência empírica (2026-05-22) ───
-        # Ajuste: M3↑ M2↑ M8↑ M5↑ vs M1↓ M4↓ (feature_analysis Spearman/permutação)
-        score = (m1 * 0.10 + m2 * 0.20 + m3 * 0.25 +
-                 m4 * 0.05 + m5 * 0.08 + m6 * 0.10 +
-                 m7 * 0.09 + m8 * 0.13)
+        # ── Score final — pesos v2.3.0 (cleanup 2026-05-22) ────────────────────
+        # M1  2% (Spearman=-0.048, peso residual — quase descartado)
+        # M2 20% (Spearman~0, mantido por complementaridade com M3)
+        # M3 30% (Spearman=+0.229, único fator com edge empírico claro)
+        # M4  0% (Spearman=-0.057, removido completamente)
+        # M5  8%
+        # M6 10% (funding rate + OI — live data)
+        # M7  9% (relative strength vs BTC)
+        # M8 21% (vol state — Spearman=+0.229, reforçado junto com M3)
+        # Soma: 2+20+30+0+8+10+9+21 = 100% ✓
+        score = (m1 * 0.02 + m2 * 0.20 + m3 * 0.30 +
+                 m5 * 0.08 + m6 * 0.10 +
+                 m7 * 0.09 + m8 * 0.21)
         score = round(min(max(score, 0.0), 1.0), 4)
 
         factors = {

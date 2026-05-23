@@ -135,7 +135,7 @@ def _fmt_data_for_claude(data: dict) -> str:
             qty  = o.get("filled_quantity", 0)
             px   = o.get("avg_fill_price", 0)
             fee  = o.get("fees_paid", 0)
-            ts   = o.get("filled_at", "")[:10]
+            ts   = (o.get("filled_at") or "")[:10]
             lines.append(f"  {ts} {side:4s} {sym:3s} qty={qty:.4f} px=${px:,.2f} fee=${fee:.2f}")
 
     return "\n".join(lines)

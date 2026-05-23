@@ -827,7 +827,7 @@
 </div>
 
 <!-- Row 2: drawdown + win/loss + regime -->
-<div class="grid g13">
+<div class="grid" style="grid-template-columns:2fr 1fr;gap:12px;">
 
   <!-- Drawdown & Win/Loss detail -->
   <div class="card">
@@ -1842,10 +1842,11 @@ const COIN_NAMES={
 
 // ── Cards OKB e BRL (watch-only) ─────────────────────────────
 function buildOkxAssetCards(portfolio){
+  // Seção de ativos OKX removida do dashboard — função mantida para não quebrar chamadas
+  if(!document.getElementById('okx-assets-row')) return;
   const extra = portfolio?.okx_extra_assets || {};
   const balances = portfolio?.okx_balances || {};
   const keys = Object.keys(extra);
-  // Também mostra USDT como card se disponível
   const usdt = balances['USDT'];
   if(!keys.length && !usdt) { document.getElementById('okx-assets-row').style.display='none'; return; }
 

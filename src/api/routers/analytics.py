@@ -58,8 +58,16 @@ def _sortino(returns: list[float]) -> float | None:
 
 
 def _calmar(total_return_pct: float, max_dd_pct: float, days: int) -> float | None:
-    if max_dd_pct <= 0 or days < 1:
+    if days < 1:
         return None
+    # Se drawdown = 0 e retorno positivo → excelente (retorna retorno anualizado como proxy)
+    # Se drawdown = 0 e retorno ≤ 0 → N/A (sem informação)
+    if max_dd_pct <= 0:
+        if total_return_pct <= 0:
+            return None
+        # Sem drawdown ainda: mostra retorno anualizado como limite inferior do Calmar
+        annual_factor = 365 / days
+        return round(total_return_pct * annual_factor, 3)
     annual_factor  = 365 / days
     annual_return  = total_return_pct * annual_factor
     return round(annual_return / max_dd_pct, 3)

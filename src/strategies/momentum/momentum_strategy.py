@@ -25,6 +25,7 @@ from ...monitoring.feature_governance import governance
 from ...monitoring.signal_log import SignalAuditEntry, signal_audit_log
 from ...oms.sizing_engine import SizingEngine
 from ..base import BaseStrategy, StrategyContext
+from ..edge_conditioner import EdgeConditioner
 from ..ml.inference import PlattCalibrator
 
 MODELS_DIR = Path("data") / "models"
@@ -113,8 +114,9 @@ class MomentumStrategy(BaseStrategy):
 
     def __init__(self, symbols: list[str], strategy_id: str = "momentum_v2") -> None:
         super().__init__(strategy_id=strategy_id, symbols=symbols)
-        self._platt  = PlattCalibrator(coef_path=MODELS_DIR / "calibration_coef.json")
-        self._sizing = SizingEngine()
+        self._platt     = PlattCalibrator(coef_path=MODELS_DIR / "calibration_coef.json")
+        self._sizing    = SizingEngine()
+        self._edge_cond = EdgeConditioner()
 
     # ── Evaluation ────────────────────────────────────────────────────────────
 
@@ -157,12 +159,21 @@ class MomentumStrategy(BaseStrategy):
         threshold        = round(min(threshold * meta_thr_mult, 0.99), 4)
 
         # ── Phase 5: Adaptive Threshold — percentil de ATR 1H ────────────────
-        # Ajusta o threshold com base na volatilidade recente relativa ao histórico.
         # ATR alto (mercado agitado) → exige score maior → mult > 1.0
         # ATR baixo (mercado calmo)  → threshold levemente reduzido → mult < 1.0
         # Cap: [0.92, 1.12] — nunca bloqueia, nunca facilita demais.
         atr_mult, atr_pct_now = self._atr_threshold_mult(ctx)
         threshold = round(min(threshold * atr_mult, 0.99), 4)
+
+        # ── Fase C: Edge Conditioning — gates de qualidade de edge ───────────
+        # Avalia 4 condições: PSI drift, model health, liquidez, WR calibration.
+        # Resultado: eleva threshold quando condições degradam.
+        #            bloqueia em situações extremas (PSI>0.35, vol<25%, WR diff<-15%).
+        # Dados vêm de ctx.extra["model_health"] + candles_1h (já disponíveis).
+        edge = self._edge_cond.evaluate(
+            candles_1h=ctx.candles_1h,
+            model_health_data=(ctx.extra or {}).get("model_health"),
+        )
 
         # ── Score e fatores — calculados SEMPRE (mesmo em regime bloqueado) ──
         # Garantia: o dashboard sempre exibe M1-M9 com valores reais,
@@ -172,11 +183,23 @@ class MomentumStrategy(BaseStrategy):
         factors["meta_thr_mult"] = round(meta_thr_mult, 3)
         factors["atr_thr_mult"]  = round(atr_mult, 3)
         factors["atr_pct_now"]   = round(atr_pct_now, 3)
-        calibrated     = self._calibrate(score)
+        factors.update(edge.to_factors())
+        calibrated = self._calibrate(score)
+
+        # Aplica edge threshold mult (eleva a barra quando condições degradam)
+        threshold = round(min(threshold * edge.threshold_mult, 0.99), 4)
 
         if regime in BLOCKED_REGIMES:
             _log("REGIME_BLOCKED",
                  f"Regime bloqueado: {regime} | meta={meta_regime_name}",
+                 regime=regime, score=score, calibrated=calibrated,
+                 threshold=threshold, factors=factors)
+            return None
+
+        # Edge gate hard block (PSI extremo, liquidez seca, WR divergência extrema)
+        if edge.should_block:
+            _log("GATE_CLOSED",
+                 f"Edge gate: {edge.block_reason}",
                  regime=regime, score=score, calibrated=calibrated,
                  threshold=threshold, factors=factors)
             return None

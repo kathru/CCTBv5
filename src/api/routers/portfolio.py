@@ -219,8 +219,11 @@ async def portfolio_summary(request: Request) -> dict:
         total_value += extra_usd
 
     unrealized    = unrealized_bot + unrealized_sync
-    notional_all  = total_value - cash_value
-    exposure_pct  = notional_all / total_value if total_value > 0 and notional_all > 0 else 0.0
+    # Exposição = apenas posições de trading (BTC/ETH/SOL), NÃO inclui OKB/BRL
+    # OKB e BRL são ativos watch-only, não representam risco de trading
+    notional_trading = notional_bot + notional_sync   # só BTC/ETH/SOL
+    notional_all     = total_value - cash_value       # total incl. OKB/BRL (para donut)
+    exposure_pct     = notional_trading / total_value if total_value > 0 and notional_trading > 0 else 0.0
     total_return_pct = (total_value - initial) / initial if initial > 0 else 0.0
     liquid_total  = total_value
 

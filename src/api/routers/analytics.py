@@ -342,19 +342,25 @@ async def get_equity_curve(request: Request) -> dict:
     stability = _stability(equity[1:]) if len(equity) > MIN_TRADES + 1 else None
 
     # ── Labels de tempo (índice de trade ou data) ─────────────────────────────
-    labels = [f"T{i}" for i in range(len(equity))]
+    import datetime as _dt
+    labels     = [f"T{i}" for i in range(len(equity))]
+    timestamps = [""] * len(equity)   # ISO strings para filtro no frontend
     if trades:
         labels[0] = "Início"
+        now_iso = _dt.datetime.utcnow().isoformat()
+        timestamps[0] = now_iso  # ponto inicial — usa now como fallback
         for i, t in enumerate(trades, 1):
             ts = t.get("exit_ts")
             if hasattr(ts, "strftime"):
-                labels[i] = ts.strftime("%d/%m %H:%M")
+                labels[i]     = ts.strftime("%d/%m %H:%M")
+                timestamps[i] = ts.isoformat()
 
     return {
         "equity":          equity,
         "hwm":             hwm,
         "underwater":      underwater,
         "labels":          labels,
+        "timestamps":      timestamps,
         "by_symbol":       by_symbol,
         "n_trades":        len(trades),
         "initial_capital": initial,

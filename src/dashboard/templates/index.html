@@ -1634,18 +1634,25 @@ function updatePortfolioChart(){
   const eq=_slowData?.equity;
   let labels=[], values=[];
 
-  if(eq && eq.labels && eq.labels.length>1){
-    // Filtrar pelo janela de tempo selecionada
+  if(eq && eq.equity && eq.equity.length>1){
     const windowMs = _chartWindow===60?3600000 : _chartWindow===360?21600000 : 86400000;
     const cutoff   = Date.now() - windowMs;
-    const pairs    = eq.labels.map((l,i)=>({l, v:eq.equity[i]}))
-                              .filter(p=>new Date(p.l).getTime()>=cutoff);
-    if(pairs.length>1){
-      labels = pairs.map(p=>{
-        const d=new Date(p.l);
-        return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const ts       = eq.timestamps || [];
+
+    // Filtra por tempo usando o array de timestamps ISO
+    const pairs = eq.equity.map((v,i)=>({v, l:eq.labels[i]||'', iso:ts[i]||''}))
+      .filter(p=>{
+        if(!p.iso) return true; // sem timestamp → inclui
+        const t=new Date(p.iso).getTime();
+        return isNaN(t) || t>=cutoff;
       });
-      values = pairs.map(p=>p.v);
+
+    // Se o filtro zerou tudo (janela sem trades), mostra todos os pontos
+    const src = pairs.length>1 ? pairs : eq.equity.map((v,i)=>({v, l:eq.labels[i]||'', iso:ts[i]||''}));
+
+    if(src.length>1){
+      labels = src.map(p=>p.l);
+      values = src.map(p=>p.v);
     }
   }
 

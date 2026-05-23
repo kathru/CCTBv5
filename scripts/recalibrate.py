@@ -61,11 +61,12 @@ DEFAULT_MIN_SCORE   = 0.40
 LOOKBACK = 25   # candles de janela para score_signal (25 para M8 Bollinger 20 + buffer)
 
 REGIME_THRESHOLDS_DEFAULT: dict[str, float] = {
+    # v2.4.0 — sync com momentum_strategy.py REGIME_THRESHOLDS
     "TREND_EXPANSION":        0.56,
-    "VOLATILITY_COMPRESSION": 0.60,
-    "TREND_EXHAUSTION":       0.68,
-    "MEAN_REVERTING_CHOP":    0.72,
-    "HIGH_CORRELATION_RISK":  0.75,
+    "VOLATILITY_COMPRESSION": 0.58,
+    "TREND_EXHAUSTION":       0.99,   # bloqueado
+    "MEAN_REVERTING_CHOP":    0.68,
+    "HIGH_CORRELATION_RISK":  0.99,   # bloqueado
     "PANIC_LIQUIDATION":      0.99,
     "LIQUIDITY_VACUUM":       0.99,
 }

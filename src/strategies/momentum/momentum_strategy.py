@@ -6,12 +6,12 @@ Camadas de proteção:
   2. Sizing adaptativo por regime (Kelly multiplier)
   3. Confirmação multi-timeframe 1H + 6H
 
-Regimes e comportamento:
-  TREND_EXPANSION      → BULL  : threshold 0.50, Kelly 100%, timeout 48h
-  VOLATILITY_COMPRESSION       : threshold 0.52, Kelly 80%,  timeout 24h
-  TREND_EXHAUSTION             : threshold 0.54, Kelly 60%,  timeout 12h
-  MEAN_REVERTING_CHOP  → CHOP  : threshold 0.56, Kelly 50%,  timeout 8h
-  HIGH_CORRELATION_RISK        : threshold 0.60, Kelly 30%,  timeout 6h
+Regimes e comportamento (v2.4.0 — 2026-05-23):
+  TREND_EXPANSION      → BULL  : threshold 0.56, Kelly 100%, SL 1.5×ATR, TP 4.5×ATR, timeout 48h
+  VOLATILITY_COMPRESSION       : threshold 0.58, Kelly 80%,  SL 1.0×ATR, TP 3.5×ATR, timeout 24h
+  MEAN_REVERTING_CHOP  → CHOP  : threshold 0.68, Kelly 50%,  SL 0.7×ATR, TP 2.0×ATR, timeout 8h
+  TREND_EXHAUSTION             : BLOQUEADO (threshold 0.99) — comprar topo é errado
+  HIGH_CORRELATION_RISK        : BLOQUEADO (threshold 0.99)
   BEAR_TREND           → BEAR  : BLOQUEADO para novas entradas
   PANIC_LIQUIDATION            : BLOQUEADO + saída imediata
 """
@@ -36,9 +36,11 @@ logger     = logging.getLogger(__name__)
 # 1H tem menos ruído que 30m → thresholds mais conservadores (+0.04 vs 30m)
 # Objetivo: 1-3 trades/dia de alta qualidade com menor ruído
 REGIME_THRESHOLDS: dict[str, float] = {
-    "TREND_EXPANSION":        0.50,   # +0.02 — mais seletivo
-    "VOLATILITY_COMPRESSION": 0.52,   # +0.02
-    "MEAN_REVERTING_CHOP":    0.60,   # +0.06 — só sinais muito fortes
+    # v2.4.0 — thresholds mais seletivos baseados em análise live (WR 10.7% em 28 trades)
+    # Eleva barra de entrada para reduzir trades em regimes menos confiáveis
+    "TREND_EXPANSION":        0.56,   # era 0.50 → +0.06 (evita entradas em fakeouts)
+    "VOLATILITY_COMPRESSION": 0.58,   # era 0.52 → +0.06 (exige confirmação de breakout)
+    "MEAN_REVERTING_CHOP":    0.68,   # era 0.60 → +0.08 (só sinais muito fortes em lateral)
     "TREND_EXHAUSTION":       0.99,   # BLOQUEADO — comprar topo é errado
     "HIGH_CORRELATION_RISK":  0.99,   # BLOQUEADO — risco não justifica
     "BEAR_TREND":             0.99,   # bloqueado
@@ -432,19 +434,19 @@ class MomentumStrategy(BaseStrategy):
         vol_data = (ctx.extra or {}).get("vol_state") or {}
         m8 = float(vol_data.get("m8_score", 0.5))
 
-        # ── Score final — pesos v2.3.0 (cleanup 2026-05-22) ────────────────────
-        # M1  2% (Spearman=-0.048, peso residual — quase descartado)
-        # M2 20% (Spearman~0, mantido por complementaridade com M3)
-        # M3 30% (Spearman=+0.229, único fator com edge empírico claro)
-        # M4  0% (Spearman=-0.057, removido completamente)
-        # M5  8%
-        # M6 10% (funding rate + OI — live data)
-        # M7  9% (relative strength vs BTC)
-        # M8 21% (vol state — Spearman=+0.229, reforçado junto com M3)
-        # Soma: 2+20+30+0+8+10+9+21 = 100% ✓
-        score = (m1 * 0.02 + m2 * 0.20 + m3 * 0.30 +
-                 m5 * 0.08 + m6 * 0.10 +
-                 m7 * 0.09 + m8 * 0.21)
+        # ── Score final — pesos v2.4.0 (recalibração 2026-05-23) ───────────────
+        # M1  2% (Spearman=-0.048, residual)
+        # M2 12% (era 20% → -8%: correlação~0, reduzido mas mantido por diversificação)
+        # M3 35% (era 30% → +5%: #1 predictor empírico, PermImp positivo)
+        # M4  0% (removido)
+        # M5  6% (era 8%  → -2%: ligeiramente negativo, reduzido)
+        # M6 13% (era 10% → +3%: funding rate real agora calibrado)
+        # M7 12% (era  9% → +3%: RS cross-symbol real agora calibrado)
+        # M8 20% (era 21% → -1%: mantido forte, pequeno ajuste)
+        # Soma: 2+12+35+0+6+13+12+20 = 100% ✓
+        score = (m1 * 0.02 + m2 * 0.12 + m3 * 0.35 +
+                 m5 * 0.06 + m6 * 0.13 +
+                 m7 * 0.12 + m8 * 0.20)
         score = round(min(max(score, 0.0), 1.0), 4)
 
         factors = {

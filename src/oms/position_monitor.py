@@ -37,49 +37,64 @@ logger = logging.getLogger(__name__)
 
 ATR_PERIOD    = 14    # candles para calcular ATR
 
-# Phase A — Multiplicadores de ATR por regime
-# SL: distância do stop  |  TP: distância do alvo  |  Ratio TP/SL implícito
-# Princípio: ratio 1:4 fixo → com WR histórico 33%, E[trade] = 0.33×4 - 0.67×1 = +0.65R
-# SL apertado (1.0 ATR) para limitar perdas | TP largo (4.0 ATR) para capturar a recuperação
+# Phase A — Multiplicadores de ATR por regime (v2.4.0 — ATR DINÂMICO)
+# Cada regime tem SL/TP calibrado para o seu perfil de volatilidade e direção esperada
+#
+# TREND_EXPANSION:        SL largo (1.5×) — tendência pode ter pullbacks profundos
+#                         TP ambicioso (4.5×) — trends podem correr muito
+#                         Ratio: 1:3 — E[trade] com WR 37% = 0.37×3 - 0.63×1 = +0.48R
+#
+# VOLATILITY_COMPRESSION: SL médio (1.0×) — pré-breakout: range é estreito
+#                         TP largo (3.5×) — se romper, pode ir longe
+#                         Ratio: 1:3.5 — E[trade] com WR 37% = 0.37×3.5 - 0.63×1 = +0.67R
+#
+# MEAN_REVERTING_CHOP:    SL apertado (0.7×) — se romper o range, sair rápido
+#                         TP moderado (2.0×) — range não tem espaço para grandes movimentos
+#                         Ratio: 1:2.86 — E[trade] com WR 43% = 0.43×2.86 - 0.57×1 = +0.66R
+#
+# HIGH_CORRELATION_RISK:  SL apertado (0.8×) — bloqueado, mas defensive
+#                         TP moderado (2.0×)
 REGIME_MULT: dict[str, dict[str, float]] = {
-    #                              SL    TP     ratio
-    "TREND_EXPANSION":        {"sl": 1.0, "tp": 4.0},  # 1:4 — captura recuperação total
-    "VOLATILITY_COMPRESSION": {"sl": 1.0, "tp": 4.0},  # 1:4 — mesmo ratio
-    "MEAN_REVERTING_CHOP":    {"sl": 1.0, "tp": 4.0},  # 1:4 — só entra com score alto
-    "TREND_EXHAUSTION":       {"sl": 1.0, "tp": 1.0},  # bloqueado — nunca entra
-    "HIGH_CORRELATION_RISK":  {"sl": 1.0, "tp": 1.0},  # bloqueado — nunca entra
-    "BEAR_TREND":             {"sl": 1.0, "tp": 1.0},  # não entra — saída imediata
-    "PANIC_LIQUIDATION":      {"sl": 1.0, "tp": 1.0},  # não entra — saída imediata
+    #                              SL    TP     ratio  regime
+    "TREND_EXPANSION":        {"sl": 1.5, "tp": 4.5},  # 1:3   — ride the trend
+    "VOLATILITY_COMPRESSION": {"sl": 1.0, "tp": 3.5},  # 1:3.5 — breakout setup
+    "MEAN_REVERTING_CHOP":    {"sl": 0.7, "tp": 2.0},  # 1:2.9 — range trade rápido
+    "TREND_EXHAUSTION":       {"sl": 0.8, "tp": 2.5},  # bloqueado — fallback defensive
+    "HIGH_CORRELATION_RISK":  {"sl": 0.8, "tp": 2.0},  # bloqueado — fallback defensive
+    "BEAR_TREND":             {"sl": 0.5, "tp": 1.0},  # não entra — saída imediata
+    "PANIC_LIQUIDATION":      {"sl": 0.5, "tp": 1.0},  # não entra — saída imediata
 }
 DEFAULT_SL_MULT = 1.0
-DEFAULT_TP_MULT = 4.0
+DEFAULT_TP_MULT = 3.5
 
 # Phase B — Trailing stop dinâmico por regime
-# EXPANSION: ativa cedo (0.8R) pois trend pode durar | CHOP: ativa mais tarde (1.2R) para não sair cedo
+# EXPANSION: ativa em 1.2R — deixa trade respirar antes de proteger
+# CHOP:      ativa em 1.5R — range trades precisam de espaço (TP é 2R)
 REGIME_TRAIL_ACTIVATE: dict[str, float] = {
-    "TREND_EXPANSION":        0.8,   # ativa cedo — trend pode se estender
-    "VOLATILITY_COMPRESSION": 1.0,
-    "TREND_EXHAUSTION":       1.0,
-    "MEAN_REVERTING_CHOP":    1.2,   # ativa mais tarde — evita whipsaw em lateral
+    "TREND_EXPANSION":        1.2,   # ativa após 1.2R — deixa trend correr antes de proteger
+    "VOLATILITY_COMPRESSION": 1.0,   # ativa em 1R — padrão
+    "TREND_EXHAUSTION":       0.8,   # bloqueado — mas ativa cedo se entrar
+    "MEAN_REVERTING_CHOP":    1.5,   # ativa tarde — evita whipsaw (TP=2R, trail@1.5R)
     "HIGH_CORRELATION_RISK":  0.8,   # ativa cedo — protege em alta correlação
-    "BEAR_TREND":             0.5,   # saída imediata — trailing ativa na metade do 1R
-    "PANIC_LIQUIDATION":      0.3,   # saída imediata — trailing ativa muito cedo
+    "BEAR_TREND":             0.3,   # saída imediata
+    "PANIC_LIQUIDATION":      0.2,   # saída imediata
 }
 TRAIL_ACTIVATE_R = 1.0   # fallback
 TRAIL_ATR_MULT   = 1.0   # distância do trailing = ATR × 1.0
 
 # Phase C — Saída parcial dinâmica por regime
-# EXPANSION: sai mais tarde (2.0R) para deixar correr | CHOP: sai mais cedo (1.0R) para garantir lucro
+# EXPANSION: parcial em 3.0R (deixa 50% correr até TP 4.5R)
+# CHOP:      parcial em 1.5R (garante lucro cedo no range)
 REGIME_PARTIAL_EXIT: dict[str, float] = {
-    "TREND_EXPANSION":        2.5,   # saída parcial em 2.5R — deixa restante correr ao TP (4R)
-    "VOLATILITY_COMPRESSION": 2.5,   # mesmo ratio
-    "MEAN_REVERTING_CHOP":    2.5,   # mesmo ratio
-    "TREND_EXHAUSTION":       1.5,   # bloqueado — não entra, mas mantém fallback
-    "HIGH_CORRELATION_RISK":  1.5,   # bloqueado — não entra, mas mantém fallback
+    "TREND_EXPANSION":        3.0,   # parcial em 3R — deixa restante correr ao TP (4.5R)
+    "VOLATILITY_COMPRESSION": 2.5,   # parcial em 2.5R — padrão
+    "MEAN_REVERTING_CHOP":    1.5,   # parcial em 1.5R — range tem pouco espaço
+    "TREND_EXHAUSTION":       1.5,   # bloqueado — fallback
+    "HIGH_CORRELATION_RISK":  1.5,   # bloqueado — fallback
     "BEAR_TREND":             0.5,
     "PANIC_LIQUIDATION":      0.3,
 }
-PARTIAL_EXIT_R   = 2.5   # fallback — saída parcial em 2.5R (meio caminho ao TP de 4R)
+PARTIAL_EXIT_R   = 2.5   # fallback
 PARTIAL_EXIT_PCT = 0.50  # fracção da posição a vender (50% sempre)
 
 # Phase D — Regimes que forçam saída imediata

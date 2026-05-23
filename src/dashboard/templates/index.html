@@ -1772,18 +1772,22 @@ function buildTradeHistory(orders, totalFilled){
     const side=(o.side||'buy').toLowerCase();
     const qty=parseFloat(o.filled_quantity||0), px=parseFloat(o.avg_fill_price||0);
     const notional=qty*px;
-    const pnl=parseFloat(o.pnl||0); // may not exist
-    const pnlStr=pnl!==0?(pnl>0?'+':'')+usd(pnl):'–';
-    const pnlCls=pnl>0?'g':pnl<0?'r':'m';
-    const ts=dt(o.created_at||o.filled_at);
+    const fee=parseFloat(o.fees_paid||0);
+    const feeStr=fee>0?'fee –'+usd(fee,2):'fee –';
+    // Fluxo de caixa: SELL = entrada (+notional, verde), BUY = saída (-notional, vermelho)
+    const isSell=side==='sell'||side==='short';
+    const cashFlow=isSell?notional:-notional;
+    const cashStr=(cashFlow>=0?'+':'')+usd(Math.abs(cashFlow));
+    const cashCls=isSell?'g':'r';
+    const ts=dt(o.filled_at||o.created_at);
     return`<div class="trade-item">
-      <div class="trade-pill ${side==='buy'?'tp-buy':'tp-sell'}">${side.toUpperCase()}</div>
+      <div class="trade-pill ${isSell?'tp-sell':'tp-buy'}">${side.toUpperCase()}</div>
       <div>
         <div class="trade-sym">${o.symbol||'–'}</div>
-        <div class="trade-meta"><span class="strat">${(o.strategy_id||'momentum_v2').replace('momentum_','m').toUpperCase()}</span> · ${qty.toFixed(4)} un · fee –</div>
+        <div class="trade-meta"><span class="strat">${(o.strategy_id||'momentum_v2').replace('momentum_','m').toUpperCase()}</span> · ${qty.toFixed(4)} un · ${feeStr}</div>
       </div>
       <div class="trade-right">
-        <div class="trade-pnl ${pnlCls}">${pnlStr!=='–'?pnlStr:usd(-notional)}</div>
+        <div class="trade-pnl ${cashCls}">${cashFlow>=0?'+':'-'}${usd(Math.abs(cashFlow))}</div>
         <div class="trade-ts">${ts}</div>
       </div>
     </div>`;

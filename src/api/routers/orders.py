@@ -42,6 +42,8 @@ def _serialize(order) -> dict:
         "quantity": order.quantity,
         "filled_quantity": order.filled_quantity,
         "avg_fill_price": order.avg_fill_price,
+        "fees_paid": order.fees_paid,
         "strategy_id": order.strategy_id,
         "created_at": str(order.created_at),
+        "filled_at": str(order.filled_at) if order.filled_at else None,
     }

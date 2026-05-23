@@ -86,7 +86,6 @@ async def get_performance(request: Request) -> dict:
     # Evita contar posições abertas como perdas (compras sem venda correspondente)
     qty_bought: dict[str, float] = {}
     qty_sold:   dict[str, float] = {}
-    buy_notional_pct: dict[str, float] = {}  # notional proporcional ao vendido
     for r in rows:
         sym  = r["symbol"]
         qty  = float(r["filled_quantity"] or 0)

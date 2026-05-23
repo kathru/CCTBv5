@@ -104,6 +104,12 @@ def open_db() -> sqlite3.Connection:
             fee      REAL    NOT NULL,
             PRIMARY KEY (symbol, gran, ts, forward, fee)
         );
+        CREATE TABLE IF NOT EXISTS funding_rates (
+            symbol   TEXT    NOT NULL,
+            ts       INTEGER NOT NULL,
+            rate     REAL    NOT NULL,
+            PRIMARY KEY (symbol, ts)
+        );
     """)
     conn.commit()
     return conn
@@ -184,6 +190,32 @@ def db_clear(conn: sqlite3.Connection) -> None:
     log.info("Banco limpo para rebuild completo.")
 
 
+def db_insert_funding_rates(conn: sqlite3.Connection, symbol: str,
+                             rows: list[tuple[int, float]]) -> int:
+    conn.executemany(
+        "INSERT OR IGNORE INTO funding_rates (symbol, ts, rate) VALUES (?,?,?)",
+        [(symbol, ts, rate) for ts, rate in rows],
+    )
+    conn.commit()
+    return len(rows)
+
+
+def db_load_funding_lookup(conn: sqlite3.Connection, symbol: str) -> dict[int, float]:
+    """Retorna {ts_ms: funding_rate} para lookup rápido por timestamp."""
+    rows = conn.execute(
+        "SELECT ts, rate FROM funding_rates WHERE symbol=? ORDER BY ts",
+        (symbol,),
+    ).fetchall()
+    return {r[0]: r[1] for r in rows}
+
+
+def db_last_funding_ts(conn: sqlite3.Connection, symbol: str) -> int | None:
+    row = conn.execute(
+        "SELECT MAX(ts) FROM funding_rates WHERE symbol=?", (symbol,)
+    ).fetchone()
+    return row[0] if row and row[0] else None
+
+
 # ── OKX Fetcher ───────────────────────────────────────────────────────────────
 
 OKX_BASE = "https://www.okx.com"
@@ -247,6 +279,52 @@ def fetch_candles_range(symbol: str, granularity: str,
     candles.sort(key=lambda c: c["ts"])
     log.info("  %s: %d candles baixados", symbol, len(candles))
     return candles
+
+
+def fetch_funding_rates(symbol: str, since_ts: int | None = None) -> list[tuple[int, float]]:
+    """
+    Baixa histórico de funding rates da OKX (max ~3 meses disponíveis).
+    Retorna lista de (ts_ms, rate).
+    """
+    # OKX swap instrument = BTC-USDT-SWAP
+    swap = symbol.replace("-USDT", "-USDT-SWAP")
+    url  = f"{OKX_BASE}/api/v5/public/funding-rate-history?instId={swap}&limit=100"
+    rows: list[tuple[int, float]] = []
+    after_ms = None
+    page = 0
+
+    log.info("Baixando funding rates para %s…", symbol)
+    while True:
+        req_url = url + (f"&after={after_ms}" if after_ms else "")
+        try:
+            resp = requests.get(req_url, timeout=15)
+            resp.raise_for_status()
+            data = resp.json().get("data", [])
+        except Exception as exc:
+            log.warning("Funding rate fetch error: %s", exc)
+            break
+
+        if not data:
+            break
+
+        for d in data:
+            ts   = int(d.get("fundingTime", 0))
+            rate = float(d.get("realizedRate", d.get("fundingRate", 0)) or 0)
+            if since_ts and ts <= since_ts:
+                rows.sort(key=lambda x: x[0])
+                log.info("  %s: %d funding rates baixados", symbol, len(rows))
+                return rows
+            rows.append((ts, rate))
+
+        after_ms = int(data[-1].get("fundingTime", 0)) - 1
+        page += 1
+        time.sleep(0.3)
+        if page > 50:  # segurança
+            break
+
+    rows.sort(key=lambda x: x[0])
+    log.info("  %s: %d funding rates baixados", symbol, len(rows))
+    return rows
 
 
 # ── Signal logic (espelho de momentum_strategy.py) ────────────────────────────
@@ -335,15 +413,104 @@ def _compute_m8_recal(closes: list[float], highs: list[float], lows: list[float]
     return STATE_M8[state]
 
 
+def _compute_m7_recal(closes_sym: list[float], closes_btc: list[float],
+                      alt_closes_list: list[list[float]]) -> float:
+    """
+    M7 Relative Strength — espelho de RelativeStrengthCollector.
+    Horizontes: 1h (40%), 5h (35%), 24h (25%).
+    """
+    import math as _math2
+
+    def _ret(closes: list[float], h: int) -> float | None:
+        if len(closes) <= h or closes[h] <= 0:
+            return None
+        return (closes[0] - closes[h]) / closes[h]
+
+    def _score_rs(rs: float | None) -> float:
+        if rs is None:
+            return 0.5
+        x = max(-50.0, min(50.0, (rs - 1.0) * 8.0))  # clamp para evitar overflow
+        return round(1.0 / (1.0 + _math2.exp(-x)), 4)
+
+    # RS ponderado multi-horizonte
+    btc_rets = {h: _ret(closes_btc, h) for h in [1, 5, 24]}
+    sym_rets = {h: _ret(closes_sym, h) for h in [1, 5, 24]}
+    weights  = {1: 0.40, 5: 0.35, 24: 0.25}
+
+    rs_scores = []
+    for h, w in weights.items():
+        br, sr = btc_rets[h], sym_rets[h]
+        if br is None or sr is None:
+            continue
+        rs = sr / br if abs(br) > 1e-8 else 1.0
+        rs_scores.append(_score_rs(rs) * w)
+    rs_weighted = sum(rs_scores) / sum(weights[h] for h in [1,5,24]
+                      if btc_rets[h] is not None and sym_rets[h] is not None) \
+                  if rs_scores else 0.5
+
+    # BTC leadership
+    btc_1h = _ret(closes_btc, 1) or 0.0
+    btc_5h = _ret(closes_btc, 5) or 0.0
+    lead   = min(max(0.5 + btc_1h * 20 + btc_5h * 5, 0.0), 1.0)
+    if alt_closes_list:
+        alt_rets = [_ret(a, 1) for a in alt_closes_list if _ret(a, 1) is not None]
+        if alt_rets:
+            avg_alt = sum(alt_rets) / len(alt_rets)
+            if btc_1h > 0 and avg_alt > 0:
+                lead = min(lead + 0.1, 1.0)
+            elif btc_1h < 0:
+                lead = max(lead - 0.1, 0.0)
+
+    # RS trend (usando 1h como proxy — apenas 1 ponto disponível por candle)
+    rs_trend = 0.5  # neutro sem histórico de RS
+
+    m7 = rs_weighted * 0.50 + lead * 0.30 + rs_trend * 0.20
+    return round(min(max(m7, 0.0), 1.0), 4)
+
+
+def _compute_m6_recal(ts_ms: int, funding_lookup: dict[int, float]) -> float:
+    """
+    M6 Futures Flow simplificado para backtest:
+    Usa apenas funding rate (OI não disponível historicamente).
+    Funding rate → score: negativo=bearish(0.2), neutro=0.5, positivo=bullish(0.8).
+    """
+    if not funding_lookup:
+        return 0.5
+    # Busca o funding rate mais próximo antes de ts_ms (janela de 8h)
+    EIGHT_HOURS = 8 * 3_600_000
+    best_ts, best_rate = None, None
+    for fts, rate in funding_lookup.items():
+        if fts <= ts_ms and (best_ts is None or fts > best_ts):
+            best_ts, best_rate = fts, rate
+
+    if best_ts is None or (ts_ms - best_ts) > EIGHT_HOURS * 1.5:
+        return 0.5  # sem dado próximo
+
+    rate = best_rate
+    # Normaliza: funding positivo = longs pagam = bullish momentum
+    # Faixa típica: [-0.001, +0.003] por 8h
+    if rate > 0.001:
+        score = 0.70   # funding alto = muito bullish
+    elif rate > 0.0003:
+        score = 0.60
+    elif rate > -0.0003:
+        score = 0.50   # neutro
+    elif rate > -0.001:
+        score = 0.40
+    else:
+        score = 0.30   # funding muito negativo = bearish
+
+    return score
+
+
 def score_signal(closes: list[float], highs: list[float],
                  lows: list[float], opens: list[float],
-                 volumes: list[float], regime: str) -> float:
+                 volumes: list[float], regime: str,
+                 m6: float = 0.5, m7: float = 0.5) -> float:
     """
     Score M1-M8 espelho de MomentumStrategy._score_signal().
-    Pesos: M1=18% M2=18% M3=14% M4=14% M5=6% M6=10%(neutro) M7=9%(neutro) M8=11%
-
-    M6 (Futures Flow): neutro 0.5 — requer API OKX em tempo real
-    M7 (Rel.Strength): neutro 0.5 — requer multi-símbolo simultâneo
+    Pesos v2.3.0: M1=2% M2=20% M3=30% M4=0% M5=8% M6=10% M7=9% M8=21%
+    M6 e M7 são injetados externamente por build_samples.
     """
     n = len(closes)
 
@@ -385,17 +552,14 @@ def score_signal(closes: list[float], highs: list[float],
           for i in range(min(3, n))]
     m5 = sum(cs)/len(cs) if cs else 0.5
 
-    # M6 Futures Flow — neutro no backtest histórico
-    m6 = 0.5
-
-    # M7 Relative Strength — neutro no backtest histórico
-    m7 = 0.5
-
+    # M6 e M7 injetados externamente (calculados em build_samples)
     # M8 Volatility State — calculado de candles
     m8 = _compute_m8_recal(closes, highs, lows)
 
-    return (m1*0.10 + m2*0.20 + m3*0.25 + m4*0.05 +
-            m5*0.08 + m6*0.10 + m7*0.09 + m8*0.13)
+    # Pesos v2.3.0 — espelho exato de momentum_strategy.py linha 445
+    # M4=0 (removido), soma = 2+20+30+0+8+10+9+21 = 100%
+    return (m1*0.02 + m2*0.20 + m3*0.30 +
+            m5*0.08 + m6*0.10 + m7*0.09 + m8*0.21)
 
 
 def platt_calibrate(score: float, A: float, B: float) -> float:
@@ -406,10 +570,15 @@ def platt_calibrate(score: float, A: float, B: float) -> float:
 
 def build_samples(candles: list[dict], symbol: str, gran: str,
                   forward: int, fee: float, min_score: float,
-                  start_idx: int = LOOKBACK) -> list[dict]:
+                  start_idx: int = LOOKBACK,
+                  btc_candles: list[dict] | None = None,
+                  alt_candles_map: dict[str, list[dict]] | None = None,
+                  funding_lookup: dict[int, float] | None = None) -> list[dict]:
     """
     Gera amostras para candles[start_idx : len-forward].
-    start_idx permite processar apenas candles novos passando o offset certo.
+    btc_candles: candles do BTC para calcular M7 (Relative Strength).
+    alt_candles_map: {symbol: candles} dos outros ativos para BTC leadership.
+    funding_lookup: {ts_ms: rate} para M6 (Funding Rate).
     """
     closes  = [c["close"]  for c in candles]
     highs   = [c["high"]   for c in candles]
@@ -418,6 +587,27 @@ def build_samples(candles: list[dict], symbol: str, gran: str,
     volumes = [c["volume"] for c in candles]
     n = len(candles)
     samples: list[dict] = []
+
+    # Pré-computa lookup de BTC por ts para M7
+    btc_ts_map: dict[int, int] = {}  # ts -> índice em btc_candles
+    btc_closes: list[float] = []
+    if btc_candles:
+        btc_closes = [c["close"] for c in btc_candles]
+        btc_ts_map = {c["ts"]: i for i, c in enumerate(btc_candles)}
+
+    # Pré-computa lookup de alts para BTC leadership
+    alt_closes_by_ts: dict[int, list[list[float]]] = {}
+    if alt_candles_map:
+        # Para cada timestamp, coleta os closes das alts
+        all_ts = set(c["ts"] for c in candles)
+        for alt_sym, alt_cands in alt_candles_map.items():
+            alt_map = {c["ts"]: i for i, c in enumerate(alt_cands)}
+            alt_cls = [c["close"] for c in alt_cands]
+            for ts in all_ts:
+                if ts in alt_map:
+                    idx = alt_map[ts]
+                    window = list(reversed(alt_cls[max(0, idx - LOOKBACK):idx + 1]))
+                    alt_closes_by_ts.setdefault(ts, []).append(window)
 
     for i in range(start_idx, n - forward):
         w_close = list(reversed(closes[max(0, i - LOOKBACK):i + 1]))
@@ -430,7 +620,22 @@ def build_samples(candles: list[dict], symbol: str, gran: str,
         if regime in {"PANIC_LIQUIDATION", "LIQUIDITY_VACUUM"}:
             continue
 
-        score = score_signal(w_close, w_high, w_low, w_open, w_vol, regime)
+        ts_now = candles[i]["ts"]
+
+        # M7: Relative Strength vs BTC
+        m7 = 0.5
+        if btc_candles and ts_now in btc_ts_map:
+            btc_i = btc_ts_map[ts_now]
+            btc_w = list(reversed(btc_closes[max(0, btc_i - LOOKBACK):btc_i + 1]))
+            alts  = alt_closes_by_ts.get(ts_now, [])
+            # Exclui o próprio símbolo das alts
+            alts_filtered = alts  # já filtrado pois alt_candles_map não inclui symbol
+            m7 = _compute_m7_recal(w_close, btc_w, alts_filtered)
+
+        # M6: Funding Rate
+        m6 = _compute_m6_recal(ts_now, funding_lookup or {})
+
+        score = score_signal(w_close, w_high, w_low, w_open, w_vol, regime, m6=m6, m7=m7)
         if score < min_score:
             continue
 
@@ -442,7 +647,7 @@ def build_samples(candles: list[dict], symbol: str, gran: str,
         samples.append({
             "symbol": symbol,
             "gran":   gran,
-            "ts":     candles[i]["ts"],
+            "ts":     ts_now,
             "score":  score,
             "regime": regime,
             "label":  label,
@@ -665,10 +870,30 @@ def main() -> None:
             inserted = db_insert_candles(conn, symbol, args.gran, new_candles)
             log.info("%s: %d candles novos inseridos no banco.", symbol, inserted)
 
-    # ── 2. Gerar amostras incrementais ────────────────────────────────────────
+    # ── 2. Buscar funding rates (M6) — OKX histórico ─────────────────────────
+    funding_lookups: dict[str, dict[int, float]] = {}
+    if not args.from_cache:
+        for symbol in args.symbols:
+            last_fr_ts = db_last_funding_ts(conn, symbol)
+            fr_rows = fetch_funding_rates(symbol, since_ts=last_fr_ts)
+            if fr_rows and not args.dry_run:
+                db_insert_funding_rates(conn, symbol, fr_rows)
+            funding_lookups[symbol] = db_load_funding_lookup(conn, symbol)
+            log.info("%s: %d funding rates no banco", symbol, len(funding_lookups[symbol]))
+    else:
+        for symbol in args.symbols:
+            funding_lookups[symbol] = db_load_funding_lookup(conn, symbol)
+
+    # ── 3. Pré-carregar candles de todos os símbolos (M7 cross-symbol) ────────
+    all_candles_map: dict[str, list[dict]] = {}
     for symbol in args.symbols:
-        # Carrega todos os candles do banco (necessário para a janela de lookback)
-        all_candles = db_load_candles(conn, symbol, args.gran)
+        all_candles_map[symbol] = db_load_candles(conn, symbol, args.gran)
+
+    btc_candles = all_candles_map.get("BTC-USDT", [])
+
+    # ── 4. Gerar amostras incrementais ────────────────────────────────────────
+    for symbol in args.symbols:
+        all_candles = all_candles_map[symbol]
         if len(all_candles) < LOOKBACK + args.forward + 1:
             log.warning("%s: candles insuficientes no banco (%d).", symbol, len(all_candles))
             continue
@@ -681,8 +906,6 @@ def main() -> None:
         last_sample_ts = row[0] if row and row[0] else None
 
         if last_sample_ts:
-            # Encontra o índice do primeiro candle após o último processado
-            # Precisa de LOOKBACK candles anteriores para a janela
             ts_list = [c["ts"] for c in all_candles]
             try:
                 last_idx = ts_list.index(last_sample_ts)
@@ -695,10 +918,16 @@ def main() -> None:
             start_idx = LOOKBACK
             log.info("%s: gerando amostras do zero (%d candles).", symbol, len(all_candles))
 
+        # Alts para BTC leadership (todos os outros símbolos)
+        alt_map = {s: c for s, c in all_candles_map.items() if s != symbol}
+
         new_samples = build_samples(
             all_candles, symbol, args.gran,
             args.forward, args.fee, args.min_score,
             start_idx=start_idx,
+            btc_candles=btc_candles if symbol != "BTC-USDT" else None,
+            alt_candles_map=alt_map,
+            funding_lookup=funding_lookups.get(symbol, {}),
         )
 
         if new_samples:
@@ -710,7 +939,7 @@ def main() -> None:
         else:
             log.info("%s: sem novas amostras.", symbol)
 
-    # ── 3. Carregar todas as amostras e refitar ────────────────────────────────
+    # ── 5. Carregar todas as amostras e refitar ────────────────────────────────
     all_samples = db_load_samples(conn, args.forward, args.fee)
     if not all_samples:
         log.error("Nenhuma amostra no banco. Rode com --rebuild para bootstrap.")

@@ -146,7 +146,49 @@
         "wr_vs_prev": "-0.0112",
         "passed": true
       }
+    },
+    {
+      "version": "platt_v8",
+      "run_at": "2026-05-23T12:01:22.397914+00:00",
+      "mode": "incremental",
+      "platt_a": 0.368263,
+      "platt_b": -0.70433,
+      "n_samples": 38788,
+      "win_rate": 0.3747,
+      "symbols": [
+        "BTC-USDT",
+        "ETH-USDT",
+        "SOL-USDT"
+      ],
+      "delta_wr": 0.0111,
+      "delta_a": 0.116052,
+      "forward": 10,
+      "quality_gate": {
+        "wr_vs_prev": "+0.0111",
+        "passed": true
+      }
+    },
+    {
+      "version": "platt_v9",
+      "run_at": "2026-05-23T12:02:23.211572+00:00",
+      "mode": "incremental",
+      "platt_a": 0.368263,
+      "platt_b": -0.70433,
+      "n_samples": 38788,
+      "win_rate": 0.3747,
+      "symbols": [
+        "BTC-USDT",
+        "ETH-USDT",
+        "SOL-USDT"
+      ],
+      "delta_wr": 0.0,
+      "delta_a": 0.0,
+      "forward": 10,
+      "quality_gate": {
+        "wr_vs_prev": "0.0",
+        "passed": true
+      }
     }
   ],
-  "updated_at": "2026-05-23T05:39:24.537372+00:00"
+  "updated_at": "2026-05-23T12:02:23.211572+00:00"
 }

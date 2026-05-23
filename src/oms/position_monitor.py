@@ -250,6 +250,13 @@ class PositionMonitor:
 
         self._pending_factors: dict[str, dict] = {}
 
+        # ── Ghost Fill Detection ──────────────────────────────────────────────
+        # Detecta ExitPlans sem posição real no OKX (fills fantasma do paper trading).
+        # _ghost_streak: quantas verificações consecutivas sem posição no Redis.
+        # Após GHOST_STREAK_THRESHOLD checks → ExitPlan removido + alerta.
+        self._ghost_streak: dict[str, int] = {}
+        self._check_cycle: int = 0   # contador de ciclos para trigger periódico
+
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
     async def start(self) -> None:
@@ -312,6 +319,18 @@ class PositionMonitor:
         if price <= 0 or qty <= 0:
             return
 
+        # ── Alerta de fill parcial baixo ──────────────────────────────────────
+        # Fill ratio < 70% em paper trading = risco de "ghost fill" no OKX demo:
+        # o OKX pode registrar o fill localmente mas não abrir a posição.
+        ordered_qty  = order.quantity or qty
+        fill_ratio   = qty / ordered_qty if ordered_qty > 0 else 1.0
+        if fill_ratio < 0.70:
+            logger.warning(
+                "FILL PARCIAL BAIXO %s: %.1f%% preenchido (%.4f de %.4f) — "
+                "risco de ghost fill no OKX demo. Ghost detector ativo.",
+                symbol, fill_ratio * 100, qty, ordered_qty,
+            )
+
         signal_factors = self._pending_factors.pop(symbol, {})
         await self._create_plan(symbol, qty, price, strat_id, signal_factors=signal_factors)
 
@@ -369,13 +388,88 @@ class PositionMonitor:
 
     async def _check_positions(self) -> None:
         if not self._plans:
+            self._check_cycle = 0
             return
+
+        self._check_cycle += 1
+
+        # Ghost detection a cada 10 ciclos (~5min com interval=30s)
+        # Detecta fills fantasma: ExitPlan existe mas OKX não tem a posição.
+        if self._check_cycle % 10 == 1:
+            await self._detect_ghost_plans()
+
         now = datetime.now(UTC)
         for symbol, plan in list(self._plans.items()):
             try:
                 await self._evaluate_plan(symbol, plan, now)
             except Exception as exc:
                 logger.error("Erro ao avaliar %s: %s", symbol, exc, exc_info=True)
+
+    async def _detect_ghost_plans(self) -> None:
+        """
+        Detecta ExitPlans sem posição real correspondente no OKX/Redis.
+
+        Contexto: OKX paper trading pode confirmar um fill localmente mas não
+        abrir a posição de fato (comum em fills parciais < 70%). O reconciliador
+        eventualmente remove a posição do Redis, mas o ExitPlan permanece ativo,
+        tentando gerenciar uma posição que não existe.
+
+        Lógica:
+          - Verifica cache.get_position(symbol) para cada ExitPlan ativo
+          - Se ausente: incrementa ghost_streak
+          - ghost_streak >= 2 ciclos consecutivos → ExitPlan fantasma confirmado
+          - Remove o plano + loga warning para investigação
+          - Reset do streak se posição reaparece (ex: reconciliador a importou)
+
+        Intervalo: a cada 10 ciclos = ~5min (suficiente para reconciliador rodar 2x).
+        """
+        if not self._plans:
+            return
+
+        for symbol in list(self._plans.keys()):
+            try:
+                pos_data = await self._cache.get_position(symbol)
+
+                if pos_data:
+                    # Posição confirmada no Redis → reset do streak
+                    if symbol in self._ghost_streak:
+                        logger.debug(
+                            "Ghost streak reset: %s — posicao reapareceu no Redis",
+                            symbol,
+                        )
+                        self._ghost_streak.pop(symbol, None)
+                    continue
+
+                # Posição ausente — incrementa streak
+                streak = self._ghost_streak.get(symbol, 0) + 1
+                self._ghost_streak[symbol] = streak
+
+                logger.warning(
+                    "GHOST CHECK %s: posicao nao encontrada no Redis "
+                    "(streak=%d/2) — possivel fill fantasma OKX demo",
+                    symbol, streak,
+                )
+
+                if streak >= 2:
+                    # Confirmado: ExitPlan sem posição real → remove
+                    plan = self._plans.pop(symbol, None)
+                    self._ghost_streak.pop(symbol, None)
+
+                    if plan:
+                        entry_age = (
+                            datetime.now(UTC) - plan.entry_time
+                        ).total_seconds() / 60
+
+                        logger.error(
+                            "GHOST FILL CONFIRMADO: %s | entry=%.2f | "
+                            "entry_age=%.0fmin | regime=%s | "
+                            "ExitPlan removido — posicao nunca existiu no OKX. "
+                            "Verifique fill parcial na OKX demo.",
+                            symbol, plan.entry_price, entry_age, plan.entry_regime,
+                        )
+
+            except Exception as exc:
+                logger.warning("Ghost detection erro %s: %s", symbol, exc)
 
     # ── Avaliação do plano ────────────────────────────────────────────────────
 
@@ -587,6 +681,7 @@ class PositionMonitor:
             "running":      self._running,
             "active_plans": len(self._plans),
             "exits_today":  self._exits_today,
+            "ghost_suspects": dict(self._ghost_streak),   # symbols sob suspeita
             "plans": {
                 sym: {
                     "entry_price":         p.entry_price,

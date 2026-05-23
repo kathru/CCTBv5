@@ -64,12 +64,18 @@ jobs:
         env:
           PYTHONPATH: .
 
-      # Baixa novos candles 1H da OKX e recalibra o Platt scaling.
-      # IMPORTANTE: se os pesos M1-M8 forem alterados em momentum_strategy.py,
-      # rode manualmente com: python scripts/recalibrate.py (após apagar samples do DB)
-      # para regenerar todas as amostras com os novos pesos antes do próximo CI.
-      - name: Incremental calibration (novos candles 1H + recalibração)
-        run: python scripts/recalibrate.py --incremental --gran 1H
+      # Calibração: rebuild completo se DB é novo (cache miss = pesos mudaram),
+      # incremental se DB já existe com amostras v2.5.0.
+      # v2.5.0: M9 adicionado — rebuild obrigatório na primeira run após cache miss.
+      - name: Calibration (rebuild se DB novo, incremental se já existir)
+        run: |
+          if [ "${{ steps.cache-db.outputs.cache-hit }}" == "true" ]; then
+            echo "Cache hit — calibração incremental (pesos já corretos)"
+            python scripts/recalibrate.py --incremental --gran 1H
+          else
+            echo "Cache miss — rebuild completo com pesos v2.5.0"
+            python scripts/recalibrate.py --rebuild --gran 1H
+          fi
         env:
           PYTHONPATH: .
 

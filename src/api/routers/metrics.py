@@ -82,13 +82,33 @@ async def get_performance(request: Request) -> dict:
     else:
         total_fees = round(fees_from_db, 4)
 
-    # P&L realizado: cost-basis por símbolo (não net cash flow)
+    # P&L realizado: apenas a proporção vendida do custo de compra (FIFO simples)
+    # Evita contar posições abertas como perdas (compras sem venda correspondente)
+    qty_bought: dict[str, float] = {}
+    qty_sold:   dict[str, float] = {}
+    buy_notional_pct: dict[str, float] = {}  # notional proporcional ao vendido
+    for r in rows:
+        sym  = r["symbol"]
+        qty  = float(r["filled_quantity"] or 0)
+        px   = float(r["avg_fill_price"] or 0)
+        side = str(r["side"]).upper()
+        if side in ("BUY", "LONG"):
+            qty_bought[sym] = qty_bought.get(sym, 0) + qty
+            buys_by_sym[sym] = buys_by_sym.get(sym, 0) + qty * px
+        elif side in ("SELL", "SHORT"):
+            qty_sold[sym] = qty_sold.get(sym, 0) + qty
+            sells_by_sym[sym] = sells_by_sym.get(sym, 0) + qty * px
+
     for sym in set(list(buys_by_sym) + list(sells_by_sym)):
-        b = buys_by_sym.get(sym, 0)
-        s = sells_by_sym.get(sym, 0)
-        if b > 0 and s > 0:
-            # Calc qty via ordens para avg buy price (aproximação simples por notional)
-            pnl_by_symbol[sym] = round(s - b, 2)  # parcial: só pairs com sell
+        b_qty  = qty_bought.get(sym, 0)
+        s_qty  = qty_sold.get(sym, 0)
+        b_not  = buys_by_sym.get(sym, 0)
+        s_not  = sells_by_sym.get(sym, 0)
+        if b_qty > 0 and s_qty > 0 and s_not > 0:
+            # Custo proporcional ao que foi vendido (FIFO avg)
+            avg_buy_px = b_not / b_qty
+            cost_sold  = min(s_qty, b_qty) * avg_buy_px
+            pnl_by_symbol[sym] = round(s_not - cost_sold, 2)
 
     total_pnl = sum(pnl_by_symbol.values())
 

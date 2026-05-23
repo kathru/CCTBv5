@@ -450,8 +450,8 @@
 <div class="grid g3" id="crypto-row"></div>
 
 
-<!-- ══ MOTOR + BREADTH ═══════════════════════════════════════ -->
-<div class="grid g21">
+<!-- ══ MOTOR ═══════════════════════════════════════════════ -->
+<div class="grid" style="grid-template-columns:1fr">
 
   <!-- Motor Probabilístico -->
   <div class="card">
@@ -654,21 +654,19 @@
       </div>
     </div>
 
-    <!-- Calibração -->
-    <div class="calib-row">
-      <div class="calib-item"><div class="calib-val b" id="calib-wr2">–</div><div class="calib-label">Win Rate</div></div>
-      <div class="calib-item"><div class="calib-val"   id="calib-n">–</div><div class="calib-label">Amostras</div></div>
-      <div class="calib-item"><div class="calib-val m" id="calib-date">–</div><div class="calib-label">Calibrado em</div></div>
-    </div>
-  </div>
+    <!-- IDs de calibração preservados (usados pelo JS) -->
+    <span id="calib-wr2" style="display:none"></span>
+    <span id="calib-n"   style="display:none"></span>
+    <span id="calib-date" style="display:none"></span>
 
-  <!-- Watchdogs -->
-  <div class="card">
-    <div class="clabel"><div class="ico" style="background:rgba(16,185,129,0.15)">🛡️</div>Watchdogs</div>
-    <div class="wd-grid">
-      <div class="wd-item"><div class="wd-name">WebSocket</div><div class="wd-status" id="wd-ws">–</div><div class="wd-detail" id="wd-ws-d">–</div></div>
-      <div class="wd-item"><div class="wd-name">Heartbeat</div><div class="wd-status" id="wd-hb">–</div><div class="wd-detail" id="wd-hb-d">–</div></div>
-      <div class="wd-item"><div class="wd-name">Recursos</div><div class="wd-status"  id="wd-res">–</div><div class="wd-detail" id="wd-res-d">–</div></div>
+    <!-- Watchdogs — movidos para dentro do Motor -->
+    <div style="padding-top:12px;border-top:1px solid var(--border);">
+      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">🛡️ Watchdogs</div>
+      <div class="wd-grid">
+        <div class="wd-item"><div class="wd-name">WebSocket</div><div class="wd-status" id="wd-ws">–</div><div class="wd-detail" id="wd-ws-d">–</div></div>
+        <div class="wd-item"><div class="wd-name">Heartbeat</div><div class="wd-status" id="wd-hb">–</div><div class="wd-detail" id="wd-hb-d">–</div></div>
+        <div class="wd-item"><div class="wd-name">Recursos</div><div class="wd-status"  id="wd-res">–</div><div class="wd-detail" id="wd-res-d">–</div></div>
+      </div>
     </div>
   </div>
 

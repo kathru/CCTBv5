@@ -69,6 +69,22 @@ class PositionRepository:
         )
         return [dict(r) for r in rows]
 
+    async def close_stale_by_symbol(self, symbol: str) -> int:
+        """Fecha todas as posições abertas de um símbolo (sync com OKX zerou o saldo)."""
+        from datetime import datetime, timezone
+        result = await self._db.execute(
+            """UPDATE positions
+               SET status = 'closed', closed_at = $1
+               WHERE status = 'open' AND symbol = $2""",
+            datetime.now(timezone.utc),
+            symbol,
+        )
+        # asyncpg retorna "UPDATE N" — extrai o N
+        try:
+            return int(str(result).split()[-1])
+        except Exception:
+            return 0
+
     async def get_closed(
         self, symbol: str | None = None, limit: int = 200
     ) -> list[dict]:

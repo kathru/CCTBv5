@@ -377,9 +377,21 @@ class ExchangeSync:
                 except Exception as pos_exc:
                     logger.debug("ExchangeSync: erro ao salvar posição %s: %s", symbol, pos_exc)
 
-        # Remove posições do Redis que não existem mais na exchange
+        # Remove posições do Redis e DB que não existem mais na exchange
         for symbol in TRADING_SYMBOLS - set(crypto_positions.keys()):
+            # Remove do Redis (qualquer source)
             existing = await self._cache.get_position(symbol)
-            if existing and existing.get("source") == "exchange_sync":
+            if existing:
                 await self._cache.delete_position(symbol)
                 logger.info("ExchangeSync: posição removida do Redis (saiu da OKX): %s", symbol)
+            # Fecha no PostgreSQL também — evita posições "fantasma" no dashboard
+            if pos_repo:
+                try:
+                    closed = await pos_repo.close_stale_by_symbol(symbol)
+                    if closed:
+                        logger.info(
+                            "ExchangeSync: %d posição(ões) %s fechada(s) no DB "
+                            "(saldo OKX zerado)", closed, symbol
+                        )
+                except Exception as e:
+                    logger.debug("ExchangeSync: erro ao fechar posição %s no DB: %s", symbol, e)

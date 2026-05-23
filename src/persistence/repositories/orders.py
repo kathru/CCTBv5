@@ -3,6 +3,11 @@
 from ...core.models import Order, OrderMode, OrderSide, OrderStatus, OrderType
 from ..postgres import Database
 
+# IDs de estratégia que NÃO devem ser contabilizados nas métricas do bot.
+# okx_import   = trades importados do histórico da OKX (não executados pelo bot)
+# exchange_sync = ordens sintéticas criadas pelo reconciliador de saldo
+EXCLUDED_STRATEGY_IDS: tuple[str, ...] = ("okx_import", "exchange_sync")
+
 
 class OrderRepository:
 
@@ -83,29 +88,34 @@ class OrderRepository:
         return [self._to_model(r) for r in rows]
 
     async def get_recent(self, limit: int = 500) -> list[Order]:
-        """Retorna ordens recentes (todos os status), mais recentes primeiro.
-        Usa filled_at quando disponível, senão created_at."""
+        """Retorna ordens recentes (todos os status), excluindo imports externos."""
         rows = await self._db.fetch(
             "SELECT * FROM orders "
+            "WHERE strategy_id != ALL($1) "
             "ORDER BY COALESCE(filled_at, submitted_at, created_at) DESC "
-            "LIMIT $1",
-            limit,
+            "LIMIT $2",
+            list(EXCLUDED_STRATEGY_IDS), limit,
         )
         return [self._to_model(r) for r in rows]
 
     async def get_filled(self, limit: int = 50) -> list[Order]:
-        """Retorna apenas ordens preenchidas (filled), mais recentes primeiro."""
+        """Retorna ordens preenchidas pelo bot (exclui okx_import e exchange_sync)."""
         rows = await self._db.fetch(
-            "SELECT * FROM orders WHERE status = 'filled' "
+            "SELECT * FROM orders "
+            "WHERE status = 'filled' AND strategy_id != ALL($1) "
             "ORDER BY COALESCE(filled_at, created_at) DESC "
-            "LIMIT $1",
-            limit,
+            "LIMIT $2",
+            list(EXCLUDED_STRATEGY_IDS), limit,
         )
         return [self._to_model(r) for r in rows]
 
     async def count_filled(self) -> int:
-        """Conta o total de ordens preenchidas no DB."""
-        row = await self._db.fetchrow("SELECT COUNT(*) FROM orders WHERE status = 'filled'")
+        """Conta ordens preenchidas pelo bot (exclui okx_import e exchange_sync)."""
+        row = await self._db.fetchrow(
+            "SELECT COUNT(*) FROM orders "
+            "WHERE status = 'filled' AND strategy_id != ALL($1)",
+            list(EXCLUDED_STRATEGY_IDS),
+        )
         return int(row[0]) if row else 0
 
     async def get_by_strategy(

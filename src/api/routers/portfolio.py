@@ -95,6 +95,7 @@ async def portfolio_summary(request: Request) -> dict:
     order_stats: dict[str, dict] = {}  # symbol → {buy_qty, buy_notional, sell_qty, sell_notional}
     if db:
         try:
+            from src.persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
             rows = await db.fetch(
                 """
                 SELECT symbol, side,
@@ -102,9 +103,10 @@ async def portfolio_summary(request: Request) -> dict:
                        SUM(filled_quantity * avg_fill_price)       AS notional,
                        SUM(COALESCE(fees_paid, 0))                 AS fees
                 FROM orders
-                WHERE status='filled' AND strategy_id != 'exchange_sync'
+                WHERE status='filled' AND strategy_id != ALL($1)
                 GROUP BY symbol, side
-                """
+                """,
+                list(EXCLUDED_STRATEGY_IDS),
             )
             for r in rows:
                 sym  = r["symbol"]

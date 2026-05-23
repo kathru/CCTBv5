@@ -233,14 +233,16 @@ class AdvancedRiskManager:
             return {"available": False, "reason": "DB não conectado"}
 
         try:
+            from src.persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
             rows = await self._db.fetch(
                 """
-                SELECT avg_fill_price, filled_quantity, fees_paid, side, filled_at
+                SELECT avg_fill_price, filled_quantity, fees_paid, side, filled_at, symbol
                 FROM orders
-                WHERE status='filled'
+                WHERE status='filled' AND strategy_id != ALL($1)
                 ORDER BY filled_at ASC NULLS LAST
                 LIMIT 200
-                """
+                """,
+                list(EXCLUDED_STRATEGY_IDS),
             )
             # Emparelha BUY→SELL por símbolo (FIFO simples)
             buys: dict[str, list] = {}
@@ -348,15 +350,17 @@ class AdvancedRiskManager:
             for sym in SYMBOLS:
                 cb_key = f"circuit_breaker:consec_loss:{sym}"
                 try:
+                    from src.persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
                     rows = await self._db.fetch(
                         """
                         SELECT side, avg_fill_price, filled_quantity, filled_at
                         FROM orders
                         WHERE status='filled' AND symbol=$1
+                          AND strategy_id != ALL($2)
                         ORDER BY filled_at DESC NULLS LAST
                         LIMIT 20
                         """,
-                        sym
+                        sym, list(EXCLUDED_STRATEGY_IDS),
                     )
                     # Conta losses consecutivos
                     consec = 0

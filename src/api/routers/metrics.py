@@ -41,10 +41,13 @@ async def get_performance(request: Request) -> dict:
     """
     db = request.app.state.db
 
-    # Lê ordens filled diretamente (fills table pode estar vazia em paper trading)
+    # Lê apenas ordens filled do bot (exclui okx_import e exchange_sync)
+    from src.persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
     rows = await db.fetch(
         "SELECT symbol, side, filled_quantity, avg_fill_price, fees_paid, filled_at "
-        "FROM orders WHERE status='filled' ORDER BY filled_at ASC"
+        "FROM orders WHERE status='filled' AND strategy_id != ALL($1) "
+        "ORDER BY filled_at ASC",
+        list(EXCLUDED_STRATEGY_IDS),
     )
 
     total_trades = len(rows)

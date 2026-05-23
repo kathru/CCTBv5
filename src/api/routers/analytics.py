@@ -23,6 +23,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Query, Request
 
 from ...monitoring.signal_log import signal_audit_log
+from ...persistence.repositories.orders import EXCLUDED_STRATEGY_IDS as _EXCL
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -94,9 +95,12 @@ def _stability(values: list[float]) -> float | None:
 
 
 async def _get_filled_orders(db) -> list[dict]:
-    """Retorna ordens filled como lista de dicts padronizados."""
+    """Retorna ordens filled do bot (exclui okx_import e exchange_sync)."""
     rows = await db.fetch(
-        "SELECT * FROM orders WHERE status='filled' ORDER BY filled_at ASC NULLS LAST"
+        "SELECT * FROM orders "
+        "WHERE status='filled' AND strategy_id != ALL($1) "
+        "ORDER BY filled_at ASC NULLS LAST",
+        list(_EXCL),
     )
     result = []
     for r in rows:

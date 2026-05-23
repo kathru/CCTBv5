@@ -1,0 +1,17 @@
+# Monitor-only override: conecta ao PostgreSQL e Redis do Oracle via SSH tunnel.
+# Uso: .\monitor.ps1
+#
+# Este arquivo substitui as variáveis de conexão do docker-compose.yml para
+# apontar para as instâncias do Oracle (tunneladas via SSH).
+# O app roda em APP_MODE=monitor_only — não executa ordens.
+
+services:
+  cctb:
+    environment:
+      # Aponta para Oracle via SSH tunnel (portas locais 15432 / 16379)
+      DATABASE_URL: postgresql+asyncpg://cctb:cctb_secret@host.docker.internal:15432/cctbv5
+      REDIS_URL: redis://host.docker.internal:16379/0
+      # Força modo monitor — sem execução de ordens mesmo que sinais gerem
+      APP_MODE: monitor_only
+    # Não precisa dos containers locais de postgres/redis
+    depends_on: []

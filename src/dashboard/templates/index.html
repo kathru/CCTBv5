@@ -1723,7 +1723,7 @@ function updateDonut(portfolio,prices){
     { name:'SOL',        color:'#8b5cf6', val: bal.SOL?.usdValue  || 0 },
     { name:'OKB',        color:'#0b5eda', val: bal.OKB?.usdValue  || extra.OKB?.usdValue || 0 },
     { name:'BRL (fiat)', color:'#009c3b', val: bal.BRL?.usdValue  || extra.BRL?.usdValue || 0 },
-  ].filter(a=>a.val>0);
+  ].filter(a=>a.val>=1.0);  // oculta dust (<$1)
 
   // Ajusta labels e cores do chart
   _donutChart.data.labels   = assets.map(a=>a.name);

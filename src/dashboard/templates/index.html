@@ -125,13 +125,16 @@
 
     .grid { display: grid; gap: 12px; }
     .g7  { grid-template-columns: repeat(7,1fr); }
+    .g5  { grid-template-columns: repeat(5,1fr); }
     .g3  { grid-template-columns: repeat(3,1fr); }
+    .g31 { grid-template-columns: repeat(3,1fr); }
+    .g22 { grid-template-columns: repeat(2,1fr); }
     .g21 { grid-template-columns: 2fr 1fr; }
     .g12 { grid-template-columns: 1fr 2fr; }
     .g11 { grid-template-columns: 1fr 1fr; }
     .g13 { grid-template-columns: 1fr 3fr; }
-    @media(max-width:1300px){ .g7{grid-template-columns:repeat(4,1fr)} }
-    @media(max-width:900px) { .g3,.g21,.g11,.g12,.g13{grid-template-columns:1fr} .g7{grid-template-columns:repeat(2,1fr)} }
+    @media(max-width:1300px){ .g7{grid-template-columns:repeat(4,1fr)} .g5{grid-template-columns:repeat(3,1fr)} }
+    @media(max-width:900px) { .g3,.g31,.g22,.g21,.g11,.g12,.g13{grid-template-columns:1fr} .g7{grid-template-columns:repeat(2,1fr)} .g5{grid-template-columns:repeat(2,1fr)} }
 
     .section-hdr {
       display: flex; align-items: center; gap: 8px;
@@ -258,30 +261,6 @@
     .calib-val   { font-size:1rem; font-weight:800; margin-bottom:3px; }
     .calib-label { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); }
 
-    /* ══ MARKET BREADTH ══════════════════════════════════════ */
-    .mb-big-bar-wrap  { margin-bottom:10px; }
-    .mb-big-track     { height:28px; background:rgba(255,255,255,0.06); border-radius:9px; position:relative; overflow:hidden; }
-    .mb-big-fill      { position:relative; height:100%; border-radius:9px; transition:width 0.6s cubic-bezier(.4,0,.2,1); }
-    .mb-big-threshold { position:absolute; top:0; bottom:0; width:2px; background:rgba(239,68,68,0.7); border-radius:0; box-shadow:0 0 6px rgba(239,68,68,0.5); z-index:2; }
-    .mb-big-label     { position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:0.78rem; font-weight:800; color:rgba(255,255,255,0.9); pointer-events:none; }
-    .mb-score-center  { display:none; }
-    .mb-score-big     { display:none; }
-    .mb-score-unit    { display:none; }
-    .mb-score-word    { display:none; }
-
-    .mb-metrics    { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
-    .mb-metric-row { display:grid; grid-template-columns:120px 1fr 110px; align-items:center; gap:10px; }
-    .mb-metric-left   { display:flex; align-items:baseline; gap:6px; }
-    .mb-metric-name   { font-size:0.7rem; font-weight:500; white-space:nowrap; }
-    .mb-metric-weight { font-size:0.58rem; color:var(--muted); }
-    .mb-metric-track  { height:15px; background:#0d1520; border-radius:7px; overflow:hidden; }
-    .mb-metric-fill   { height:15px; border-radius:7px; transition:width 0.5s; }
-    .mb-metric-right  { display:flex; align-items:baseline; gap:5px; justify-content:flex-end; }
-    .mb-metric-val    { font-size:0.78rem; font-weight:800; min-width:36px; text-align:right; }
-    .mb-metric-status { font-size:0.6rem; color:var(--muted); min-width:55px; text-align:right; }
-    .mb-threshold-labels { display:flex; justify-content:space-between; padding-top:10px; border-top:1px solid var(--border); font-size:0.62rem; }
-    .mb-tl-buy  { color:var(--green); font-weight:600; }
-    .mb-tl-sell { color:var(--red);   font-weight:600; }
 
     .dist-bar { height:7px; border-radius:20px; overflow:hidden; display:flex; margin-top:8px; }
     .dist-buy  { background:linear-gradient(90deg,var(--green),#059669); transition:flex 0.5s; }
@@ -438,26 +417,21 @@
 <main>
 
 <!-- ══ KPI STRIP ══════════════════════════════════════════════ -->
-<div class="grid g7">
+<div class="grid g5">
   <div class="kpi-card kpi-blue">
     <div class="clabel">Portfolio Total</div>
     <div class="kpi-val b" id="kpi-portfolio">–</div>
-    <div class="kpi-sub">Inicial: <b id="kpi-initial">–</b></div>
+    <div class="kpi-sub">Inicial: <b id="kpi-initial">–</b> · Retorno: <b id="kpi-return">–</b></div>
   </div>
   <div class="kpi-card kpi-green">
-    <div class="clabel">P&L Realizado</div>
+    <div class="clabel">P&L Realizado · Não Realizado</div>
     <div class="kpi-val" id="kpi-rpnl">–</div>
-    <div class="kpi-sub">Diário: <b id="kpi-dpnl">–</b></div>
-  </div>
-  <div class="kpi-card kpi-gray">
-    <div class="clabel">P&L Não Realizado</div>
-    <div class="kpi-val" id="kpi-upnl">–</div>
-    <div class="kpi-sub">Drawdown: <b id="kpi-dd" class="r">–</b></div>
+    <div class="kpi-sub">NR: <b id="kpi-upnl">–</b> · Diário: <b id="kpi-dpnl">–</b> · DD: <b id="kpi-dd" class="r">–</b></div>
   </div>
   <div class="kpi-card kpi-blue">
     <div class="clabel">Saldo Disponível</div>
     <div class="kpi-val" id="kpi-cash">–</div>
-    <div class="kpi-sub">USDT: <b id="kpi-usdt">–</b> · Exposição: <b id="kpi-exp">–</b></div>
+    <div class="kpi-sub">USDT: <b id="kpi-usdt">–</b> · Exposição: <b id="kpi-exp">–</b> · Pos: <b id="kpi-pos">–</b></div>
   </div>
   <div class="kpi-card kpi-yellow">
     <div class="clabel">Trades</div>
@@ -468,11 +442,6 @@
     <div class="clabel">Taxas Pagas</div>
     <div class="kpi-val r" id="kpi-fees">–</div>
     <div class="kpi-sub"><b id="kpi-trades-buy-vol">–</b> compras · <b id="kpi-trades-sell-vol">–</b> vendas executadas</div>
-  </div>
-  <div class="kpi-card kpi-green">
-    <div class="clabel">Retorno Total</div>
-    <div class="kpi-val" id="kpi-return">–</div>
-    <div class="kpi-sub">Posições: <b id="kpi-pos">–</b></div>
   </div>
 </div>
 
@@ -701,101 +670,56 @@
     </div>
   </div>
 
-  <!-- Market Breadth + Watchdogs -->
-  <div style="display:flex;flex-direction:column;gap:12px;">
-
-    <!-- Market Breadth -->
-    <div class="card" style="flex:1">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <span style="font-size:0.78rem;font-weight:700;color:var(--muted)">Market Breadth</span>
-        <span id="mb-overall-badge" class="hbadge hbadge-gray">–</span>
-      </div>
-
-      <!-- Score bar grande -->
-      <div class="mb-big-bar-wrap">
-        <div class="mb-big-track">
-          <div class="mb-big-fill" id="mb-big-fill" style="width:0">
-            <div class="mb-big-label" id="mb-big-label">–%</div>
-          </div>
-          <div class="mb-big-threshold" style="left:40%"></div>
-        </div>
-      </div>
-      <div style="font-size:0.58rem;color:var(--muted);text-align:right;margin-bottom:12px;">linha vermelha = limite de bloqueio (40%)</div>
-
-      <!-- 4 métricas com peso e contribuição -->
-      <div class="mb-metrics">
-        <div class="mb-metric-row">
-          <div class="mb-metric-left">
-            <span class="mb-metric-name">Score Médio</span>
-            <span class="mb-metric-weight" title="Peso no Breadth total">50%</span>
-          </div>
-          <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-score" style="width:0;background:var(--blue)"></div></div>
-          <div class="mb-metric-right">
-            <span class="mb-metric-val" id="mbv-score">–</span>
-            <span class="mb-metric-status" id="mbs-score">–</span>
-          </div>
-        </div>
-        <div style="font-size:0.58rem;color:var(--muted);padding:0 0 6px 0;margin-top:-4px;">Média dos scores brutos de BTC+ETH+SOL nas últimas avaliações</div>
-        <div class="mb-metric-row">
-          <div class="mb-metric-left">
-            <span class="mb-metric-name">Taxa de Sinais</span>
-            <span class="mb-metric-weight" title="Peso no Breadth total">25%</span>
-          </div>
-          <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-rate" style="width:0;background:var(--green)"></div></div>
-          <div class="mb-metric-right">
-            <span class="mb-metric-val" id="mbv-rate">–</span>
-            <span class="mb-metric-status" id="mbs-rate">–</span>
-          </div>
-        </div>
-        <div style="font-size:0.58rem;color:var(--muted);padding:0 0 6px 0;margin-top:-4px;">% de avaliações que geraram sinal BUY recentemente</div>
-        <div class="mb-metric-row">
-          <div class="mb-metric-left">
-            <span class="mb-metric-name">Regime Atual</span>
-            <span class="mb-metric-weight" title="Peso no Breadth total">15%</span>
-          </div>
-          <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-regime" style="width:0;background:var(--yellow)"></div></div>
-          <div class="mb-metric-right">
-            <span class="mb-metric-val" id="mbv-regime" style="font-size:0.65rem">–</span>
-            <span class="mb-metric-status" id="mbs-regime">–</span>
-          </div>
-        </div>
-        <div style="font-size:0.58rem;color:var(--muted);padding:0 0 6px 0;margin-top:-4px;">EXPANSION=85 · CHOP=40 · BEAR=15 · PANIC=5</div>
-        <div class="mb-metric-row">
-          <div class="mb-metric-left">
-            <span class="mb-metric-name">Avaliações/min</span>
-            <span class="mb-metric-weight" title="Peso no Breadth total">10%</span>
-          </div>
-          <div class="mb-metric-track"><div class="mb-metric-fill" id="mbf-epm" style="width:0;background:var(--purple)"></div></div>
-          <div class="mb-metric-right">
-            <span class="mb-metric-val" id="mbv-epm">–</span>
-            <span class="mb-metric-status" id="mbs-epm">–</span>
-          </div>
-        </div>
-        <div style="font-size:0.58rem;color:var(--muted);padding:0 0 2px 0;margin-top:-4px;">Saudável ≥3/min · meta 1 aval por ativo por ciclo de 15s</div>
-      </div>
-
-      <!-- Gate status -->
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;margin-top:8px;" id="mb-gate-box">
-        <span style="font-size:0.65rem;font-weight:700" id="mb-gate-txt">–</span>
-        <span style="font-size:0.6rem;color:var(--muted)">Breadth <span id="mb-gate-score">–</span> / mín 40%</span>
-      </div>
+  <!-- Watchdogs -->
+  <div class="card">
+    <div class="clabel"><div class="ico" style="background:rgba(16,185,129,0.15)">🛡️</div>Watchdogs</div>
+    <div class="wd-grid">
+      <div class="wd-item"><div class="wd-name">WebSocket</div><div class="wd-status" id="wd-ws">–</div><div class="wd-detail" id="wd-ws-d">–</div></div>
+      <div class="wd-item"><div class="wd-name">Heartbeat</div><div class="wd-status" id="wd-hb">–</div><div class="wd-detail" id="wd-hb-d">–</div></div>
+      <div class="wd-item"><div class="wd-name">Recursos</div><div class="wd-status"  id="wd-res">–</div><div class="wd-detail" id="wd-res-d">–</div></div>
     </div>
+  </div>
 
-    <!-- Watchdogs -->
-    <div class="card">
-      <div class="clabel"><div class="ico" style="background:rgba(16,185,129,0.15)">🛡️</div>Watchdogs</div>
-      <div class="wd-grid">
-        <div class="wd-item"><div class="wd-name">WebSocket</div><div class="wd-status" id="wd-ws">–</div><div class="wd-detail" id="wd-ws-d">–</div></div>
-        <div class="wd-item"><div class="wd-name">Heartbeat</div><div class="wd-status" id="wd-hb">–</div><div class="wd-detail" id="wd-hb-d">–</div></div>
-        <div class="wd-item"><div class="wd-name">Recursos</div><div class="wd-status"  id="wd-res">–</div><div class="wd-detail" id="wd-res-d">–</div></div>
-      </div>
+</div>
+
+<!-- ══ POSIÇÕES + PLANOS ══════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--green)"></div>Posições & Planos de Saída</div>
+<div class="grid g11">
+  <div class="card">
+    <div class="clabel">Posições Abertas <span class="cnt" id="pos-count"></span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Par</th><th>Lado</th><th>Qtd</th><th>Entrada</th><th>Atual</th><th>P&L</th><th>P&L%</th></tr></thead>
+        <tbody id="positions-body"><tr class="empty-row"><td colspan="7">Nenhuma posição aberta</td></tr></tbody>
+      </table>
     </div>
-
+  </div>
+  <div class="card">
+    <div class="clabel">Planos de Saída <span class="cnt" id="exit-count"></span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Par</th><th>Stop Loss</th><th>Take Profit</th><th>Trailing</th><th>Timeout</th></tr></thead>
+        <tbody id="exits-body"><tr class="empty-row"><td colspan="5">Nenhum plano ativo</td></tr></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
-<!-- ══ HISTÓRICO + FEED ════════════════════════════════════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--yellow)"></div>Histórico & Sinais<span class="cnt" id="feed-stats"></span></div>
+<!-- ══ ORDENS ════════════════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--blue)"></div>Ordens Recentes<span class="cnt" id="ord-count"></span></div>
+<div class="card">
+  <div class="table-wrap" style="max-height:240px;overflow-y:auto;overflow-x:auto;">
+    <table>
+      <thead style="position:sticky;top:0;background:var(--surface);z-index:2;">
+        <tr><th>Par</th><th>Lado</th><th>Status</th><th>Qtd</th><th>Preenchido</th><th>Preço Médio</th><th>Notional</th><th>Estratégia</th><th>Criado</th></tr>
+      </thead>
+      <tbody id="orders-body"><tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ HISTÓRICO + FUNIL ═══════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--yellow)"></div>Histórico & Funil de Filtragem<span class="cnt" id="funnel-exec-rate"></span></div>
 <div class="grid g11">
 
   <!-- Histórico de Trades -->
@@ -804,57 +728,40 @@
       <div class="clabel" style="margin:0">Histórico de Trades</div>
       <span class="hbadge hbadge-gray" id="trade-count-badge">0 trades</span>
     </div>
-    <div id="trade-history" style="max-height:480px;overflow-y:auto;">
+    <div id="trade-history" style="max-height:400px;overflow-y:auto;">
       <div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Nenhum trade executado ainda</div>
     </div>
   </div>
 
-  <!-- Feed de Sinais -->
+  <!-- Funil de Filtragem -->
   <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <div class="clabel" style="margin:0">Feed de Sinais</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span class="hbadge hbadge-gray" id="feed-total-badge">0 sinais</span>
-        <span style="font-size:0.6rem;color:var(--muted)" id="feed-signal-rate"></span>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--muted)">Funil de Filtragem</div>
+      <div style="display:flex;gap:4px;margin-left:auto;">
+        <button class="chart-btn active" id="fn-btn-all" onclick="setFunnelWindow('all_time','fn-btn-all')">Total</button>
+        <button class="chart-btn"        id="fn-btn-6h"  onclick="setFunnelWindow('last_6h','fn-btn-6h')">6h</button>
+        <button class="chart-btn"        id="fn-btn-1h"  onclick="setFunnelWindow('last_1h','fn-btn-1h')">1h</button>
       </div>
     </div>
-    <div id="signal-feed" style="max-height:480px;overflow-y:auto;">
-      <div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>
+    <div class="grid g11" style="gap:16px;">
+      <div>
+        <div id="funnel-steps" style="display:flex;flex-direction:column;gap:7px;">
+          <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando avaliações...</div>
+        </div>
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);">
+          <span>cada barra = % do total avaliado</span>
+          <span id="funnel-window-label">desde o início</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Por Ativo</div>
+        <div id="funnel-by-symbol" style="display:flex;flex-direction:column;gap:10px;">
+          <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">–</div>
+        </div>
+      </div>
     </div>
   </div>
 
-</div>
-
-<!-- ══ FUNIL DE FILTRAGEM ══════════════════════════════════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--orange)"></div>Funil de Filtragem<span class="cnt" id="funnel-exec-rate"></span></div>
-<div class="card">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-    <div style="font-size:0.72rem;font-weight:700;color:var(--muted)">Onde os sinais são bloqueados</div>
-    <div style="display:flex;gap:4px;margin-left:auto;">
-      <button class="chart-btn active" id="fn-btn-all" onclick="setFunnelWindow('all_time','fn-btn-all')">Total</button>
-      <button class="chart-btn"        id="fn-btn-6h"  onclick="setFunnelWindow('last_6h','fn-btn-6h')">6h</button>
-      <button class="chart-btn"        id="fn-btn-1h"  onclick="setFunnelWindow('last_1h','fn-btn-1h')">1h</button>
-    </div>
-  </div>
-  <div class="grid g11" style="gap:16px;">
-    <!-- Funil principal -->
-    <div>
-      <div id="funnel-steps" style="display:flex;flex-direction:column;gap:7px;">
-        <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando avaliações...</div>
-      </div>
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);">
-        <span>cada barra = % do total avaliado</span>
-        <span id="funnel-window-label">desde o início</span>
-      </div>
-    </div>
-    <!-- Por símbolo -->
-    <div>
-      <div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Por Ativo</div>
-      <div id="funnel-by-symbol" style="display:flex;flex-direction:column;gap:10px;">
-        <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">–</div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- ══ QUANTITATIVE ANALYTICS ══════════════════════════════════ -->
@@ -905,18 +812,26 @@
   <!-- Drawdown & Win/Loss detail -->
   <div class="card">
     <div class="clabel">Drawdown & Distribuição</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px;">
       <div class="calib-item">
         <div class="calib-val r" id="q-maxdd">–</div>
         <div class="calib-label">Max Drawdown</div>
       </div>
       <div class="calib-item">
         <div class="calib-val y" id="q-dd-dur">–</div>
-        <div class="calib-label">DD Duration (trades)</div>
+        <div class="calib-label">DD Duration</div>
       </div>
       <div class="calib-item">
         <div class="calib-val" id="q-dd-streak">–</div>
         <div class="calib-label">Losses seguidos</div>
+      </div>
+      <div class="calib-item">
+        <div class="calib-val b" id="eq-hwm">–</div>
+        <div class="calib-label">High-Water Mark</div>
+      </div>
+      <div class="calib-item">
+        <div class="calib-val" id="eq-recovery">–</div>
+        <div class="calib-label">Recovery Factor</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -960,34 +875,11 @@
   <a href="/api/analytics/equity_curve/csv" style="margin-left:auto;font-size:0.6rem;color:var(--blue);text-decoration:none;padding:2px 8px;border:1px solid rgba(59,130,246,0.3);border-radius:4px">↓ CSV</a>
 </div>
 
-<!-- Métricas de equity -->
-<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px;">
-  <div class="kpi-card kpi-green" style="padding:10px 14px">
-    <div class="clabel" style="font-size:0.55rem">P&L Total</div>
-    <div class="kpi-val" id="eq-pnl" style="font-size:1rem">–</div>
-    <div class="kpi-sub" id="eq-ret">–</div>
-  </div>
-  <div class="kpi-card kpi-blue" style="padding:10px 14px">
-    <div class="clabel" style="font-size:0.55rem">High-Water Mark</div>
-    <div class="kpi-val" id="eq-hwm" style="font-size:1rem">–</div>
-    <div class="kpi-sub">máximo histórico</div>
-  </div>
-  <div class="kpi-card kpi-red" style="padding:10px 14px">
-    <div class="clabel" style="font-size:0.55rem">Max Drawdown</div>
-    <div class="kpi-val" id="eq-maxdd" style="font-size:1rem">–</div>
-    <div class="kpi-sub">do HWM</div>
-  </div>
-  <div class="kpi-card kpi-yellow" style="padding:10px 14px">
-    <div class="clabel" style="font-size:0.55rem">Recovery Factor</div>
-    <div class="kpi-val" id="eq-recovery" style="font-size:1rem">–</div>
-    <div class="kpi-sub">retorno / max DD</div>
-  </div>
-  <div class="kpi-card kpi-purple" style="padding:10px 14px">
-    <div class="clabel" style="font-size:0.55rem">Stability R²</div>
-    <div class="kpi-val" id="eq-stability" style="font-size:1rem">–</div>
-    <div class="kpi-sub">&gt;0.7 = linear</div>
-  </div>
-</div>
+<!-- IDs preservados para o JS (eq-pnl/maxdd/stability são duplicatas do KPI strip e Quant Analytics) -->
+<span id="eq-pnl" style="display:none"></span>
+<span id="eq-ret" style="display:none"></span>
+<span id="eq-maxdd" style="display:none"></span>
+<span id="eq-stability" style="display:none"></span>
 
 <!-- Equity Curve + Underwater + Rolling charts -->
 <div class="grid g21" style="margin-bottom:12px;">
@@ -1374,11 +1266,11 @@
 
 </div>
 
-<!-- ══ MLOPS — Phase 15 ════════════════════════════════════════════════════ -->
+<!-- ══ MLOPS + FEATURE GOVERNANCE — Phase 15 ══════════════════════════════ -->
 <div class="section-hdr">
   <div class="dot" style="background:var(--blue)"></div>
-  MLOps &amp; Saúde do Modelo
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 15 · experiment tracking · online validation · ensemble</span>
+  MLOps, Saúde do Modelo &amp; Feature Governance
+  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 15 · experiment tracking · drift · ensemble · WFO</span>
   <span id="mh-health-badge" style="margin-left:auto;font-size:0.65rem;font-weight:800;padding:3px 12px;border-radius:5px;">–</span>
 </div>
 <div class="grid g31">
@@ -1451,12 +1343,12 @@
 
 </div>
 
-<!-- ══ REGIME ROBUSTNESS — Phase 16 ════════════════════════════════════════ -->
+<!-- ══ REGIME ROBUSTNESS + META-REGIME — Phase 13/16 ═══════════════════════ -->
 <div class="section-hdr">
   <div class="dot" style="background:var(--yellow)"></div>
-  Regime Robustness
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 16 · lateralidade · bear market · volatility stress</span>
-  <span style="margin-left:auto;font-size:0.55rem;color:var(--muted)">python scripts/stress_backtest.py</span>
+  Regime Robustness &amp; Meta-Regime Macro
+  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 13/16 · bear market · volatility stress · cross-asset</span>
+  <span id="mr-regime-badge" style="margin-left:auto;font-size:0.65rem;font-weight:800;padding:3px 12px;border-radius:5px;letter-spacing:0.5px;">–</span>
 </div>
 <div class="grid g31">
 
@@ -1489,13 +1381,7 @@
 
 </div>
 
-<!-- ══ META-REGIME — Phase 13 ═════════════════════════════════════════════ -->
-<div class="section-hdr">
-  <div class="dot" style="background:var(--green)"></div>
-  Meta-Regime Macro
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 13 · cross-asset · BTC+ETH+SOL</span>
-  <span id="mr-regime-badge" style="margin-left:auto;font-size:0.65rem;font-weight:800;padding:3px 12px;border-radius:5px;letter-spacing:0.5px;">–</span>
-</div>
+<!-- Meta-Regime conteúdo (Phase 13) ──────────────────────────────────────── -->
 <div class="grid g31">
 
   <!-- Regime + Arquétipos -->
@@ -1572,42 +1458,6 @@
 
 </div>
 
-<!-- ══ POSIÇÕES + PLANOS ══════════════════════════════════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--green)"></div>Posições & Planos de Saída</div>
-<div class="grid g11">
-  <div class="card">
-    <div class="clabel">Posições Abertas <span class="cnt" id="pos-count"></span></div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Par</th><th>Lado</th><th>Qtd</th><th>Entrada</th><th>Atual</th><th>P&L</th><th>P&L%</th></tr></thead>
-        <tbody id="positions-body"><tr class="empty-row"><td colspan="7">Nenhuma posição aberta</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-  <div class="card">
-    <div class="clabel">Planos de Saída <span class="cnt" id="exit-count"></span></div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Par</th><th>Stop Loss</th><th>Take Profit</th><th>Trailing</th><th>Timeout</th></tr></thead>
-        <tbody id="exits-body"><tr class="empty-row"><td colspan="5">Nenhum plano ativo</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ══ ORDENS ════════════════════════════════════════════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--blue)"></div>Ordens Recentes<span class="cnt" id="ord-count"></span></div>
-<div class="card">
-  <div class="table-wrap" style="max-height:390px;overflow-y:auto;overflow-x:auto;">
-    <table>
-      <thead style="position:sticky;top:0;background:var(--surface);z-index:2;">
-        <tr><th>Par</th><th>Lado</th><th>Status</th><th>Qtd</th><th>Preenchido</th><th>Preço Médio</th><th>Notional</th><th>Estratégia</th><th>Criado</th></tr>
-      </thead>
-      <tbody id="orders-body"><tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr></tbody>
-    </table>
-  </div>
-</div>
-
 <!-- ══ CONCILIAÇÃO OKX ══════════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--green)"></div>Conciliação OKX ↔ DB<span class="cnt" id="recon-status-badge"></span></div>
 <div class="card" style="padding:16px 20px;">
@@ -1622,8 +1472,12 @@
   <div id="recon-warnings" style="margin-top:8px;display:none;padding:8px 12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;font-size:0.65rem;color:#ef4444;"></div>
 </div>
 
-<!-- ══ FEATURE GOVERNANCE ══════════════════════════════════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Feature Governance<span class="cnt" id="gov-schema-ver"></span></div>
+<!-- Feature Governance (conteúdo — cabeçalho unificado com MLOps acima) -->
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;">
+  <div style="width:5px;height:5px;border-radius:50%;background:var(--purple)"></div>
+  Feature Governance
+  <span id="gov-schema-ver" style="margin-left:auto;font-size:0.65rem"></span>
+</div>
 
 <!-- Row 1: Drift + Live Stats + Schema -->
 <div class="grid g11">
@@ -1895,34 +1749,6 @@ function regimeTag(r){
 }
 
 // ── Signal feed v2 ─────────────────────────────────────────
-function buildSignalFeed(entries){
-  if(!entries||!entries.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>';
-  return entries.slice(0,30).map(e=>{
-    const t=new Date(e.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    const sym=e.symbol.replace('-USDT','');
-    const scorePct=(e.score*100).toFixed(1)+'%';
-    const ev=e.ev!=null?(e.ev>=0?'+':'')+(e.ev*100).toFixed(4):'–';
-    const evCls=e.ev>0.001?'pos':e.ev<-0.001?'neg':'neu';
-    // Action pill
-    let actCls='tp-sell', actTxt='HOLD';
-    if(e.result==='SIGNAL'){ actCls='tp-buy'; actTxt='BUY'; }
-    else if(e.direction==='LONG') actTxt='BUY';
-    return`<div class="sfeed-item">
-      <div class="sfeed-top">
-        <div class="trade-pill ${actCls}" style="min-width:52px;font-size:0.62rem">${actTxt}</div>
-        <span class="b" style="font-weight:700;font-size:0.78rem">${sym}</span>
-        <span class="m" style="font-size:0.62rem">${(e.strategy_id||'momentum_v2').replace('momentum_','m').toUpperCase()}</span>
-        <span class="sfeed-ts">${t}</span>
-      </div>
-      <div class="sfeed-tags">
-        <span class="spill">score ${scorePct}</span>
-        <span class="evpill ${evCls}">EV ${ev}</span>
-        ${regimeTag(e.regime)}
-      </div>
-    </div>`;
-  }).join('');
-}
-
 // ── Trade history ──────────────────────────────────────────
 function buildTradeHistory(orders, totalFilled){
   if(!orders||!orders.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Nenhum trade executado ainda</div>';
@@ -3984,61 +3810,6 @@ async function updateAll(){
     if(wrStat) wrStat.textContent=wrN>=40?'saudável':wrN>=25?'moderado':'abaixo do esperado';
   }
 
-  // Market Breadth
-  if(log){
-    const s=log.stats||{};
-    const total=s.total_evaluations||1,signals=s.signals_generated||0,rate=s.signal_rate_pct||0,epm=s.evals_per_minute||0;
-    const entries=log.entries||[];
-    const scores=entries.map(e=>e.score).filter(Boolean);
-    const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0;
-    const avgPct=Math.round(avg*100);
-
-    // Big bar com label interno e cor dinâmica
-    const bigFill=document.getElementById('mb-big-fill');
-    const bigLabel=document.getElementById('mb-big-label');
-    const barCol=avgPct>=65?'linear-gradient(90deg,#059669,#34d399)':avgPct>=40?'linear-gradient(90deg,#d97706,#fbbf24)':'linear-gradient(90deg,#dc2626,#f87171)';
-    if(bigFill){ bigFill.style.width=avgPct+'%'; bigFill.style.background=barCol; }
-    if(bigLabel){ bigLabel.textContent=avgPct+'%'; }
-
-    // Overall badge
-    const mbBadge=document.getElementById('mb-overall-badge');
-    if(mbBadge){ mbBadge.textContent=avgPct>=65?'FORTE':avgPct>=40?'MODERADO':'FRACO'; mbBadge.className='hbadge '+(avgPct>=65?'hbadge-green':avgPct>=40?'hbadge-yellow':'hbadge-red'); }
-
-    // 4 metrics
-    function mbMetric(fillId,valId,statId,value,maxVal,color,statusFn){
-      const f=document.getElementById(fillId); if(f){ f.style.width=Math.min(value/maxVal,1)*100+'%'; f.style.background=color; }
-      const v=document.getElementById(valId); if(v) v.textContent=value.toFixed(1)+'%';
-      const st=document.getElementById(statId); if(st) st.textContent=statusFn(value);
-    }
-    mbMetric('mbf-score','mbv-score','mbs-score',avgPct,100,'var(--blue)',v=>v>=65?'forte':v>=40?'moderado':'fraco');
-    mbMetric('mbf-rate','mbv-rate','mbs-rate',rate,100,'var(--green)',v=>v>5?'ativo':v>0?'baixo':'inativo');
-    // Regime score (100=trend, 50=chop, 0=panic)
-    const latestEntry=entries[0]||{};
-    const rScore=latestEntry.regime?.includes('EXPANSION')?85:latestEntry.regime?.includes('CHOP')?40:latestEntry.regime?.includes('PANIC')?5:50;
-    mbMetric('mbf-regime','mbv-regime','mbs-regime',rScore,100,'var(--yellow)',v=>v>=70?'expansão':v>=40?'lateral':'risco');
-    document.getElementById('mbv-regime').textContent=(latestEntry.regime||'–').replace(/_/g,' ').toLowerCase();
-    mbMetric('mbf-epm','mbv-epm','mbs-epm',Math.min(epm,10),10,'var(--purple)',v=>v>=3?'ativo':v>=1?'baixo':'inativo');
-    document.getElementById('mbv-epm').textContent=epm.toFixed(1)+'/min';
-
-    // Gate status box
-    const gateBox=document.getElementById('mb-gate-box');
-    const gateTxt=document.getElementById('mb-gate-txt');
-    const gateScore=document.getElementById('mb-gate-score');
-    if(gateBox&&gateTxt&&gateScore){
-      const open=avgPct>=40;
-      gateBox.style.background=open?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)';
-      gateBox.style.border=`1px solid ${open?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`;
-      gateTxt.style.color=open?'var(--green)':'var(--red)';
-      gateTxt.textContent=open?'✓ Compras liberadas — Breadth acima do mínimo':'✗ Compras bloqueadas — Breadth abaixo do mínimo';
-      gateScore.textContent=avgPct+'%';
-    }
-    // Feed stats
-    document.getElementById('feed-stats').textContent=`${s.total_evaluations||0} aval · ${rate}% sinais · ${epm.toFixed(1)}/min · uptime ${(s.uptime_minutes||0).toFixed(0)}min`;
-    // Feed
-    const feedEl=document.getElementById('signal-feed');
-    feedEl.innerHTML=entries.length?buildSignalFeed(entries):'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>';
-  }
-
   // Watchdogs
   if(wd){
     const ws=wd.websocket||{},hb=wd.heartbeat||{},res=wd.resources||{};
@@ -4161,12 +3932,9 @@ async function updateAll(){
   if(log){
     const entries=log.entries||[];
     const s=log.stats||{};
-    document.getElementById('signal-feed').innerHTML=buildSignalFeed(entries);
-    // Contador total de avaliações
-    const totalEval=s.total_evaluations||0;
-    const totalSig=s.signals_generated||0;
-    document.getElementById('feed-total-badge').textContent=`${totalEval.toLocaleString('pt-BR')} aval`;
-    document.getElementById('feed-signal-rate').textContent=totalSig>0?`${totalSig} sinais (${s.signal_rate_pct||0}%)`:'sem sinais';
+    // Signal log stats (used by other panels — log.stats still available)
+    const totalEval=(log.stats||{}).total_evaluations||0;
+    const totalSig=(log.stats||{}).signals_generated||0;
   }
 
   // Trade history — exibe as mais recentes, mas conta via perf (total real do DB)

@@ -660,7 +660,7 @@
       <div class="thresh-row" id="thresh-row">
         <div class="thresh-box t-hold"   id="tz-hold">  <span class="tval" id="tz-hold-lbl">&lt;56%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">HOLD</div></div>
         <div class="thresh-box t-reduce" id="tz-reduce"><span class="tval" id="tz-reduce-lbl">56–65%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">REDUZIDO ½×</div></div>
-        <div class="thresh-box t-normal" id="tz-normal"><span class="tval">65–75%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">NORMAL 1×</div></div>
+        <div class="thresh-box t-normal" id="tz-normal"><span class="tval" id="tz-normal-lbl">65–75%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">NORMAL 1×</div></div>
         <div class="thresh-box t-agg"    id="tz-agg">   <span class="tval">75%+</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">AGRESSIVO 1.5×</div></div>
       </div>
     </div>
@@ -3923,25 +3923,36 @@ async function updateAll(){
     if(slEl) slEl.textContent=`-${motorMult.sl.toFixed(1)}% ATR`;
     if(tpEl) tpEl.textContent=`+${motorMult.tp.toFixed(1)}% ATR`;
 
-    // Threshold zone highlight — first boundary = actual threshold (regime-dependent)
+    // Threshold zone highlight — lógica baseada na DECISÃO, não no range numérico.
+    // Evita overlap: score < threshold → SOMENTE HOLD acende, independente do valor.
     const thrVal=parseFloat(thr.toFixed(1));
     const holdLbl=document.getElementById('tz-hold-lbl');
     const reduceLbl=document.getElementById('tz-reduce-lbl');
     if(holdLbl)   holdLbl.textContent=`<${thrVal.toFixed(1)}%`;
-    if(reduceLbl) reduceLbl.textContent=`${thrVal.toFixed(1)}–65%`;
-    const zones=[
-      {id:'tz-hold',  min:0,       max:thrVal},
-      {id:'tz-reduce',min:thrVal,  max:65},
-      {id:'tz-normal',min:65,     max:75},
-      {id:'tz-agg',   min:75,     max:100},
-    ];
-    zones.forEach(z=>{
-      const el=document.getElementById(z.id); if(!el) return;
-      const active=rawScore>=z.min&&rawScore<z.max;
+    // REDUZIDO só existe quando thrVal < 65 (zona entre threshold e 65%)
+    // Quando thrVal >= 65, NORMAL começa no próprio threshold
+    const hasReduce = thrVal < 65;
+    if(reduceLbl) reduceLbl.textContent=hasReduce?`${thrVal.toFixed(1)}–65%`:`${thrVal.toFixed(1)}–75%`;
+    const normalLbl=document.getElementById('tz-normal-lbl');
+    if(normalLbl) normalLbl.textContent=hasReduce?'65–75%':`${thrVal.toFixed(1)}–75%`;
+
+    // Decisão única baseada no threshold atual
+    const decision = rawScore < thrVal ? 'hold'
+                   : (hasReduce && rawScore < 65) ? 'reduce'
+                   : rawScore < 75 ? 'normal'
+                   : 'agg';
+
+    const zoneMap={
+      'tz-hold':   decision==='hold',
+      'tz-reduce': decision==='reduce',
+      'tz-normal': decision==='normal',
+      'tz-agg':    decision==='agg',
+    };
+    Object.entries(zoneMap).forEach(([id,active])=>{
+      const el=document.getElementById(id); if(!el) return;
       el.style.boxShadow=active?'0 0 0 2px rgba(255,255,255,0.35)':'';
       el.style.opacity=active?'1':'0.55';
-      if(active) el.style.transform='scale(1.04)';
-      else el.style.transform='';
+      el.style.transform=active?'scale(1.04)':'';
     });
   }
   // Motor risk bars (from portfolio)

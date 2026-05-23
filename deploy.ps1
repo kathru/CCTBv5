@@ -82,14 +82,14 @@ Write-Host "  Versão: v$VERSION" -ForegroundColor Yellow
 
 # ── 4. Deploy LOCAL — via monitor.ps1 (plugado no Oracle via SSH tunnel) ───────
 if (-not $OracleOnly) {
-    Write-Step "Iniciando monitor local (SSH tunnel → Oracle)..."
+    Write-Step "Iniciando monitor local (SSH tunnel -> Oracle)..."
     $env:GIT_MINOR = $GIT_MINOR
     $env:GIT_PATCH = $GIT_PATCH
-    # monitor.ps1 para o container atual, abre SSH tunnel e sobe novo container
-    # apontando para PostgreSQL e Redis do Oracle (dados reais).
-    & "$PROJECT_DIR\monitor.ps1"
+    # Chama monitor.ps1 explicitamente com pwsh (PS7) para garantir compatibilidade
+    # com null-conditional operator (?.) usado no script.
+    pwsh -NoProfile -File "$PROJECT_DIR\monitor.ps1"
     if ($LASTEXITCODE -ne 0) { Write-Fail "Monitor local falhou"; exit 1 }
-    Write-Ok "Local (monitor only) → http://localhost:8001 | dados: Oracle"
+    Write-Ok "Local (monitor only) -> http://localhost:8001 | dados: Oracle"
 }
 
 # ── 5. Deploy ORACLE ───────────────────────────────────────────────────────────
@@ -99,7 +99,7 @@ if (-not $LocalOnly) {
     # Usa script pré-instalado no Oracle (evita timeout por stdin longo)
     ssh -i $ORACLE_KEY -o StrictHostKeyChecking=no $ORACLE_HOST "bash ~/CCTBv5/deploy_oracle.sh"
     if ($LASTEXITCODE -ne 0) { Write-Fail "Deploy Oracle falhou"; exit 1 }
-    Write-Ok "Oracle atualizado → http://137.131.220.216:8001"
+    Write-Ok "Oracle atualizado -> http://137.131.220.216:8001"
 }
 
 # ── 6. Health check ────────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ if (-not $OracleOnly) {
     try {
         $local_health = Invoke-RestMethod "http://localhost:8001/health" -TimeoutSec 10
         if ($local_health.status -eq "ok") {
-            Write-Ok "Local (monitor): OK (v$($local_health.version)) → Oracle"
+            Write-Ok "Local (monitor): OK (v$($local_health.version)) -> Oracle"
         }
     } catch {
         Write-Host "  AVISO Local: aguardando tunnel SSH (~5s)" -ForegroundColor Yellow

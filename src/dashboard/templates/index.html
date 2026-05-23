@@ -3355,7 +3355,7 @@ function buildModelHealth(mh, ens){
   const psiEl=document.getElementById('mh-psi-features');
   const psiD=mh.dimensions?.psi||{};
   if(psiEl&&psiD.features){
-    const items=Object.entries(psiD.features).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const items=Object.entries(psiD.features).sort((a,b)=>b[1]-a[1]);
     if(items.length){
       const maxP=Math.max(...items.map(i=>i[1]),0.01);
       psiEl.innerHTML=items.map(([k,v])=>{

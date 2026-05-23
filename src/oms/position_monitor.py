@@ -1,20 +1,38 @@
 """
 Position Monitor — gerencia saídas automáticas de posições abertas.
 
-Fases implementadas:
-  A. ATR-based stop loss + take profit + timeout adaptativo por regime
-  B. Trailing stop ativado após +1R de lucro
-  C. Saída parcial (50%) em +1.5R, restante corre com trailing
-  D. Saída imediata se regime deteriorar para PANIC/VACUUM
+Arquitetura: Buy Engine + Hold Engine + Sell Engine
+  • Buy Engine  : StrategyRunner (gera sinais de compra)
+  • Hold Engine : HoldEngine (decide se vale continuar no trade)
+  • Sell Engine : este módulo (executa a saída via OrderManager)
+
+Fases de saída (em ordem de prioridade):
+  D. Regime de emergência (PANIC/BEAR)  → saída imediata
+  A. Stop Loss absoluto (ATR-based)     → safety net intocável
+  A. Take Profit / TP Conversion        → em TREND_EXPANSION: parcial + running mode
+                                          em outros regimes: saída total
+  C. Saída parcial (50%)               → garante lucro, deixa metade correr
+  B. Trailing stop (conviction-adaptive)→ HOLD forte=2.5× ATR, WATCH=1.0×, ALERT=0.5×
+  H. Hold Engine / Conviction Decay    → substitui timeout por deterioração estrutural
+     HOLD forte (≥85): trailing 2.5× ATR — winners respiram
+     HOLD       (70–84): trailing 2.0× ATR
+     WATCH      (50–69): trailing 1.0× ATR
+     ALERT      (30–49): trailing 0.5× ATR
+     EXIT       (<30):  sair imediatamente
+
+Running Mode (TP convertido em TREND_EXPANSION):
+  - Teto de TP removido (posição corre indefinidamente)
+  - Trailing ganha +0.5× ATR extra de folga
+  - Objetivo: capturar +6R, +8R, +12R que pagam dezenas de losses
+
+Anti-bag-holding (proteções duras dentro do HoldEngine):
+  P1: preço < entrada AND conviction < 50%
+  P2: conviction < 30% por 3+ ciclos consecutivos
+  P3: queda > 8% AND conviction < 60% (colapso crypto)
 
 Roda a cada 30s verificando todas as posições abertas.
 Uma ExitPlan é criada quando uma posição é aberta (via FillEvent)
 e destruída quando a posição é fechada.
-
-Integração:
-  TradingLoop → PositionMonitor.start()
-  FillEvent   → _on_fill() → cria/atualiza ExitPlan
-  Loop 30s    → _check_positions() → dispara saídas via OrderManager
 """
 
 import asyncio
@@ -27,6 +45,7 @@ from ..core.events import Topic
 from ..core.events.order_events import OrderFilledEvent
 from ..core.models import Candle
 from ..market.engine import MarketEngine
+from ..oms.hold_engine import HoldEngine, trail_atr_mult
 from ..oms.order_manager import OrderManager
 from ..persistence.cache import Cache
 from ..portfolio.engine import PortfolioEngine
@@ -35,136 +54,129 @@ logger = logging.getLogger(__name__)
 
 # ── Constantes de saída ───────────────────────────────────────────────────────
 
-ATR_PERIOD    = 14    # candles para calcular ATR
+ATR_PERIOD = 14
 
-# Phase A — Multiplicadores de ATR por regime (v2.4.0 — ATR DINÂMICO)
-# Cada regime tem SL/TP calibrado para o seu perfil de volatilidade e direção esperada
-#
-# TREND_EXPANSION:        SL largo (1.5×) — tendência pode ter pullbacks profundos
-#                         TP ambicioso (4.5×) — trends podem correr muito
-#                         Ratio: 1:3 — E[trade] com WR 37% = 0.37×3 - 0.63×1 = +0.48R
-#
-# VOLATILITY_COMPRESSION: SL médio (1.0×) — pré-breakout: range é estreito
-#                         TP largo (3.5×) — se romper, pode ir longe
-#                         Ratio: 1:3.5 — E[trade] com WR 37% = 0.37×3.5 - 0.63×1 = +0.67R
-#
-# MEAN_REVERTING_CHOP:    SL apertado (0.7×) — se romper o range, sair rápido
-#                         TP moderado (2.0×) — range não tem espaço para grandes movimentos
-#                         Ratio: 1:2.86 — E[trade] com WR 43% = 0.43×2.86 - 0.57×1 = +0.66R
-#
-# HIGH_CORRELATION_RISK:  SL apertado (0.8×) — bloqueado, mas defensive
-#                         TP moderado (2.0×)
+# Phase A — Multiplicadores de ATR por regime (SL + TP)
 REGIME_MULT: dict[str, dict[str, float]] = {
-    #                              SL    TP     ratio  regime
-    "TREND_EXPANSION":        {"sl": 1.5, "tp": 4.5},  # 1:3   — ride the trend
-    "VOLATILITY_COMPRESSION": {"sl": 1.0, "tp": 3.5},  # 1:3.5 — breakout setup
-    "MEAN_REVERTING_CHOP":    {"sl": 0.7, "tp": 2.0},  # 1:2.9 — range trade rápido
-    "TREND_EXHAUSTION":       {"sl": 0.8, "tp": 2.5},  # bloqueado — fallback defensive
-    "HIGH_CORRELATION_RISK":  {"sl": 0.8, "tp": 2.0},  # bloqueado — fallback defensive
-    "BEAR_TREND":             {"sl": 0.5, "tp": 1.0},  # não entra — saída imediata
-    "PANIC_LIQUIDATION":      {"sl": 0.5, "tp": 1.0},  # não entra — saída imediata
+    "TREND_EXPANSION":        {"sl": 1.5, "tp": 4.5},
+    "VOLATILITY_COMPRESSION": {"sl": 1.0, "tp": 3.5},
+    "MEAN_REVERTING_CHOP":    {"sl": 0.7, "tp": 2.0},
+    "TREND_EXHAUSTION":       {"sl": 0.8, "tp": 2.5},
+    "HIGH_CORRELATION_RISK":  {"sl": 0.8, "tp": 2.0},
+    "BEAR_TREND":             {"sl": 0.5, "tp": 1.0},
+    "PANIC_LIQUIDATION":      {"sl": 0.5, "tp": 1.0},
 }
 DEFAULT_SL_MULT = 1.0
 DEFAULT_TP_MULT = 3.5
 
-# Phase B — Trailing stop dinâmico por regime
-# EXPANSION: ativa em 1.2R — deixa trade respirar antes de proteger
-# CHOP:      ativa em 1.5R — range trades precisam de espaço (TP é 2R)
+# Phase B — Trailing: R mínimo para ativar por regime
 REGIME_TRAIL_ACTIVATE: dict[str, float] = {
-    "TREND_EXPANSION":        1.2,   # ativa após 1.2R — deixa trend correr antes de proteger
-    "VOLATILITY_COMPRESSION": 1.0,   # ativa em 1R — padrão
-    "TREND_EXHAUSTION":       0.8,   # bloqueado — mas ativa cedo se entrar
-    "MEAN_REVERTING_CHOP":    1.5,   # ativa tarde — evita whipsaw (TP=2R, trail@1.5R)
-    "HIGH_CORRELATION_RISK":  0.8,   # ativa cedo — protege em alta correlação
-    "BEAR_TREND":             0.3,   # saída imediata
-    "PANIC_LIQUIDATION":      0.2,   # saída imediata
+    "TREND_EXPANSION":        1.2,
+    "VOLATILITY_COMPRESSION": 1.0,
+    "TREND_EXHAUSTION":       0.8,
+    "MEAN_REVERTING_CHOP":    1.5,
+    "HIGH_CORRELATION_RISK":  0.8,
+    "BEAR_TREND":             0.3,
+    "PANIC_LIQUIDATION":      0.2,
 }
 TRAIL_ACTIVATE_R = 1.0   # fallback
-TRAIL_ATR_MULT   = 1.0   # distância do trailing = ATR × 1.0
+TRAIL_ATR_MULT   = 1.0   # distância base (ajustada pelo conviction state)
 
-# Phase C — Saída parcial dinâmica por regime
-# EXPANSION: parcial em 3.0R (deixa 50% correr até TP 4.5R)
-# CHOP:      parcial em 1.5R (garante lucro cedo no range)
+# Phase C — Saída parcial: R para vender 50%
 REGIME_PARTIAL_EXIT: dict[str, float] = {
-    "TREND_EXPANSION":        3.0,   # parcial em 3R — deixa restante correr ao TP (4.5R)
-    "VOLATILITY_COMPRESSION": 2.5,   # parcial em 2.5R — padrão
-    "MEAN_REVERTING_CHOP":    1.5,   # parcial em 1.5R — range tem pouco espaço
-    "TREND_EXHAUSTION":       1.5,   # bloqueado — fallback
-    "HIGH_CORRELATION_RISK":  1.5,   # bloqueado — fallback
+    "TREND_EXPANSION":        3.0,
+    "VOLATILITY_COMPRESSION": 2.5,
+    "MEAN_REVERTING_CHOP":    1.5,
+    "TREND_EXHAUSTION":       1.5,
+    "HIGH_CORRELATION_RISK":  1.5,
     "BEAR_TREND":             0.5,
     "PANIC_LIQUIDATION":      0.3,
 }
-PARTIAL_EXIT_R   = 2.5   # fallback
-PARTIAL_EXIT_PCT = 0.50  # fracção da posição a vender (50% sempre)
+PARTIAL_EXIT_R   = 2.5
+PARTIAL_EXIT_PCT = 0.50
 
-# Phase D — Regimes que forçam saída imediata
-EXIT_REGIMES = {"PANIC_LIQUIDATION", "BEAR_TREND"}  # saída imediata nesses regimes
+# Phase D — Regimes de emergência
+EXIT_REGIMES = {"PANIC_LIQUIDATION", "BEAR_TREND"}
 
-# Timeout adaptativo por regime (horas)
-TIMEOUT_HOURS: dict[str, int] = {
-    "TREND_EXPANSION":        48,   # BULL  — deixa correr
-    "VOLATILITY_COMPRESSION": 24,
-    "TREND_EXHAUSTION":       12,
-    "MEAN_REVERTING_CHOP":    8,    # CHOP  — sai rápido
-    "HIGH_CORRELATION_RISK":  4,    # risco — sai muito rápido
-    "BEAR_TREND":             0,    # BEAR  — saída imediata (EXIT_REGIMES)
-    "PANIC_LIQUIDATION":      0,    # PANIC — saída imediata
-}
-DEFAULT_TIMEOUT_HOURS = 12
+# Backstop absoluto (substitui timeout antigo): 30 dias
+# Só aciona se TODOS os outros mecanismos falharem silenciosamente.
+ABSOLUTE_BACKSTOP_DAYS = 30
+
+# ── Fase A — TP Conversion (convexidade) ─────────────────────────────────────
+#
+# Em vez de fechar tudo no TP, em regimes de tendência o sistema converte:
+#   1. Saída parcial (50%) para garantir lucro
+#   2. Remoção do teto de TP (posição corre indefinidamente)
+#   3. Trailing largo (2.5× ATR) para capturar +6R, +8R, +12R
+#
+# Só aplicado em regimes onde trends podem correr muito.
+# Outros regimes mantêm saída total no TP (range trades não correm).
+REGIMES_CONVERT_TP = {"TREND_EXPANSION"}
+TRAIL_ATR_RUNNING  = 2.5   # trailing inicial ao converter TP (running mode)
 
 
 # ── ExitPlan ──────────────────────────────────────────────────────────────────
 
 @dataclass
 class ExitPlan:
-    """Plano de saída para uma posição aberta."""
+    """
+    Plano de saída para uma posição aberta.
+    Criado no fill de compra, destruído no fechamento.
+    Carrega todo o contexto do trade do nascimento ao fim.
+    """
     symbol:        str
     strategy_id:   str
-    quantity:      float          # quantidade original da posição
+    quantity:      float
     entry_price:   float
     entry_time:    datetime
     entry_regime:  str
-    atr:           float          # ATR no momento da entrada
+    atr:           float
 
-    # Fatores do sinal (opcional) — usados quando estratégia fornece sl_pct/tp_pct
     signal_factors: dict = field(default_factory=dict)
 
     # Phase A — níveis fixos
-    stop_loss:     float = 0.0
-    take_profit:   float = 0.0
-    timeout_at:    datetime = field(default_factory=lambda: datetime.now(UTC))
+    stop_loss:    float = 0.0
+    take_profit:  float = 0.0
 
-    # Phase B — trailing (None = não ativado ainda)
+    # Backstop absoluto (30 dias) — último recurso
+    backstop_at:  datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    # Phase B — trailing
     trailing_stop:      float | None = None
-    trailing_activated: bool = False
+    trailing_activated: bool  = False
 
     # Phase C — saída parcial
-    partial_done:      bool  = False
-    qty_remaining:     float = 0.0   # quantidade que ainda está aberta
+    partial_done:   bool  = False
+    qty_remaining:  float = 0.0
+
+    # Phase A — TP Conversion / Running Mode
+    tp_converted:   bool  = False   # TP foi convertido em trailing livre
+    running_mode:   bool  = False   # posição em modo "let it run" (teto removido)
+
+    # Hold Engine — Conviction Decay
+    conviction_score:      float = 100.0
+    conviction_state:      str   = "HOLD"      # HOLD/WATCH/ALERT/EXIT
+    conviction_history:    list  = field(default_factory=list)   # últimos 10
+    conviction_components: dict  = field(default_factory=dict)
+    low_conviction_streak: int   = 0
 
     def __post_init__(self) -> None:
         sl_pct = self.signal_factors.get("sl_pct", 0.0)
         tp_pct = self.signal_factors.get("tp_pct", 0.0)
 
         if sl_pct > 0 and tp_pct > 0:
-            # Estratégia de reversão: SL/TP relativos ao fill price real
-            # Garante assimetria 1.5:1 independente de gaps na abertura
+            # Estratégias de reversão: SL/TP relativos ao fill price
             self.stop_loss   = round(self.entry_price * (1.0 - sl_pct), 4)
             self.take_profit = round(self.entry_price * (1.0 + tp_pct), 4)
-            # Timeout fixo de 48H para reversão (independente de regime)
-            self.timeout_at = self.entry_time + timedelta(hours=48)
         else:
-            # ATR-based (estratégias de momentum / fallback)
-            mults = REGIME_MULT.get(self.entry_regime, {})
+            # ATR-based (momentum / fallback)
+            mults   = REGIME_MULT.get(self.entry_regime, {})
             sl_mult = mults.get("sl", DEFAULT_SL_MULT)
             tp_mult = mults.get("tp", DEFAULT_TP_MULT)
-            sl_dist = self.atr * sl_mult
-            tp_dist = self.atr * tp_mult
-            self.stop_loss   = round(self.entry_price - sl_dist, 4)
-            self.take_profit = round(self.entry_price + tp_dist, 4)
-            hours = TIMEOUT_HOURS.get(self.entry_regime, DEFAULT_TIMEOUT_HOURS)
-            self.timeout_at  = self.entry_time + timedelta(hours=hours)
+            self.stop_loss   = round(self.entry_price - self.atr * sl_mult, 4)
+            self.take_profit = round(self.entry_price + self.atr * tp_mult, 4)
 
+        self.backstop_at   = self.entry_time + timedelta(days=ABSOLUTE_BACKSTOP_DAYS)
         self.qty_remaining = self.quantity
 
     @property
@@ -176,13 +188,27 @@ class ExitPlan:
         """Preço correspondente a N × R de lucro."""
         return self.entry_price + self.r_value * multiples
 
+    def update_conviction(self, score: float, state: str, components: dict) -> None:
+        """Atualiza conviction e gerencia streak de baixa convicção."""
+        self.conviction_score      = score
+        self.conviction_state      = state
+        self.conviction_components = components
+        self.conviction_history    = (self.conviction_history + [score])[-10:]
+        if score < 30.0:
+            self.low_conviction_streak += 1
+        else:
+            self.low_conviction_streak = 0
+
     def summary(self) -> str:
+        tp_str = "∞(running)" if self.running_mode else f"{self.take_profit:.2f}"
         return (
             f"{self.symbol} entry={self.entry_price:.2f} "
-            f"sl={self.stop_loss:.2f} tp={self.take_profit:.2f} "
+            f"sl={self.stop_loss:.2f} tp={tp_str} "
             f"atr={self.atr:.2f} regime={self.entry_regime} "
+            f"conviction={self.conviction_score:.0f}%({self.conviction_state}) "
             f"trail={'ON' if self.trailing_activated else 'off'} "
-            f"partial={'done' if self.partial_done else 'pending'}"
+            f"partial={'done' if self.partial_done else 'pending'} "
+            f"running={'YES' if self.running_mode else 'no'}"
         )
 
 
@@ -203,24 +229,25 @@ class PositionMonitor:
         cache: Cache,
         interval_seconds: int = 30,
     ) -> None:
-        self._bus      = bus
-        self._market   = market
+        self._bus       = bus
+        self._market    = market
         self._portfolio = portfolio
-        self._oms      = oms
-        self._cache    = cache
-        self._interval = interval_seconds
+        self._oms       = oms
+        self._cache     = cache
+        self._interval  = interval_seconds
+
+        # Hold Engine — avalia conviction de cada trade
+        self._hold_engine = HoldEngine(market=market, cache=cache)
 
         # ExitPlans ativos: symbol → ExitPlan
         self._plans: dict[str, ExitPlan] = {}
 
-        self._running = False
-        self._task: asyncio.Task | None = None
-        self._fill_task: asyncio.Task | None = None
+        self._running    = False
+        self._task: asyncio.Task | None       = None
+        self._fill_task: asyncio.Task | None  = None
         self._fill_queue: asyncio.Queue | None = None
         self._exits_today = 0
 
-        # Fatores do sinal pendente por símbolo (preenchido antes do fill chegar)
-        # Usado para passar sl_pct/tp_pct de estratégias de reversão ao ExitPlan
         self._pending_factors: dict[str, dict] = {}
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -228,17 +255,12 @@ class PositionMonitor:
     async def start(self) -> None:
         if self._running:
             return
-        self._running = True
-
-        # Subscreve fills via queue (API correta do EventBus)
+        self._running    = True
         self._fill_queue = self._bus.subscribe(Topic.FILL)
         self._fill_task  = asyncio.create_task(
             self._consume_fills(), name="position_monitor_fills"
         )
-
-        # Cria planos para posições já abertas (restart recovery)
         await self._recover_existing_positions()
-
         self._task = asyncio.create_task(self._loop(), name="position_monitor")
         logger.info("PositionMonitor started interval=%ds", self._interval)
 
@@ -256,42 +278,31 @@ class PositionMonitor:
     # ── Consumer de fills ─────────────────────────────────────────────────────
 
     async def _consume_fills(self) -> None:
-        """Consome FillEvents do bus e cria ExitPlans para compras."""
         while self._running:
             try:
-                event = await asyncio.wait_for(
-                    self._fill_queue.get(), timeout=1.0
-                )
+                event = await asyncio.wait_for(self._fill_queue.get(), timeout=1.0)
                 await self._on_order_event(event)
             except TimeoutError:
                 continue
             except asyncio.CancelledError:
                 break
             except Exception as exc:
-                logger.error("PositionMonitor fill consumer error: %s", exc, exc_info=True)
+                logger.error("PositionMonitor fill consumer: %s", exc, exc_info=True)
 
-    # ── Evento de fill → criar ExitPlan ──────────────────────────────────────
+    # ── Fill → criar ExitPlan ─────────────────────────────────────────────────
 
     def set_pending_signal_factors(self, symbol: str, factors: dict) -> None:
-        """
-        Registra os fatores do último sinal de compra para um símbolo.
-        Chamado pelo TradingLoop após submeter a ordem, antes do fill chegar.
-        Os fatores são consumidos na criação do ExitPlan e descartados.
-        """
         self._pending_factors[symbol] = factors
-        logger.debug("PositionMonitor: fatores pendentes registrados para %s: %s", symbol, factors)
 
     async def _on_order_event(self, event) -> None:
-        """Cria ExitPlan quando um fill de compra é confirmado."""
         if not isinstance(event, OrderFilledEvent):
             return
         order = event.order
         if order is None:
             return
-
         side = str(getattr(order, "side", "")).upper()
         if side not in ("BUY", "LONG"):
-            return   # fills de venda não criam planos
+            return
 
         symbol   = order.symbol
         qty      = order.filled_quantity or order.quantity
@@ -301,7 +312,6 @@ class PositionMonitor:
         if price <= 0 or qty <= 0:
             return
 
-        # Recupera fatores do sinal pendente (se disponível — estratégias de reversão)
         signal_factors = self._pending_factors.pop(symbol, {})
         await self._create_plan(symbol, qty, price, strat_id, signal_factors=signal_factors)
 
@@ -313,18 +323,9 @@ class PositionMonitor:
         strategy_id: str,
         signal_factors: dict | None = None,
     ) -> None:
-        # ATR em 1H (14 × 1H = 14h) — alinhado com o timeframe de avaliação
         candles_1h = self._market.get_candles(symbol, "1H", limit=ATR_PERIOD + 5)
-        atr = _calc_atr(candles_1h, ATR_PERIOD) if len(candles_1h) >= ATR_PERIOD else 0.0
-
-        if atr <= 0:
-            # Fallback: tenta 1H, depois percentual fixo
-            atr = _calc_atr(candles_1h, ATR_PERIOD)
-        if atr <= 0:
-            atr = entry_price * 0.015
-            logger.warning("%s: ATR indisponível — usando fallback %.2f", symbol, atr)
-
-        # Regime usa 1H (decisão macro mais estável)
+        atr    = _calc_atr(candles_1h, ATR_PERIOD) if len(candles_1h) >= ATR_PERIOD else 0.0
+        atr    = atr or entry_price * 0.015
         regime = _detect_regime(candles_1h)
 
         plan = ExitPlan(
@@ -338,16 +339,12 @@ class PositionMonitor:
             signal_factors=signal_factors or {},
         )
         self._plans[symbol] = plan
-        logger.info(
-            "ExitPlan criado: %s", plan.summary()
-        )
+        logger.info("ExitPlan criado: %s", plan.summary())
 
     async def _recover_existing_positions(self) -> None:
-        """Cria ExitPlans para posições abertas ao reiniciar o sistema."""
         positions = self._portfolio.state.positions
         if not positions:
             return
-
         logger.info("PositionMonitor: recuperando %d posições abertas…", len(positions))
         for symbol, pos in positions.items():
             if symbol in self._plans:
@@ -373,14 +370,14 @@ class PositionMonitor:
     async def _check_positions(self) -> None:
         if not self._plans:
             return
-
         now = datetime.now(UTC)
-
         for symbol, plan in list(self._plans.items()):
             try:
                 await self._evaluate_plan(symbol, plan, now)
             except Exception as exc:
                 logger.error("Erro ao avaliar %s: %s", symbol, exc, exc_info=True)
+
+    # ── Avaliação do plano ────────────────────────────────────────────────────
 
     async def _evaluate_plan(
         self,
@@ -388,27 +385,26 @@ class PositionMonitor:
         plan: ExitPlan,
         now: datetime,
     ) -> None:
-        # Preço atual
         price = await self._cache.get_price(symbol)
         if not price or price <= 0:
             return
         price = float(price)
 
-        # Regime check: usa 1H alinhado com o timeframe de avaliação
-        candles_1h_chk = self._market.get_candles(symbol, "1H", limit=25)
-        current_regime = _detect_regime(candles_1h_chk) if len(candles_1h_chk) >= 5 \
+        candles_1h     = self._market.get_candles(symbol, "1H", limit=25)
+        current_regime = (
+            _detect_regime(candles_1h) if len(candles_1h) >= 5
             else "MEAN_REVERTING_CHOP"
+        )
 
-        # ── Phase D — Regime deteriorado ──────────────────────
+        # ── Phase D — Regime de emergência ───────────────────────────────────
         if current_regime in EXIT_REGIMES:
             await self._exit(
                 plan, price, plan.qty_remaining,
-                reason=f"regime_{current_regime.lower()}",
-                partial=False,
+                reason=f"regime_{current_regime.lower()}", partial=False,
             )
             return
 
-        # ── Phase A — Stop Loss ───────────────────────────────
+        # ── Phase A — Stop Loss (safety net absoluta) ─────────────────────────
         effective_sl = plan.trailing_stop if plan.trailing_stop else plan.stop_loss
         if price <= effective_sl:
             await self._exit(
@@ -418,57 +414,139 @@ class PositionMonitor:
             )
             return
 
-        # ── Phase A — Take Profit ────────────────────────────
-        if price >= plan.take_profit:
+        # ── Phase A — Take Profit / TP Conversion ────────────────────────────
+        if price >= plan.take_profit and not plan.tp_converted:
+            if plan.entry_regime in REGIMES_CONVERT_TP:
+                # ── TREND_EXPANSION: converter TP em Running Mode ─────────────
+                # 1. Saída parcial se ainda não foi feita
+                if not plan.partial_done:
+                    qty_to_sell = round(plan.qty_remaining * PARTIAL_EXIT_PCT, 8)
+                    await self._exit(
+                        plan, price, qty_to_sell,
+                        reason="tp_partial_conversion", partial=True,
+                    )
+                    plan.qty_remaining = round(plan.qty_remaining - qty_to_sell, 8)
+                    plan.partial_done  = True
+
+                # 2. Remover teto de TP e ativar running mode
+                plan.tp_converted = True
+                plan.running_mode = True
+                plan.take_profit  = price * 99   # efetivamente infinito
+
+                # 3. Trailing largo para o winner respirar
+                running_trail = round(price - plan.atr * TRAIL_ATR_RUNNING, 4)
+                if not plan.trailing_activated or running_trail > (plan.trailing_stop or 0):
+                    plan.trailing_stop      = running_trail
+                    plan.trailing_activated = True
+
+                logger.info(
+                    "%s: TP → RUNNING MODE @ %.2f | trailing=%.2f (%.1f×ATR) "
+                    "| qty_remaining=%.4f | regime=%s",
+                    symbol, price, plan.trailing_stop, TRAIL_ATR_RUNNING,
+                    plan.qty_remaining, plan.entry_regime,
+                )
+                # Não retorna — continua avaliando neste ciclo
+            else:
+                # Outros regimes: saída total no TP (range trades não correm)
+                await self._exit(
+                    plan, price, plan.qty_remaining,
+                    reason="take_profit", partial=False,
+                )
+                return
+
+        # ── Backstop absoluto (30 dias) — último recurso ──────────────────────
+        if now >= plan.backstop_at:
             await self._exit(
                 plan, price, plan.qty_remaining,
-                reason="take_profit",
+                reason="absolute_backstop_30d", partial=False,
+            )
+            return
+
+        # ── Hold Engine — Conviction Decay ────────────────────────────────────
+        conviction = await self._hold_engine.evaluate(
+            symbol=symbol,
+            entry_price=plan.entry_price,
+            low_conviction_streak=plan.low_conviction_streak,
+        )
+        plan.update_conviction(
+            score=conviction.score,
+            state=conviction.state,
+            components=conviction.components,
+        )
+
+        logger.debug(
+            "%s conviction=%.0f state=%s streak=%d",
+            symbol, conviction.score, conviction.state, plan.low_conviction_streak,
+        )
+
+        if conviction.state == "EXIT":
+            await self._exit(
+                plan, price, plan.qty_remaining,
+                reason=conviction.exit_reason or "conviction_exit",
                 partial=False,
             )
             return
 
-        # ── Phase A — Timeout ────────────────────────────────
-        if now >= plan.timeout_at:
-            await self._exit(
-                plan, price, plan.qty_remaining,
-                reason=f"timeout_{plan.entry_regime.lower()}",
-                partial=False,
-            )
-            return
-
-        # ── Phase C — Saída parcial dinâmica por regime ───────
+        # ── Phase C — Saída parcial dinâmica ──────────────────────────────────
         partial_r = REGIME_PARTIAL_EXIT.get(plan.entry_regime, PARTIAL_EXIT_R)
         if not plan.partial_done and price >= plan.price_at_r(partial_r):
             qty_to_sell = round(plan.quantity * PARTIAL_EXIT_PCT, 8)
             await self._exit(
                 plan, price, qty_to_sell,
-                reason="partial_take_profit",
-                partial=True,
+                reason="partial_take_profit", partial=True,
             )
             plan.partial_done  = True
             plan.qty_remaining = round(plan.qty_remaining - qty_to_sell, 8)
             logger.info(
-                "%s: saída parcial %.4f unidades @ %.2f (+%.1fR, regime=%s) — restante: %.4f",
-                symbol, qty_to_sell, price, partial_r, plan.entry_regime, plan.qty_remaining,
+                "%s: saída parcial %.4f @ %.2f (+%.1fR, regime=%s) — restante: %.4f",
+                symbol, qty_to_sell, price, partial_r,
+                plan.entry_regime, plan.qty_remaining,
             )
 
-        # ── Phase B — Trailing stop dinâmico por regime ───────
-        trail_r = REGIME_TRAIL_ACTIVATE.get(plan.entry_regime, TRAIL_ACTIVATE_R)
-        if price >= plan.price_at_r(trail_r):
-            new_trail = round(price - plan.atr * TRAIL_ATR_MULT, 4)
+        # ── Phase B — Trailing stop (conviction-adaptive + running mode) ────────
+        #
+        # ATR multiplier = trail_atr_mult(conviction_score, running_mode)
+        #   HOLD forte (≥85): 2.5× ATR   — winners respiram
+        #   HOLD       (70–84): 2.0× ATR
+        #   WATCH      (50–69): 1.0× ATR
+        #   ALERT      (30–49): 0.5× ATR
+        #   Running mode: +0.5× em todos os níveis
+        #
+        # Regra: trailing só sobe (ratchet), nunca desce para proteger de whipsaw.
+        # Exceção: quando conviction degrada E trailing está frouxo demais,
+        #          o trailing APERTA para o nível da nova conviction.
+        trail_r    = REGIME_TRAIL_ACTIVATE.get(plan.entry_regime, TRAIL_ACTIVATE_R)
+        atr_mult   = trail_atr_mult(conviction.score, plan.running_mode)
+
+        if price >= plan.price_at_r(trail_r) or plan.running_mode:
+            new_trail = round(price - plan.atr * atr_mult, 4)
+            current   = plan.trailing_stop or 0.0
+
             if not plan.trailing_activated:
                 plan.trailing_stop      = new_trail
                 plan.trailing_activated = True
                 logger.info(
-                    "%s: trailing stop ativado @ %.2f (preço=%.2f, +1R atingido)",
-                    symbol, new_trail, price,
+                    "%s: trailing ativado @ %.2f (%.1f×ATR conviction=%.0f%% %s%s)",
+                    symbol, new_trail, atr_mult, conviction.score,
+                    conviction.state, " RUNNING" if plan.running_mode else "",
                 )
-            elif new_trail > (plan.trailing_stop or 0):
-                logger.debug(
-                    "%s: trailing stop atualizado %.2f → %.2f",
-                    symbol, plan.trailing_stop, new_trail,
-                )
+            elif new_trail > current:
+                # Ratchet up — trailing segue o preço para cima
                 plan.trailing_stop = new_trail
+                logger.debug(
+                    "%s: trailing ↑ %.2f→%.2f (%.1f×ATR conv=%.0f%%)",
+                    symbol, current, new_trail, atr_mult, conviction.score,
+                )
+            elif new_trail < current:
+                # Conviction degradou → tighten se o novo mult é mais apertado
+                # (ex: era HOLD 2.0×, virou WATCH 1.0× — aperta o trailing)
+                tighter = round(price - plan.atr * atr_mult, 4)
+                if tighter > current:
+                    plan.trailing_stop = tighter
+                    logger.info(
+                        "%s: trailing apertado por conviction %s→%.0f%% → %.2f",
+                        symbol, conviction.state, conviction.score, tighter,
+                    )
 
     # ── Execução de saída ─────────────────────────────────────────────────────
 
@@ -484,9 +562,10 @@ class PositionMonitor:
         pnl_r  = (price - plan.entry_price) / plan.r_value if plan.r_value > 0 else 0
 
         logger.info(
-            "SAÍDA %s %s qty=%.4f price=%.2f pnl=%.2fR reason=%s",
+            "SAÍDA %s %s qty=%.4f price=%.2f pnl=%.2fR reason=%s conviction=%.0f(%s)",
             "PARCIAL" if partial else "TOTAL",
             symbol, quantity, price, pnl_r, reason,
+            plan.conviction_score, plan.conviction_state,
         )
 
         success = await self._oms.exit_position(
@@ -499,40 +578,46 @@ class PositionMonitor:
         if success:
             self._exits_today += 1
             if not partial:
-                # Remove o plano — posição fechada
                 self._plans.pop(symbol, None)
-                logger.info(
-                    "%s: ExitPlan removido após saída total (reason=%s)",
-                    symbol, reason,
-                )
 
-    # ── Status ────────────────────────────────────────────────────────────────
+    # ── Status (para dashboard e API) ────────────────────────────────────────
 
     def status(self) -> dict:
         return {
-            "running":       self._running,
-            "active_plans":  len(self._plans),
-            "exits_today":   self._exits_today,
+            "running":      self._running,
+            "active_plans": len(self._plans),
+            "exits_today":  self._exits_today,
             "plans": {
                 sym: {
-                    "entry_price":   p.entry_price,
-                    "stop_loss":     p.trailing_stop or p.stop_loss,
-                    "take_profit":   p.take_profit,
-                    "timeout_at":    p.timeout_at.isoformat(),
-                    "trailing":      p.trailing_activated,
-                    "partial_done":  p.partial_done,
-                    "qty_remaining": p.qty_remaining,
-                    "regime":        p.entry_regime,
+                    "entry_price":         p.entry_price,
+                    "stop_loss":           p.trailing_stop or p.stop_loss,
+                    "take_profit":         p.take_profit,
+                    "trailing":            p.trailing_activated,
+                    "partial_done":        p.partial_done,
+                    "qty_remaining":       p.qty_remaining,
+                    "regime":              p.entry_regime,
+                    # Running Mode (convexidade)
+                    "tp_converted":        p.tp_converted,
+                    "running_mode":        p.running_mode,
+                    # Hold Engine
+                    "conviction_score":    round(p.conviction_score, 1),
+                    "conviction_state":    p.conviction_state,
+                    "conviction_history":  p.conviction_history,
+                    "conviction_components": {
+                        k: round(v, 3)
+                        for k, v in p.conviction_components.items()
+                    },
+                    "low_conviction_streak": p.low_conviction_streak,
+                    "backstop_at":         p.backstop_at.isoformat(),
                 }
                 for sym, p in self._plans.items()
             },
         }
 
 
-# ── Helpers (espelham v4_strategy, sem import circular) ───────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _calc_atr(candles: list[Candle], period: int = 14) -> float:
-    """Average True Range dos últimos `period` candles."""
     if len(candles) < period + 1:
         return 0.0
     trs = []
@@ -546,7 +631,6 @@ def _calc_atr(candles: list[Candle], period: int = 14) -> float:
 
 
 def _detect_regime(candles: list[Candle]) -> str:
-    """Espelho de V4MomentumStrategy._detect_regime (sem importação circular)."""
     if len(candles) < 20:
         return "MEAN_REVERTING_CHOP"
 
@@ -558,10 +642,8 @@ def _detect_regime(candles: list[Candle]) -> str:
     avg_vol  = sum(volumes) / len(volumes)
     last_vol = volumes[0]
 
-    # Panic: queda > 5% no candle mais recente vs anterior
     if len(closes) >= 2 and closes[1] > 0:
-        drop = (closes[0] - closes[1]) / closes[1]
-        if drop < -0.05:
+        if (closes[0] - closes[1]) / closes[1] < -0.05:
             return "PANIC_LIQUIDATION"
 
     if sma_fast > sma_slow:
@@ -571,12 +653,11 @@ def _detect_regime(candles: list[Candle]) -> str:
             return "TREND_EXHAUSTION"
         return "VOLATILITY_COMPRESSION"
 
-    highs = [c.high for c in candles[:10]]
-    lows  = [c.low  for c in candles[:10]]
-    atr_5 = sum(hi - lo for hi, lo in zip(highs[:5], lows[:5], strict=True)) / 5
+    highs  = [c.high for c in candles[:10]]
+    lows   = [c.low  for c in candles[:10]]
+    atr_5  = sum(hi - lo for hi, lo in zip(highs[:5], lows[:5], strict=True)) / 5
     rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
 
-    # BEAR: preço atual abaixo de 10 candles atrás em > 2%
     if len(closes) >= 11 and closes[10] > 0:
         if (closes[0] - closes[10]) / closes[10] < -0.02:
             return "BEAR_TREND"

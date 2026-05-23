@@ -729,7 +729,7 @@
     <div class="clabel">Planos de Saída <span class="cnt" id="exit-count"></span></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Par</th><th>Stop Loss</th><th>Take Profit</th><th>Trailing</th><th>Timeout</th></tr></thead>
+        <thead><tr><th>Par</th><th>Stop Loss</th><th>Take Profit</th><th>Trailing</th><th>Conviction</th></tr></thead>
         <tbody id="exits-body"><tr class="empty-row"><td colspan="5">Nenhum plano ativo</td></tr></tbody>
       </table>
     </div>
@@ -3984,8 +3984,26 @@ async function updateAll(){
   const epK=Object.keys(ep);
   document.getElementById('exit-count').textContent=`(${epK.length})`;
   document.getElementById('exits-body').innerHTML=epK.length?epK.map(sym=>{
-    const p=ep[sym],t=new Date(p.timeout_at),h=((t-new Date())/3600000).toFixed(1);
-    return`<tr><td class="b">${sym}</td><td class="r">${usd(p.stop_loss)}</td><td class="g">${usd(p.take_profit)}</td><td>${p.trailing?'<span class="g">ON</span>':'<span class="m">off</span>'}</td><td>${h>0?h+'h':'<span class="r">expirado</span>'}</td></tr>`;
+    const p=ep[sym];
+    const cv=p.conviction_score??100;
+    const cs=p.conviction_state||'HOLD';
+    const cvCol=cs==='HOLD'?'var(--green)':cs==='WATCH'?'var(--yellow)':cs==='ALERT'?'var(--orange)':'var(--red)';
+    const cvBar=`<div style="display:flex;align-items:center;gap:4px;">
+      <div style="flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;">
+        <div style="height:100%;width:${cv.toFixed(0)}%;background:${cvCol};border-radius:2px;transition:width .4s;"></div>
+      </div>
+      <span style="color:${cvCol};font-size:0.6rem;font-weight:700;min-width:38px;text-align:right">${cv.toFixed(0)}% ${cs}</span>
+    </div>`;
+    const tpCell = p.running_mode
+      ? `<span style="color:var(--green);font-weight:700">∞ RUNNING</span>`
+      : `<span class="g">${usd(p.take_profit)}</span>`;
+    return`<tr>
+      <td class="b">${sym}</td>
+      <td class="r">${usd(p.stop_loss)}</td>
+      <td>${tpCell}</td>
+      <td>${p.trailing?'<span class="g">ON</span>':'<span class="m">off</span>'}</td>
+      <td style="min-width:140px">${cvBar}</td>
+    </tr>`;
   }).join(''):'<tr class="empty-row"><td colspan="5">Nenhum plano ativo</td></tr>';
 
   // Orders

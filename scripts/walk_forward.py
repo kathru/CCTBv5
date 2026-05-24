@@ -62,8 +62,8 @@ OKX_BASE    = "https://www.okx.com"
 GRAN_MS     = {"1H": 3_600_000, "4H": 14_400_000}
 DEFAULT_FEE = 0.005   # round-trip 0.5%
 
-PLATT_A_INIT = 0.378188
-PLATT_B_INIT = -1.075301
+PLATT_A_INIT = 0.376414   # sincronizado com calibration_coef.json (recalibrate.py)
+PLATT_B_INIT = -0.706152  # sincronizado com calibration_coef.json (recalibrate.py)
 
 
 # ── Candle fetching (reusa cache do recalibrate.py) ───────────────────────────

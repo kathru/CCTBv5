@@ -164,7 +164,8 @@ def compute_features(candles_window: list[dict]) -> dict[str, float] | None:
     cc    = 1.0 if closes[0]>opens[0] and volumes[0]>avg20 else 0.4
     m3    = vr*0.4 + (vt-0.3)/1.7*0.3 + cc*0.3
 
-    # M4 Regime Strength
+    # M4 Regime Strength — MONITORAMENTO APENAS (peso=0% desde v2.5.0)
+    # Mantido no output para diagnóstico/auditoria, mas NÃO entra no score.
     sma5  = sum(closes[:5])/5
     sma20 = sum(closes[:20])/20
     dist  = (sma5-sma20)/sma20 if sma20>0 else 0
@@ -190,7 +191,7 @@ def compute_features(candles_window: list[dict]) -> dict[str, float] | None:
         "m1_momentum":    round(m1, 4),
         "m2_consistency": round(m2, 4),
         "m3_volume":      round(m3, 4),
-        "m4_regime_str":  round(m4, 4),
+        "m4_regime_str":  round(m4, 4),   # monitoring only — peso=0% desde v2.5.0
         "m5_candle":      round(m5, 4),
         "m6_futures":     round(m6, 4),   # neutro — API externa
         "m7_rel_strength":round(m7, 4),   # neutro — multi-símbolo

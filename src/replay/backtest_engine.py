@@ -789,73 +789,103 @@ def _detect_regime(candles: list[Candle]) -> str:
 
 def _conviction_proxy(candles: list[Candle], entry_price: float) -> float:
     """
-    Proxy de conviction 0–100 baseado em candles (sem Redis).
-    Espelha os 6 componentes do HoldEngine real com pesos idênticos.
+    Proxy de conviction 0–100 baseado em candles (sem Redis/cache).
+    Replica EXATAMENTE os 6 componentes e pesos do HoldEngine (hold_engine.py).
 
-    Componentes (alinhados com HoldEngine):
-      1. trend_persistence (25%): SMA score contínuo (sma5 vs sma20 com margin)
-      2. momentum_align     (20%): retorno recente normalizado pelo ATR
-      3. vol_health         (20%): ATR ratio saudável vs histórico recente
-      4. volume_confirm     (15%): volume atual vs média 20 candles
-      5. price_structure    (10%): Higher Highs + Higher Lows recentes
-      6. time_decay         (10%): penaliza posições longas (proxy sem tempo real)
+    Componentes e pesos (idênticos ao WEIGHTS dict do HoldEngine):
+      1. trend_persistence (25%): SMA score contínuo [-3%,+3%] + HH/HL (60%/40%)
+      2. relative_strength (20%): fallback neutro 0.5 (sem M7 em backtest)
+      3. vol_health        (20%): ATR ratio → mapeado em estados (VOL_STATE_HEALTH)
+      4. breadth           (15%): fallback neutro 0.5 (sem MetaRegime em backtest)
+      5. volume_behavior   (10%): volume vs média + direção relativa ao entry_price
+      6. distribution      (10%): detecção de velas bearish + volume alto
 
-    Nota: sem dados de RS de mercado (M7) disponíveis no backtest isolado.
-    time_decay usa candles_held como proxy de tempo decorrido.
+    Fallbacks neutros (0.5) para componentes que dependem de dados externos
+    (relative_strength e breadth) são o comportamento correto — identical ao
+    HoldEngine quando Redis não retorna dados.
     """
     if len(candles) < 20:
-        return 70.0   # sem dados = neutro HOLD
+        return 70.0   # sem dados suficientes = neutro HOLD
 
     closes  = [c.close  for c in candles[:25]]
     highs   = [c.high   for c in candles[:25]]
     lows    = [c.low    for c in candles[:25]]
     volumes = [c.volume for c in candles[:20]]
+    opens   = [c.open   for c in candles[:4]]
 
-    # 1. Trend persistence (25%) — SMA score contínuo
+    # 1. trend_persistence (25%) — cópia exata de HoldEngine._trend_persistence()
     sma5  = sum(closes[:5]) / 5
     sma20 = sum(closes[:20]) / 20
     margin = (sma5 - sma20) / sma20 if sma20 > 0 else 0.0
-    # Função contínua: margin -3% → 0.0, margin +3% → 1.0 (igual ao HoldEngine)
     sma_score = min(max((margin + 0.03) / 0.06, 0.0), 1.0)
-    trend_score = sma_score
+    hh = sum(1 for i in range(min(4, len(highs)-1)) if highs[i] > highs[i+1])
+    hl = sum(1 for i in range(min(4, len(lows)-1))  if lows[i]  > lows[i+1])
+    structure_score = (hh + hl) / 8
+    trend_persistence = sma_score * 0.60 + structure_score * 0.40
 
-    # 2. Momentum align (20%) — retorno normalizado pelo ATR
-    atr14 = sum(highs[i] - lows[i] for i in range(min(14, len(highs)))) / min(14, len(highs))
-    ret5 = (closes[0] - closes[5]) / closes[5] if len(closes) > 5 and closes[5] > 0 else 0.0
-    norm_ret = ret5 / (atr14 / closes[0]) if closes[0] > 0 and atr14 > 0 else 0.0
-    momentum_score = min(max(norm_ret * 0.5 + 0.5, 0.0), 1.0)
+    # 2. relative_strength (20%) — neutro 0.5 (sem M7 no backtest, igual ao fallback do HoldEngine)
+    relative_strength = 0.5
 
-    # 3. Vol health (20%) — ATR atual vs histórico (1.0 saudável, 0.0 caótico)
-    atr_now = sum(highs[i] - lows[i] for i in range(5)) / 5
-    atr_ref = sum(highs[i] - lows[i] for i in range(5, 20)) / 15 if len(highs) >= 20 else atr_now
+    # 3. vol_health (20%) — ATR ratio → estado → VOL_STATE_HEALTH (cópia do HoldEngine)
+    _VOL_STATE_HEALTH = {
+        "EXPANDING": 0.90, "TREND": 0.80, "COMPRESSED": 0.50,
+        "MEAN_REVERTING": 0.30, "CHAOTIC": 0.05, "UNKNOWN": 0.50,
+    }
+    atr_now  = sum(highs[i] - lows[i] for i in range(min(5, len(highs)))) / 5
+    atr_ref  = (sum(highs[i] - lows[i] for i in range(5, 20)) / 15
+                if len(highs) >= 20 else atr_now)
     atr_ratio = atr_now / atr_ref if atr_ref > 0 else 1.0
-    vol_health = min(max(1.0 - abs(atr_ratio - 1.0) * 0.7, 0.0), 1.0)
+    atr_pct   = atr_now / closes[0] if closes[0] > 0 else 0.01
+    n_dir = min(10, len(closes) - 1)
+    ups   = sum(1 for i in range(n_dir) if closes[i] > closes[i+1])
+    dir_c = max(ups, n_dir - ups) / n_dir if n_dir > 0 else 0.5
+    bb_width = (max(closes[:20]) - min(closes[:20])) / closes[0] if len(closes) >= 20 else 0.02
+    if atr_pct > 0.025 and dir_c < 0.45:
+        _state = "CHAOTIC"
+    elif atr_ratio > 1.30 and dir_c > 0.55:
+        _state = "EXPANDING"
+    elif atr_pct < 0.008 or bb_width < 0.015:
+        _state = "COMPRESSED"
+    elif dir_c > 0.60 and 0.008 <= atr_pct <= 0.025:
+        _state = "TREND"
+    else:
+        _state = "MEAN_REVERTING"
+    vol_health = _VOL_STATE_HEALTH[_state]
 
-    # 4. Volume confirm (15%) — volume atual vs média 20c
-    avg_vol = sum(volumes[1:]) / max(len(volumes) - 1, 1)
-    curr_vol = volumes[0] if volumes else avg_vol
-    vol_ratio = curr_vol / avg_vol if avg_vol > 0 else 1.0
-    vol_confirm = min(max((vol_ratio - 0.5) / 1.5, 0.0), 1.0)
+    # 4. breadth (15%) — neutro 0.5 (sem MetaRegime no backtest, igual ao fallback)
+    breadth = 0.5
 
-    # 5. Price structure (10%) — Higher Highs + Higher Lows
-    n_struct = min(4, len(highs) - 1)
-    hh = sum(1 for i in range(n_struct) if highs[i] > highs[i+1]) / max(n_struct, 1)
-    hl = sum(1 for i in range(min(4, len(lows)-1)) if lows[i] > lows[i+1]) / 4
-    structure = (hh + hl) / 2
+    # 5. volume_behavior (10%) — cópia exata de HoldEngine._volume_behavior()
+    avg_vol    = sum(volumes[1:]) / max(len(volumes) - 1, 1)
+    curr_vol   = volumes[0] if volumes else avg_vol
+    vol_ratio  = curr_vol / avg_vol if avg_vol > 0 else 1.0
+    price_up   = closes[0] >= entry_price
+    if price_up and vol_ratio > 1.10:
+        volume_behavior = 0.85
+    elif price_up and vol_ratio >= 0.80:
+        volume_behavior = 0.65
+    elif not price_up and vol_ratio > 1.20:
+        volume_behavior = 0.15
+    elif not price_up:
+        volume_behavior = 0.35
+    else:
+        volume_behavior = 0.50
 
-    # 6. Time decay (10%) — penaliza candles dentro da posição (sem tempo real no backtest)
-    # Usando distância do preço atual vs entrada: quanto mais afastado, mais incerto
-    curr_price = closes[0] if closes else entry_price
-    price_vs_entry = (curr_price - entry_price) / entry_price if entry_price > 0 else 0.0
-    # Posição positiva → mantém conviction; negativa → reduz
-    time_decay = min(max(price_vs_entry * 10 + 0.6, 0.0), 1.0)
+    # 6. distribution (10%) — cópia exata de HoldEngine._distribution()
+    avg_vol4 = sum(volumes[1:4]) / max(len(volumes[1:4]), 1)
+    dist_signals = sum(
+        1 for i in range(min(3, len(closes)))
+        if closes[i] < opens[i] and volumes[i] > avg_vol4 * 1.15
+    )
+    distribution = round(1.0 - (dist_signals / 3) * 0.90, 4)
 
-    raw = (trend_score   * 0.25 +
-           momentum_score * 0.20 +
-           vol_health     * 0.20 +
-           vol_confirm    * 0.15 +
-           structure      * 0.10 +
-           time_decay     * 0.10)
+    # Score final — pesos idênticos ao WEIGHTS dict do HoldEngine
+    raw = (trend_persistence * 0.25 +
+           relative_strength * 0.20 +
+           vol_health        * 0.20 +
+           breadth           * 0.15 +
+           volume_behavior   * 0.10 +
+           distribution      * 0.10)
 
     return round(max(0.0, min(100.0, raw * 100)), 1)
 
@@ -872,16 +902,17 @@ def _vol_state_from_candles(candles: list[Candle]) -> dict:
     atr_ref = sum(c.high - c.low for c in candles[5:20]) / min(15, len(candles) - 5)
     ratio   = atr_now / atr_ref if atr_ref > 0 else 1.0
 
+    # Scores espelham volatility_state.STATE_M8_SCORE (fonte autoritativa do M8)
     if ratio > 2.0:
-        state, score = "CHAOTIC", 0.10
+        state, score = "CHAOTIC", 0.20
     elif ratio > 1.3:
-        state, score = "EXPANDING", 0.90
+        state, score = "EXPANDING", 0.80
     elif ratio > 0.9:
-        state, score = "TREND", 0.80
+        state, score = "TREND", 0.70
     elif ratio > 0.6:
-        state, score = "COMPRESSED", 0.55
+        state, score = "COMPRESSED", 0.65
     else:
-        state, score = "MEAN_REVERTING", 0.30
+        state, score = "MEAN_REVERTING", 0.35
 
     return {
         "state":    state,

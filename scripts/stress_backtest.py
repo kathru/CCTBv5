@@ -174,7 +174,8 @@ def _compute_m8_state_from_candles(
         state = "TREND"
     else:
         state = "MEAN_REVERTING"
-    return {"EXPANDING": 0.80, "TREND": 0.65, "COMPRESSED": 0.50,
+    # Espelho exato de volatility_state.STATE_M8_SCORE (fonte autoritativa do M8)
+    return {"EXPANDING": 0.80, "TREND": 0.70, "COMPRESSED": 0.65,
             "MEAN_REVERTING": 0.35, "CHAOTIC": 0.20, "UNKNOWN": 0.50}.get(state, 0.50)
 
 

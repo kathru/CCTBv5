@@ -547,11 +547,12 @@ def score_signal(closes: list[float], highs: list[float],
     cc    = 1.0 if closes[0]>opens[0] and volumes[0]>avg20 else 0.4
     m3    = vr*0.4 + (vt-0.3)/1.7*0.3 + cc*0.3
 
-    # M4 Regime Strength
+    # M4 Regime Strength — PESO=0% desde v2.5.0 (removido do score)
+    # O resultado é descartado intencionalmente (`_`). Manter o cálculo apenas
+    # para referência/comparação histórica se necessário reativar no futuro.
     sma5  = sum(closes[:5])/5
     sma20 = sum(closes[:20])/20 if n>=20 else sma5
     dist  = (sma5-sma20)/sma20 if sma20>0 else 0
-    # M4 removido (peso 0%) — cálculo mantido por referência mas não usado
     _ = min(max((dist+0.02)/0.04, 0.0), 1.0) * 0.6 + (0.85 if sma5 > sma20 else 0.45) * 0.4
 
     # M5 Candle Structure

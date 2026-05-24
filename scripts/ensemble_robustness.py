@@ -2,11 +2,14 @@
 """
 Ensemble Robustness Test — Phase 15.4
 
-Valida que a complexidade do modelo M1-M8 realmente agrega valor
+Valida que a complexidade do modelo M1-M9 (v2.5.0) realmente agrega valor
 e identifica quais fatores são essenciais vs dispensáveis.
 
+M4 excluído do pool (peso=0% desde v2.5.0). M9 adicionado (News Sentiment, 6%).
+Pool efetivo: M1 M2 M3 M5 M6 M7 M8 M9 = 8 fatores ativos.
+
 Metodologia:
-  1. Testa todas as combinações C(8, K) de K fatores dos 8
+  1. Testa todas as combinações C(8, K) de K fatores dos 8 ativos
      - K=3: C(8,3)=56 combinações (rápido, visão ampla)
      - K=5: C(8,5)=56 combinações (padrão)
      - K=7: C(8,7)=8 combinações (ablation — remove 1 fator por vez)
@@ -48,28 +51,34 @@ log = logging.getLogger("ensemble_robustness")
 CACHE_DIR  = ROOT / "data" / "cache"
 OUTPUT     = ROOT / "data" / "models" / "ensemble_robustness.json"
 
-# ── Todos os 8 fatores do modelo atual ───────────────────────────────────────
+# ── Fatores do modelo v2.5.0 (9 fatores, M4 excluído — peso=0%) ──────────────
+# M4 removido do pool: peso=0% desde v2.5.0. Incluí-lo distorceria os resultados
+# pois o modelo real nunca o usa — sub-ensembles com M4 testariam algo fora do
+# modelo de produção.
+# M9 adicionado (News Sentiment, peso=6%) — neutro 0.5 no backtest histórico.
 ALL_FEATURES = [
     "m1_momentum",
     "m2_consistency",
     "m3_volume",
-    "m4_regime_str",
+    # "m4_regime_str"  — EXCLUÍDO: peso=0% desde v2.5.0
     "m5_candle",
     "m6_futures",        # fixo em 0.5 no backtest histórico
     "m7_rel_strength",   # fixo em 0.5 no backtest histórico
     "m8_vol_state",
+    "m9_sentiment",      # fixo em 0.5 no backtest histórico (sem FinNLP)
 ]
 
-# Pesos originais por feature (usados para normalização no sub-ensemble)
+# Pesos v2.5.0 — espelho exato de momentum_strategy.py
+# M1=2% M2=11% M3=33% M4=0%(excl) M5=6% M6=12% M7=11% M8=19% M9=6%
 ORIGINAL_WEIGHTS = {
-    "m1_momentum":    0.10,
-    "m2_consistency": 0.20,
-    "m3_volume":      0.25,
-    "m4_regime_str":  0.05,
-    "m5_candle":      0.08,
-    "m6_futures":     0.10,
-    "m7_rel_strength":0.09,
-    "m8_vol_state":   0.13,
+    "m1_momentum":    0.02,
+    "m2_consistency": 0.11,
+    "m3_volume":      0.33,
+    "m5_candle":      0.06,
+    "m6_futures":     0.12,
+    "m7_rel_strength":0.11,
+    "m8_vol_state":   0.19,
+    "m9_sentiment":   0.06,
 }
 
 LOOKBACK = 25
@@ -123,26 +132,32 @@ def _compute_score_subset(candles_window: list[dict],
     cc    = 1.0 if closes[0]>opens[0] and volumes[0]>avg20 else 0.4
     all_vals["m3_volume"] = vr*0.4 + (vt-0.3)/1.7*0.3 + cc*0.3
 
-    # M4
-    sma5  = sum(closes[:5])/5
-    sma20 = sum(closes[:20])/20 if len(closes)>=20 else sma5
-    dist  = (sma5-sma20)/sma20 if sma20>0 else 0
-    m4r   = min(max((dist+0.02)/0.04, 0.0), 1.0)
-    m4f   = 0.85 if sma5>sma20 else 0.45
-    all_vals["m4_regime_str"] = m4r*0.6 + m4f*0.4
+    # M4 — EXCLUÍDO (peso=0% desde v2.5.0, não está em ALL_FEATURES)
 
     # M5
     cs = [(closes[i]-lows[i])/(highs[i]-lows[i]) if highs[i]>lows[i] else 0.5
           for i in range(min(3, len(closes)))]
     all_vals["m5_candle"] = sum(cs)/len(cs) if cs else 0.5
 
-    # M6/M7 — neutros no backtest
+    # M6/M7/M9 — neutros no backtest histórico (dados externos)
     all_vals["m6_futures"]      = 0.5
     all_vals["m7_rel_strength"] = 0.5
+    all_vals["m9_sentiment"]    = 0.5
 
-    # M8 — simplificado (proxy ATR)
-    atr_pct = atr / closes[0] if closes[0] > 0 else 0.01
-    all_vals["m8_vol_state"] = 0.35 if atr_pct < 0.008 else (0.65 if atr_pct < 0.015 else 0.5)
+    # M8 — espelha STATE_M8_SCORE de volatility_state.py
+    atr_pct   = atr / closes[0] if closes[0] > 0 else 0.01
+    atr_prev  = sum(highs[i]-lows[i] for i in range(5, min(20, len(highs))))/max(1, min(15, len(highs)-5))
+    atr_ratio = atr / atr_prev if atr_prev > 0 else 1.0
+    n_dir = min(10, len(closes)-1)
+    ups   = sum(1 for i in range(n_dir) if closes[i] > closes[i+1])
+    dir_c = max(ups, n_dir-ups)/n_dir if n_dir > 0 else 0.5
+    if atr_pct > 0.025 and dir_c < 0.45:             m8_state = "CHAOTIC"
+    elif atr_ratio > 1.15 and dir_c > 0.55:          m8_state = "EXPANDING"
+    elif atr_pct < 0.008:                             m8_state = "COMPRESSED"
+    elif dir_c > 0.60 and 0.008 <= atr_pct <= 0.025: m8_state = "TREND"
+    else:                                             m8_state = "MEAN_REVERTING"
+    all_vals["m8_vol_state"] = {"EXPANDING":0.80,"TREND":0.70,"COMPRESSED":0.65,
+                                "MEAN_REVERTING":0.35,"CHAOTIC":0.20}.get(m8_state, 0.50)
 
     # Score com sub-conjunto renormalizado
     total_w = sum(ORIGINAL_WEIGHTS[f] for f in features_subset)
@@ -227,7 +242,7 @@ def main() -> None:
         return
 
     combos = list(itertools.combinations(ALL_FEATURES, args.k))
-    log.info("Testando C(%d,%d) = %d combinações...", len(ALL_FEATURES), args.k, len(combos))
+    log.info("Testando C(%d,%d) = %d combinações... (pool: 8 fatores ativos, M4 excluído)", len(ALL_FEATURES), args.k, len(combos))
 
     results: list[dict] = []
     positive_oos = 0

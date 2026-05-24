@@ -1582,3 +1582,66 @@ async def get_market_signals(request: Request) -> dict:
         }
     result["computed_at"] = datetime.now(UTC).isoformat()
     return result
+
+
+@router.get("/strategy_weights")
+async def get_strategy_weights(request: Request) -> dict:
+    """
+    WeightEngine — pesos blendados por (estratégia × regime).
+
+    Retorna o peso atual de cada estratégia para cada regime de mercado,
+    mostrando a convergência simulação→realidade baseada em trades reais.
+
+    confidence: 'simulation' = 0 trades reais | 'mixed' = parcial | 'real' = converged
+    """
+    runner = getattr(request.app.state, "strategy_runner", None)
+    if runner is None:
+        # fallback: lê direto do arquivo de pesos
+        import pathlib as _pl
+        path = _pl.Path("data/models/regime_weights.json")
+        if not path.exists():
+            return {"available": False, "message": "Rode: python scripts/regime_backtest.py"}
+        try:
+            import json as _json
+            raw = _json.loads(path.read_text(encoding="utf-8"))
+            weights_data = raw.get("weights", {})
+            summary: dict = {}
+            for regime, strats in weights_data.items():
+                summary[regime] = {}
+                for sid, entry in strats.items():
+                    summary[regime][sid] = {
+                        "blended":    entry.get("blended_weight", entry.get("sim_weight", 0.5)),
+                        "sim":        entry.get("sim_weight", 0.5),
+                        "real":       entry.get("real_weight"),
+                        "n_real":     entry.get("n_real", 0),
+                        "confidence": entry.get("confidence", "simulation"),
+                        "win_rate":   entry.get("real_win_rate"),
+                    }
+            return {
+                "available":    True,
+                "source":       "file",
+                "computed_at":  datetime.now(UTC).isoformat(),
+                "summary":      summary,
+            }
+        except Exception as exc:
+            return {"available": False, "error": str(exc)}
+
+    # WeightEngine ao vivo via runner
+    try:
+        we = getattr(runner, "_weight_engine", None)
+        if we is None:
+            # Tenta via momentum_strategy
+            for strat in getattr(runner, "_strategies", {}).values():
+                we = getattr(strat, "_weight_engine", None)
+                if we:
+                    break
+        if we is None:
+            return {"available": False, "message": "WeightEngine não disponível no runner"}
+        return {
+            "available":   True,
+            "source":      "live",
+            "computed_at": datetime.now(UTC).isoformat(),
+            "summary":     we.summary(),
+        }
+    except Exception as exc:
+        return {"available": False, "error": str(exc)}

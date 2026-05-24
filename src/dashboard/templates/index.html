@@ -480,6 +480,11 @@
           </div>
           <div style="font-size:0.55rem;color:rgba(255,255,255,0.3);margin-top:2px">cap <span id="motor-kelly-cap-lbl">–%</span></div>
         </div>
+        <!-- Kelly Breakdown — sz_* multipliers (aparece quando há SIGNAL) -->
+        <div id="kelly-breakdown" style="display:none;margin-top:4px;">
+          <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.6px">Kelly Dinâmico — Multiplicadores</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;" id="kelly-chips"></div>
+        </div>
         <!-- Notional + SL/TP + Score atual -->
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:7px;padding:4px 10px;text-align:center;">
@@ -504,6 +509,18 @@
             </div>
             <div style="font-size:0.58rem;color:rgba(255,255,255,0.3);margin-top:2px">thr <span id="motor-score-thr">56%</span></div>
           </div>
+        </div>
+      </div>
+      <!-- Edge Gates — condicionadores do EdgeConditioner (ec_*) -->
+      <div id="edge-gates-row" style="margin-top:8px;margin-bottom:4px;">
+        <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px;">Edge Gates</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;" id="edge-chips">
+          <span style="font-size:0.55rem;color:var(--muted);font-style:italic">aguardando sinal…</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px;align-items:center;flex-wrap:wrap;" id="edge-sizing-row" style="display:none;">
+          <span id="edge-sizing-chip" style="font-size:0.58rem;padding:1px 7px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);color:var(--muted)">Sizing –</span>
+          <span id="edge-wrdiff-chip" style="font-size:0.58rem;padding:1px 7px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);color:var(--muted)">WR diff –</span>
+          <span id="edge-blocked-chip" style="display:none;font-size:0.58rem;padding:1px 7px;border-radius:10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#ef4444;font-weight:700">⛔ BLOQUEADO</span>
         </div>
       </div>
       <!-- Moduladores de threshold: Meta Regime + ATR Adaptativo -->
@@ -683,6 +700,29 @@
 
 </div>
 
+<!-- ══ WEIGHT ENGINE ════════════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--yellow)"></div>WeightEngine — Regime Dinâmico</div>
+<div class="card" id="weight-engine-card">
+  <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">
+    Pesos blendados por Estratégia × Regime
+    <span id="we-source-badge" style="margin-left:8px;font-size:0.52rem;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--muted)">–</span>
+    <span id="we-date" style="margin-left:6px;font-size:0.52rem;color:var(--muted)"></span>
+  </div>
+  <div id="we-table-wrap" style="overflow-x:auto;">
+    <div id="we-loading" style="text-align:center;padding:20px;font-size:0.72rem;color:var(--muted)">Carregando pesos…</div>
+    <table id="we-table" style="display:none;width:100%;border-collapse:collapse;font-size:0.65rem;">
+      <thead id="we-thead"></thead>
+      <tbody id="we-tbody"></tbody>
+    </table>
+  </div>
+  <div style="margin-top:8px;font-size:0.55rem;color:var(--muted)">
+    Confiança:
+    <span style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:4px;padding:0 5px;color:#10b981">real</span> ≥30 trades ·
+    <span style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:0 5px;color:#f59e0b">mixed</span> parcial ·
+    <span style="background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.15);border-radius:4px;padding:0 5px;color:var(--muted)">sim</span> apenas simulação
+  </div>
+</div>
+
 <!-- ══ GRÁFICOS ════════════════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Evolução & Distribuição</div>
 <div class="grid g21">
@@ -729,8 +769,8 @@
     <div class="clabel">Planos de Saída <span class="cnt" id="exit-count"></span></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Par</th><th>Stop Loss</th><th>Take Profit</th><th>Trailing</th><th>Conviction</th></tr></thead>
-        <tbody id="exits-body"><tr class="empty-row"><td colspan="5">Nenhum plano ativo</td></tr></tbody>
+        <thead><tr><th>Par</th><th>Stop Loss</th><th>Take Profit</th><th>Trailing</th><th>Conviction</th><th>Componentes</th></tr></thead>
+        <tbody id="exits-body"><tr class="empty-row"><td colspan="6">Nenhum plano ativo</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -3034,10 +3074,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null,sw:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st,sw]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -3056,6 +3096,7 @@ async function updateSlow(){
     fetchJSON('/api/analytics/model_health'),
     fetchJSON('/api/analytics/ensemble_robustness'),
     fetchJSON('/api/analytics/stress_backtest'),
+    fetchJSON('/api/analytics/strategy_weights'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -3080,6 +3121,7 @@ async function updateSlow(){
   if(mh)        _slowData.mh=mh;
   if(ens)       _slowData.ens=ens;
   if(st)        _slowData.st=st;
+  if(sw)        { _slowData.sw=sw; buildWeightEngine(sw); }
 }
 
 // ── Phase 10 — Futures Flow ──────────────────────────────────────────────────
@@ -3524,6 +3566,150 @@ function buildAdvancedRisk(ar){
 
 // ── Phase 13 — Meta Regime ───────────────────────────────────────────────────
 
+// ── WeightEngine — Regime Dinâmico ──────────────────────────────────────────
+
+function buildWeightEngine(sw){
+  const tbl=document.getElementById('we-table');
+  const loading=document.getElementById('we-loading');
+  const thead=document.getElementById('we-thead');
+  const tbody=document.getElementById('we-tbody');
+  const badge=document.getElementById('we-source-badge');
+  const dateEl=document.getElementById('we-date');
+  if(!tbl||!loading||!thead||!tbody) return;
+
+  if(!sw||!sw.available||!sw.summary){
+    loading.style.display='';
+    loading.textContent='Pesos indisponíveis — rode: python scripts/regime_backtest.py';
+    tbl.style.display='none';
+    return;
+  }
+
+  const summary=sw.summary;
+  const regimes=Object.keys(summary);
+  const stratSet=new Set();
+  regimes.forEach(r=>Object.keys(summary[r]).forEach(s=>stratSet.add(s)));
+  const strats=[...stratSet].sort();
+
+  if(!regimes.length||!strats.length){
+    loading.style.display='';
+    loading.textContent='Nenhum peso disponível ainda.';
+    tbl.style.display='none';
+    return;
+  }
+
+  // Cabeçalho: Regime | strat1 | strat2 ...
+  const shortReg=r=>r.replace('TREND_EXPANSION','TREND EXP').replace('VOLATILITY_COMPRESSION','VOL COMP')
+    .replace('MEAN_REVERTING_CHOP','CHOP').replace('HIGH_CORRELATION_RISK','CORR RISK')
+    .replace('TREND_EXHAUSTION','EXHAUSTION').replace('BEAR_TREND','BEAR').replace('PANIC_LIQUIDATION','PANIC');
+  thead.innerHTML=`<tr style="border-bottom:1px solid var(--border);">
+    <th style="text-align:left;padding:4px 6px;color:var(--muted);font-weight:600;white-space:nowrap">Regime</th>
+    ${strats.map(s=>`<th style="text-align:center;padding:4px 6px;color:var(--muted);font-weight:600;white-space:nowrap">${s.replace('momentum_','M')}</th>`).join('')}
+  </tr>`;
+
+  const confStyle=(conf,n)=>{
+    if(conf==='real'||n>=30) return 'background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#10b981';
+    if(conf==='mixed'||n>0)  return 'background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b';
+    return 'background:rgba(148,163,184,0.06);border:1px solid rgba(148,163,184,0.12);color:var(--muted)';
+  };
+
+  tbody.innerHTML=regimes.map(regime=>{
+    const cells=strats.map(sid=>{
+      const e=(summary[regime]||{})[sid];
+      if(!e) return`<td style="text-align:center;padding:3px 6px;color:var(--muted)">–</td>`;
+      const pct=(e.blended*100).toFixed(0)+'%';
+      const cs=confStyle(e.confidence,e.n_real||0);
+      const wr=e.win_rate!=null?` WR:${(e.win_rate*100).toFixed(0)}%`:'';
+      const n=e.n_real?` n=${e.n_real}`:'';
+      return`<td style="text-align:center;padding:3px 6px;">
+        <span style="font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:5px;${cs}" title="${e.confidence}${n}${wr}">${pct}</span>
+      </td>`;
+    }).join('');
+    return`<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+      <td style="padding:4px 6px;white-space:nowrap;font-size:0.63rem;color:var(--text);font-weight:600">${shortReg(regime)}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  loading.style.display='none';
+  tbl.style.display='';
+  if(badge) { badge.textContent=sw.source||'file'; badge.style.background=sw.source==='live'?'rgba(16,185,129,0.15)':'rgba(148,163,184,0.08)'; badge.style.color=sw.source==='live'?'#10b981':'var(--muted)'; }
+  if(dateEl&&sw.computed_at) { const d=new Date(sw.computed_at); dateEl.textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+}
+
+// ── Kelly Breakdown + Edge Gates (fast, from sym) ────────────────────────────
+
+function updateEdgeGatesAndKelly(latest){
+  if(!latest) return;
+  const f=latest.factors||{};
+
+  // ── Kelly Breakdown (sz_* multipliers) ──
+  const kellyBreakdown=document.getElementById('kelly-breakdown');
+  const kellyChips=document.getElementById('kelly-chips');
+  const szFields=[
+    {k:'sz_regime_mult',   label:'Regime'},
+    {k:'sz_drift_mult',    label:'Drift'},
+    {k:'sz_vol_state_mult',label:'Vol State'},
+    {k:'sz_calibration_mult',label:'Calibração'},
+    {k:'sz_score_mult',    label:'Score'},
+    {k:'sz_exceptional_mult',label:'Excepcional'},
+  ];
+  const hasSz=szFields.some(({k})=>f[k]!=null);
+  if(kellyBreakdown){
+    kellyBreakdown.style.display=hasSz?'':'none';
+    if(hasSz&&kellyChips){
+      kellyChips.innerHTML=szFields.map(({k,label})=>{
+        const v=f[k]; if(v==null) return'';
+        const col=v>1.05?'#10b981':v<0.85?'#ef4444':v<0.98?'#f59e0b':'#94a3b8';
+        return`<span style="font-size:0.58rem;padding:1px 8px;border-radius:10px;border:1px solid ${col}44;color:${col};background:${col}10;white-space:nowrap" title="${k}">${label} ×${v.toFixed(2)}</span>`;
+      }).join('');
+    }
+  }
+
+  // ── Edge Gates (ec_* fields) ──
+  const edgeChips=document.getElementById('edge-chips');
+  const edgeSizingRow=document.getElementById('edge-sizing-row');
+  const edgeSizingChip=document.getElementById('edge-sizing-chip');
+  const edgeWrdiffChip=document.getElementById('edge-wrdiff-chip');
+  const edgeBlockedChip=document.getElementById('edge-blocked-chip');
+
+  const ecFields=[
+    {k:'ec_psi_mult',    label:'PSI'},
+    {k:'ec_health_mult', label:'Health'},
+    {k:'ec_liq_mult',    label:'Liq'},
+    {k:'ec_wr_mult',     label:'WR'},
+    {k:'ec_thr_mult',    label:'Thr'},
+  ];
+  const hasEc=ecFields.some(({k})=>f[k]!=null);
+  if(edgeChips&&hasEc){
+    edgeChips.innerHTML=ecFields.map(({k,label})=>{
+      const v=f[k]; if(v==null) return'';
+      const col=v>1.05?'#10b981':v<0.90?'#ef4444':v<0.99?'#f59e0b':'#94a3b8';
+      return`<span style="font-size:0.58rem;padding:1px 8px;border-radius:10px;border:1px solid ${col}44;color:${col};background:${col}10;white-space:nowrap" title="${k}">${label} ×${v.toFixed(2)}</span>`;
+    }).join('');
+  } else if(edgeChips&&!hasEc){
+    edgeChips.innerHTML=`<span style="font-size:0.55rem;color:var(--muted);font-style:italic">aguardando sinal…</span>`;
+  }
+
+  const ecSizing=f.ec_sizing_mult;
+  const ecWrDiff=f.ec_wr_diff;
+  const ecBlocked=f.ec_blocked;
+  if(edgeSizingRow){
+    const hasDetail=ecSizing!=null||ecWrDiff!=null;
+    edgeSizingRow.style.display=hasDetail?'flex':'none';
+    if(ecSizing!=null&&edgeSizingChip){
+      const sc=ecSizing>0.85?'#10b981':ecSizing>0.5?'#f59e0b':'#ef4444';
+      edgeSizingChip.textContent=`Sizing ×${ecSizing.toFixed(2)}`;
+      edgeSizingChip.style.color=sc; edgeSizingChip.style.borderColor=sc+'44';
+    }
+    if(ecWrDiff!=null&&edgeWrdiffChip){
+      const wc=ecWrDiff>0?'#10b981':ecWrDiff>-0.1?'#f59e0b':'#ef4444';
+      edgeWrdiffChip.textContent=`WR diff ${ecWrDiff>=0?'+':''}${(ecWrDiff*100).toFixed(1)}%`;
+      edgeWrdiffChip.style.color=wc; edgeWrdiffChip.style.borderColor=wc+'44';
+    }
+  }
+  if(edgeBlockedChip) edgeBlockedChip.style.display=(ecBlocked&&ecBlocked>0)?'':'none';
+}
+
 function buildMetaRegime(mr){
   if(!mr) return;
 
@@ -3923,6 +4109,9 @@ async function updateAll(){
     if(slEl) slEl.textContent=`-${motorMult.sl.toFixed(1)}% ATR`;
     if(tpEl) tpEl.textContent=`+${motorMult.tp.toFixed(1)}% ATR`;
 
+    // Kelly Breakdown + Edge Gates (sz_* / ec_* campos dos fatores)
+    updateEdgeGatesAndKelly(latest);
+
     // Threshold zone highlight — lógica baseada na DECISÃO, não no range numérico.
     // Evita overlap: score < threshold → SOMENTE HOLD acende, independente do valor.
     const thrVal=parseFloat(thr.toFixed(1));
@@ -4008,14 +4197,36 @@ async function updateAll(){
     const tpCell = p.running_mode
       ? `<span style="color:var(--green);font-weight:700">∞ RUNNING</span>`
       : `<span class="g">${usd(p.take_profit)}</span>`;
+    // Conviction components mini-bars
+    const cc=p.conviction_components||{};
+    const ccDef=[
+      {k:'trend_persistence',  w:25, label:'Trend'},
+      {k:'relative_strength',  w:20, label:'RS'},
+      {k:'vol_health',         w:20, label:'Vol'},
+      {k:'breadth',            w:15, label:'Breadth'},
+      {k:'volume_behavior',    w:10, label:'VBeh'},
+      {k:'distribution',       w:10, label:'Dist'},
+    ];
+    const ccBars=Object.keys(cc).length?`<div style="display:flex;flex-direction:column;gap:2px;min-width:130px;">${ccDef.map(({k,w,label})=>{
+      const v=cc[k];if(v==null) return'';
+      const col=v>=0.65?'var(--green)':v>=0.4?'#f59e0b':'var(--red)';
+      return`<div style="display:flex;align-items:center;gap:4px;" title="${label} (w${w}%)">
+        <span style="font-size:0.48rem;color:var(--muted);width:36px;text-align:right;white-space:nowrap">${label}</span>
+        <div style="flex:1;height:4px;background:rgba(255,255,255,0.07);border-radius:2px;">
+          <div style="height:100%;width:${(v*100).toFixed(0)}%;background:${col};border-radius:2px;transition:width .4s;"></div>
+        </div>
+        <span style="font-size:0.48rem;color:${col};width:26px">${(v*100).toFixed(0)}%</span>
+      </div>`;
+    }).join('')}</div>`:'<span class="m">–</span>';
     return`<tr>
       <td class="b">${sym}</td>
       <td class="r">${usd(p.stop_loss)}</td>
       <td>${tpCell}</td>
       <td>${p.trailing?'<span class="g">ON</span>':'<span class="m">off</span>'}</td>
       <td style="min-width:140px">${cvBar}</td>
+      <td style="min-width:130px">${ccBars}</td>
     </tr>`;
-  }).join(''):'<tr class="empty-row"><td colspan="5">Nenhum plano ativo</td></tr>';
+  }).join(''):'<tr class="empty-row"><td colspan="6">Nenhum plano ativo</td></tr>';
 
   // Orders
   const seen=new Set(),all=[];

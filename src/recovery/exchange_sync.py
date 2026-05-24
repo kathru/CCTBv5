@@ -236,6 +236,19 @@ class ExchangeSync:
         total_usd = sum(d["usdValue"] for d in details)
         await self._cache.set("okx:portfolio_total_usd", str(round(total_usd, 4)), ttl=BALANCE_TTL)
 
+    @staticmethod
+    def _normalize_client_id(raw: str) -> str:
+        """
+        Normaliza client_order_id para formato com hífens (UUID padrão).
+        OKX às vezes retorna UUIDs sem hífens (32 chars hex) — isso causava
+        duplicatas porque o DB já tinha o mesmo ID com hífens.
+        Ex: '2e51a548200446a2beefb786097e74cb' → '2e51a548-2004-46a2-beef-b786097e74cb'
+        """
+        s = (raw or "").strip()
+        if len(s) == 32 and "-" not in s:
+            return f"{s[0:8]}-{s[8:12]}-{s[12:16]}-{s[16:20]}-{s[20:32]}"
+        return s
+
     async def _import_orders(self, okx_orders: list[dict]) -> int:
         """Salva ordens OKX no PostgreSQL (upsert — não duplica)."""
         if not okx_orders or not self._db:
@@ -258,6 +271,11 @@ class ExchangeSync:
                 )
                 fee = abs(o.get("fee", 0))
 
+                # Normaliza client_order_id: OKX às vezes retorna sem hífens
+                # causando duplicatas quando o bot gravou com hífens (UUID padrão)
+                raw_client_id = o.get("clOrdId") or o.get("ordId") or ""
+                client_id     = self._normalize_client_id(raw_client_id)
+
                 async with self._db.acquire() as conn:
                     await conn.execute(
                         """
@@ -275,7 +293,7 @@ class ExchangeSync:
                             fees_paid       = EXCLUDED.fees_paid,
                             filled_at       = EXCLUDED.filled_at
                         """,
-                        o["clOrdId"] or o["ordId"],
+                        client_id,
                         o["ordId"],
                         o["symbol"],
                         o["side"],

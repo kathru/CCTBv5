@@ -231,7 +231,43 @@ class TradeReconciler:
             price     = float(price_raw) if price_raw else 0.0
 
             if okx_qty < DRIFT_THRESHOLD.get(symbol, DEFAULT_DRIFT):
-                # Posição zerada na OKX — fecha qualquer posição aberta no DB
+                # Posição zerada na OKX mas ainda aberta no DB.
+                # Isso indica que o bot executou um SELL (ex: durante restart)
+                # mas o fill não foi gravado. Inserimos um SELL sintético rastreável
+                # para que o trade apareça no histórico — "o bot fez, tem que aparecer".
+                db_net_qty = db_state.get(symbol, {}).get("net_qty", 0.0)
+
+                if db_net_qty > DRIFT_THRESHOLD.get(symbol, DEFAULT_DRIFT) and price > 0:
+                    sell_client_id = f"RECON-SELL-{symbol[:3]}-{int(now.timestamp())}"
+                    await self._db.execute(
+                        """
+                        INSERT INTO orders (
+                            client_order_id, exchange_order_id, symbol, side,
+                            order_type, mode, status, quantity, filled_quantity,
+                            avg_fill_price, fees_paid, strategy_id,
+                            submitted_at, filled_at, created_at
+                        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+                        ON CONFLICT (client_order_id) DO NOTHING
+                        """,
+                        sell_client_id,
+                        f"OKX-RECON-SELL-{uuid.uuid4().hex[:8]}",
+                        symbol,
+                        "sell",
+                        "market", "market", "filled",
+                        db_net_qty, db_net_qty,
+                        price,
+                        0.0,          # fee não capturada — melhor que não registrar
+                        "reconciler", # strategy_id especial — identificável no histórico
+                        now, now, now,
+                    )
+                    logger.warning(
+                        "TradeReconciler %s: SELL faltante detectado "
+                        "(posição zerou no OKX sem SELL no DB) → "
+                        "SELL sintético inserido qty=%.6f @ %.2f [%s]",
+                        symbol, db_net_qty, price, sell_client_id,
+                    )
+
+                # Fecha posição no DB
                 await self._db.execute(
                     "UPDATE positions SET status='closed', closed_at=$1 "
                     "WHERE symbol=$2 AND status='open'",

@@ -25,6 +25,7 @@ from ..core.models import Signal
 from ..market.engine import MarketEngine
 from ..persistence.cache import Cache
 from .base import BaseStrategy, StrategyContext
+from .weight_engine import weight_engine as _weight_engine
 
 logger = logging.getLogger(__name__)
 
@@ -236,6 +237,27 @@ class StrategyRunner:
                 ctx = await self._build_context(symbol)
                 signal = await strategy.evaluate(ctx)
                 if signal is not None:
+                    # Aplica peso do regime ao kelly (Portfolio Allocator)
+                    # Signal é frozen dataclass → usa dataclasses.replace()
+                    from dataclasses import replace as _dc_replace
+                    regime = getattr(signal, "regime", "UNKNOWN") or "UNKNOWN"
+                    w = _weight_engine.get_weight(strategy.strategy_id, regime)
+                    if w < 0.99:
+                        logger.debug(
+                            "WeightEngine: %s/%s kelly %.4f × %.2f = %.4f",
+                            strategy.strategy_id, regime,
+                            signal.kelly_fraction, w,
+                            signal.kelly_fraction * w,
+                        )
+                    signal = _dc_replace(
+                        signal,
+                        kelly_fraction=round(signal.kelly_fraction * w, 4),
+                        factors={
+                            **(signal.factors or {}),
+                            "we_weight": round(w, 3),
+                            "we_regime": regime,
+                        },
+                    )
                     await self._publish_signal(signal)
             except Exception as exc:
                 logger.error(

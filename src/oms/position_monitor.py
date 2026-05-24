@@ -49,6 +49,7 @@ from ..oms.hold_engine import HoldEngine, trail_atr_mult
 from ..oms.order_manager import OrderManager
 from ..persistence.cache import Cache
 from ..portfolio.engine import PortfolioEngine
+from ..strategies.weight_engine import weight_engine as _weight_engine
 
 logger = logging.getLogger(__name__)
 
@@ -710,6 +711,20 @@ class PositionMonitor:
             self._exits_today += 1
             if not partial:
                 self._plans.pop(symbol, None)
+
+                # ── Online Learning: registra trade real no WeightEngine ───────
+                # Permite que o Portfolio Allocator converja da simulação para
+                # a realidade à medida que trades reais se acumulam.
+                try:
+                    pnl_usd = (price - plan.entry_price) * plan.quantity
+                    _weight_engine.record_trade(
+                        strategy_id=plan.strategy_id,
+                        regime=plan.entry_regime,
+                        pnl=pnl_usd,
+                        entry_price=plan.entry_price,
+                    )
+                except Exception as we_exc:
+                    logger.debug("WeightEngine.record_trade falhou: %s", we_exc)
 
     # ── Status (para dashboard e API) ────────────────────────────────────────
 

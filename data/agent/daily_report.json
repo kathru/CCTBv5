@@ -1,0 +1,207 @@
+{
+  "generated_at": "2026-05-24T15:56:19.997230+00:00",
+  "analysis": {
+    "analysis_date": "2026-05-24 15:54 UTC",
+    "overall_health": "CRÍTICO",
+    "overall_summary": "Sistema em estado crítico com win rate live de 13.9% contra baseline calibrado de 37.5% — divergência de 23.6pp ativando bloqueio total de entradas via edge gate. Com apenas 6 trades fechados (4 em VOLATILITY_COMPRESSION, 2 em TREND_EXHAUSTION) e streak de 3 perdas consecutivas, o sistema está corretamente em modo defensivo. A degradação é predominantemente de regime (WR calibration drift), não de PSI de features, sugerindo que o mercado atual não suporta a tese de sinal do modelo.",
+    "m_factors": {
+      "M1": {
+        "status": "ATENÇÃO",
+        "observations": "PSI de 0.0205 — estável dentro do baseline (threshold warning ~0.10). Nos sinais mais recentes (SOL, ETH), m1_momentum está entre 0.327-0.329 — abaixo da mediana baseline de 0.5186, indicando momentum fraco atual. Não há divergência estrutural de feature, mas os valores baixos contribuem para scores insuficientes.",
+        "deviation": "Valor live ~0.327 vs baseline p50=0.5186 (-36.9% abaixo da mediana). PSI=0.0205 (estável).",
+        "recommendation": "Manter monitoramento. Momentum fraco é consistente com regime VOLATILITY_COMPRESSION predominante. Não requer intervenção."
+      },
+      "M2": {
+        "status": "OK",
+        "observations": "PSI de 0.0007 — praticamente zero, feature mais estável do sistema. Valores live em 0.229 nos sinais recentes estão abaixo da mediana baseline (0.50), mas PSI confirma que a distribuição geral não mudou. Baixos valores pontuais refletem falta de estrutura clara no mercado atual.",
+        "deviation": "PSI=0.0007 (irrelevante). Valor pontual 0.229 vs p50 baseline=0.50, mas sem drift sistêmico.",
+        "recommendation": "Manter monitoramento. Feature estável."
+      },
+      "M3": {
+        "status": "ATENÇÃO",
+        "observations": "PSI de 0.0771 — o mais alto do sistema, próximo ao limiar de warning (0.10). Valores live de 0.278 estão acima da mediana baseline de 0.3812? Não — 0.278 está abaixo do p25 baseline (0.2778), indicando volume abaixo do esperado. Combinado com PSI elevado, sugere que o perfil de volume está ligeiramente deslocado em relação ao treino.",
+        "deviation": "PSI=0.0771 (mais próximo do warning). Valor live 0.278 vs baseline p25=0.2778 (borderline baixo). Distribuição divergindo.",
+        "recommendation": "Monitorar PSI m3 — se ultrapassar 0.10 nas próximas 48h, acionar revisão do baseline de volume. Não requer intervenção imediata."
+      },
+      "M4": {
+        "status": "OK",
+        "observations": "Fator de sentimento com weight=0% por decisão de design. PSI de 0.0563 nos dados de saúde do modelo. Valores fixados em 0.5 (neutro) em todos os sinais observados, conforme esperado.",
+        "deviation": "Nenhum desvio — comportamento nominal por design.",
+        "recommendation": "Manter neutro. Decisão de arquitetura correta."
+      },
+      "M5": {
+        "status": "DEGRADADO",
+        "observations": "Score médio live de 0.4635 vs baseline de 0.5211 — drift de 11.05%, classificado como 'drift' pelo sistema. O score calibrado Platt nos sinais recentes (SOL: 0.3686, ETH: 0.3704) está bem abaixo do threshold de 0.6548-0.6582 — gap de ~0.29. Isso indica que o modelo composto está produzindo sinais sistematicamente mais fracos que durante o treino.",
+        "deviation": "Score médio live 0.4635 vs baseline 0.5211 = -11.05% drift. Score calibrado ~0.37 vs threshold ~0.655 = gap de 43.5% para execução.",
+        "recommendation": "NÃO alterar Platt (frozen). O drift de 11.05% é moderado mas preocupante combinado com WR drift. Revisar se regime atual (VOLATILITY_COMPRESSION dominante) estava sub-representado no conjunto de treino. Requer aprovação humana para qualquer ajuste."
+      },
+      "M6": {
+        "status": "OK",
+        "observations": "PSI de 0.0 — feature perfeitamente estável. Valores live fixos em 0.5 para m6_funding, m6_oi_change e m6_fr_trend em múltiplos sinais, sugerindo possível fallback para valor neutro (dados de futuros não disponíveis ou neutros). Funding rate neutro é consistente com mercado em compressão.",
+        "deviation": "PSI=0.0. Valores 0.5 podem indicar ausência de dados de futuros ou genuinamente neutro.",
+        "recommendation": "Verificar se pipeline de futuros está alimentando dados reais ou usando fallback 0.5. Se fallback, não impacta execução atual mas limita qualidade do sinal."
+      },
+      "M7": {
+        "status": "ATENÇÃO",
+        "observations": "PSI de 0.0591 — moderado mas estável. Nos sinais recentes, m7_rel_strength=0.738 e m7_rs_1h=1.0 para SOL — valores altos indicam força relativa SOL vs BTC. m7_leadership=0.554 (ligeiramente bullish). Apesar da força relativa positiva, não é suficiente para superar o threshold elevado causado pelo edge gate de WR drift.",
+        "deviation": "PSI=0.0591 (estável). m7_rs_1h=1.0 (máximo) em SOL — força relativa presente mas insuficiente sozinha.",
+        "recommendation": "Manter monitoramento. A força relativa de SOL é um sinal positivo que pode acelerar recuperação quando WR drift normalizar."
+      },
+      "M8": {
+        "status": "ATENÇÃO",
+        "observations": "PSI de 0.0101 — estável. Regime dominante: VOLATILITY_COMPRESSION confirmado nos sinais recentes. m8_atr_pct=0.706, m8_vol_state=0.65 para SOL. atr_pct_now=0.16% — ATR extremamente baixo, confirmando compressão de volatilidade real. Regime VOLATILITY_COMPRESSION tem WR=0.5 (50%) nos trades históricos, mas avg_pnl=-9.03 sugere que os winners não compensam os losers.",
+        "deviation": "atr_pct_now=0.16% (muito baixo, compressão severa). Win rate 50% em VC mas avg_pnl=-9.03 indica assimetria negativa de payoff.",
+        "recommendation": "Aguardar expansão de volatilidade antes de retomar entradas. VOLATILITY_COMPRESSION com ATR baixo não favorece o modelo de momentum."
+      },
+      "M9": {
+        "status": "OK",
+        "observations": "m9_sentiment=0.5, m9_fng=0.5, m9_coin_sent=0.5, m9_fng_class='Neutral' em todos os sinais observados. Sentimento genuinamente neutro ou fallback ativo. Sem contribuição positiva ou negativa para o score composto.",
+        "deviation": "Valores neutros uniformes — possível fallback ou mercado genuinamente neutro.",
+        "recommendation": "Verificar se FinNLP está operacional. Sentimento neutro uniforme pode indicar pipeline inativo."
+      }
+    },
+    "strategy_performance": {
+      "momentum_v2": {
+        "win_rate_24h": null,
+        "trades_24h": 0,
+        "best_regime": "VOLATILITY_COMPRESSION (WR=0.5, mas avg_pnl negativo)",
+        "worst_regime": "TREND_EXHAUSTION (WR=0.0, avg_pnl=-16.11)",
+        "assessment": "Estratégia principal completamente bloqueada pelo edge gate de WR drift. Com zero trades nas últimas 24h e GATE_CLOSED em todos os sinais avaliados, não há dados novos para avaliar eficácia real. Os 6 trades históricos mostram resultados negativos em ambos os regimes ativos — momentum_v2 claramente não performa em TREND_EXHAUSTION (0% WR) e tem retorno esperado negativo em VOLATILITY_COMPRESSION apesar de 50% WR."
+      },
+      "reversal_v1": {
+        "win_rate_24h": null,
+        "trades_24h": 0,
+        "best_regime": "Indeterminado — sem trades suficientes",
+        "worst_regime": "Indeterminado — sem trades suficientes",
+        "assessment": "Sem dados de execução nas últimas 24h. Sistema bloqueado pelo edge gate impede avaliação. Potencialmente mais adequado para o regime MEAN_REVERTING_CHOP ou TREND_EXHAUSTION atual, mas requer desbloqueio do edge gate para testar."
+      },
+      "trend_v1": {
+        "win_rate_24h": null,
+        "trades_24h": 0,
+        "best_regime": "Indeterminado — sem trades suficientes",
+        "worst_regime": "Indeterminado — sem trades suficientes",
+        "assessment": "Sem dados de execução. Regime VOLATILITY_COMPRESSION dominante é contraindicado para trend following. Aguardar TREND_EXPANSION para avaliação meaningful."
+      }
+    },
+    "regime_weight_proposals": [
+      {
+        "strategy_id": "momentum_v2",
+        "regime": "TREND_EXHAUSTION",
+        "current_weight": 1.0,
+        "proposed_weight": 0.0,
+        "justification": "WR=0.0% em 2 trades em TREND_EXHAUSTION com avg_pnl=-16.11. Regime explicitamente contraindicado para momentum. Redução para 0 evita execuções destrutivas quando edge gate for removido.",
+        "auto_apply": false
+      },
+      {
+        "strategy_id": "momentum_v2",
+        "regime": "VOLATILITY_COMPRESSION",
+        "current_weight": 1.0,
+        "proposed_weight": 0.6,
+        "justification": "WR=50% mas avg_pnl=-9.03 em 4 trades indica assimetria negativa. ATR baixo (0.16%) comprime gains mas não losses. Redução de 40% limita exposição sem bloqueio total — delta=40% requer aprovação humana (acima de 20% auto-apply).",
+        "auto_apply": false
+      },
+      {
+        "strategy_id": "reversal_v1",
+        "regime": "TREND_EXHAUSTION",
+        "current_weight": 1.0,
+        "proposed_weight": 1.15,
+        "justification": "TREND_EXHAUSTION é regime natural para reversão. Com momentum_v2 desempenhando 0% WR neste regime, aumentar peso de reversal_v1 pode capturar retornos quando edge gate for removido. Delta=15% dentro do limite de auto-apply de 20%.",
+        "auto_apply": true
+      },
+      {
+        "strategy_id": "trend_v1",
+        "regime": "VOLATILITY_COMPRESSION",
+        "current_weight": 1.0,
+        "proposed_weight": 0.85,
+        "justification": "Compressão de volatilidade com ATR de 0.16% é desfavorável para trend following. Redução modesta de 15% dentro do limite de auto-apply.",
+        "auto_apply": true
+      }
+    ],
+    "pending_changes": [
+      {
+        "change_type": "threshold",
+        "target": "EdgeGate / WR drift threshold",
+        "description": "Avaliar se o bloqueio total por wr_extreme_drift é apropriado ou se deveria ter uma fase de redução gradual de sizing antes do bloqueio completo. Atualmente qualquer drift >X% bloqueia tudo (GATE_CLOSED). Uma abordagem escalonada — 50% size → 25% size → bloqueio — preservaria o aprendizado in-vivo durante recuperação.",
+        "requires_human_approval": true,
+        "priority": "HIGH",
+        "justification": "Sistema está em GATE_CLOSED há 70 sinais consecutivos com 0 trades nas últimas 24h. Sem execução, não há como recuperar WR live para desbloquear o gate — potencial deadlock. WR live atual 13.9% em 70 sinais pode estar contaminado por regime adverso pontual."
+      },
+      {
+        "change_type": "param",
+        "target": "WR calibration baseline / drift tolerance",
+        "description": "Revisar se o baseline de 37.5% WR é adequado para o regime de mercado atual (VOLATILITY_COMPRESSION dominante). Se o mercado passou por regime shift prolongado, o baseline pode precisar de atualização condicional por regime — não global.",
+        "requires_human_approval": true,
+        "priority": "HIGH",
+        "justification": "PSI das features está ESTÁVEL (max 0.0771), mas WR está em drift_crítico (diff=0.2358). Dissociação entre estabilidade de features e degradação de WR é assinatura clássica de regime shift não capturado pelas features individuais. WR baseline por regime seria mais resiliente."
+      },
+      {
+        "change_type": "logic",
+        "target": "SizingEngine / anti-deadlock mechanism",
+        "description": "Implementar mecanismo de saída do deadlock: após N dias com 0 execuções por GATE_CLOSED, permitir micro-trades com sizing mínimo (0.1x Kelly) para re-calibrar WR live com dados atuais de mercado.",
+        "requires_human_approval": true,
+        "priority": "MEDIUM",
+        "justification": "6 trades em história recente é insuficiente para calibração estatística confiável. Sistema precisa de dados live para convergir mas está bloqueado de gerar dados live — ciclo vicioso."
+      },
+      {
+        "change_type": "param",
+        "target": "M6 / M9 pipeline monitoring",
+        "description": "Auditar se M6 (futuros) e M9 (sentimento) estão retornando dados reais ou fallback 0.5. Valores uniformes em 0.5 em múltiplos sinais consecutivos sugere pipeline inativo ou fallback ativo.",
+        "requires_human_approval": false,
+        "priority": "MEDIUM",
+        "justification": "m6_funding=0.5, m6_oi_change=0.5, m6_fr_trend=0.5 e m9_sentiment=0.5 uniformes em todos os sinais. Probabilidade baixa de coincidência genuína — mais provável fallback. Reduz qualidade do sinal mas não requer aprovação humana para investigar."
+      },
+      {
+        "change_type": "param",
+        "target": "Hold Engine / Anti-bag-holding P1",
+        "description": "Com streak de 3 perdas e 1 trade com holding de 43.64h e outro em ~37.59h, verificar se trades abertos estão respeitando os limites P1(30d)/P2(45d) e se os Conviction Scores estão sendo recalculados com frequência adequada durante VOLATILITY_COMPRESSION.",
+        "requires_human_approval": false,
+        "priority": "LOW",
+        "justification": "Distribuição de holding bimodal (3 trades <7h, 2 trades >37h) sugere comportamento de exits inconsistente. Trades longos em regime de compressão podem estar sendo mantidos além do ideal."
+      }
+    ],
+    "alerts": [
+      {
+        "severity": "CRITICAL",
+        "message": "WIN RATE DEADLOCK: WR live 13.9% (70 sinais) vs calibrado 37.5% — edge gate bloqueando 100% das entradas. Sistema em 0 trades nas últimas 24h. Risco de deadlock onde ausência de execução impede recuperação do WR live.",
+        "action": "HUMANO REQUERIDO: Decidir entre (A) aguardar recuperação orgânica de mercado, (B) resetar contador WR live com janela mais curta, ou (C) aprovar mecanismo de micro-trades para re-calibração. Prazo sugerido: 48h para decisão."
+      },
+      {
+        "severity": "CRITICAL",
+        "message": "TREND_EXHAUSTION REGIME: 0% win rate em 2 trades, avg_pnl=-16.11 USD. Estratégia momentum_v2 completamente inadequada para este regime.",
+        "action": "Aprovar redução de peso momentum_v2 em TREND_EXHAUSTION para 0.0. Verificar se regime atual mudou desde os últimos trades fechados."
+      },
+      {
+        "severity": "WARNING",
+        "message": "SCORE DISTRIBUTION DRIFT: Score médio live 0.4635 vs baseline 0.5211 — drift de 11.05%. Modelo produzindo sinais sistematicamente mais fracos que durante treino.",
+        "action": "Monitorar evolução do drift. Se atingir 15% nos próximos 7 dias, escalar para revisão humana do Platt."
+      },
+      {
+        "severity": "WARNING",
+        "message": "M3 VOLUME PSI ELEVADO: PSI=0.0771, aproximando-se do limiar de warning (0.10). Distribuição de volume divergindo do baseline de treino.",
+        "action": "Monitorar PSI m3 nas próximas 48h. Se ultrapassar 0.10, iniciar revisão do baseline de volume."
+      },
+      {
+        "severity": "WARNING",
+        "message": "PIPELINE M6/M9 SUSPEITO: Valores uniformes em 0.5 para todos os sub-fatores de futuros e sentimento em múltiplos sinais consecutivos. Possível fallback ativo reduzindo qualidade do sinal.",
+        "action": "Auditar logs de coleta de dados para M6 (funding rate, OI) e M9 (FinNLP). Confirmar se dados reais estão sendo processados."
+      },
+      {
+        "severity": "INFO",
+        "message": "VOLATILITY_COMPRESSION DOMINANTE: ATR atual 0.16%, compressão severa. Regime historicamente desfavorável para momentum com assimetria negativa de payoff (WR=50% mas avg_pnl=-9.03).",
+        "action": "Aguardar expansão de volatilidade. Monitorar ATR para sinais de breakout iminente."
+      },
+      {
+        "severity": "INFO",
+        "message": "PSI FEATURES ESTÁVEL: Max PSI=0.0771 (m3_volume), todos abaixo de threshold crítico. Features do modelo não sofreram drift significativo — degradação é de regime, não de feature engineering.",
+        "action": "Nenhuma ação necessária. Confirma que o modelo Platt permanece válido estruturalmente."
+      }
+    ],
+    "discord_summary": "## 📊 CCTBv5 — Relatório Diário | 24 Mai 2026 15:54 UTC\n\n### 🔴 STATUS GERAL: CRÍTICO\n\n**Health Score:** 56.5/100 `DEGRADANDO`\n\n---\n\n### ⚠️ ALERTAS CRÍTICOS\n\n🚨 **DEADLOCK DE WIN RATE**\n- WR live: **13.9%** vs calibrado **37.5%** (gap: -23.6pp)\n- Edge gate bloqueando **100%** das entradas\n- **0 trades** nas últimas 24h — risco de ciclo vicioso\n- 👉 **Decisão humana necessária em 48h**\n\n🚨 **TREND_EXHAUSTION: WR 0%** (2 trades, avg PnL: -$16.11)\n- momentum_v2 incompatível com regime atual\n- Proposta: reduzir peso para 0.0 (requer aprovação)\n\n---\n\n### 📈 FATORES M\n| Fator | Status | Destaque |\n|-------|--------|----------|\n| M1 Momentum | 🟡 ATENÇÃO | Live ~0.33 vs p50 0.52 |\n| M2 Estrutura | 🟢 OK | PSI=0.0007 |\n| M3 Volume | 🟡 ATENÇÃO | PSI=0.077 (próx. warning) |\n| M5 Score | 🔴 DEGRADADO | Drift 11% |\n| M7 Força Rel. | 🟡 ATENÇÃO | SOL rs_1h=1.0 ✨ |\n| M8 Vol State | 🟡 ATENÇÃO | ATR=0.16% (compressão) |\n\n---\n\n### 💼 TRADES (histórico recente)\n- **6 trades** | Streak atual: **3 perdas** 🔴\n- VOLATILITY_COMPRESSION: WR 50%, avg -$9.03\n- TREND_EXHAUSTION: WR **0%**, avg -$16.11\n- PSI features: **ESTÁVEL** ✅ (problema é regime, não modelo)\n\n---\n\n### 🔧 AÇÕES PENDENTES\n1. 🔴 **[HUMANO]** Resolver deadlock WR live\n2. 🔴 **[HUMANO]** Aprovar peso 0.0 momentum em TREND_EXHAUSTION\n3. 🟡 Auditar pipelines M6/M9 (valores suspeitos = 0.5 fixo)\n4. 🟡 Monitorar PSI m3 (threshold 0.10)"
+  },
+  "recalibration_results": {},
+  "auto_applied": [
+    "reversal_v1/TREND_EXHAUSTION: 0.100 → 1.150 (delta=0.150)",
+    "trend_v1/VOLATILITY_COMPRESSION: 0.900 → 0.850 (delta=0.150)"
+  ],
+  "data_collected_at": "2026-05-24T15:54:35.174133+00:00"
+}

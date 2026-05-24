@@ -51,7 +51,11 @@ IS_SPLIT         = 0.70    # 70% calibração / 30% validação
 MIN_TRADES_VALID = 5       # mínimo de trades por regime para ser válido
 MIN_IS_SHARPE    = 0.20    # mínimo para considerar o regime calibrável
 
-# Estratégias a simular (excluindo trend: usa candles 1D, lógica diferente)
+# Estratégias a simular — apenas as que operam em granularidade 1H.
+# trend_v1 (TrendStrategy) usa candles diários agregados + EMA50D e lógica
+# fundamentalmente diferente (Long/Flat vs Long/Short). Não é calibrável via
+# este backtest de regime. Os pesos de trend_v1 no WeightEngine são derivados
+# de domain knowledge (SIM_WEIGHTS_DEFAULT) e atualizados via record_trade() online.
 STRATEGIES_1H = {
     "momentum_v2":  lambda syms: MomentumStrategy(symbols=syms),
     "reversal_v1":  lambda syms: ReversalStrategy(symbols=syms),

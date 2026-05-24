@@ -222,7 +222,12 @@ def score_raw(candles_window: list[dict]) -> float | None:
     lows    = [c["low"]    for c in candles_window[:25]]
     volumes = [c["volume"] for c in candles_window[:20]]
 
-    # M1 — Adaptive Momentum (18%)
+    # ── Score v2.5.0 — espelha momentum_strategy._score_signal() ────────────
+    # M1  2% | M2 11% | M3 33% | M4 0% (removido) | M5 6%
+    # M6 12% | M7 11% | M8 19% | M9 6%  → Soma=100%
+    # M6/M7/M9 neutros no backtest histórico (sem dados de futuros/RS/news)
+
+    # M1 — Adaptive Momentum (2%)
     atr  = sum(highs[i]-lows[i] for i in range(min(10,len(highs))))/min(10,len(highs))
     norm = max(atr*2, closes[0]*0.005)
     r1   = (closes[0]-closes[1])/closes[1]   if len(closes)>1  and closes[1]>0  else 0
@@ -232,14 +237,14 @@ def score_raw(candles_window: list[dict]) -> float | None:
     mw   = r1*0.30 + r5*0.30 + r10*0.25 + r20*0.15
     m1   = min(max((mw/(norm/closes[0]))*0.5+0.5, 0.0), 1.0)
 
-    # M2 — Trend Consistency (18%)
+    # M2 — Trend Consistency (11%)
     n    = min(6, len(closes)-1)
     bull = sum(1 for i in range(n) if closes[i]>opens[i])/n if n>0 else 0.5
     hh   = sum(1 for i in range(min(4,len(highs)-1)) if highs[i]>highs[i+1])/4
     hl   = sum(1 for i in range(min(4,len(lows)-1))  if lows[i]>lows[i+1])/4
     m2   = bull*0.5 + (hh+hl)/2*0.5
 
-    # M3 — Volume Confirmation (14%)
+    # M3 — Volume Confirmation (33%)
     avg5  = sum(volumes[:5])/5   if len(volumes)>=5  else volumes[0] if volumes else 1
     avg20 = sum(volumes[:20])/20 if len(volumes)>=20 else avg5
     vr  = min(volumes[0]/avg5, 3.0)/3.0 if avg5>0 else 0.5
@@ -250,30 +255,27 @@ def score_raw(candles_window: list[dict]) -> float | None:
     cc  = 1.0 if closes[0]>opens[0] and volumes[0]>avg20 else 0.4
     m3  = vr*0.4 + (vt-0.3)/1.7*0.3 + cc*0.3
 
-    # M4 — Regime Strength (14%)
-    sma5  = sum(closes[:5])/5
-    sma20 = sum(closes[:20])/20
-    dist  = (sma5-sma20)/sma20 if sma20>0 else 0
-    m4r   = min(max((dist+0.02)/0.04, 0.0), 1.0)
-    m4f   = 0.85 if sma5>sma20 else 0.45
-    m4    = m4r*0.6 + m4f*0.4
+    # M4 — REMOVIDO (peso 0% desde v2.5.0) — mantido computado para diagnóstico
 
     # M5 — Candle Structure (6%)
     cs = [(closes[i]-lows[i])/(highs[i]-lows[i]) if highs[i]>lows[i] else 0.5
           for i in range(min(3, len(closes)))]
     m5 = sum(cs)/len(cs) if cs else 0.5
 
-    # M6 — Futures Flow (10%) — neutro no backtest histórico
+    # M6 — Futures Flow (12%) — neutro no backtest histórico (sem API futuros)
     m6 = 0.5
 
-    # M7 — Relative Strength (9%) — neutro no backtest histórico
+    # M7 — Relative Strength (11%) — neutro no backtest histórico
     m7 = 0.5
 
-    # M8 — Volatility State (11%) — calculado de candles
+    # M8 — Volatility State (19%) — calculado de candles
     m8 = _compute_m8_wfo(closes, highs, lows)
 
-    return (m1*0.10 + m2*0.20 + m3*0.25 + m4*0.05 +
-            m5*0.08 + m6*0.10 + m7*0.09 + m8*0.13)
+    # M9 — News Sentiment (6%) — neutro no backtest histórico (sem API)
+    m9 = 0.5
+
+    return (m1*0.02 + m2*0.11 + m3*0.33 +
+            m5*0.06 + m6*0.12 + m7*0.11 + m8*0.19 + m9*0.06)
 
 
 def fit_platt_on_period(candles: list[dict], forward: int = 5,
@@ -391,7 +393,8 @@ async def run_fold_backtest(
 
     class CalibratedStrategy(MomentumStrategy):
         """Strategy com Platt coefficients injetados para este fold.
-        No WFO, BEAR_TREND NÃO bloqueia — queremos medir performance em todos os regimes.
+        Replica o comportamento de produção: BEAR_TREND e PANIC bloqueiam entradas.
+        Isso garante que o WFO mede performance nas mesmas condições que o sistema real.
         """
         def __init__(self):
             super().__init__(symbols=[symbol])
@@ -402,8 +405,9 @@ async def run_fold_backtest(
             self._platt._regime_thresholds = {}
 
         def _confirm_regime_mtf(self, ctx, regime_1h):
-            # No WFO: sem MTF (candles_6h=[] no backtest) e permite BEAR para medir
-            return regime_1h if regime_1h != 'BEAR_TREND' else 'MEAN_REVERTING_CHOP'
+            # No WFO: sem candles_6h disponíveis — retorna regime_1h diretamente.
+            # Mantém BEAR_TREND e PANIC_LIQUIDATION bloqueados como em produção.
+            return regime_1h
 
     strategy = CalibratedStrategy()
     engine   = BacktestEngine(

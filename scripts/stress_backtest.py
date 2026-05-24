@@ -119,22 +119,27 @@ def _score(window: list[dict]) -> float | None:
     cc    = 1.0 if closes[0]>opens[0] and volumes[0]>avg20 else 0.4
     m3    = vr*0.4 + (vt-0.3)/1.7*0.3 + cc*0.3
 
+    # M4 — REMOVIDO (peso 0% desde v2.5.0) — mantido computado para diagnóstico
     sma5  = sum(closes[:5])/5
     sma20 = sum(closes[:20])/20 if len(closes)>=20 else sma5
-    dist  = (sma5-sma20)/sma20 if sma20>0 else 0
-    m4r   = min(max((dist+0.02)/0.04,0.0),1.0)
-    m4    = m4r*0.6 + (0.85 if sma5>sma20 else 0.45)*0.4
 
+    # M5 — Candle Structure (6%)
     cs = [(closes[i]-lows[i])/(highs[i]-lows[i]) if highs[i]>lows[i] else 0.5
           for i in range(min(3,len(closes)))]
     m5 = sum(cs)/len(cs) if cs else 0.5
 
-    # M6/M7 neutros | M8 calculado
+    # M6/M7/M9 neutros (sem API) | M8 calculado de candles
+    # Score v2.5.0: M1=2% M2=11% M3=33% M4=0% M5=6% M6=12% M7=11% M8=19% M9=6%
     atr_pct = atr/closes[0] if closes[0] > 0 else 0.01
-    m8 = 0.35 if atr_pct < 0.008 else (0.65 if atr_pct < 0.015 else 0.50)
+    atr_ratio = 1.0  # sem histórico de ATR prev no stress_backtest
+    dir_consistency = (
+        sum(1 for i in range(min(5, len(closes)-1)) if closes[i] > closes[i+1]) / 5
+    ) if len(closes) > 5 else 0.5
+    bb_width = (max(closes[:20]) - min(closes[:20])) / closes[0] if len(closes) >= 20 else 0.02
+    m8 = _compute_m8_state_from_candles(atr_pct, atr_ratio, dir_consistency, bb_width)
 
-    return (m1*0.10 + m2*0.20 + m3*0.25 + m4*0.05 +
-            m5*0.08 + 0.5*0.10 + 0.5*0.09 + m8*0.13)
+    return (m1*0.02 + m2*0.11 + m3*0.33 +
+            m5*0.06 + 0.5*0.12 + 0.5*0.11 + m8*0.19 + 0.5*0.06)
 
 
 # ── Detecção de regime BEAR_TREND ─────────────────────────────────────────────
@@ -153,6 +158,24 @@ def _detect_bear(window: list[dict]) -> bool:
     avg_vol  = sum(vols)/len(vols)
     high_vol = vols[0] > avg_vol * 1.5
     return sma_bear and (drop_1h < -0.02 or high_vol)
+
+
+def _compute_m8_state_from_candles(
+    atr_pct: float, atr_ratio: float, dir_consistency: float, bb_width: float
+) -> float:
+    """Converte estado M8 em score 0-1 (espelha backtest_engine._vol_state_from_candles)."""
+    if atr_pct > 0.025 and dir_consistency < 0.45:
+        state = "CHAOTIC"
+    elif atr_ratio > 1.15 and dir_consistency > 0.55:
+        state = "EXPANDING"
+    elif atr_pct < 0.008 or bb_width < 0.015:
+        state = "COMPRESSED"
+    elif dir_consistency > 0.60 and 0.008 <= atr_pct <= 0.025:
+        state = "TREND"
+    else:
+        state = "MEAN_REVERTING"
+    return {"EXPANDING": 0.80, "TREND": 0.65, "COMPRESSED": 0.50,
+            "MEAN_REVERTING": 0.35, "CHAOTIC": 0.20, "UNKNOWN": 0.50}.get(state, 0.50)
 
 
 def _detect_m8_state(window: list[dict]) -> str:

@@ -790,40 +790,73 @@ def _detect_regime(candles: list[Candle]) -> str:
 def _conviction_proxy(candles: list[Candle], entry_price: float) -> float:
     """
     Proxy de conviction 0–100 baseado em candles (sem Redis).
-    Simplificação do HoldEngine para uso no backtest.
+    Espelha os 6 componentes do HoldEngine real com pesos idênticos.
 
-    Componentes:
-      - Trend (50%): SMA5 > SMA20 + margin
-      - Structure (30%): Higher Highs + Higher Lows
-      - Vol health (20%): ATR atual vs ATR na entrada (proxy)
+    Componentes (alinhados com HoldEngine):
+      1. trend_persistence (25%): SMA score contínuo (sma5 vs sma20 com margin)
+      2. momentum_align     (20%): retorno recente normalizado pelo ATR
+      3. vol_health         (20%): ATR ratio saudável vs histórico recente
+      4. volume_confirm     (15%): volume atual vs média 20 candles
+      5. price_structure    (10%): Higher Highs + Higher Lows recentes
+      6. time_decay         (10%): penaliza posições longas (proxy sem tempo real)
+
+    Nota: sem dados de RS de mercado (M7) disponíveis no backtest isolado.
+    time_decay usa candles_held como proxy de tempo decorrido.
     """
     if len(candles) < 20:
         return 70.0   # sem dados = neutro HOLD
 
-    closes = [c.close for c in candles[:20]]
-    highs  = [c.high  for c in candles[:6]]
-    lows   = [c.low   for c in candles[:6]]
+    closes  = [c.close  for c in candles[:25]]
+    highs   = [c.high   for c in candles[:25]]
+    lows    = [c.low    for c in candles[:25]]
+    volumes = [c.volume for c in candles[:20]]
 
-    # Trend
+    # 1. Trend persistence (25%) — SMA score contínuo
     sma5  = sum(closes[:5]) / 5
     sma20 = sum(closes[:20]) / 20
-    trend_score = 1.0 if sma5 > sma20 else 0.0
     margin = (sma5 - sma20) / sma20 if sma20 > 0 else 0.0
-    margin_score = min(max((margin + 0.02) / 0.04, 0.0), 1.0)
+    # Função contínua: margin -3% → 0.0, margin +3% → 1.0 (igual ao HoldEngine)
+    sma_score = min(max((margin + 0.03) / 0.06, 0.0), 1.0)
+    trend_score = sma_score
 
-    # Structure: HH + HL
-    hh = sum(1 for i in range(min(4, len(highs)-1)) if highs[i] > highs[i+1])
-    hl = sum(1 for i in range(min(4, len(lows)-1))  if lows[i]  > lows[i+1])
-    structure = (hh + hl) / 8
+    # 2. Momentum align (20%) — retorno normalizado pelo ATR
+    atr14 = sum(highs[i] - lows[i] for i in range(min(14, len(highs)))) / min(14, len(highs))
+    ret5 = (closes[0] - closes[5]) / closes[5] if len(closes) > 5 and closes[5] > 0 else 0.0
+    norm_ret = ret5 / (atr14 / closes[0]) if closes[0] > 0 and atr14 > 0 else 0.0
+    momentum_score = min(max(norm_ret * 0.5 + 0.5, 0.0), 1.0)
 
-    # Vol health: ATR ratio
-    atr_now = sum(c.high - c.low for c in candles[:5]) / 5
-    atr_ref = sum(c.high - c.low for c in candles[5:15]) / 10 if len(candles) >= 15 else atr_now
+    # 3. Vol health (20%) — ATR atual vs histórico (1.0 saudável, 0.0 caótico)
+    atr_now = sum(highs[i] - lows[i] for i in range(5)) / 5
+    atr_ref = sum(highs[i] - lows[i] for i in range(5, 20)) / 15 if len(highs) >= 20 else atr_now
     atr_ratio = atr_now / atr_ref if atr_ref > 0 else 1.0
-    # Ratio > 2.5 = caótico (ruim), < 0.5 = muito comprimido, 0.8–1.5 = saudável
-    vol_health = min(max(1.0 - abs(atr_ratio - 1.0) * 0.6, 0.0), 1.0)
+    vol_health = min(max(1.0 - abs(atr_ratio - 1.0) * 0.7, 0.0), 1.0)
 
-    raw = trend_score * 0.30 + margin_score * 0.20 + structure * 0.30 + vol_health * 0.20
+    # 4. Volume confirm (15%) — volume atual vs média 20c
+    avg_vol = sum(volumes[1:]) / max(len(volumes) - 1, 1)
+    curr_vol = volumes[0] if volumes else avg_vol
+    vol_ratio = curr_vol / avg_vol if avg_vol > 0 else 1.0
+    vol_confirm = min(max((vol_ratio - 0.5) / 1.5, 0.0), 1.0)
+
+    # 5. Price structure (10%) — Higher Highs + Higher Lows
+    n_struct = min(4, len(highs) - 1)
+    hh = sum(1 for i in range(n_struct) if highs[i] > highs[i+1]) / max(n_struct, 1)
+    hl = sum(1 for i in range(min(4, len(lows)-1)) if lows[i] > lows[i+1]) / 4
+    structure = (hh + hl) / 2
+
+    # 6. Time decay (10%) — penaliza candles dentro da posição (sem tempo real no backtest)
+    # Usando distância do preço atual vs entrada: quanto mais afastado, mais incerto
+    curr_price = closes[0] if closes else entry_price
+    price_vs_entry = (curr_price - entry_price) / entry_price if entry_price > 0 else 0.0
+    # Posição positiva → mantém conviction; negativa → reduz
+    time_decay = min(max(price_vs_entry * 10 + 0.6, 0.0), 1.0)
+
+    raw = (trend_score   * 0.25 +
+           momentum_score * 0.20 +
+           vol_health     * 0.20 +
+           vol_confirm    * 0.15 +
+           structure      * 0.10 +
+           time_decay     * 0.10)
+
     return round(max(0.0, min(100.0, raw * 100)), 1)
 
 

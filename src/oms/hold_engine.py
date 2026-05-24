@@ -262,19 +262,24 @@ class HoldEngine:
         sma5  = sum(closes[:5]) / 5
         sma20 = sum(closes[:20]) / 20
 
-        # SMA structure: 1.0 se sma5 > sma20
-        sma_score = 1.0 if sma5 > sma20 else 0.0
-
-        # Margin normalizada: quanto sma5 está acima da sma20
+        # Melhoria B: SMA score CONTÍNUO (não binário) — evita cliff edge.
+        # Antes: 1.0 se sma5 > sma20, 0.0 caso contrário → uma vela contra-tendência
+        #        derrubava conviction abruptamente de ~85% para ~45%.
+        # Agora: margem normalizada em [-3%, +3%] → score gradual.
+        #   -3%  → 0.0  (tendência claramente quebrada)
+        #    0%  → 0.5  (neutro — SMA5 = SMA20)
+        #   +3%  → 1.0  (tendência forte)
+        # A tendência precisa deteriorar CONSISTENTEMENTE para impactar conviction.
         margin = (sma5 - sma20) / sma20 if sma20 > 0 else 0.0
-        margin_score = min(max((margin + 0.02) / 0.04, 0.0), 1.0)
+        sma_score = min(max((margin + 0.03) / 0.06, 0.0), 1.0)
 
         # Higher Highs + Higher Lows (últimos 5 candles)
         hh = sum(1 for i in range(min(4, len(highs) - 1)) if highs[i] > highs[i + 1])
         hl = sum(1 for i in range(min(4, len(lows)  - 1)) if lows[i]  > lows[i + 1])
         structure_score = (hh + hl) / 8
 
-        return round(sma_score * 0.40 + margin_score * 0.20 + structure_score * 0.40, 4)
+        # Pesos: SMA score agora tem peso maior (0.60) pois é contínuo e mais informativo
+        return round(sma_score * 0.60 + structure_score * 0.40, 4)
 
     # ── 2. Relative Strength ──────────────────────────────────────────────────
 

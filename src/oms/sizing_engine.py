@@ -54,16 +54,17 @@ class SizingResult:
 
     def __init__(
         self,
-        final_kelly:      float,
-        base_kelly:       float,
-        regime_mult:      float,
-        drift_mult:       float,
-        vol_state_mult:   float,
-        calibration_mult: float,
-        score_mult:       float,
-        vol_state:        str,
-        max_psi:          float | None,
-        wr_diff:          float | None,
+        final_kelly:       float,
+        base_kelly:        float,
+        regime_mult:       float,
+        drift_mult:        float,
+        vol_state_mult:    float,
+        calibration_mult:  float,
+        score_mult:        float,
+        exceptional_mult:  float,
+        vol_state:         str,
+        max_psi:           float | None,
+        wr_diff:           float | None,
     ) -> None:
         self.final_kelly      = final_kelly
         self.base_kelly       = base_kelly
@@ -72,6 +73,7 @@ class SizingResult:
         self.vol_state_mult   = vol_state_mult
         self.calibration_mult = calibration_mult
         self.score_mult       = score_mult
+        self.exceptional_mult = exceptional_mult
         self.vol_state        = vol_state
         self.max_psi          = max_psi
         self.wr_diff          = wr_diff
@@ -85,10 +87,12 @@ class SizingResult:
             "sz_vol_state_mult":   round(self.vol_state_mult, 3),
             "sz_calibration_mult": round(self.calibration_mult, 3),
             "sz_score_mult":       round(self.score_mult, 3),
+            "sz_exceptional_mult": round(self.exceptional_mult, 3),
             "sz_vol_state":        self.vol_state,
         }
 
     def summary(self) -> str:
+        exc = f" × exc={self.exceptional_mult:.2f}" if self.exceptional_mult > 1.01 else ""
         return (
             f"kelly={self.final_kelly:.3f} "
             f"(base={self.base_kelly:.3f} × "
@@ -96,7 +100,7 @@ class SizingResult:
             f"drift={self.drift_mult:.2f} × "
             f"vol={self.vol_state_mult:.2f} × "
             f"calib={self.calibration_mult:.2f} × "
-            f"score={self.score_mult:.2f})"
+            f"score={self.score_mult:.2f}{exc})"
         )
 
 
@@ -135,7 +139,23 @@ class SizingEngine:
         max_psi = _extract_max_psi(model_health_data)
         wr_diff = _extract_wr_diff(model_health_data)
 
-        raw = base_kelly * regime_mult * drift_mult * vol_state_mult * calibration_mult * score_mult
+        # ── Exceptional Edge Multiplier (Melhoria A) ─────────────────────────
+        # Quando TODAS as condições se alinham excepcionalmente, o sistema
+        # expressa maior convicção com posição maior — até +25% do base.
+        # Condições: PSI estável + WR alinhado/acima + vol favorável + score alto
+        # + regime favorável → exceptional_mult = 1.25
+        # Cria assimetria real: size máximo apenas quando edge é genuíno.
+        exceptional_mult = self._exceptional_mult(
+            drift_mult=drift_mult,
+            calibration_mult=calibration_mult,
+            vol_state_mult=vol_state_mult,
+            regime_mult=regime_mult,
+            calibrated_score=calibrated_score,
+        )
+
+        raw = (base_kelly * regime_mult * drift_mult
+               * vol_state_mult * calibration_mult
+               * score_mult * exceptional_mult)
         final_kelly = round(max(MIN_KELLY, min(MAX_KELLY, raw)), 4)
 
         result = SizingResult(
@@ -146,6 +166,7 @@ class SizingEngine:
             vol_state_mult=vol_state_mult,
             calibration_mult=calibration_mult,
             score_mult=score_mult,
+            exceptional_mult=exceptional_mult,
             vol_state=vol_state,
             max_psi=max_psi,
             wr_diff=wr_diff,
@@ -237,6 +258,55 @@ class SizingEngine:
         if calibrated >= 0.55:
             return 0.80
         return 0.70   # score mínimo aceitável — posição menor
+
+    # ── Exceptional Edge Multiplier ───────────────────────────────────────────
+
+    def _exceptional_mult(
+        self,
+        drift_mult:       float,
+        calibration_mult: float,
+        vol_state_mult:   float,
+        regime_mult:      float,
+        calibrated_score: float,
+    ) -> float:
+        """
+        Bônus de até +25% quando TODAS as condições se alinham excepcionalmente.
+
+        Requisitos cumulativos (todos devem ser verdadeiros):
+          1. Features estáveis:   drift_mult = 1.00  (PSI < 0.10)
+          2. WR alinhado/acima:   calibration_mult ≥ 1.00
+          3. Vol favorável:       vol_state_mult ≥ 0.90 (EXPANDING ou TREND)
+          4. Regime favorável:    regime_mult ≥ 0.80
+          5. Score forte:         calibrated_score ≥ 0.65
+
+        Escala gradual (não binária):
+          4 de 5 condições → ×1.10
+          5 de 5 condições → ×1.25
+
+        Lógica: quando o edge é genuíno e múltiplos sinais confirmam,
+        o sistema deve expressar maior convicção com posição maior.
+        Assimetria real: small loss quando errado, bigger win quando certo.
+        """
+        conditions = [
+            drift_mult >= 1.00,           # features estáveis
+            calibration_mult >= 1.00,     # WR live ≥ calibrado
+            vol_state_mult >= 0.90,       # vol EXPANDING ou TREND
+            regime_mult >= 0.80,          # regime favorável
+            calibrated_score >= 0.65,     # sinal forte
+        ]
+        n = sum(conditions)
+
+        if n == 5:
+            logger.info(
+                "SizingEngine: EXCEPTIONAL EDGE — todas as 5 condições alinhadas "
+                "→ kelly ×1.25 (drift=%.2f calib=%.2f vol=%.2f reg=%.2f score=%.2f)",
+                drift_mult, calibration_mult, vol_state_mult,
+                regime_mult, calibrated_score,
+            )
+            return 1.25
+        if n == 4:
+            return 1.10
+        return 1.00   # condições normais — sem bônus
 
 
 # ── Helpers internos ──────────────────────────────────────────────────────────

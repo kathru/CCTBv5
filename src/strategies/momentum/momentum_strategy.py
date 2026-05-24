@@ -168,7 +168,9 @@ class MomentumStrategy(BaseStrategy):
         # ── Fase C: Edge Conditioning — gates de qualidade de edge ───────────
         # Avalia 4 condições: PSI drift, model health, liquidez, WR calibration.
         # Resultado: eleva threshold quando condições degradam.
-        #            bloqueia em situações extremas (PSI>0.35, vol<25%, WR diff<-15%).
+        #            bloqueia APENAS em situações catastróficas (PSI>0.35, vol<25%, WR diff<-35%).
+        # WR drift graduado: -0.15 a -0.35 → micro-trades (sizing reduzido) ao invés de bloqueio.
+        # Isso evita deadlock onde ausência de trades impede recuperação do WR live.
         # Dados vêm de ctx.extra["model_health"] + candles_1h (já disponíveis).
         edge = self._edge_cond.evaluate(
             candles_1h=ctx.candles_1h,
@@ -237,8 +239,9 @@ class MomentumStrategy(BaseStrategy):
 
         # ── Camada 2: Kelly composto (Position Sizing Dinâmico) ─────────────
         # base_kelly × regime_mult × drift_mult × vol_state_mult
-        #            × calibration_mult × score_mult
+        #            × calibration_mult × score_mult × ec_sizing_mult
         # Cada dimensão modula o sizing de forma independente.
+        # ec_sizing_mult: reduz kelly quando WR drift está em zona de micro-trade.
         # Size sobe quando edge sobe, cai agressivamente quando degrada.
         base_kelly = min(calibrated * 0.25, 0.15)
         sizing     = self._sizing.compute(
@@ -248,22 +251,26 @@ class MomentumStrategy(BaseStrategy):
             vol_state_data=(ctx.extra or {}).get("vol_state"),
             model_health_data=(ctx.extra or {}).get("model_health"),
         )
-        kelly   = sizing.final_kelly
+        # Aplica edge conditioning sizing multiplier (anti-deadlock WR gate)
+        kelly = round(max(sizing.final_kelly * edge.sizing_mult, 0.01), 4) \
+            if edge.sizing_mult < 0.99 else sizing.final_kelly
         dir_str = "LONG"
         # Adiciona breakdown do sizing aos factors para rastreabilidade no dashboard
         factors.update(sizing.to_factors())
 
+        micro_tag = f" [MICRO-TRADE ec_sizing={edge.sizing_mult:.0%}]" \
+            if edge.sizing_mult < 0.99 else ""
         _log("SIGNAL",
              f"BUY {regime} score={score:.3f} prob={calibrated:.3f} "
-             f"kelly={kelly:.1%} [{sizing.summary()}]",
+             f"kelly={kelly:.1%} [{sizing.summary()}]{micro_tag}",
              regime=regime, score=score, calibrated=calibrated,
              threshold=threshold, ev=ev, direction=dir_str, factors=factors)
 
         logger.info(
             "SIGNAL %s %s regime=%s score=%.3f prob=%.3f "
-            "EV=%.3f kelly=%.1f%% | drift=%.2f vol=%s calib=%.2f score_m=%.2f",
+            "EV=%.3f kelly=%.1f%%%s | drift=%.2f vol=%s calib=%.2f score_m=%.2f",
             dir_str, symbol, regime, score, calibrated, ev,
-            kelly * 100,
+            kelly * 100, micro_tag,
             sizing.drift_mult, sizing.vol_state, sizing.calibration_mult, sizing.score_mult,
         )
 

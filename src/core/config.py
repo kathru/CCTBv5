@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     discord_webhook_url: str = ""
     bot_instance: str = "localhost"   # identificador da instância (ex: "Oracle", "localhost")
 
+    # Anthropic (Daily Agent LLM)
+    anthropic_api_key: str = ""
+
     # News
     finnhub_token: str = ""
     eodhd_token: str = ""

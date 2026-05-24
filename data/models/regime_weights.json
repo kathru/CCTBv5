@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-24T15:36:49.535155+00:00",
-  "updated_at": "2026-05-24T15:38:04.901638+00:00",
+  "updated_at": "2026-05-24T15:59:00+00:00",
   "weights": {
     "TREND_EXPANSION": {
       "momentum_v2": {
@@ -45,9 +45,9 @@
     },
     "VOLATILITY_COMPRESSION": {
       "momentum_v2": {
-        "sim_weight": 0.1,
+        "sim_weight": 0.6,
         "real_weight": null,
-        "blended_weight": 0.1,
+        "blended_weight": 0.6,
         "n_real": 0,
         "real_win_rate": null,
         "real_expectancy": null,
@@ -56,17 +56,19 @@
         "sim_win_rate": 0.2571428571428571,
         "sim_expectancy": -2.2474285714285713,
         "n_sim_trades": 35,
-        "sim_updated_at": "2026-05-24T15:38:04.897592+00:00"
+        "sim_updated_at": "2026-05-24T15:38:04.897592+00:00",
+        "agent_updated_at": "2026-05-24T15:59:00+00:00"
       },
       "trend_v1": {
-        "sim_weight": 0.9,
+        "sim_weight": 0.85,
         "real_weight": null,
-        "blended_weight": 0.9,
+        "blended_weight": 0.85,
         "n_real": 0,
         "real_win_rate": null,
         "real_expectancy": null,
         "confidence": "simulation",
-        "last_updated": null
+        "last_updated": null,
+        "agent_updated_at": "2026-05-24T15:56:19.995232+00:00"
       },
       "reversal_v1": {
         "sim_weight": 0.2,
@@ -117,9 +119,9 @@
     },
     "TREND_EXHAUSTION": {
       "momentum_v2": {
-        "sim_weight": 0.1,
+        "sim_weight": 0.05,
         "real_weight": null,
-        "blended_weight": 0.1,
+        "blended_weight": 0.05,
         "n_real": 0,
         "real_win_rate": null,
         "real_expectancy": null,
@@ -128,7 +130,8 @@
         "sim_win_rate": 0.18518518518518517,
         "sim_expectancy": -2.902592592592592,
         "n_sim_trades": 27,
-        "sim_updated_at": "2026-05-24T15:38:04.899590+00:00"
+        "sim_updated_at": "2026-05-24T15:38:04.899590+00:00",
+        "agent_updated_at": "2026-05-24T15:59:00+00:00"
       },
       "trend_v1": {
         "sim_weight": 0.6,
@@ -141,9 +144,9 @@
         "last_updated": null
       },
       "reversal_v1": {
-        "sim_weight": 0.1,
+        "sim_weight": 1.15,
         "real_weight": null,
-        "blended_weight": 0.1,
+        "blended_weight": 1.15,
         "n_real": 0,
         "real_win_rate": null,
         "real_expectancy": null,
@@ -152,7 +155,8 @@
         "sim_win_rate": 0.2,
         "sim_expectancy": -1.61,
         "n_sim_trades": 5,
-        "sim_updated_at": "2026-05-24T15:38:04.901638+00:00"
+        "sim_updated_at": "2026-05-24T15:38:04.901638+00:00",
+        "agent_updated_at": "2026-05-24T15:56:19.995232+00:00"
       }
     },
     "HIGH_CORRELATION_RISK": {

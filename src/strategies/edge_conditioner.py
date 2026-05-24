@@ -5,47 +5,52 @@ quando as condições de qualidade de edge estão satisfeitas.
 Filosofia: o sistema deve aprender a NÃO operar.
 Operar em condições ruins destrói o edge acumulado com condições boas.
 
-Gates implementados (todos como threshold multipliers — nunca bloqueio total,
-exceto em situações extremas verificadas):
+Gates implementados (threshold multipliers + sizing reduction graduados):
 
   Gate 1 — PSI drift (model_health):
-    Features drifando do baseline → modelo menos confiável.
-    PSI < 0.10 → normal.    PSI 0.10–0.20 → eleva threshold ×1.05.
-    PSI 0.20–0.35 → eleva threshold ×1.15.
+    PSI < 0.10 → normal.
+    PSI 0.10–0.20 → threshold ×1.05.
+    PSI 0.20–0.35 → threshold ×1.15.
     PSI > 0.35  → BLOCK (drift extremo — features mudaram muito).
 
   Gate 2 — Model health geral (health_score):
-    Score abaixo de 60 (ATENCAO/DEGRADANDO/CRITICO) → eleva threshold.
-    Score < 40 (CRITICO) → eleva threshold ×1.20.
-    Score < 60 (ATENCAO) → eleva threshold ×1.08.
+    Score < 40 (CRITICO) → threshold ×1.20.
+    Score < 60 (ATENCAO) → threshold ×1.08.
 
   Gate 3 — Liquidez (volume ratio dos candles 1H):
-    Volume atual vs média recente — proxy de liquidez.
     vol_ratio < 0.25 → BLOCK (mercado seco — slippage inaceitável).
-    vol_ratio 0.25–0.50 → eleva threshold ×1.10.
-    vol_ratio 0.50–0.70 → eleva threshold ×1.04.
+    vol_ratio 0.25–0.50 → threshold ×1.10.
+    vol_ratio 0.50–0.70 → threshold ×1.04.
     vol_ratio ≥ 0.70 → normal.
 
   Gate 4 — WR calibration drift (model_health):
-    WR live muito abaixo do calibrado → modelo superestimando edge.
-    diff < -0.15 → BLOCK (divergência extrema).
-    diff -0.10 a -0.15 → eleva threshold ×1.12.
-    diff -0.05 a -0.10 → eleva threshold ×1.06.
-    diff > -0.05 → normal (ou model underestimating → ok).
+    Anti-deadlock: bloquear totalmente impede recuperação do WR live.
+    Abordagem graduada — permite micro-trades para re-calibração:
+
+    diff > -0.05          → normal (100% sizing).
+    diff -0.05 a -0.10    → threshold ×1.06 | sizing 90%.
+    diff -0.10 a -0.15    → threshold ×1.12 | sizing 75%.
+    diff -0.15 a -0.25    → threshold ×1.20 | sizing 40% (micro-trades).
+    diff -0.25 a -0.35    → threshold ×1.25 | sizing 20% (micro-trades).
+    diff < -0.35           → BLOCK (divergência catastrófica).
+
+    Lógica: com diff < -0.15 ainda permitimos entrada com sizing mínimo.
+    Isso evita o deadlock (sem trades → WR não se recupera → gate não abre).
+    Sizing de 20-40% do Kelly limita risco enquanto coleta dados reais.
 
 Resultado final:
   threshold_mult: multiplicador combinado (produto dos 4 gates).
-  should_block:   True se qualquer gate extremo foi ativado.
+  sizing_mult:    multiplicador de kelly (1.0=normal, 0.2=micro-trade).
+  should_block:   True apenas em situações verdadeiramente catastróficas.
   block_reason:   nome do gate que bloqueou.
   conditions:     breakdown completo para diagnóstico.
 
 Integração:
-  Em momentum_strategy.evaluate(), após o ATR threshold adjustment:
-    edge = edge_conditioner.evaluate(ctx, candles)
-    if edge.should_block:
-        _log("GATE_CLOSED", ...)
-        return None
-    threshold = round(min(threshold * edge.threshold_mult, 0.99), 4)
+  edge = edge_conditioner.evaluate(candles_1h, model_health_data)
+  if edge.should_block:
+      return None
+  threshold = round(min(threshold * edge.threshold_mult, 0.99), 4)
+  kelly = kelly * edge.sizing_mult   # reduz sizing em condições ruins
 """
 
 import logging
@@ -77,12 +82,25 @@ LIQ_MODERATE   = 0.70   # 0.50–0.70 → ×1.04
 LIQ_MULT_LOW   = 1.10
 LIQ_MULT_MOD   = 1.04
 
-# Gate 4 — WR calibration drift
-WR_BLOCK         = -0.15   # < -0.15 → BLOCK
-WR_HIGH_DRIFT    = -0.10   # -0.15 a -0.10 → ×1.12
-WR_MOD_DRIFT     = -0.05   # -0.10 a -0.05 → ×1.06
-WR_MULT_HIGH     = 1.12
-WR_MULT_MOD      = 1.06
+# Gate 4 — WR calibration drift (graduado anti-deadlock)
+WR_BLOCK              = -0.35   # < -0.35 → BLOCK catastrófico
+WR_MICRO_SEVERE       = -0.25   # -0.35 a -0.25 → sizing 20% | thr ×1.25
+WR_MICRO_HIGH         = -0.15   # -0.25 a -0.15 → sizing 40% | thr ×1.20
+WR_HIGH_DRIFT         = -0.10   # -0.15 a -0.10 → sizing 75% | thr ×1.12
+WR_MOD_DRIFT          = -0.05   # -0.10 a -0.05 → sizing 90% | thr ×1.06
+
+WR_MULT_CATASTROPHIC  = 1.25
+WR_MULT_SEVERE        = 1.25
+WR_MULT_HIGH_         = 1.20
+WR_MULT_HIGH          = 1.12
+WR_MULT_MOD           = 1.06
+
+# Sizing mult por nível de drift (aplicado ao kelly_fraction)
+WR_SIZING_CATASTROPHIC = 0.20   # micro-trade extremo
+WR_SIZING_SEVERE       = 0.20   # micro-trade severo
+WR_SIZING_HIGH         = 0.40   # micro-trade padrão
+WR_SIZING_MOD          = 0.75   # sizing reduzido
+WR_SIZING_LOW          = 0.90   # sizing levemente reduzido
 
 
 # ── Resultado ─────────────────────────────────────────────────────────────────
@@ -91,7 +109,8 @@ WR_MULT_MOD      = 1.06
 class EdgeCondition:
     """Resultado da avaliação dos gates de edge conditioning."""
     threshold_mult: float          # multiplicador combinado (produto dos gates)
-    should_block:   bool           # True = gate extremo ativado → não entrar
+    sizing_mult:    float          # multiplicador de kelly (anti-deadlock WR gate)
+    should_block:   bool           # True = gate catastrófico → não entrar
     block_reason:   str | None     # qual gate bloqueou
     conditions:     dict = field(default_factory=dict)  # breakdown para diagnóstico
 
@@ -99,11 +118,14 @@ class EdgeCondition:
         """Breakdown como dict para incluir nos factors do sinal."""
         return {
             "ec_thr_mult":    round(self.threshold_mult, 3),
+            "ec_sizing_mult": round(self.sizing_mult, 3),
             "ec_blocked":     1.0 if self.should_block else 0.0,
             "ec_psi_mult":    round(self.conditions.get("psi_mult", 1.0), 3),
             "ec_health_mult": round(self.conditions.get("health_mult", 1.0), 3),
             "ec_liq_mult":    round(self.conditions.get("liq_mult", 1.0), 3),
             "ec_wr_mult":     round(self.conditions.get("wr_mult", 1.0), 3),
+            "ec_wr_sizing":   round(self.conditions.get("wr_sizing", 1.0), 3),
+            "ec_wr_diff":     round(self.conditions.get("wr_diff", 0.0), 4),
         }
 
 
@@ -140,6 +162,7 @@ class EdgeConditioner:
             )
             return EdgeCondition(
                 threshold_mult=psi_mult,
+                sizing_mult=0.0,
                 should_block=True,
                 block_reason=f"psi_extreme_{max_psi:.3f}",
                 conditions=conditions,
@@ -161,25 +184,35 @@ class EdgeConditioner:
             )
             return EdgeCondition(
                 threshold_mult=liq_mult,
+                sizing_mult=0.0,
                 should_block=True,
                 block_reason=f"liquidity_dry_{vol_ratio:.2f}",
                 conditions=conditions,
             )
 
-        # ── Gate 4: WR calibration drift ─────────────────────────────────────
-        wr_mult, wr_block, wr_diff = self._wr_gate(model_health_data)
-        conditions["wr_mult"] = wr_mult
-        conditions["wr_diff"] = wr_diff
+        # ── Gate 4: WR calibration drift (graduado — anti-deadlock) ──────────
+        wr_mult, wr_sizing, wr_block, wr_diff = self._wr_gate(model_health_data)
+        conditions["wr_mult"]   = wr_mult
+        conditions["wr_sizing"] = wr_sizing
+        conditions["wr_diff"]   = wr_diff or 0.0
         if wr_block:
             logger.warning(
-                "EdgeConditioner: BLOCK wr_gate wr_diff=%.3f < %.2f (modelo superestimando)",
+                "EdgeConditioner: BLOCK wr_gate wr_diff=%.3f < %.2f (divergência catastrófica)",
                 wr_diff or 0, WR_BLOCK,
             )
             return EdgeCondition(
                 threshold_mult=wr_mult,
+                sizing_mult=0.0,
                 should_block=True,
-                block_reason=f"wr_extreme_drift_{wr_diff:.3f}",
+                block_reason=f"wr_catastrophic_{wr_diff:.3f}",
                 conditions=conditions,
+            )
+
+        # Micro-trade: log informativo quando sizing está reduzido por WR drift
+        if wr_sizing < 0.99:
+            logger.info(
+                "EdgeConditioner: WR drift=%.3f → micro-trade sizing=%.0f%% thr×%.2f",
+                wr_diff or 0, wr_sizing * 100, wr_mult,
             )
 
         # ── Combinação final dos multiplicadores ──────────────────────────────
@@ -188,13 +221,14 @@ class EdgeConditioner:
 
         if combined > 1.02:
             logger.info(
-                "EdgeConditioner: threshold ×%.3f "
+                "EdgeConditioner: threshold ×%.3f sizing=%.0f%% "
                 "(psi=×%.2f health=×%.2f liq=×%.2f wr=×%.2f)",
-                combined, psi_mult, health_mult, liq_mult, wr_mult,
+                combined, wr_sizing * 100, psi_mult, health_mult, liq_mult, wr_mult,
             )
 
         return EdgeCondition(
             threshold_mult=combined,
+            sizing_mult=wr_sizing,
             should_block=False,
             block_reason=None,
             conditions=conditions,
@@ -263,22 +297,39 @@ class EdgeConditioner:
             return LIQ_MULT_MOD, False, vol_ratio
         return 1.0, False, vol_ratio
 
-    # ── Gate 4: WR calibration drift ─────────────────────────────────────────
+    # ── Gate 4: WR calibration drift (graduado — anti-deadlock) ─────────────
 
     def _wr_gate(
         self, model_health: dict | None
-    ) -> tuple[float, bool, float | None]:
-        """Retorna (mult, should_block, wr_diff)."""
+    ) -> tuple[float, float, bool, float | None]:
+        """
+        Retorna (thr_mult, sizing_mult, should_block, wr_diff).
+
+        Abordagem graduada para evitar deadlock:
+        - Bloqueio total apenas em divergência catastrófica (< -0.35)
+        - Entre -0.15 e -0.35: micro-trades com sizing reduzido
+        - Isso permite re-calibração do WR live sem exposição total
+        """
         wr_diff = _extract_wr_diff(model_health)
         if wr_diff is None:
-            return 1.0, False, None
-        if wr_diff < WR_BLOCK:
-            return WR_MULT_HIGH, True, wr_diff
-        if wr_diff < WR_HIGH_DRIFT:
-            return WR_MULT_HIGH, False, wr_diff
-        if wr_diff < WR_MOD_DRIFT:
-            return WR_MULT_MOD, False, wr_diff
-        return 1.0, False, wr_diff
+            return 1.0, 1.0, False, None
+
+        if wr_diff < WR_BLOCK:                   # < -0.35: catastrófico
+            return WR_MULT_CATASTROPHIC, 0.0, True, wr_diff
+
+        if wr_diff < WR_MICRO_SEVERE:            # -0.35 a -0.25: micro severo
+            return WR_MULT_SEVERE, WR_SIZING_SEVERE, False, wr_diff
+
+        if wr_diff < WR_MICRO_HIGH:              # -0.25 a -0.15: micro padrão
+            return WR_MULT_HIGH_, WR_SIZING_HIGH, False, wr_diff
+
+        if wr_diff < WR_HIGH_DRIFT:              # -0.15 a -0.10: sizing reduzido
+            return WR_MULT_HIGH, WR_SIZING_MOD, False, wr_diff
+
+        if wr_diff < WR_MOD_DRIFT:               # -0.10 a -0.05: sizing leve
+            return WR_MULT_MOD, WR_SIZING_LOW, False, wr_diff
+
+        return 1.0, 1.0, False, wr_diff          # > -0.05: normal
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

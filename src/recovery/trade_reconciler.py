@@ -166,7 +166,9 @@ class TradeReconciler:
                        SUM(filled_quantity * avg_fill_price) AS notional
                 FROM orders
                 WHERE status = 'filled'
-                  AND strategy_id != 'exchange_sync'
+                  AND strategy_id IN ('momentum_v2', 'reconciler',
+                                      'reversal_v1', 'trend_v1',
+                                      'breakout_v1', 'mean_reversion_v1')
                 GROUP BY symbol, side
                 """
             )

@@ -288,10 +288,10 @@ class ExchangeSync:
                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
                         ON CONFLICT (client_order_id) DO UPDATE SET
                             status          = EXCLUDED.status,
-                            filled_quantity = EXCLUDED.filled_quantity,
+                            filled_quantity = GREATEST(orders.filled_quantity, EXCLUDED.filled_quantity),
                             avg_fill_price  = EXCLUDED.avg_fill_price,
-                            fees_paid       = EXCLUDED.fees_paid,
-                            filled_at       = EXCLUDED.filled_at
+                            fees_paid       = GREATEST(orders.fees_paid, EXCLUDED.fees_paid),
+                            filled_at       = COALESCE(orders.filled_at, EXCLUDED.filled_at)
                         """,
                         client_id,
                         o["ordId"],

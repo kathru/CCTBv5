@@ -11,11 +11,13 @@ Executa:
   6. Calcula importância de features (permutação + correlação)
   7. Gera relatório e salva baseline em data/models/feature_baseline.json
 
-Features computáveis de candles históricos:
+Features computáveis de candles históricos (v2.5.0 — 9 features):
   M1-M5: totalmente computáveis
   M8:    totalmente computável (ATR + Bollinger + dir_consistency)
   M6:    requer API de futuros OKX → default 0.5 neutro (documentado)
   M7:    requer multi-símbolo → default 0.5 neutro (documentado)
+  M9:    requer FinNLP/Fear&Greed externo → default 0.5 neutro (documentado)
+  M4:    peso=0% desde v2.5.0 — mantido para monitoramento/diagnóstico
 
 Uso:
   python scripts/feature_analysis.py
@@ -187,6 +189,9 @@ def compute_features(candles_window: list[dict]) -> dict[str, float] | None:
     # M8 Volatility State — computável de candles
     m8 = _compute_m8(closes, highs[:LOOKBACK], lows[:LOOKBACK])
 
+    # M9 News Sentiment — requer Fear&Greed externo → neutro 0.5
+    m9 = 0.5
+
     return {
         "m1_momentum":    round(m1, 4),
         "m2_consistency": round(m2, 4),
@@ -196,6 +201,7 @@ def compute_features(candles_window: list[dict]) -> dict[str, float] | None:
         "m6_futures":     round(m6, 4),   # neutro — API externa
         "m7_rel_strength":round(m7, 4),   # neutro — multi-símbolo
         "m8_vol_state":   round(m8, 4),
+        "m9_sentiment":   round(m9, 4),   # neutro — Fear&Greed externo
     }
 
 
@@ -220,7 +226,7 @@ def main() -> None:
 
     log.info("=" * 65)
     log.info("  CCTBv5 Feature Governance Analysis — Schema v%s", CURRENT_SCHEMA.version)
-    log.info("  Símbolo: %s  |  M6/M7: neutro (0.5)  |  M8: calculado", args.symbol)
+    log.info("  Símbolo: %s  |  M6/M7/M9: neutro (0.5)  |  M8: calculado  |  M4: peso=0%%", args.symbol)
     log.info("=" * 65)
 
     # ── 1. Validar schema ────────────────────────────────────
@@ -352,11 +358,12 @@ def main() -> None:
                 "relative_importance": round(m["relative_importance"], 4),
                 "schema_weight":       m["schema_weight"],
                 "aligned": (
-                    None if fname in ("m6_futures", "m7_rel_strength")
+                    None if fname in ("m6_futures", "m7_rel_strength", "m9_sentiment")
+                    else True if fname == "m4_regime_str"  # peso=0%, alinhado por definição
                     else abs(m["relative_importance"] - m["schema_weight"]) < 0.10
                 ),
                 **({"note": "não mensurável — dado externo ao backtest"}
-                   if fname in ("m6_futures", "m7_rel_strength") else {}),
+                   if fname in ("m6_futures", "m7_rel_strength", "m9_sentiment") else {}),
             }
             for fname, m in importance.items()
         },

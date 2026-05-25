@@ -24,9 +24,9 @@ from ..core.events import CandleEvent, SignalEvent, Topic
 from ..core.models import Signal
 from ..market.engine import MarketEngine
 from ..persistence.cache import Cache
+from ..portfolio.allocator import portfolio_allocator as _portfolio_allocator
 from .base import BaseStrategy, StrategyContext
 from .weight_engine import weight_engine as _weight_engine
-from ..portfolio.allocator import portfolio_allocator as _portfolio_allocator
 
 logger = logging.getLogger(__name__)
 

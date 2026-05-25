@@ -178,8 +178,7 @@ class AlphaOrthogonality:
         *divergência* funding vs preço — são matematicamente ortogonais.
         """
         # Funding rate bruto (campo "funding_rate" do FuturesFlowCollector)
-        ff_scores = ff_data.get("scores", {})
-        raw_fr    = float(ff_data.get("funding_rate", 0.0) or 0.0)  # em decimal
+        raw_fr = float(ff_data.get("funding_rate", 0.0) or 0.0)  # em decimal
 
         # Momentum de preço dos últimos 5 candles
         if len(candles_1h) >= 6:

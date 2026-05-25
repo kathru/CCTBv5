@@ -21,13 +21,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ...core.models import Signal, SignalDirection
+from ...market.alpha_orthogonality import alpha_orthogonality
 from ...monitoring.feature_governance import governance
 from ...monitoring.signal_log import SignalAuditEntry, signal_audit_log
 from ...oms.sizing_engine import SizingEngine
 from ..base import BaseStrategy, StrategyContext
 from ..edge_conditioner import EdgeConditioner
 from ..ml.inference import PlattCalibrator
-from ...market.alpha_orthogonality import alpha_orthogonality
 
 MODELS_DIR = Path("data") / "models"
 logger     = logging.getLogger(__name__)

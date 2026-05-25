@@ -35,10 +35,12 @@ from ..market.relative_strength import RelativeStrengthCollector
 from ..market.volatility_state import VolatilityStateCollector
 from ..metrics.infra_metrics import InfraMetrics
 from ..monitoring.model_health import ModelHealthMonitor
+from ..oms.execution_intelligence import execution_intelligence as _exec_intel
 from ..oms.execution_router import ExecutionRouter
 from ..oms.order_manager import OrderManager
 from ..oms.position_monitor import PositionMonitor
 from ..persistence import Cache, Database
+from ..portfolio.allocator import portfolio_allocator as _portfolio_allocator
 from ..portfolio.engine import PortfolioEngine
 from ..recovery.boot import BootSequence
 from ..recovery.periodic_reconciler import PeriodicReconciler
@@ -56,8 +58,6 @@ from .bus import EventBus
 from .config import settings
 from .events import SignalEvent, Topic
 from .events.risk_events import RiskAction
-from ..portfolio.allocator import portfolio_allocator as _portfolio_allocator
-from ..oms.execution_intelligence import execution_intelligence as _exec_intel
 
 logger = logging.getLogger(__name__)
 
@@ -667,7 +667,7 @@ class TradingLoop:
             spread_pct = 0.005
             mid_price  = price
 
-        order_decision = _exec_intel.decide_order_type(
+        _exec_intel.decide_order_type(
             symbol=signal.symbol,
             side=signal.direction,
             mid_price=mid_price,

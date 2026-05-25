@@ -1540,8 +1540,9 @@ async def get_alpha_orthogonality(request: Request) -> dict:
     Phase 18 — Alpha Orthogonality: 4 sinais ortogonais ao M1-M9.
     Calcula on-demand a partir dos dados de cache para cada símbolo.
     """
-    from ...market.alpha_orthogonality import alpha_orthogonality
     import json as _json
+
+    from ...market.alpha_orthogonality import alpha_orthogonality
 
     cache = request.app.state.cache
     SYMBOLS = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]

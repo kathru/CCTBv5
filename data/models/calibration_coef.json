@@ -1,10 +1,10 @@
 {
-  "platt_a": 0.376414,
-  "platt_b": -0.706152,
-  "n": 39599,
-  "win_rate": 0.375,
-  "calibrated_at": "2026-05-24T06:07:20.443952+00:00",
-  "period_end": "2026-05-24",
+  "platt_a": 0.37374,
+  "platt_b": -0.706337,
+  "n": 39653,
+  "win_rate": 0.3746,
+  "calibrated_at": "2026-05-25T06:32:39.193060+00:00",
+  "period_end": "2026-05-25",
   "symbols": [
     "BTC-USDT",
     "ETH-USDT",

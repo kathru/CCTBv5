@@ -53,20 +53,7 @@ if ($status) {
     Write-Host "  (nenhuma alteração para commitar)" -ForegroundColor Gray
 }
 
-# ── 2. Git push ────────────────────────────────────────────────────────────────
-# ── 1b. Pull remoto (após commit local, antes do push) ────────────────────────
-Write-Step "Sincronizando com GitHub (git pull)..."
-git pull --rebase
-if ($LASTEXITCODE -ne 0) { Write-Fail "git pull falhou - resolva conflitos manualmente"; exit 1 }
-Write-Ok "Repositorio atualizado"
-
-# ── 2. Git push ────────────────────────────────────────────────────────────────
-Write-Step "Pushing para GitHub..."
-git push
-if ($LASTEXITCODE -ne 0) { Write-Fail "git push falhou"; exit 1 }
-Write-Ok "Push feito"
-
-# ── 3. Calcular versão ─────────────────────────────────────────────────────────
+# ── 2. Calcular versão e gravar _version.txt (antes do push) ──────────────────
 # Y = número de tags fase/* (fases estruturais da memória.md)
 # Z = commits desde a última tag fase/* (reseta a cada nova fase)
 $GIT_MINOR = (git tag | Where-Object { $_ -like 'fase/*' } | Measure-Object -Line).Lines
@@ -79,6 +66,30 @@ if ($LAST_TAG) {
 $VERSION   = "5.$GIT_MINOR.$GIT_PATCH"
 Write-Host ""
 Write-Host "  Versão: v$VERSION" -ForegroundColor Yellow
+
+# Grava _version.txt e commita antes do push para que Oracle receba o arquivo correto
+Write-Step "Atualizando _version.txt -> $VERSION..."
+Set-Content -Path "$PROJECT_DIR\_version.txt" -Value $VERSION -NoNewline
+$vStatus = git status --porcelain "_version.txt"
+if ($vStatus) {
+    git add "_version.txt"
+    git commit -m "chore: bump _version.txt -> $VERSION"
+    if ($LASTEXITCODE -ne 0) { Write-Fail "git commit _version.txt falhou"; exit 1 }
+    Write-Ok "_version.txt commitado (v$VERSION)"
+} else {
+    Write-Host "  (_version.txt ja estava em $VERSION)" -ForegroundColor Gray
+}
+
+# ── 3. Pull + Push (inclui código + _version.txt) ─────────────────────────────
+Write-Step "Sincronizando com GitHub (git pull)..."
+git pull --rebase
+if ($LASTEXITCODE -ne 0) { Write-Fail "git pull falhou - resolva conflitos manualmente"; exit 1 }
+Write-Ok "Repositorio atualizado"
+
+Write-Step "Pushing para GitHub..."
+git push
+if ($LASTEXITCODE -ne 0) { Write-Fail "git push falhou"; exit 1 }
+Write-Ok "Push feito (v$VERSION incluido)"
 
 # ── 4. Deploy LOCAL — via monitor.ps1 (plugado no Oracle via SSH tunnel) ───────
 if (-not $OracleOnly) {

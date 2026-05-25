@@ -56,6 +56,7 @@ from .bus import EventBus
 from .config import settings
 from .events import SignalEvent, Topic
 from .events.risk_events import RiskAction
+from ..portfolio.allocator import portfolio_allocator as _portfolio_allocator
 
 logger = logging.getLogger(__name__)
 
@@ -591,6 +592,31 @@ class TradingLoop:
         adv_kelly_mult = cb_result.get("kelly_mult", 1.0)
         kelly    = (signal.kelly_fraction or 0.05) * adv_kelly_mult
         regime   = getattr(signal, "regime", "MEAN_REVERTING_CHOP")
+
+        # Phase 15 — Portfolio Intelligence Layer
+        # Atualiza correlações e posições abertas no allocator
+        try:
+            adv_state = await self._adv_risk.get_snapshot()
+            corr_matrix = ((adv_state or {}).get("correlation") or {}).get("matrix") or {}
+            if corr_matrix:
+                _portfolio_allocator.update_correlations(corr_matrix)
+        except Exception:
+            pass
+        _portfolio_allocator.update_open_positions(set(self._positions.keys()))
+
+        # Ranking cross-asset: ajusta kelly pelo edge relativo do portfólio
+        alloc = _portfolio_allocator.allocate(
+            symbol=signal.symbol,
+            original_kelly=kelly,
+            regime=regime,
+        )
+        kelly = alloc.allocated_kelly
+        logger.info(
+            "PortfolioAllocator: %s rank=%d/%d kelly %.1f%% → %.1f%% [%s]",
+            signal.symbol, alloc.rank, alloc.total_signals,
+            alloc.original_kelly * 100, alloc.allocated_kelly * 100,
+            alloc.reason,
+        )
 
         # Cap máximo de Kelly por família de regime (segurança extra)
         KELLY_CAP = {

@@ -26,6 +26,7 @@ from ..market.engine import MarketEngine
 from ..persistence.cache import Cache
 from .base import BaseStrategy, StrategyContext
 from .weight_engine import weight_engine as _weight_engine
+from ..portfolio.allocator import portfolio_allocator as _portfolio_allocator
 
 logger = logging.getLogger(__name__)
 
@@ -237,10 +238,17 @@ class StrategyRunner:
                 ctx = await self._build_context(symbol)
                 signal = await strategy.evaluate(ctx)
                 if signal is not None:
-                    # Aplica peso do regime ao kelly (Portfolio Allocator)
-                    # Signal é frozen dataclass → usa dataclasses.replace()
+                    # Phase 15 — registra sinal no PortfolioAllocator para ranking cross-asset
                     from dataclasses import replace as _dc_replace
                     regime = getattr(signal, "regime", "UNKNOWN") or "UNKNOWN"
+                    _portfolio_allocator.register_signal(
+                        symbol=signal.symbol,
+                        calibrated_score=float(signal.calibrated_score or 0),
+                        regime=regime,
+                        strategy_id=strategy.strategy_id,
+                    )
+                    # Aplica peso do regime ao kelly (WeightEngine)
+                    # Signal é frozen dataclass → usa dataclasses.replace()
                     w = _weight_engine.get_weight(strategy.strategy_id, regime)
                     if w < 0.99:
                         logger.debug(

@@ -21,6 +21,13 @@ def _serialize(v):
     return str(v)
 
 
+@router.get("/allocator")
+async def portfolio_allocator_status(request: Request) -> dict:
+    """PortfolioAllocator — ranking cross-asset de edge e alocação de capital."""
+    from ...portfolio.allocator import portfolio_allocator
+    return {"available": True, **portfolio_allocator.status()}
+
+
 @router.get("/exits")
 async def exit_plans(request: Request) -> dict:
     """Status dos planos de saída ativos (PositionMonitor)."""

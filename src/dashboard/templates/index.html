@@ -28,7 +28,7 @@
       --orange:   #f97316;
     }
     html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 13px; line-height: 1.4; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
     ::selection { background: rgba(59,130,246,0.3); }
 
     /* ══ HEADER ══════════════════════════════════════════════ */
@@ -65,21 +65,21 @@
       .hdr-sep         { display: none; }
     }
     .logo-ver   {
-      font-size: 0.68rem; font-weight: 700; color: var(--blue);
+      font-size: 0.88rem; font-weight: 700; color: var(--blue);
       background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25);
       padding: 1px 7px; border-radius: 5px;
       vertical-align: middle; letter-spacing: 0.3px;
     }
     .logo-sub {
       display: flex; align-items: center; gap: 4px;
-      font-size: 0.62rem; color: var(--muted); margin-top: 3px; letter-spacing: 0.3px;
+      font-size: 0.82rem; color: var(--muted); margin-top: 3px; letter-spacing: 0.3px;
     }
     .hdr-sub-sep { color: var(--border2); }
 
     /* Header badges */
     .hbadge {
       padding: 4px 12px; border-radius: 20px;
-      font-size: 0.67rem; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+      font-size: 0.85rem; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
       border: 1px solid transparent; transition: all 0.2s; white-space: nowrap;
     }
     .hbadge-blue   { background:rgba(59,130,246,0.12);  color:var(--blue);   border-color:rgba(59,130,246,0.3); }
@@ -92,7 +92,7 @@
     .regime-badge {
       display: flex; align-items: center; gap: 7px;
       padding: 5px 14px; border-radius: 22px;
-      font-size: 0.7rem; font-weight: 800; letter-spacing: 0.5px;
+      font-size: 0.88rem; font-weight: 800; letter-spacing: 0.5px;
       border: 1px solid; transition: all 0.3s; cursor: default;
     }
     .regime-badge .rb-arrow { font-size: 0.75rem; opacity: 0.8; }
@@ -103,14 +103,14 @@
 
     /* Header status / info */
     .hdr-info { display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
-    .hdr-info-top { font-size:0.7rem; color:var(--text); font-weight:600; }
-    .hdr-info-sub { font-size:0.6rem; color:var(--muted); }
+    .hdr-info-top { font-size:0.88rem; color:var(--text); font-weight:600; }
+    .hdr-info-sub { font-size:0.75rem; color:var(--muted); }
 
     .status-pill {
       display: flex; align-items: center; gap: 6px;
       padding: 4px 12px; border-radius: 20px;
       background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25);
-      font-size: 0.67rem; font-weight: 700; color: var(--green);
+      font-size: 0.85rem; font-weight: 700; color: var(--green);
     }
     .status-pill.bad { background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.25); color:var(--red); }
     .status-dot { width:7px; height:7px; border-radius:50%; background:var(--green); flex-shrink:0; box-shadow:0 0 5px rgba(16,185,129,0.6); animation:pulse-green 2s infinite; }
@@ -138,11 +138,11 @@
 
     .section-hdr {
       display: flex; align-items: center; gap: 8px;
-      font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted);
+      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted);
       padding-bottom: 6px; border-bottom: 1px solid var(--border);
     }
     .section-hdr .dot { width:5px; height:5px; border-radius:50%; background:var(--blue); }
-    .section-hdr .cnt { margin-left:auto; font-size:0.65rem; color:var(--muted); }
+    .section-hdr .cnt { margin-left:auto; font-size:0.82rem; color:var(--muted); }
 
     /* ══ BASE CARD ════════════════════════════════════════════ */
     .card {
@@ -155,8 +155,8 @@
     .card:hover { border-color: var(--border2); }
     .card-sm { padding: 12px 14px; border-radius: 12px; }
 
-    .clabel { font-size:0.58rem; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); margin-bottom:6px; display:flex; align-items:center; gap:5px; }
-    .clabel .ico { width:14px; height:14px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.65rem; }
+    .clabel { font-size:0.75rem; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+    .clabel .ico { width:14px; height:14px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.82rem; }
 
     /* ══ KPI CARDS ════════════════════════════════════════════ */
     .kpi-card { border-radius: 12px; padding: 16px 18px; border: 1px solid var(--border); position:relative; overflow:hidden; }
@@ -180,7 +180,7 @@
     .kpi-icon-purple { background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.2); }
 
     .kpi-val  { font-size:1.35rem; font-weight:800; letter-spacing:-0.5px; line-height:1.1; }
-    .kpi-sub  { font-size:0.65rem; color:var(--muted); margin-top:5px; }
+    .kpi-sub  { font-size:0.82rem; color:var(--muted); margin-top:5px; }
     .kpi-sub b{ color:var(--text); font-weight:600; }
 
     /* ══ COLORS ═══════════════════════════════════════════════ */
@@ -196,7 +196,7 @@
     .coin-sol  { background:linear-gradient(135deg,#a78bfa,#6d28d9); color:#fff; box-shadow:0 4px 12px rgba(139,92,246,0.35); }
 
     /* pill actions */
-    .action-pill { padding:5px 14px; border-radius:7px; font-size:0.68rem; font-weight:800; letter-spacing:0.8px; text-align:center; text-transform:uppercase; flex-shrink:0; }
+    .action-pill { padding:5px 14px; border-radius:7px; font-size:0.88rem; font-weight:800; letter-spacing:0.8px; text-align:center; text-transform:uppercase; flex-shrink:0; }
     .ap-buy   { background:rgba(16,185,129,0.15);  color:#34d399; border:1px solid rgba(16,185,129,0.35); }
     .ap-sell  { background:rgba(239,68,68,0.15);   color:#fca5a5; border:1px solid rgba(239,68,68,0.35); }
     .ap-hold  { background:rgba(255,255,255,0.05); color:#6b7280; border:1px solid rgba(255,255,255,0.10); }
@@ -208,14 +208,14 @@
     .score-wrap   { position:relative; flex:1; height:18px; background:rgba(255,255,255,0.07); border-radius:9px; overflow:hidden; }
     .score-fill   { position:relative; height:100%; border-radius:9px; transition:width 0.6s cubic-bezier(.4,0,.2,1); overflow:visible; }
     .score-thresh { position:absolute; top:-3px; bottom:-3px; width:2px; background:rgba(255,255,255,0.5); border-radius:2px; }
-    .score-label  { position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:0.68rem; font-weight:800; color:rgba(255,255,255,0.9); pointer-events:none; white-space:nowrap; }
+    .score-label  { position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:0.88rem; font-weight:800; color:rgba(255,255,255,0.9); pointer-events:none; white-space:nowrap; }
 
     /* SL/TP boxes */
     .sl-tp-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:12px; }
     .sl-box { background:rgba(239,68,68,0.10);   border:1px solid rgba(239,68,68,0.22);  border-radius:9px; padding:9px 10px; text-align:center; }
     .en-box { background:rgba(59,130,246,0.08);  border:1px solid rgba(59,130,246,0.20); border-radius:9px; padding:9px 10px; text-align:center; }
     .tp-box { background:rgba(16,185,129,0.10);  border:1px solid rgba(16,185,129,0.22); border-radius:9px; padding:9px 10px; text-align:center; }
-    .slt-label { font-size:0.52rem; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.35); margin-bottom:4px; }
+    .slt-label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.35); margin-bottom:4px; }
     .slt-val   { font-size:0.88rem; font-weight:800; letter-spacing:-0.3px; }
 
     /* ══ MOTOR PROBABILÍSTICO ════════════════════════════════ */
@@ -227,21 +227,43 @@
     .motor-regime-box.rb-trend .motor-regime-txt { color:var(--green); }
     .motor-regime-box.rb-panic .motor-regime-txt { color:var(--red); }
     .motor-regime-box.rb-other .motor-regime-txt { color:var(--blue); }
-    .motor-sizing-row { display:flex; gap:14px; flex-wrap:wrap; font-size:0.62rem; color:rgba(255,255,255,0.4); }
+    .motor-sizing-row { display:flex; gap:14px; flex-wrap:wrap; font-size:0.82rem; color:rgba(255,255,255,0.4); }
     .msr-val { color:rgba(255,255,255,0.72); font-weight:600; }
+    /* Sizing grid colapsa para 2 colunas em telas estreitas */
+    @media (max-width: 520px) {
+      #motor-sizing-grid { grid-template-columns: 1fr 1fr !important; }
+    }
+    /* Motor — Funil de Decisão */
+    .motor-section { background:rgba(255,255,255,0.025); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+    .motor-section-lbl { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.9px; color:var(--muted); margin-bottom:7px; }
+    .funnel-row { display:flex; align-items:center; gap:0; overflow-x:auto; padding-bottom:2px; }
+    .funnel-stage { flex:1; min-width:58px; text-align:center; padding:6px 3px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:7px; transition:all .3s; }
+    .funnel-stage.fs-pass { background:rgba(16,185,129,0.09); border-color:rgba(16,185,129,0.35); }
+    .funnel-stage.fs-fail { background:rgba(239,68,68,0.09); border-color:rgba(239,68,68,0.35); }
+    .funnel-stage.fs-skip { opacity:0.3; filter:saturate(0); }
+    .fs-label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:3px; }
+    .fs-icon  { font-size:0.85rem; line-height:1; margin-bottom:2px; }
+    .fs-detail { font-size:0.75rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    .funnel-arrow { color:var(--border2); font-size:0.82rem; padding:0 3px; align-self:center; flex-shrink:0; }
+    /* Motor — Decisão Final banner */
+    .motor-decision { border-radius:10px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); border:1px solid var(--border2); transition:all .3s; }
+    .motor-decision.md-long  { background:rgba(16,185,129,0.09);  border-color:rgba(16,185,129,0.35); }
+    .motor-decision.md-short { background:rgba(239,68,68,0.09);   border-color:rgba(239,68,68,0.35); }
+    .motor-decision.md-hold  { background:rgba(148,163,184,0.06); border-color:rgba(148,163,184,0.2); }
+    .md-badge { font-size:1.05rem; font-weight:900; padding:5px 18px; border-radius:8px; border:2px solid currentColor; opacity:0.85; }
 
     .mrisk-list { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
     .mrisk-top  { display:grid; grid-template-columns:1fr auto auto auto; align-items:baseline; gap:8px; margin-bottom:4px; }
-    .mrisk-name   { font-size:0.7rem; font-weight:600; }
-    .mrisk-limit  { font-size:0.6rem; color:var(--muted); }
+    .mrisk-name   { font-size:0.88rem; font-weight:600; }
+    .mrisk-limit  { font-size:0.75rem; color:var(--muted); }
     .mrisk-val    { font-size:0.78rem; font-weight:800; text-align:right; min-width:44px; }
-    .mrisk-status { font-size:0.6rem; color:var(--muted); min-width:72px; text-align:right; }
+    .mrisk-status { font-size:0.75rem; color:var(--muted); min-width:72px; text-align:right; }
     .mrisk-track  { height:15px; background:#0d1520; border-radius:7px; overflow:hidden; }
     .mrisk-fill   { height:15px; border-radius:7px; transition:width 0.6s cubic-bezier(.4,0,.2,1); }
 
     .motor-adapt-row   { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
-    .motor-adapt-label { font-size:0.62rem; color:var(--muted); }
-    .madapt-chip { padding:3px 10px; border-radius:20px; font-size:0.62rem; border:1px solid transparent; }
+    .motor-adapt-label { font-size:0.82rem; color:var(--muted); }
+    .madapt-chip { padding:3px 10px; border-radius:20px; font-size:0.82rem; border:1px solid transparent; }
     .madapt-chip b { font-weight:800; margin-left:3px; }
     .madapt-blue   { background:rgba(59,130,246,0.1);  border-color:rgba(59,130,246,0.25);  color:var(--blue); }
     .madapt-green  { background:rgba(16,185,129,0.1);  border-color:rgba(16,185,129,0.25);  color:var(--green); }
@@ -250,7 +272,7 @@
 
     .thresh-row { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:14px; }
     .thresh-box { padding:9px 4px; border-radius:10px; text-align:center; border:1px solid transparent; }
-    .thresh-box .tval { font-weight:800; font-size:0.65rem; display:block; }
+    .thresh-box .tval { font-weight:800; font-size:0.82rem; display:block; }
     .t-hold   { background:rgba(107,114,128,0.08); border-color:rgba(107,114,128,0.25); color:var(--muted); }
     .t-reduce { background:rgba(245,158,11,0.08); border-color:rgba(245,158,11,0.2); color:var(--yellow); }
     .t-normal { background:rgba(59,130,246,0.08); border-color:rgba(59,130,246,0.2); color:var(--blue); }
@@ -259,20 +281,20 @@
     .calib-row  { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding-top:12px; border-top:1px solid var(--border); }
     .calib-item { text-align:center; background:rgba(255,255,255,0.02); border-radius:10px; padding:9px 6px; border:1px solid var(--border); }
     .calib-val   { font-size:1rem; font-weight:800; margin-bottom:3px; }
-    .calib-label { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); }
+    .calib-label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); }
 
 
     .dist-bar { height:7px; border-radius:20px; overflow:hidden; display:flex; margin-top:8px; }
     .dist-buy  { background:linear-gradient(90deg,var(--green),#059669); transition:flex 0.5s; }
     .dist-rej  { background:linear-gradient(90deg,#dc2626,var(--red));   transition:flex 0.5s; }
-    .dist-lbls { display:flex; justify-content:space-between; font-size:0.6rem; color:var(--muted); margin-top:4px; }
+    .dist-lbls { display:flex; justify-content:space-between; font-size:0.75rem; color:var(--muted); margin-top:4px; }
 
     /* ══ WATCHDOGS ════════════════════════════════════════════ */
     .wd-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     .wd-item { background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:10px; padding:10px 12px; }
-    .wd-name { font-size:0.57rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:5px; }
+    .wd-name { font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:5px; }
     .wd-status { font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:5px; margin-bottom:3px; }
-    .wd-detail { font-size:0.62rem; color:var(--muted); }
+    .wd-detail { font-size:0.82rem; color:var(--muted); }
     .wd-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
     .wd-dot.ok  { background:var(--green); box-shadow:0 0 5px rgba(16,185,129,0.5); }
     .wd-dot.bad { background:var(--red);   box-shadow:0 0 5px rgba(239,68,68,0.5); }
@@ -281,7 +303,7 @@
 
     /* ══ SIGNAL FEED REDESIGN ═════════════════════════════════ */
     .feed-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-    .feed-live { display:flex; align-items:center; gap:6px; font-size:0.65rem; color:var(--green); }
+    .feed-live { display:flex; align-items:center; gap:6px; font-size:0.82rem; color:var(--green); }
     .feed-live .dot-live { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 5px rgba(16,185,129,0.6); animation:pulse-green 1.5s infinite; }
 
     /* ══ SIGNAL FEED ══════════════════════════════════════════ */
@@ -293,12 +315,12 @@
     .feed-entry {
       display:grid; grid-template-columns:50px 52px 96px 1fr;
       gap:8px; align-items:center; padding:6px 8px; border-radius:8px;
-      font-size:0.68rem; transition:background 0.15s;
+      font-size:0.88rem; transition:background 0.15s;
     }
     .feed-entry:hover { background:rgba(255,255,255,0.03); }
-    .feed-time   { color:var(--muted); font-size:0.6rem; font-variant-numeric:tabular-nums; }
-    .feed-sym    { font-weight:700; font-size:0.72rem; }
-    .feed-result { font-weight:700; font-size:0.63rem; padding:2px 7px; border-radius:5px; text-align:center; white-space:nowrap; }
+    .feed-time   { color:var(--muted); font-size:0.75rem; font-variant-numeric:tabular-nums; }
+    .feed-sym    { font-weight:700; font-size:0.92rem; }
+    .feed-result { font-weight:700; font-size:0.82rem; padding:2px 7px; border-radius:5px; text-align:center; white-space:nowrap; }
     .feed-detail { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
     .fr-SIGNAL         { background:rgba(16,185,129,0.12); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
@@ -312,18 +334,18 @@
     .trade-item { display:grid; grid-template-columns:56px 1fr auto; gap:10px; align-items:center; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,0.02); margin-bottom:6px; transition:background 0.15s; }
     .trade-item:hover { background:rgba(255,255,255,0.04); }
     .trade-item:last-child { margin-bottom:0; }
-    .trade-pill { padding:4px 10px; border-radius:7px; font-size:0.68rem; font-weight:800; letter-spacing:0.5px; text-align:center; }
+    .trade-pill { padding:4px 10px; border-radius:7px; font-size:0.88rem; font-weight:800; letter-spacing:0.5px; text-align:center; }
     .tp-buy  { background:rgba(16,185,129,0.15); color:var(--green); border:1px solid rgba(16,185,129,0.3); }
     .tp-sell { background:rgba(239,68,68,0.15);  color:var(--red);   border:1px solid rgba(239,68,68,0.3); }
     .trade-sym { font-size:0.82rem; font-weight:700; margin-bottom:2px; }
-    .trade-meta { font-size:0.62rem; color:var(--muted); }
+    .trade-meta { font-size:0.82rem; color:var(--muted); }
     .trade-meta .strat { color:var(--blue); }
     .trade-right { text-align:right; }
     .trade-pnl { font-size:0.95rem; font-weight:800; letter-spacing:-0.3px; }
-    .trade-ts { font-size:0.6rem; color:var(--muted); margin-top:2px; }
+    .trade-ts { font-size:0.75rem; color:var(--muted); margin-top:2px; }
 
     /* ══ REGIME TAGS ══════════════════════════════════════════ */
-    .rtag { padding:2px 8px; border-radius:5px; font-size:0.6rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; display:inline-block; }
+    .rtag { padding:2px 8px; border-radius:5px; font-size:0.75rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; display:inline-block; }
     .rtag-chop  { background:rgba(245,158,11,0.12); color:var(--yellow); border:1px solid rgba(245,158,11,0.25); }
     .rtag-trend { background:rgba(16,185,129,0.12); color:var(--green);  border:1px solid rgba(16,185,129,0.25); }
     .rtag-corr  { background:rgba(239,68,68,0.12);  color:var(--red);    border:1px solid rgba(239,68,68,0.25); }
@@ -332,8 +354,8 @@
     .rtag-exh   { background:rgba(139,92,246,0.12); color:var(--purple); border:1px solid rgba(139,92,246,0.25); }
 
     /* score + EV pills */
-    .spill { padding:2px 8px; border-radius:5px; font-size:0.62rem; font-weight:700; background:rgba(255,255,255,0.05); border:1px solid var(--border2); }
-    .evpill { padding:2px 8px; border-radius:5px; font-size:0.62rem; font-weight:700; }
+    .spill { padding:2px 8px; border-radius:5px; font-size:0.82rem; font-weight:700; background:rgba(255,255,255,0.05); border:1px solid var(--border2); }
+    .evpill { padding:2px 8px; border-radius:5px; font-size:0.82rem; font-weight:700; }
     .evpill.pos { background:rgba(16,185,129,0.1); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
     .evpill.neg { background:rgba(239,68,68,0.1);  color:var(--red);   border:1px solid rgba(239,68,68,0.2); }
     .evpill.neu { background:rgba(90,106,126,0.1); color:var(--muted); border:1px solid var(--border); }
@@ -343,35 +365,35 @@
     .sfeed-item:hover { background:rgba(255,255,255,0.04); border-color:var(--border2); }
     .sfeed-item.sfeed-signal { border-color:rgba(16,185,129,0.35); background:rgba(16,185,129,0.05); }
     .sfeed-top { display:flex; align-items:center; gap:7px; margin-bottom:5px; }
-    .sfeed-ts  { margin-left:auto; font-size:0.6rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+    .sfeed-ts  { margin-left:auto; font-size:0.75rem; color:var(--muted); font-variant-numeric:tabular-nums; }
     .sfeed-tags { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
 
     /* Charts */
-    .chart-btn { padding:3px 10px; border-radius:6px; font-size:0.62rem; font-weight:600; background:transparent; border:1px solid var(--border2); color:var(--muted); cursor:pointer; transition:all 0.15s; }
+    .chart-btn { padding:3px 10px; border-radius:6px; font-size:0.82rem; font-weight:600; background:transparent; border:1px solid var(--border2); color:var(--muted); cursor:pointer; transition:all 0.15s; }
     .chart-btn.active { background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.4); color:var(--blue); }
     .chart-btn:hover { border-color:var(--border2); color:var(--text); }
 
     /* Donut legend */
     .donut-legend { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
-    .donut-row { display:flex; align-items:center; justify-content:space-between; font-size:0.7rem; }
+    .donut-row { display:flex; align-items:center; justify-content:space-between; font-size:0.88rem; }
     .donut-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-right:7px; }
     .donut-sym { display:flex; align-items:center; color:var(--muted); }
     .donut-val { font-weight:700; color:var(--text); }
-    .donut-pct { color:var(--muted); font-size:0.65rem; margin-left:5px; }
+    .donut-pct { color:var(--muted); font-size:0.82rem; margin-left:5px; }
 
     /* ══ TABLES ═══════════════════════════════════════════════ */
     .table-wrap { overflow-x:auto; }
     .table-wrap::-webkit-scrollbar { height:4px; }
     .table-wrap::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
-    table { width:100%; border-collapse:collapse; font-size:0.73rem; }
+    table { width:100%; border-collapse:collapse; font-size:0.92rem; }
     thead { background:rgba(255,255,255,0.02); }
-    th { text-align:left; padding:8px 12px; font-size:0.57rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); border-bottom:1px solid var(--border); white-space:nowrap; font-weight:600; }
+    th { text-align:left; padding:8px 12px; font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); border-bottom:1px solid var(--border); white-space:nowrap; font-weight:600; }
     td { padding:9px 12px; border-bottom:1px solid rgba(30,42,58,0.5); white-space:nowrap; }
     tr:last-child td { border-bottom:none; }
     tr:hover td { background:rgba(255,255,255,0.02); }
-    .empty-row td { color:var(--muted); text-align:center; padding:24px; font-size:0.72rem; }
+    .empty-row td { color:var(--muted); text-align:center; padding:24px; font-size:0.92rem; }
 
-    .pill { display:inline-block; padding:2px 9px; border-radius:6px; font-size:0.62rem; font-weight:700; letter-spacing:0.3px; }
+    .pill { display:inline-block; padding:2px 9px; border-radius:6px; font-size:0.82rem; font-weight:700; letter-spacing:0.3px; }
     .pill-buy,.pill-long   { background:rgba(16,185,129,0.12); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
     .pill-sell,.pill-short { background:rgba(239,68,68,0.12);  color:var(--red);   border:1px solid rgba(239,68,68,0.2); }
     .pill-filled    { background:rgba(16,185,129,0.12); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
@@ -454,248 +476,352 @@
 <!-- ══ MOTOR ═══════════════════════════════════════════════ -->
 <div class="grid" style="grid-template-columns:1fr">
 
-  <!-- Motor Probabilístico -->
+  <!-- Motor Probabilístico — redesigned -->
   <div class="card">
     <div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:0.5px;margin-bottom:12px;">Motor Probabilístico</div>
 
-    <!-- Regime box (estilo CCTBv4) -->
-    <div id="motor-regime-box" class="motor-regime-box">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <div class="motor-regime-txt" id="motor-regime">⇄ – — –</div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:0.55rem;text-transform:uppercase;letter-spacing:1px;opacity:0.6">RISK ENGINE</span>
-          <span id="motor-badge" class="hbadge hbadge-gray" style="font-size:0.6rem">normal</span>
-        </div>
-      </div>
-      <!-- Sizing detail -->
-      <div style="margin-top:10px;display:flex;flex-direction:column;gap:7px;">
-        <!-- Kelly bar -->
+    <!-- ① DECISÃO FINAL -->
+    <div id="motor-decision-banner" class="motor-decision md-hold">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span id="motor-decision-badge" class="md-badge" style="color:var(--muted)">– –</span>
         <div>
-          <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);margin-bottom:3px">Kelly score</div>
-          <div style="position:relative;height:18px;background:#0d1520;border-radius:9px;overflow:hidden;">
-            <div id="motor-kelly-fill" style="position:relative;height:100%;border-radius:9px;background:var(--blue);transition:width 0.5s;width:0%">
-              <span id="motor-kelly-val" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:0.68rem;font-weight:800;color:rgba(255,255,255,0.9);white-space:nowrap;">–</span>
-            </div>
-            <div id="motor-kelly-cap-line" style="position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;left:8%"></div>
-          </div>
-          <div style="font-size:0.55rem;color:rgba(255,255,255,0.3);margin-top:2px">cap <span id="motor-kelly-cap-lbl">–%</span></div>
-        </div>
-        <!-- Kelly Breakdown — sz_* multipliers (aparece quando há SIGNAL) -->
-        <div id="kelly-breakdown" style="display:none;margin-top:4px;">
-          <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.6px">Kelly Dinâmico — Multiplicadores</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap;" id="kelly-chips"></div>
-        </div>
-        <!-- Notional + SL/TP + Score atual -->
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:7px;padding:4px 10px;text-align:center;">
-            <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.8px">Notional est.</div>
-            <div style="font-size:0.82rem;font-weight:800;color:var(--blue)" id="motor-notional">–</div>
-          </div>
-          <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:7px;padding:4px 10px;text-align:center;">
-            <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.8px">Stop Loss</div>
-            <div style="font-size:0.82rem;font-weight:800;color:var(--red)" id="motor-sl">–1.5%</div>
-          </div>
-          <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:7px;padding:4px 10px;text-align:center;">
-            <div style="font-size:0.55rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.8px">Take Profit</div>
-            <div style="font-size:0.82rem;font-weight:800;color:var(--green)" id="motor-tp">+3.0%</div>
-          </div>
-          <div style="flex:1;min-width:120px;">
-            <div style="font-size:0.55rem;color:rgba(255,255,255,0.35);margin-bottom:3px">Score atual</div>
-            <div style="height:18px;background:#0d1520;border-radius:9px;position:relative;overflow:hidden;">
-              <div id="motor-score-fill" style="position:relative;height:100%;border-radius:9px;background:var(--red);transition:width 0.5s;width:0%">
-                <span id="motor-score-now" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:0.68rem;font-weight:800;color:rgba(255,255,255,0.9);white-space:nowrap;">–</span>
-              </div>
-              <div id="motor-score-thr-line" style="position:absolute;top:0;bottom:0;left:56%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;"></div>
-            </div>
-            <div style="font-size:0.58rem;color:rgba(255,255,255,0.3);margin-top:2px">thr <span id="motor-score-thr">56%</span></div>
-          </div>
+          <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px;">Decisão Final</div>
+          <div style="font-size:0.88rem;">Score: <b id="motor-decision-score">–</b> · Kelly: <b id="motor-decision-kelly">–</b> · Thr: <b id="motor-decision-thr">–</b></div>
         </div>
       </div>
-      <!-- Regime Distribution — Phase 16 meta-learning probabilístico -->
-      <div id="regime-dist-row" style="margin-top:6px;margin-bottom:6px;display:none;">
-        <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px;">Distribuição de Regime <span id="regime-dist-conf" style="color:var(--muted)"></span></div>
-        <div style="display:flex;gap:3px;align-items:flex-end;height:28px;" id="regime-dist-bars"></div>
-        <div style="font-size:0.48rem;color:var(--muted);margin-top:2px;">thr blendado: ×<span id="regime-thr-blend">–</span> · hard: ×<span id="regime-thr-hard">–</span></div>
-      </div>
-      <!-- Edge Gates — condicionadores do EdgeConditioner (ec_*) -->
-      <div id="edge-gates-row" style="margin-top:8px;margin-bottom:4px;">
-        <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px;">Edge Gates</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;" id="edge-chips">
-          <span style="font-size:0.55rem;color:var(--muted);font-style:italic">aguardando sinal…</span>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:4px;align-items:center;flex-wrap:wrap;" id="edge-sizing-row" style="display:none;">
-          <span id="edge-sizing-chip" style="font-size:0.58rem;padding:1px 7px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);color:var(--muted)">Sizing –</span>
-          <span id="edge-wrdiff-chip" style="font-size:0.58rem;padding:1px 7px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);color:var(--muted)">WR diff –</span>
-          <span id="edge-blocked-chip" style="display:none;font-size:0.58rem;padding:1px 7px;border-radius:10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#ef4444;font-weight:700">⛔ BLOQUEADO</span>
-        </div>
-      </div>
-      <!-- Moduladores de threshold: Meta Regime + ATR Adaptativo -->
-      <div id="motor-thr-mods" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;margin-bottom:2px;">
-        <span style="font-size:0.58rem;color:var(--muted)">Threshold modulado por:</span>
-        <span id="motor-meta-chip" style="font-size:0.58rem;padding:1px 7px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);color:var(--muted)">Meta –</span>
-        <span id="motor-atr-chip"  style="font-size:0.58rem;padding:1px 7px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);color:var(--muted)">ATR p50 –</span>
+      <div style="text-align:right;">
+        <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px;">Risk Engine</div>
+        <span id="motor-badge" class="hbadge hbadge-gray" style="font-size:0.75rem">normal</span>
       </div>
     </div>
 
-    <!-- Métricas de risco estilo CCTBv4 -->
-    <div class="mrisk-list">
-      <div class="mrisk-item">
-        <div class="mrisk-top">
-          <span class="mrisk-name">Beta Portfolio</span>
-          <span class="mrisk-limit">limite 1.8</span>
-          <span class="mrisk-val" id="rv-beta">–</span>
-          <span class="mrisk-status" id="rs-beta">–</span>
+    <!-- ② FUNIL DE DECISÃO -->
+    <div class="motor-section">
+      <div class="motor-section-lbl">② Funil de Decisão</div>
+      <div class="funnel-row">
+        <div class="funnel-stage" id="fs-regime">
+          <div class="fs-label">Regime</div>
+          <div class="fs-icon" id="fs-regime-icon">?</div>
+          <div class="fs-detail" id="fs-regime-detail">–</div>
         </div>
-        <div class="mrisk-track"><div class="mrisk-fill" id="rb-beta" style="width:0"></div></div>
-      </div>
-      <div class="mrisk-item">
-        <div class="mrisk-top">
-          <span class="mrisk-name">Drawdown Diário</span>
-          <span class="mrisk-limit">limite 3%</span>
-          <span class="mrisk-val" id="rv-dd">–</span>
-          <span class="mrisk-status" id="rs-dd">–</span>
+        <div class="funnel-arrow">▸</div>
+        <div class="funnel-stage" id="fs-score">
+          <div class="fs-label">Score</div>
+          <div class="fs-icon" id="fs-score-icon">?</div>
+          <div class="fs-detail" id="fs-score-detail">–</div>
         </div>
-        <div class="mrisk-track"><div class="mrisk-fill" id="rb-dd" style="width:0"></div></div>
-      </div>
-      <div class="mrisk-item">
-        <div class="mrisk-top">
-          <span class="mrisk-name">Win Rate (calibração)</span>
-          <span class="mrisk-limit">>40% saudável</span>
-          <span class="mrisk-val b" id="calib-wr">–</span>
-          <span class="mrisk-status" id="rs-wr">–</span>
+        <div class="funnel-arrow">▸</div>
+        <div class="funnel-stage" id="fs-gates">
+          <div class="fs-label">Gates</div>
+          <div class="fs-icon" id="fs-gates-icon">?</div>
+          <div class="fs-detail" id="fs-gates-detail">–</div>
         </div>
-        <div class="mrisk-track"><div class="mrisk-fill" id="rb-wr" style="width:0;background:var(--blue)"></div></div>
-      </div>
-      <div class="mrisk-item">
-        <div class="mrisk-top">
-          <span class="mrisk-name">Exposição Total</span>
-          <span class="mrisk-limit">limite 50%</span>
-          <span class="mrisk-val" id="rv-exp">–</span>
-          <span class="mrisk-status" id="rs-exp">–</span>
+        <div class="funnel-arrow">▸</div>
+        <div class="funnel-stage" id="fs-ev">
+          <div class="fs-label">EV</div>
+          <div class="fs-icon" id="fs-ev-icon">?</div>
+          <div class="fs-detail" id="fs-ev-detail">–</div>
         </div>
-        <div class="mrisk-track"><div class="mrisk-fill" id="rb-exp" style="width:0"></div></div>
+        <div class="funnel-arrow">▸</div>
+        <div class="funnel-stage" id="fs-sizing">
+          <div class="fs-label">Sizing</div>
+          <div class="fs-icon" id="fs-sizing-icon">?</div>
+          <div class="fs-detail" id="fs-sizing-detail">–</div>
+        </div>
       </div>
     </div>
 
-    <!-- Pesos adaptativos — barras por fator -->
-    <div style="margin-bottom:12px;">
-      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">Fatores do Score</div>
-      <div style="display:grid;grid-template-columns:90px 1fr 38px 52px;align-items:center;gap:8px 10px;">
-        <span style="font-size:0.62rem;color:var(--text)">Momentum (M1)</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m1" style="height:15px;border-radius:7px;background:#3b82f6;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#3b82f6;text-align:right" id="w-m1">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 2%</span>
+    <!-- ③ REGIME -->
+    <div id="motor-regime-box" class="motor-section motor-regime-box" style="margin-bottom:10px;padding:14px 16px;">
+      <div class="motor-section-lbl">③ Regime</div>
 
-        <span style="font-size:0.62rem;color:var(--text)">Estrutura (M2)</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m2" style="height:15px;border-radius:7px;background:#10b981;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#10b981;text-align:right" id="w-m2">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 11%</span>
+      <!-- Nome do regime — linha própria, sem sobreposição -->
+      <div class="motor-regime-txt" id="motor-regime"
+           style="font-size:1rem;line-height:1.35;word-break:break-word;margin-bottom:12px;">
+        ⇄ – — –
+      </div>
 
-        <span style="font-size:0.62rem;color:var(--text)">Volume (M3) ★</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:15px;border-radius:7px;background:#f59e0b;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#f59e0b;text-align:right" id="w-m3">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 33%</span>
+      <!-- Distribuição de Regime (Phase 16) — bloco separado -->
+      <div id="regime-dist-row" style="display:none;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:4px;">
+          <span style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);font-weight:600;">Distribuição de Regime</span>
+          <span id="regime-dist-conf" style="font-size:0.75rem;color:var(--muted);"></span>
+        </div>
+        <!-- Grid de 5 colunas iguais — cada barra tem % em cima + label embaixo -->
+        <div id="regime-dist-bars"
+             style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;align-items:end;">
+        </div>
+        <div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);
+                    font-size:0.75rem;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;">
+          <span>thr blendado: ×<span id="regime-thr-blend">–</span></span>
+          <span>hard: ×<span id="regime-thr-hard">–</span></span>
+        </div>
+      </div>
 
-        <!-- M4 removido (peso 0%, Spearman=-0.057) — IDs mantidos para JS -->
+      <!-- Moduladores de threshold -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:0.75rem;color:var(--muted);">thr mod:</span>
+        <span id="motor-meta-chip"
+              style="font-size:0.75rem;padding:3px 10px;border-radius:12px;
+                     border:1px solid rgba(255,255,255,0.12);color:var(--muted);">Meta –</span>
+        <span id="motor-atr-chip"
+              style="font-size:0.75rem;padding:3px 10px;border-radius:12px;
+                     border:1px solid rgba(255,255,255,0.12);color:var(--muted);">ATR p50 –</span>
+      </div>
+    </div>
+
+    <!-- ④ SCORE DO MOTOR -->
+    <div class="motor-section">
+      <div class="motor-section-lbl">④ Score do Motor</div>
+      <!-- Score bar -->
+      <div style="margin-bottom:8px;">
+        <div style="height:20px;background:#0d1520;border-radius:10px;position:relative;overflow:hidden;">
+          <div id="motor-score-fill" style="position:relative;height:100%;border-radius:10px;background:var(--red);transition:width 0.5s;width:0%">
+            <span id="motor-score-now" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:0.88rem;font-weight:800;color:rgba(255,255,255,0.9);white-space:nowrap;">–</span>
+          </div>
+          <div id="motor-score-thr-line" style="position:absolute;top:0;bottom:0;left:56%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;"></div>
+        </div>
+        <div style="font-size:0.75rem;color:rgba(255,255,255,0.3);margin-top:2px;">threshold: <span id="motor-score-thr">56%</span></div>
+      </div>
+      <!-- M factors -->
+      <div style="display:grid;grid-template-columns:120px 1fr 40px 44px;align-items:center;gap:5px 8px;margin-bottom:8px;">
+        <span style="font-size:0.75rem;color:var(--text)">Momentum (M1)</span>
+        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m1" style="height:13px;border-radius:7px;background:#3b82f6;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#3b82f6;text-align:right" id="w-m1">–</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">2%</span>
+
+        <span style="font-size:0.75rem;color:var(--text)">Estrutura (M2)</span>
+        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m2" style="height:13px;border-radius:7px;background:#10b981;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#10b981;text-align:right" id="w-m2">–</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">11%</span>
+
+        <span style="font-size:0.75rem;color:var(--text)">Volume (M3) ★</span>
+        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:13px;border-radius:7px;background:#f59e0b;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#f59e0b;text-align:right" id="w-m3">–</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">33%</span>
+
+        <!-- M4 removido (peso 0%) — IDs mantidos para JS -->
         <span id="w-m4"  style="display:none"></span>
         <span id="wb-m4" style="display:none"></span>
 
-        <span style="font-size:0.62rem;color:var(--text)">Candle (M5)</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m5" style="height:15px;border-radius:7px;background:#f97316;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#f97316;text-align:right" id="w-m5">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 6%</span>
+        <span style="font-size:0.75rem;color:var(--text)">Candle (M5)</span>
+        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m5" style="height:13px;border-radius:7px;background:#f97316;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#f97316;text-align:right" id="w-m5">–</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">6%</span>
 
-        <span style="font-size:0.62rem;color:var(--text)">Futures (M6)</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m6" style="height:15px;border-radius:7px;background:#06b6d4;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#06b6d4;text-align:right" id="w-m6">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 12%</span>
+        <span style="font-size:0.75rem;color:var(--text)">Futures (M6)</span>
+        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m6" style="height:13px;border-radius:7px;background:#06b6d4;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#06b6d4;text-align:right" id="w-m6">–</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">12%</span>
 
-        <span style="font-size:0.62rem;color:var(--text)">Rel. Strength (M7)</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m7" style="height:15px;border-radius:7px;background:#a78bfa;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#a78bfa;text-align:right" id="w-m7">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 11%</span>
+        <span style="font-size:0.75rem;color:var(--text)">Rel. Strength (M7)</span>
+        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m7" style="height:13px;border-radius:7px;background:#a78bfa;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#a78bfa;text-align:right" id="w-m7">–</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">11%</span>
 
-        <span style="font-size:0.62rem;color:var(--text)">Vol. State (M8) ★</span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m8" style="height:15px;border-radius:7px;background:#ec4899;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#ec4899;text-align:right" id="w-m8">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 19%</span>
+        <span style="font-size:0.75rem;color:var(--text)">Vol. State (M8) ★</span>
+        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m8" style="height:13px;border-radius:7px;background:#ec4899;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#ec4899;text-align:right" id="w-m8">–</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">19%</span>
 
-        <span style="font-size:0.62rem;color:var(--text)" title="Fear&amp;Greed Index + CoinGecko sentiment">Sentiment (M9) <span id="m9-fng-badge" style="font-size:0.55rem;color:var(--muted)"></span></span>
-        <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m9" style="height:15px;border-radius:7px;background:#84cc16;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.65rem;font-weight:700;color:#84cc16;text-align:right" id="w-m9">–</span>
-        <span style="font-size:0.58rem;color:var(--muted);text-align:right;white-space:nowrap">peso 6%</span>
+        <span style="font-size:0.75rem;color:var(--text)">Sentiment (M9) <span id="m9-fng-badge" style="font-size:0.75rem;color:var(--muted)"></span></span>
+        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m9" style="height:13px;border-radius:7px;background:#84cc16;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#84cc16;text-align:right" id="w-m9">–</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">6%</span>
       </div>
-    </div>
-
-    <!-- M6 sub-scores compactos -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;margin-top:-4px;">
-      <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.15);border-radius:5px;padding:5px;text-align:center;">
-        <div style="font-size:0.48rem;color:var(--muted)">Funding Rate</div>
-        <div style="font-size:0.75rem;font-weight:700;color:#06b6d4" id="m6-funding">–</div>
-        <div style="font-size:0.48rem;color:var(--muted)" id="m6-funding-pct">–</div>
+      <!-- M6 / M7 / M8 sub-scores -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:8px;">
+        <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.15);border-radius:5px;padding:4px;text-align:center;">
+          <div style="font-size:0.75rem;color:var(--muted)">M6 · Funding</div>
+          <div style="font-size:0.88rem;font-weight:700;color:#06b6d4" id="m6-funding">–</div>
+          <div style="font-size:0.75rem;color:var(--muted)" id="m6-funding-pct">–</div>
+        </div>
+        <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.15);border-radius:5px;padding:4px;text-align:center;">
+          <div style="font-size:0.75rem;color:var(--muted)">M6 · OI Chg</div>
+          <div style="font-size:0.88rem;font-weight:700;color:#06b6d4" id="m6-oi">–</div>
+          <div style="font-size:0.75rem;color:var(--muted)" id="m6-oi-usd">–</div>
+        </div>
+        <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.15);border-radius:5px;padding:4px;text-align:center;">
+          <div style="font-size:0.75rem;color:var(--muted)">M6 · Sent.</div>
+          <div style="font-size:0.75rem;font-weight:700;color:#06b6d4;line-height:1.2" id="m6-sentiment">–</div>
+        </div>
+        <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:5px;padding:4px;text-align:center;">
+          <div style="font-size:0.75rem;color:var(--muted)">M7 · RS 1h</div>
+          <div style="font-size:0.88rem;font-weight:700;color:#a78bfa" id="m7-rs1h">–</div>
+          <div style="font-size:0.75rem;color:var(--muted)" id="m7-rs1h-raw">–</div>
+        </div>
+        <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:5px;padding:4px;text-align:center;">
+          <div style="font-size:0.75rem;color:var(--muted)">M7 · Lead.</div>
+          <div style="font-size:0.88rem;font-weight:700;color:#a78bfa" id="m7-lead">–</div>
+          <div style="font-size:0.75rem;color:var(--muted)" id="m7-lead-lbl">BTC</div>
+        </div>
+        <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:5px;padding:4px;text-align:center;">
+          <div style="font-size:0.75rem;color:var(--muted)">M7 · Trend</div>
+          <div style="font-size:0.88rem;font-weight:700;color:#a78bfa" id="m7-trend">–</div>
+        </div>
+        <div style="background:rgba(236,72,153,0.07);border:1px solid rgba(236,72,153,0.2);border-radius:5px;padding:4px;text-align:center;">
+          <div style="font-size:0.75rem;color:var(--muted)">M8 · Estado</div>
+          <div style="font-size:0.75rem;font-weight:700;color:#ec4899;line-height:1.2" id="m8-state">–</div>
+        </div>
+        <div style="background:rgba(236,72,153,0.07);border:1px solid rgba(236,72,153,0.2);border-radius:5px;padding:4px;text-align:center;">
+          <div style="font-size:0.75rem;color:var(--muted)">M8 · ATR%</div>
+          <div style="font-size:0.88rem;font-weight:700;color:#ec4899" id="m8-atr">–</div>
+        </div>
+        <div style="background:rgba(236,72,153,0.07);border:1px solid rgba(236,72,153,0.2);border-radius:5px;padding:4px;text-align:center;">
+          <div style="font-size:0.75rem;color:var(--muted)">M8 · Dir.</div>
+          <div style="font-size:0.88rem;font-weight:700;color:#ec4899" id="m8-dir">–</div>
+        </div>
       </div>
-      <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.15);border-radius:5px;padding:5px;text-align:center;">
-        <div style="font-size:0.48rem;color:var(--muted)">OI Change</div>
-        <div style="font-size:0.75rem;font-weight:700;color:#06b6d4" id="m6-oi">–</div>
-        <div style="font-size:0.48rem;color:var(--muted)" id="m6-oi-usd">–</div>
-      </div>
-      <div style="background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.15);border-radius:5px;padding:5px;text-align:center;">
-        <div style="font-size:0.48rem;color:var(--muted)">Sentiment</div>
-        <div style="font-size:0.6rem;font-weight:700;color:#06b6d4;line-height:1.2" id="m6-sentiment">–</div>
-      </div>
-    </div>
-    <!-- M7 sub-scores compactos -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px;">
-      <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:5px;padding:5px;text-align:center;">
-        <div style="font-size:0.48rem;color:var(--muted)">RS 1h</div>
-        <div style="font-size:0.75rem;font-weight:700;color:#a78bfa" id="m7-rs1h">–</div>
-        <div style="font-size:0.48rem;color:var(--muted)" id="m7-rs1h-raw">–</div>
-      </div>
-      <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:5px;padding:5px;text-align:center;">
-        <div style="font-size:0.48rem;color:var(--muted)">Leadership</div>
-        <div style="font-size:0.75rem;font-weight:700;color:#a78bfa" id="m7-lead">–</div>
-        <div style="font-size:0.48rem;color:var(--muted)" id="m7-lead-lbl">BTC</div>
-      </div>
-      <div style="background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.15);border-radius:5px;padding:5px;text-align:center;">
-        <div style="font-size:0.48rem;color:var(--muted)">RS Trend</div>
-        <div style="font-size:0.75rem;font-weight:700;color:#a78bfa" id="m7-trend">–</div>
-      </div>
-    </div>
-    <!-- M8 sub-scores compactos -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:12px;">
-      <div style="background:rgba(236,72,153,0.07);border:1px solid rgba(236,72,153,0.2);border-radius:5px;padding:5px;text-align:center;">
-        <div style="font-size:0.48rem;color:var(--muted)">Estado</div>
-        <div style="font-size:0.62rem;font-weight:700;color:#ec4899;line-height:1.2" id="m8-state">–</div>
-      </div>
-      <div style="background:rgba(236,72,153,0.07);border:1px solid rgba(236,72,153,0.2);border-radius:5px;padding:5px;text-align:center;">
-        <div style="font-size:0.48rem;color:var(--muted)">ATR%</div>
-        <div style="font-size:0.75rem;font-weight:700;color:#ec4899" id="m8-atr">–</div>
-      </div>
-      <div style="background:rgba(236,72,153,0.07);border:1px solid rgba(236,72,153,0.2);border-radius:5px;padding:5px;text-align:center;">
-        <div style="font-size:0.48rem;color:var(--muted)">Dir. Consist.</div>
-        <div style="font-size:0.75rem;font-weight:700;color:#ec4899" id="m8-dir">–</div>
-      </div>
-    </div>
-
-    <!-- Thresholds — com destaque na zona atual -->
-    <div style="margin-bottom:14px;">
-      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">Zona de operação (score atual)</div>
+      <!-- Zona de operação -->
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.6px;">Zona de operação</div>
       <div class="thresh-row" id="thresh-row">
-        <div class="thresh-box t-hold"   id="tz-hold">  <span class="tval" id="tz-hold-lbl">&lt;56%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">HOLD</div></div>
-        <div class="thresh-box t-reduce" id="tz-reduce"><span class="tval" id="tz-reduce-lbl">56–65%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">REDUZIDO ½×</div></div>
-        <div class="thresh-box t-normal" id="tz-normal"><span class="tval" id="tz-normal-lbl">65–75%</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">NORMAL 1×</div></div>
-        <div class="thresh-box t-agg"    id="tz-agg">   <span class="tval">75%+</span><div style="font-size:0.55rem;margin-top:2px;opacity:0.7">AGRESSIVO 1.5×</div></div>
+        <div class="thresh-box t-hold"   id="tz-hold">  <span class="tval" id="tz-hold-lbl">&lt;56%</span><div style="font-size:0.75rem;margin-top:2px;opacity:0.7">HOLD</div></div>
+        <div class="thresh-box t-reduce" id="tz-reduce"><span class="tval" id="tz-reduce-lbl">56–65%</span><div style="font-size:0.75rem;margin-top:2px;opacity:0.7">REDUZ. ½×</div></div>
+        <div class="thresh-box t-normal" id="tz-normal"><span class="tval" id="tz-normal-lbl">65–75%</span><div style="font-size:0.75rem;margin-top:2px;opacity:0.7">NORMAL 1×</div></div>
+        <div class="thresh-box t-agg"    id="tz-agg">   <span class="tval">75%+</span><div style="font-size:0.75rem;margin-top:2px;opacity:0.7">AGR. 1.5×</div></div>
       </div>
     </div>
 
-    <!-- IDs de calibração preservados (usados pelo JS) -->
-    <span id="calib-wr2" style="display:none"></span>
-    <span id="calib-n"   style="display:none"></span>
-    <span id="calib-date" style="display:none"></span>
+    <!-- ⑤ EDGE GATES -->
+    <div class="motor-section">
+      <div class="motor-section-lbl">⑤ Edge Gates</div>
+      <!-- tudo numa única faixa que quebra em mobile -->
+      <div id="edge-chips-all"
+           style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <!-- ec_* chips injetados pelo JS aqui -->
+        <span id="edge-chips-placeholder"
+              style="font-size:0.75rem;color:var(--muted);font-style:italic">aguardando sinal…</span>
+        <!-- separador visual (oculto até ter dados) -->
+        <span id="edge-sep"
+              style="display:none;width:1px;height:16px;background:var(--border2);
+                     border-radius:1px;flex-shrink:0;"></span>
+        <!-- sizing / wr diff / bloqueado -->
+        <span id="edge-sizing-chip"
+              style="display:none;font-size:0.75rem;padding:3px 10px;border-radius:12px;
+                     border:1px solid rgba(255,255,255,0.12);color:var(--muted)">Sizing –</span>
+        <span id="edge-wrdiff-chip"
+              style="display:none;font-size:0.75rem;padding:3px 10px;border-radius:12px;
+                     border:1px solid rgba(255,255,255,0.12);color:var(--muted)">WR diff –</span>
+        <span id="edge-blocked-chip"
+              style="display:none;font-size:0.75rem;padding:3px 10px;border-radius:12px;
+                     background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);
+                     color:#ef4444;font-weight:700;">⛔ BLOQUEADO</span>
+      </div>
+      <!-- row antigo mantido oculto para compatibilidade de IDs usados em JS -->
+      <div id="edge-chips" style="display:none;"></div>
+      <div id="edge-sizing-row" style="display:none;"></div>
+    </div>
 
-    <!-- Watchdogs — movidos para dentro do Motor -->
-    <div style="padding-top:12px;border-top:1px solid var(--border);">
-      <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;">🛡️ Watchdogs</div>
+    <!-- ⑥ SIZING -->
+    <div class="motor-section">
+      <div class="motor-section-lbl">⑥ Sizing</div>
+
+      <!-- Linha única: barra Kelly + Notional + SL + TP -->
+      <div id="motor-sizing-grid" style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;">
+
+        <!-- Kelly bar — ocupa o espaço restante -->
+        <div style="min-width:100px;">
+          <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-bottom:4px;">
+            Kelly · cap <span id="motor-kelly-cap-lbl">–%</span>
+          </div>
+          <div style="position:relative;height:22px;background:#0d1520;border-radius:11px;overflow:hidden;">
+            <div id="motor-kelly-fill"
+                 style="position:relative;height:100%;border-radius:11px;background:var(--blue);
+                        transition:width 0.5s;width:0%">
+              <span id="motor-kelly-val"
+                    style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+                           font-size:0.88rem;font-weight:800;color:#fff;white-space:nowrap;">–</span>
+            </div>
+            <div id="motor-kelly-cap-line"
+                 style="position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.45);
+                        border-radius:2px;left:8%"></div>
+          </div>
+        </div>
+
+        <!-- Notional -->
+        <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);
+                    border-radius:8px;padding:5px 12px;text-align:center;white-space:nowrap;">
+          <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
+                      letter-spacing:0.5px;margin-bottom:2px;">Notional</div>
+          <div style="font-size:0.92rem;font-weight:800;color:var(--blue)" id="motor-notional">–</div>
+        </div>
+
+        <!-- Stop Loss -->
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);
+                    border-radius:8px;padding:5px 12px;text-align:center;white-space:nowrap;">
+          <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
+                      letter-spacing:0.5px;margin-bottom:2px;">Stop Loss</div>
+          <div style="font-size:0.92rem;font-weight:800;color:var(--red)" id="motor-sl">–1.5%</div>
+        </div>
+
+        <!-- Take Profit -->
+        <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);
+                    border-radius:8px;padding:5px 12px;text-align:center;white-space:nowrap;">
+          <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
+                      letter-spacing:0.5px;margin-bottom:2px;">Take Profit</div>
+          <div style="font-size:0.92rem;font-weight:800;color:var(--green)" id="motor-tp">+3.0%</div>
+        </div>
+
+      </div>
+
+      <!-- Kelly multiplicadores (expandível, aparece só com sinal) -->
+      <div id="kelly-breakdown" style="display:none;margin-top:8px;">
+        <div style="font-size:0.75rem;color:rgba(255,255,255,0.3);margin-bottom:4px;
+                    text-transform:uppercase;letter-spacing:0.6px;">Multiplicadores Kelly</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;" id="kelly-chips"></div>
+      </div>
+    </div>
+
+    <!-- ⑦ MÉTRICAS DE RISCO -->
+    <div class="motor-section">
+      <div class="motor-section-lbl">⑦ Métricas de Risco</div>
+      <div class="mrisk-list">
+        <div class="mrisk-item">
+          <div class="mrisk-top">
+            <span class="mrisk-name">Beta Portfolio</span>
+            <span class="mrisk-limit">limite 1.8</span>
+            <span class="mrisk-val" id="rv-beta">–</span>
+            <span class="mrisk-status" id="rs-beta">–</span>
+          </div>
+          <div class="mrisk-track"><div class="mrisk-fill" id="rb-beta" style="width:0"></div></div>
+        </div>
+        <div class="mrisk-item">
+          <div class="mrisk-top">
+            <span class="mrisk-name">Drawdown Diário</span>
+            <span class="mrisk-limit">limite 3%</span>
+            <span class="mrisk-val" id="rv-dd">–</span>
+            <span class="mrisk-status" id="rs-dd">–</span>
+          </div>
+          <div class="mrisk-track"><div class="mrisk-fill" id="rb-dd" style="width:0"></div></div>
+        </div>
+        <div class="mrisk-item">
+          <div class="mrisk-top">
+            <span class="mrisk-name">Win Rate (calibração)</span>
+            <span class="mrisk-limit">>40% saudável</span>
+            <span class="mrisk-val b" id="calib-wr">–</span>
+            <span class="mrisk-status" id="rs-wr">–</span>
+          </div>
+          <div class="mrisk-track"><div class="mrisk-fill" id="rb-wr" style="width:0;background:var(--blue)"></div></div>
+        </div>
+        <div class="mrisk-item">
+          <div class="mrisk-top">
+            <span class="mrisk-name">Exposição Total</span>
+            <span class="mrisk-limit">limite 50%</span>
+            <span class="mrisk-val" id="rv-exp">–</span>
+            <span class="mrisk-status" id="rs-exp">–</span>
+          </div>
+          <div class="mrisk-track"><div class="mrisk-fill" id="rb-exp" style="width:0"></div></div>
+        </div>
+      </div>
+      <!-- Calibração (IDs preservados para JS) -->
+      <span id="calib-wr2" style="display:none"></span>
+      <span id="calib-n"   style="display:none"></span>
+      <span id="calib-date" style="display:none"></span>
+    </div>
+
+    <!-- ⑧ WATCHDOGS -->
+    <div style="padding-top:10px;border-top:1px solid var(--border);">
+      <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.9px;color:var(--muted);margin-bottom:8px;">⑧ 🛡️ Watchdogs</div>
       <div class="wd-grid">
         <div class="wd-item"><div class="wd-name">WebSocket</div><div class="wd-status" id="wd-ws">–</div><div class="wd-detail" id="wd-ws-d">–</div></div>
         <div class="wd-item"><div class="wd-name">Heartbeat</div><div class="wd-status" id="wd-hb">–</div><div class="wd-detail" id="wd-hb-d">–</div></div>
@@ -709,19 +835,19 @@
 <!-- ══ WEIGHT ENGINE ════════════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--yellow)"></div>WeightEngine — Regime Dinâmico</div>
 <div class="card" id="weight-engine-card">
-  <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">
+  <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">
     Pesos blendados por Estratégia × Regime
-    <span id="we-source-badge" style="margin-left:8px;font-size:0.52rem;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--muted)">–</span>
-    <span id="we-date" style="margin-left:6px;font-size:0.52rem;color:var(--muted)"></span>
+    <span id="we-source-badge" style="margin-left:8px;font-size:0.75rem;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--muted)">–</span>
+    <span id="we-date" style="margin-left:6px;font-size:0.75rem;color:var(--muted)"></span>
   </div>
   <div id="we-table-wrap" style="overflow-x:auto;">
-    <div id="we-loading" style="text-align:center;padding:20px;font-size:0.72rem;color:var(--muted)">Carregando pesos…</div>
-    <table id="we-table" style="display:none;width:100%;border-collapse:collapse;font-size:0.65rem;">
+    <div id="we-loading" style="text-align:center;padding:20px;font-size:0.92rem;color:var(--muted)">Carregando pesos…</div>
+    <table id="we-table" style="display:none;width:100%;border-collapse:collapse;font-size:0.82rem;">
       <thead id="we-thead"></thead>
       <tbody id="we-tbody"></tbody>
     </table>
   </div>
-  <div style="margin-top:8px;font-size:0.55rem;color:var(--muted)">
+  <div style="margin-top:8px;font-size:0.75rem;color:var(--muted)">
     Confiança:
     <span style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:4px;padding:0 5px;color:#10b981">real</span> ≥30 trades ·
     <span style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:0 5px;color:#f59e0b">mixed</span> parcial ·
@@ -731,17 +857,17 @@
 
 <!-- ══ PORTFOLIO INTELLIGENCE + EXECUTION INTELLIGENCE ══════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--blue)"></div>Portfolio Intelligence &amp; Execution Quality
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 15/17 · alocação cross-asset · slippage · maker/taker</span>
+  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 15/17 · alocação cross-asset · slippage · maker/taker</span>
 </div>
 <div class="grid g12">
 
   <!-- Portfolio Allocator — Phase 15 -->
   <div class="card">
-    <div class="clabel">Portfolio Allocator <span style="font-size:0.55rem;color:var(--muted)">Phase 15 · edge ranking cross-asset</span></div>
-    <div id="pa-rows" style="font-size:0.62rem;">
-      <div style="color:var(--muted);font-size:0.6rem;padding:10px 0">Aguardando sinais…</div>
+    <div class="clabel">Portfolio Allocator <span style="font-size:0.75rem;color:var(--muted)">Phase 15 · edge ranking cross-asset</span></div>
+    <div id="pa-rows" style="font-size:0.82rem;">
+      <div style="color:var(--muted);font-size:0.75rem;padding:10px 0">Aguardando sinais…</div>
     </div>
-    <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;display:flex;gap:14px;font-size:0.57rem;color:var(--muted)">
+    <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;display:flex;gap:14px;font-size:0.75rem;color:var(--muted)">
       <span>Budget: <b id="pa-budget">–</b></span>
       <span>Sinais ativos: <b id="pa-signals">–</b></span>
       <span>Open: <b id="pa-open">–</b></span>
@@ -750,14 +876,14 @@
 
   <!-- Execution Intelligence — Phase 17 -->
   <div class="card">
-    <div class="clabel">Execution Intelligence <span style="font-size:0.55rem;color:var(--muted)">Phase 17 · slippage · maker/taker</span></div>
-    <div style="display:flex;gap:6px;margin-bottom:8px;font-size:0.57rem;">
+    <div class="clabel">Execution Intelligence <span style="font-size:0.75rem;color:var(--muted)">Phase 17 · slippage · maker/taker</span></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;font-size:0.75rem;">
       <span style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:4px;padding:1px 6px;color:var(--blue)">maker thr: <b id="ei-maker-thr">–</b> bps</span>
       <span style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:4px;padding:1px 6px;color:var(--red)">taker thr: <b id="ei-taker-thr">–</b> bps</span>
       <span style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--muted)">timeout: <b id="ei-timeout">–</b>s</span>
     </div>
-    <div id="ei-rows" style="font-size:0.62rem;">
-      <div style="color:var(--muted);font-size:0.6rem;padding:10px 0">Nenhum fill registrado ainda</div>
+    <div id="ei-rows" style="font-size:0.82rem;">
+      <div style="color:var(--muted);font-size:0.75rem;padding:10px 0">Nenhum fill registrado ainda</div>
     </div>
   </div>
 
@@ -791,6 +917,23 @@
     <div class="donut-legend" id="donut-legend"></div>
   </div>
 
+</div>
+
+<!-- ══ ALPHA ORTHOGONALITY — Phase 18 ══════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="dot" style="background:var(--purple)"></div>
+  Alpha Orthogonality
+  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 18 · FD · LV · OD · MRM — sinais ortogonais ao M1-M9</span>
+</div>
+<div class="card" id="ao-card">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" id="ao-badges">
+    <span style="font-size:0.75rem;color:var(--muted)">Aguardando dados…</span>
+  </div>
+  <div id="ao-symbols" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+  <div style="margin-top:8px;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);padding-top:6px">
+    <b>FD</b> Funding Dislocation · <b>LV</b> Liquidity Vacuum · <b>OD</b> Overnight Drift · <b>MRM</b> Mean Reversion Micro
+    · Kelly clamp [×0.65, ×1.30] · Threshold adj ±3%
+  </div>
 </div>
 
 <!-- ══ POSIÇÕES + PLANOS ══════════════════════════════════════ -->
@@ -840,7 +983,7 @@
       <span class="hbadge hbadge-gray" id="trade-count-badge">0 trades</span>
     </div>
     <div id="trade-history" style="max-height:400px;overflow-y:auto;">
-      <div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Nenhum trade executado ainda</div>
+      <div class="m" style="padding:20px;text-align:center;font-size:0.92rem">Nenhum trade executado ainda</div>
     </div>
   </div>
 
@@ -851,7 +994,7 @@
       <div class="feed-live"><div class="dot-live"></div><span id="feed-signal-rate">–</span></div>
     </div>
     <div class="feed-wrap" id="signal-feed" style="max-height:400px;">
-      <div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>
+      <div class="m" style="padding:20px;text-align:center;font-size:0.92rem">Aguardando avaliações...</div>
     </div>
   </div>
 
@@ -861,7 +1004,7 @@
 <div class="section-hdr"><div class="dot" style="background:var(--orange)"></div>Funil de Filtragem<span class="cnt" id="funnel-exec-rate"></span></div>
 <div class="card">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-    <div style="font-size:0.72rem;font-weight:700;color:var(--muted)">Onde os sinais são bloqueados</div>
+    <div style="font-size:0.92rem;font-weight:700;color:var(--muted)">Onde os sinais são bloqueados</div>
     <div style="display:flex;gap:4px;margin-left:auto;">
       <button class="chart-btn active" id="fn-btn-all" onclick="setFunnelWindow('all_time','fn-btn-all')">Total</button>
       <button class="chart-btn"        id="fn-btn-6h"  onclick="setFunnelWindow('last_6h','fn-btn-6h')">6h</button>
@@ -871,17 +1014,17 @@
   <div class="grid g11" style="gap:16px;">
     <div>
       <div id="funnel-steps" style="display:flex;flex-direction:column;gap:7px;">
-        <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando avaliações...</div>
+        <div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Aguardando avaliações...</div>
       </div>
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);">
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);">
         <span>cada barra = % do total avaliado</span>
         <span id="funnel-window-label">desde o início</span>
       </div>
     </div>
     <div>
-      <div style="font-size:0.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Por Ativo</div>
+      <div style="font-size:0.82rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">Por Ativo</div>
       <div id="funnel-by-symbol" style="display:flex;flex-direction:column;gap:10px;">
-        <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">–</div>
+        <div class="m" style="font-size:0.92rem;padding:8px;text-align:center">–</div>
       </div>
     </div>
   </div>
@@ -968,12 +1111,12 @@
       </div>
     </div>
     <div style="margin-top:12px;">
-      <div style="font-size:0.62rem;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.8px">Win/Loss ratio</div>
+      <div style="font-size:0.82rem;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.8px">Win/Loss ratio</div>
       <div style="height:15px;border-radius:7px;overflow:hidden;display:flex;">
         <div id="ql-win"  style="background:linear-gradient(90deg,var(--green),#059669);transition:flex 0.5s;flex:0"></div>
         <div id="ql-loss" style="background:linear-gradient(90deg,#dc2626,var(--red));transition:flex 0.5s;flex:1"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);margin-top:3px;">
+      <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);margin-top:3px;">
         <span id="ql-win-lbl">0 wins</span>
         <span id="ql-loss-lbl">0 losses</span>
       </div>
@@ -984,7 +1127,7 @@
   <div class="card">
     <div class="clabel">Regime Breakdown</div>
     <div id="regime-breakdown" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;">
-      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando avaliações...</div>
+      <div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Aguardando avaliações...</div>
     </div>
   </div>
 
@@ -994,8 +1137,8 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--blue)"></div>
   Equity Analytics
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 6 · por trade</span>
-  <a href="/api/analytics/equity_curve/csv" style="margin-left:auto;font-size:0.6rem;color:var(--blue);text-decoration:none;padding:2px 8px;border:1px solid rgba(59,130,246,0.3);border-radius:4px">↓ CSV</a>
+  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 6 · por trade</span>
+  <a href="/api/analytics/equity_curve/csv" style="margin-left:auto;font-size:0.75rem;color:var(--blue);text-decoration:none;padding:2px 8px;border:1px solid rgba(59,130,246,0.3);border-radius:4px">↓ CSV</a>
 </div>
 
 <!-- IDs preservados para o JS (eq-pnl/maxdd/stability são duplicatas do KPI strip e Quant Analytics) -->
@@ -1011,7 +1154,7 @@
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <div class="clabel" style="margin:0">Equity Curve</div>
-      <div style="display:flex;gap:6px;font-size:0.6rem;">
+      <div style="display:flex;gap:6px;font-size:0.75rem;">
         <span style="color:var(--green)">── capital</span>
         <span style="color:rgba(59,130,246,0.6)">── HWM</span>
       </div>
@@ -1019,7 +1162,7 @@
     <div style="position:relative;height:140px;"><canvas id="equity-chart"></canvas></div>
     <!-- Underwater chart (drawdown) -->
     <div style="margin-top:6px;">
-      <div style="font-size:0.55rem;color:var(--muted);margin-bottom:3px">Drawdown</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:3px">Drawdown</div>
       <div style="position:relative;height:50px;"><canvas id="underwater-chart"></canvas></div>
     </div>
     <!-- P&L por símbolo -->
@@ -1030,36 +1173,36 @@
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <div class="clabel" style="margin:0">Rolling Metrics</div>
-      <span id="rolling-window-lbl" style="font-size:0.6rem;color:var(--muted)">janela 10 trades</span>
+      <span id="rolling-window-lbl" style="font-size:0.75rem;color:var(--muted)">janela 10 trades</span>
     </div>
     <!-- 4 mini-barras de tendência -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
       <div>
-        <div style="font-size:0.55rem;color:var(--muted);margin-bottom:2px">Sharpe (rolling)</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:2px">Sharpe (rolling)</div>
         <div style="font-size:1.1rem;font-weight:800;" id="roll-sharpe">–</div>
-        <div style="font-size:0.6rem;" id="roll-sharpe-trend">–</div>
+        <div style="font-size:0.75rem;" id="roll-sharpe-trend">–</div>
       </div>
       <div>
-        <div style="font-size:0.55rem;color:var(--muted);margin-bottom:2px">Win Rate (rolling)</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:2px">Win Rate (rolling)</div>
         <div style="font-size:1.1rem;font-weight:800;" id="roll-wr">–</div>
-        <div style="font-size:0.6rem;" id="roll-wr-trend">–</div>
+        <div style="font-size:0.75rem;" id="roll-wr-trend">–</div>
       </div>
       <div>
-        <div style="font-size:0.55rem;color:var(--muted);margin-bottom:2px">Expectancy (rolling)</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:2px">Expectancy (rolling)</div>
         <div style="font-size:1.1rem;font-weight:800;" id="roll-exp">–</div>
-        <div style="font-size:0.6rem;" id="roll-exp-trend">–</div>
+        <div style="font-size:0.75rem;" id="roll-exp-trend">–</div>
       </div>
       <div>
-        <div style="font-size:0.55rem;color:var(--muted);margin-bottom:2px">Vol Retornos</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:2px">Vol Retornos</div>
         <div style="font-size:1.1rem;font-weight:800;" id="roll-vol">–</div>
-        <div style="font-size:0.6rem;color:var(--muted)">% por trade</div>
+        <div style="font-size:0.75rem;color:var(--muted)">% por trade</div>
       </div>
     </div>
     <!-- Gráfico rolling WR -->
-    <div style="font-size:0.55rem;color:var(--muted);margin-bottom:3px">Rolling Win Rate</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:3px">Rolling Win Rate</div>
     <div style="position:relative;height:80px;"><canvas id="rolling-wr-chart"></canvas></div>
     <!-- Gráfico rolling Sharpe -->
-    <div style="font-size:0.55rem;color:var(--muted);margin-top:6px;margin-bottom:3px">Rolling Sharpe</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;margin-bottom:3px">Rolling Sharpe</div>
     <div style="position:relative;height:70px;"><canvas id="rolling-sharpe-chart"></canvas></div>
   </div>
 
@@ -1069,7 +1212,7 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--orange)"></div>
   Distribuição & Diagnóstico
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 7 · padrões estatísticos</span>
+  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 7 · padrões estatísticos</span>
 </div>
 <div class="grid g21">
 
@@ -1077,32 +1220,32 @@
   <div class="card">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
       <div class="clabel" style="margin:0">Distribuição de Retornos</div>
-      <span id="dist-skew-lbl" style="font-size:0.6rem;color:var(--muted)">–</span>
+      <span id="dist-skew-lbl" style="font-size:0.75rem;color:var(--muted)">–</span>
     </div>
     <!-- 4 mini-KPIs -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">
       <div style="text-align:center;">
-        <div style="font-size:0.5rem;color:var(--muted)">Skewness</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Skewness</div>
         <div style="font-size:0.95rem;font-weight:700;" id="dist-skew">–</div>
       </div>
       <div style="text-align:center;">
-        <div style="font-size:0.5rem;color:var(--muted)">Kurtosis</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Kurtosis</div>
         <div style="font-size:0.95rem;font-weight:700;" id="dist-kurt">–</div>
       </div>
       <div style="text-align:center;">
-        <div style="font-size:0.5rem;color:var(--muted)">Méd Ret%</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Méd Ret%</div>
         <div style="font-size:0.95rem;font-weight:700;" id="dist-avg-ret">–</div>
       </div>
       <div style="text-align:center;">
-        <div style="font-size:0.5rem;color:var(--muted)">Acima Méd</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Acima Méd</div>
         <div style="font-size:0.95rem;font-weight:700;" id="dist-above-avg">–</div>
       </div>
     </div>
-    <div style="font-size:0.55rem;color:var(--muted);margin-bottom:3px">P&L% por trade</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:3px">P&L% por trade</div>
     <div style="position:relative;height:90px;"><canvas id="dist-return-chart"></canvas></div>
-    <div style="font-size:0.55rem;color:var(--muted);margin-top:8px;margin-bottom:3px">Holding Time (horas)</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-top:8px;margin-bottom:3px">Holding Time (horas)</div>
     <div style="position:relative;height:70px;"><canvas id="dist-holding-chart"></canvas></div>
-    <div style="margin-top:6px;display:flex;gap:16px;font-size:0.6rem;color:var(--muted);">
+    <div style="margin-top:6px;display:flex;gap:16px;font-size:0.75rem;color:var(--muted);">
       <span>Média: <span id="dist-avg-hold" style="color:var(--fg)">–</span>h</span>
       <span>Mediana: <span id="dist-med-hold" style="color:var(--fg)">–</span>h</span>
     </div>
@@ -1115,33 +1258,33 @@
     <div id="dist-regime-bars" style="margin-bottom:12px;"></div>
     <!-- Streaks -->
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;margin-top:4px;">
-      <div style="font-size:0.6rem;color:var(--muted);margin-bottom:8px">Sequências</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">Sequências</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;">
         <div>
-          <div style="font-size:0.5rem;color:var(--muted)">Max Wins</div>
+          <div style="font-size:0.75rem;color:var(--muted)">Max Wins</div>
           <div style="font-size:1.1rem;font-weight:800;color:var(--green)" id="streak-max-win">–</div>
         </div>
         <div>
-          <div style="font-size:0.5rem;color:var(--muted)">Max Losses</div>
+          <div style="font-size:0.75rem;color:var(--muted)">Max Losses</div>
           <div style="font-size:1.1rem;font-weight:800;color:var(--red)" id="streak-max-loss">–</div>
         </div>
         <div>
-          <div style="font-size:0.5rem;color:var(--muted)">Atual</div>
+          <div style="font-size:0.75rem;color:var(--muted)">Atual</div>
           <div style="font-size:1rem;font-weight:700;" id="streak-current">–</div>
         </div>
       </div>
     </div>
     <!-- Melhores / Piores trades -->
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;margin-top:10px;">
-      <div style="font-size:0.6rem;color:var(--muted);margin-bottom:6px">Extremos (Top 3)</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px">Extremos (Top 3)</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
         <div>
-          <div style="font-size:0.55rem;color:var(--green);margin-bottom:4px">▲ Melhores</div>
-          <div id="dist-best-trades" style="font-size:0.6rem;"></div>
+          <div style="font-size:0.75rem;color:var(--green);margin-bottom:4px">▲ Melhores</div>
+          <div id="dist-best-trades" style="font-size:0.75rem;"></div>
         </div>
         <div>
-          <div style="font-size:0.55rem;color:var(--red);margin-bottom:4px">▼ Piores</div>
-          <div id="dist-worst-trades" style="font-size:0.6rem;"></div>
+          <div style="font-size:0.75rem;color:var(--red);margin-bottom:4px">▼ Piores</div>
+          <div id="dist-worst-trades" style="font-size:0.75rem;"></div>
         </div>
       </div>
     </div>
@@ -1153,77 +1296,77 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--red)"></div>
   Reality Check
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 8 · bootstrap · permutação · stress de fees</span>
-  <span id="rc-overall-badge" style="margin-left:auto;font-size:0.6rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
+  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 8 · bootstrap · permutação · stress de fees</span>
+  <span id="rc-overall-badge" style="margin-left:auto;font-size:0.75rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
 </div>
 <div class="grid g31">
 
   <!-- Bootstrap IC 95% -->
   <div class="card">
-    <div class="clabel" style="margin-bottom:10px">Bootstrap IC 95% <span style="font-size:0.55rem;color:var(--muted);font-weight:400">(1 000 reamostras)</span></div>
+    <div class="clabel" style="margin-bottom:10px">Bootstrap IC 95% <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(1 000 reamostras)</span></div>
     <div style="display:flex;flex-direction:column;gap:10px;">
       <!-- Sharpe -->
       <div>
-        <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:3px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:3px;">
           <span style="color:var(--muted)">Sharpe Ratio</span>
           <span id="rc-sharpe-real" style="font-weight:700">–</span>
         </div>
         <div style="position:relative;height:20px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
           <div id="rc-sharpe-bar" style="position:absolute;top:0;height:100%;background:rgba(59,130,246,0.4);border-radius:4px;"></div>
-          <div style="position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:0 6px;line-height:20px;font-size:0.55rem;">
+          <div style="position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:0 6px;line-height:20px;font-size:0.75rem;">
             <span id="rc-sharpe-lo">–</span><span id="rc-sharpe-hi">–</span>
           </div>
         </div>
-        <div style="font-size:0.55rem;color:var(--muted);margin-top:2px">IC 95%: [<span id="rc-sharpe-ci">–</span>]</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">IC 95%: [<span id="rc-sharpe-ci">–</span>]</div>
       </div>
       <!-- Win Rate -->
       <div>
-        <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:3px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:3px;">
           <span style="color:var(--muted)">Win Rate</span>
           <span id="rc-wr-real" style="font-weight:700">–</span>
         </div>
         <div style="position:relative;height:20px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
           <div id="rc-wr-bar" style="position:absolute;top:0;height:100%;background:rgba(16,185,129,0.4);border-radius:4px;"></div>
-          <div style="position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:0 6px;line-height:20px;font-size:0.55rem;">
+          <div style="position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:0 6px;line-height:20px;font-size:0.75rem;">
             <span id="rc-wr-lo">–</span><span id="rc-wr-hi">–</span>
           </div>
         </div>
-        <div style="font-size:0.55rem;color:var(--muted);margin-top:2px">IC 95%: [<span id="rc-wr-ci">–</span>]</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">IC 95%: [<span id="rc-wr-ci">–</span>]</div>
       </div>
       <!-- Expectancy -->
       <div>
-        <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:3px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:3px;">
           <span style="color:var(--muted)">Expectancy</span>
           <span id="rc-exp-real" style="font-weight:700">–</span>
         </div>
-        <div style="font-size:0.55rem;color:var(--muted)">IC: [<span id="rc-exp-ci">–</span>]</div>
+        <div style="font-size:0.75rem;color:var(--muted)">IC: [<span id="rc-exp-ci">–</span>]</div>
       </div>
     </div>
   </div>
 
   <!-- Permutation Test -->
   <div class="card">
-    <div class="clabel" style="margin-bottom:10px">Permutation Test <span style="font-size:0.55rem;color:var(--muted);font-weight:400">(H₀: resultado aleatório)</span></div>
+    <div class="clabel" style="margin-bottom:10px">Permutation Test <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(H₀: resultado aleatório)</span></div>
     <div style="text-align:center;padding:12px 0;">
-      <div style="font-size:0.55rem;color:var(--muted);margin-bottom:4px">p-value</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">p-value</div>
       <div style="font-size:2.4rem;font-weight:900;line-height:1;" id="rc-pvalue">–</div>
-      <div style="font-size:0.6rem;margin-top:6px;" id="rc-pvalue-verdict">–</div>
+      <div style="font-size:0.75rem;margin-top:6px;" id="rc-pvalue-verdict">–</div>
     </div>
-    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.6rem;">
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;margin-top:4px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.75rem;">
       <div>
-        <div style="color:var(--muted);font-size:0.55rem">Sharpe Real</div>
+        <div style="color:var(--muted);font-size:0.75rem">Sharpe Real</div>
         <div style="font-weight:700" id="rc-perm-real-sharpe">–</div>
       </div>
       <div>
-        <div style="color:var(--muted);font-size:0.55rem">Sharpe Perm. Média</div>
+        <div style="color:var(--muted);font-size:0.75rem">Sharpe Perm. Média</div>
         <div style="font-weight:700" id="rc-perm-mean-sharpe">–</div>
       </div>
       <div>
-        <div style="color:var(--muted);font-size:0.55rem">Perm. P95</div>
+        <div style="color:var(--muted);font-size:0.75rem">Perm. P95</div>
         <div style="font-weight:700" id="rc-perm-p95">–</div>
       </div>
       <div>
-        <div style="color:var(--muted);font-size:0.55rem">N Permutações</div>
+        <div style="color:var(--muted);font-size:0.75rem">N Permutações</div>
         <div style="font-weight:700" id="rc-perm-n">–</div>
       </div>
     </div>
@@ -1234,8 +1377,8 @@
     <div class="clabel" style="margin-bottom:10px">Fee Stress Test</div>
     <div id="rc-fee-rows" style="display:flex;flex-direction:column;gap:6px;"></div>
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:8px;">
-      <div style="font-size:0.55rem;color:var(--muted)">Verdict</div>
-      <div id="rc-fee-verdict" style="font-size:0.65rem;margin-top:4px;"></div>
+      <div style="font-size:0.75rem;color:var(--muted)">Verdict</div>
+      <div id="rc-fee-verdict" style="font-size:0.82rem;margin-top:4px;"></div>
     </div>
   </div>
 
@@ -1245,30 +1388,30 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--purple)"></div>
   Meta-Overfitting
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 9 · DSR · MinTRL · IS/OOS · López de Prado</span>
-  <span id="mo-overall-badge" style="margin-left:auto;font-size:0.6rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
+  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 9 · DSR · MinTRL · IS/OOS · López de Prado</span>
+  <span id="mo-overall-badge" style="margin-left:auto;font-size:0.75rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
 </div>
 <div class="grid g31">
 
   <!-- Deflated Sharpe Ratio -->
   <div class="card">
     <div class="clabel" style="margin-bottom:6px">Deflated Sharpe Ratio</div>
-    <div style="font-size:0.55rem;color:var(--muted);margin-bottom:12px;line-height:1.5">
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;line-height:1.5">
       Ajusta o Sharpe por não-normalidade (skew/kurt) e viés de seleção<br>
       <span style="color:var(--fg)">DSR ≥ 0.95</span> → edge real com 95% de confiança
     </div>
     <!-- DSR gauge -->
     <div style="text-align:center;margin-bottom:12px;">
-      <div style="font-size:0.55rem;color:var(--muted)">DSR</div>
+      <div style="font-size:0.75rem;color:var(--muted)">DSR</div>
       <div style="font-size:2.8rem;font-weight:900;line-height:1;" id="mo-dsr">–</div>
-      <div style="font-size:0.65rem;margin-top:4px;" id="mo-dsr-verdict">–</div>
+      <div style="font-size:0.82rem;margin-top:4px;" id="mo-dsr-verdict">–</div>
     </div>
     <!-- Barra DSR (0 → 1) -->
     <div style="position:relative;height:10px;background:rgba(255,255,255,0.06);border-radius:5px;margin-bottom:10px;overflow:hidden;">
       <div style="position:absolute;left:0;top:0;height:100%;width:95%;background:rgba(255,255,255,0.06);border-right:1px dashed rgba(255,255,255,0.2);"></div>
       <div id="mo-dsr-bar" style="position:absolute;left:0;top:0;height:100%;border-radius:5px;transition:width 0.5s;"></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.6rem;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.75rem;">
       <div><span style="color:var(--muted)">SR_hat</span><br><span id="mo-sr-hat" style="font-weight:700">–</span></div>
       <div><span style="color:var(--muted)">SR* (benchmark)</span><br><span id="mo-sr-star" style="font-weight:700">–</span></div>
       <div><span style="color:var(--muted)">Skewness</span><br><span id="mo-skew">–</span></div>
@@ -1284,49 +1427,49 @@
 
     <!-- MinTRL -->
     <div style="margin-bottom:12px;">
-      <div style="font-size:0.6rem;color:var(--muted);margin-bottom:6px">Minimum Track Record Length</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px">Minimum Track Record Length</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <div style="text-align:center;">
-          <div style="font-size:0.5rem;color:var(--muted)">Precisamos</div>
+          <div style="font-size:0.75rem;color:var(--muted)">Precisamos</div>
           <div style="font-size:1.6rem;font-weight:900;" id="mo-min-trl">–</div>
-          <div style="font-size:0.5rem;color:var(--muted)">trades</div>
+          <div style="font-size:0.75rem;color:var(--muted)">trades</div>
         </div>
         <div style="flex:1">
           <div style="position:relative;height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;">
             <div id="mo-trl-bar" style="height:100%;border-radius:4px;transition:width 0.5s;"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:0.5rem;color:var(--muted);margin-top:2px;">
+          <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);margin-top:2px;">
             <span>0</span>
             <span id="mo-trl-progress">–</span>
           </div>
         </div>
         <div style="text-align:center;">
-          <div style="font-size:0.5rem;color:var(--muted)">Temos</div>
+          <div style="font-size:0.75rem;color:var(--muted)">Temos</div>
           <div style="font-size:1.6rem;font-weight:900;" id="mo-trl-current">–</div>
-          <div style="font-size:0.5rem;color:var(--muted)">trades</div>
+          <div style="font-size:0.75rem;color:var(--muted)">trades</div>
         </div>
       </div>
-      <div style="font-size:0.6rem;margin-top:4px;" id="mo-trl-verdict">–</div>
+      <div style="font-size:0.75rem;margin-top:4px;" id="mo-trl-verdict">–</div>
     </div>
 
     <!-- IS/OOS -->
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
-      <div style="font-size:0.6rem;color:var(--muted);margin-bottom:8px">IS/OOS Split 70/30</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.6rem;margin-bottom:8px;">
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">IS/OOS Split 70/30</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.75rem;margin-bottom:8px;">
         <div style="background:rgba(255,255,255,0.03);border-radius:6px;padding:8px;">
-          <div style="font-size:0.55rem;color:var(--muted);margin-bottom:4px">In-Sample</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">In-Sample</div>
           <div>Sharpe: <span id="mo-is-sharpe" style="font-weight:700">–</span></div>
           <div>WR: <span id="mo-is-wr">–</span></div>
           <div>N: <span id="mo-is-n">–</span></div>
         </div>
         <div style="background:rgba(255,255,255,0.03);border-radius:6px;padding:8px;">
-          <div style="font-size:0.55rem;color:var(--muted);margin-bottom:4px">Out-of-Sample</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">Out-of-Sample</div>
           <div>Sharpe: <span id="mo-oos-sharpe" style="font-weight:700">–</span></div>
           <div>WR: <span id="mo-oos-wr">–</span></div>
           <div>N: <span id="mo-oos-n">–</span></div>
         </div>
       </div>
-      <div style="font-size:0.6rem;">
+      <div style="font-size:0.75rem;">
         Degradação: <span id="mo-deg-ratio" style="font-weight:700">–</span>
         &nbsp;|&nbsp;Overfit: <span id="mo-overfit-signal" style="font-weight:700">–</span>
       </div>
@@ -1338,8 +1481,8 @@
     <div class="clabel" style="margin-bottom:10px">Diagnóstico</div>
     <div id="mo-verdict-rows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
-      <div style="font-size:0.55rem;color:var(--muted);margin-bottom:6px">O que fazer</div>
-      <div id="mo-recommendation" style="font-size:0.62rem;line-height:1.6;color:var(--fg);"></div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px">O que fazer</div>
+      <div id="mo-recommendation" style="font-size:0.82rem;line-height:1.6;color:var(--fg);"></div>
     </div>
   </div>
 
@@ -1349,8 +1492,8 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--red)"></div>
   Risco Avançado
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 14 · correlação · VaR · circuit breakers · liquidez</span>
-  <span id="ar-cb-badge" style="margin-left:auto;font-size:0.6rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
+  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 14 · correlação · VaR · circuit breakers · liquidez</span>
+  <span id="ar-cb-badge" style="margin-left:auto;font-size:0.75rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
 </div>
 <div class="grid g22">
 
@@ -1366,11 +1509,11 @@
     <!-- Matriz simplificada -->
     <div id="ar-corr-pairs" style="margin-bottom:12px;"></div>
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
-      <div class="clabel" style="margin-bottom:8px;font-size:0.6rem;">VaR Portfolio</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:0.6rem;text-align:center;">
-        <div><div style="color:var(--muted);font-size:0.5rem">VaR 95%</div><div id="ar-var95" style="font-weight:800;font-size:1rem;">–</div></div>
-        <div><div style="color:var(--muted);font-size:0.5rem">CVaR 95%</div><div id="ar-cvar95" style="font-weight:800;font-size:1rem;">–</div></div>
-        <div><div style="color:var(--muted);font-size:0.5rem">N Trades</div><div id="ar-var-n" style="font-weight:800;font-size:1rem;">–</div></div>
+      <div class="clabel" style="margin-bottom:8px;font-size:0.75rem;">VaR Portfolio</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:0.75rem;text-align:center;">
+        <div><div style="color:var(--muted);font-size:0.75rem">VaR 95%</div><div id="ar-var95" style="font-weight:800;font-size:1rem;">–</div></div>
+        <div><div style="color:var(--muted);font-size:0.75rem">CVaR 95%</div><div id="ar-cvar95" style="font-weight:800;font-size:1rem;">–</div></div>
+        <div><div style="color:var(--muted);font-size:0.75rem">N Trades</div><div id="ar-var-n" style="font-weight:800;font-size:1rem;">–</div></div>
       </div>
     </div>
   </div>
@@ -1393,8 +1536,8 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--blue)"></div>
   MLOps, Saúde do Modelo &amp; Feature Governance
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 15 · experiment tracking · drift · ensemble · WFO</span>
-  <span id="mh-health-badge" style="margin-left:auto;font-size:0.65rem;font-weight:800;padding:3px 12px;border-radius:5px;">–</span>
+  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 15 · experiment tracking · drift · ensemble · WFO</span>
+  <span id="mh-health-badge" style="margin-left:auto;font-size:0.82rem;font-weight:800;padding:3px 12px;border-radius:5px;">–</span>
 </div>
 <div class="grid g31">
 
@@ -1403,9 +1546,9 @@
     <div class="clabel" style="margin-bottom:6px">Saúde do Modelo</div>
     <!-- Gauge circular simplificado via barra -->
     <div style="text-align:center;padding:8px 0 12px;">
-      <div style="font-size:0.5rem;color:var(--muted)">Health Score</div>
+      <div style="font-size:0.75rem;color:var(--muted)">Health Score</div>
       <div style="font-size:3rem;font-weight:900;line-height:1;" id="mh-score">–</div>
-      <div style="font-size:0.65rem;margin-top:4px;" id="mh-status">–</div>
+      <div style="font-size:0.82rem;margin-top:4px;" id="mh-status">–</div>
     </div>
     <!-- Barra de saúde -->
     <div style="height:8px;background:rgba(255,255,255,0.06);border-radius:4px;margin-bottom:12px;overflow:hidden;">
@@ -1419,9 +1562,9 @@
 
   <!-- Experiment Tracking -->
   <div class="card">
-    <div class="clabel" style="margin-bottom:10px">Experiment Tracking <span style="font-size:0.55rem;color:var(--muted);font-weight:400">(15.1)</span></div>
+    <div class="clabel" style="margin-bottom:10px">Experiment Tracking <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(15.1)</span></div>
     <!-- Calibração atual -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;font-size:0.6rem;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;font-size:0.75rem;">
       <div><span style="color:var(--muted)">Platt A</span><br><span id="mh-platt-a" style="font-weight:700;font-size:0.9rem;">–</span></div>
       <div><span style="color:var(--muted)">Platt B</span><br><span id="mh-platt-b" style="font-weight:700;font-size:0.9rem;">–</span></div>
       <div><span style="color:var(--muted)">Win Rate Calib.</span><br><span id="mh-calib-wr" style="font-weight:700;font-size:0.9rem;">–</span></div>
@@ -1429,66 +1572,49 @@
     </div>
     <!-- Histórico de runs -->
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">
-      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:6px">Histórico de Calibrações</div>
-      <div id="mh-exp-history" style="font-size:0.58rem;"></div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px">Histórico de Calibrações</div>
+      <div id="mh-exp-history" style="font-size:0.75rem;"></div>
     </div>
     <!-- Ensemble robustness -->
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:8px;">
-      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px">Ensemble Robustness (15.4)</div>
-      <div id="mh-ensemble" style="font-size:0.6rem;"></div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">Ensemble Robustness (15.4)</div>
+      <div id="mh-ensemble" style="font-size:0.75rem;"></div>
     </div>
   </div>
 
   <!-- Online Validation -->
   <div class="card">
-    <div class="clabel" style="margin-bottom:10px">Online Validation <span style="font-size:0.55rem;color:var(--muted);font-weight:400">(15.2)</span></div>
+    <div class="clabel" style="margin-bottom:10px">Online Validation <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(15.2)</span></div>
     <!-- PSI -->
     <div style="margin-bottom:10px;">
-      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:6px">PSI — Drift de Features</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px">PSI — Drift de Features</div>
       <div id="mh-psi-features" style="display:flex;flex-direction:column;gap:4px;"></div>
     </div>
     <!-- WR drift -->
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">
-      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:6px">Win Rate Drift</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.6rem;text-align:center;">
-        <div><div style="color:var(--muted);font-size:0.5rem">Live WR</div><div id="mh-wr-live" style="font-weight:800;font-size:1rem;">–</div></div>
-        <div><div style="color:var(--muted);font-size:0.5rem">Calibrado</div><div id="mh-wr-calib" style="font-weight:800;font-size:1rem;">–</div></div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px">Win Rate Drift</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.75rem;text-align:center;">
+        <div><div style="color:var(--muted);font-size:0.75rem">Live WR</div><div id="mh-wr-live" style="font-weight:800;font-size:1rem;">–</div></div>
+        <div><div style="color:var(--muted);font-size:0.75rem">Calibrado</div><div id="mh-wr-calib" style="font-weight:800;font-size:1rem;">–</div></div>
       </div>
-      <div style="font-size:0.6rem;text-align:center;margin-top:4px;" id="mh-wr-status">–</div>
+      <div style="font-size:0.75rem;text-align:center;margin-top:4px;" id="mh-wr-status">–</div>
     </div>
     <!-- Execution rate -->
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:8px;">
-      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px">Taxa de Execução</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">Taxa de Execução</div>
       <div style="font-size:1.2rem;font-weight:800;" id="mh-exec-rate">–</div>
-      <div style="font-size:0.55rem;color:var(--muted)" id="mh-exec-status">–</div>
+      <div style="font-size:0.75rem;color:var(--muted)" id="mh-exec-status">–</div>
     </div>
   </div>
 
-</div>
-
-<!-- ══ ALPHA ORTHOGONALITY — Phase 18 ══════════════════════════════════════ -->
-<div class="section-hdr">
-  <div class="dot" style="background:var(--purple)"></div>
-  Alpha Orthogonality
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 18 · FD · LV · OD · MRM — sinais ortogonais ao M1-M9</span>
-</div>
-<div class="card" id="ao-card">
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" id="ao-badges">
-    <span style="font-size:0.6rem;color:var(--muted)">Aguardando dados…</span>
-  </div>
-  <div id="ao-symbols" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
-  <div style="margin-top:8px;font-size:0.55rem;color:var(--muted);border-top:1px solid var(--border);padding-top:6px">
-    <b>FD</b> Funding Dislocation · <b>LV</b> Liquidity Vacuum · <b>OD</b> Overnight Drift · <b>MRM</b> Mean Reversion Micro
-    · Kelly clamp [×0.65, ×1.30] · Threshold adj ±3%
-  </div>
 </div>
 
 <!-- ══ REGIME ROBUSTNESS + META-REGIME — Phase 13/16 ═══════════════════════ -->
 <div class="section-hdr">
   <div class="dot" style="background:var(--yellow)"></div>
   Regime Robustness &amp; Meta-Regime Macro
-  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 13/16 · bear market · volatility stress · cross-asset</span>
-  <span id="mr-regime-badge" style="margin-left:auto;font-size:0.65rem;font-weight:800;padding:3px 12px;border-radius:5px;letter-spacing:0.5px;">–</span>
+  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 13/16 · bear market · volatility stress · cross-asset</span>
+  <span id="mr-regime-badge" style="margin-left:auto;font-size:0.82rem;font-weight:800;padding:3px 12px;border-radius:5px;letter-spacing:0.5px;">–</span>
 </div>
 <div class="grid g31">
 
@@ -1496,10 +1622,10 @@
   <div class="card">
     <div class="clabel" style="margin-bottom:10px">M8 Volatility States — Distribuição Histórica</div>
     <div id="p16-vol-dist" style="display:flex;flex-direction:column;gap:6px;"></div>
-    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:10px;font-size:0.6rem;">
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:10px;font-size:0.75rem;">
       <div style="color:var(--muted);margin-bottom:4px">Circuit Breaker -3% em 1H</div>
       <div id="p16-cb-events" style="font-weight:700;font-size:1rem;">–</div>
-      <div style="color:var(--muted);font-size:0.55rem">eventos no período histórico</div>
+      <div style="color:var(--muted);font-size:0.75rem">eventos no período histórico</div>
     </div>
   </div>
 
@@ -1512,10 +1638,10 @@
   <!-- Full Period Baseline + Lateral -->
   <div class="card">
     <div class="clabel" style="margin-bottom:10px">Baseline — Período Completo</div>
-    <div id="p16-full" style="font-size:0.6rem;display:flex;flex-direction:column;gap:5px;"></div>
+    <div id="p16-full" style="font-size:0.75rem;display:flex;flex-direction:column;gap:5px;"></div>
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:10px;">
-      <div style="font-size:0.58rem;color:var(--muted);margin-bottom:4px">16.1 Lateralidade</div>
-      <div id="p16-lateral" style="font-size:0.6rem;color:var(--muted)">–</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">16.1 Lateralidade</div>
+      <div id="p16-lateral" style="font-size:0.75rem;color:var(--muted)">–</div>
     </div>
   </div>
 
@@ -1529,22 +1655,22 @@
     <div class="clabel" style="margin-bottom:10px">Estado Macro</div>
     <!-- Regime principal -->
     <div style="text-align:center;padding:10px 0 14px;">
-      <div style="font-size:0.55rem;color:var(--muted);margin-bottom:4px">Regime Detectado</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">Regime Detectado</div>
       <div style="font-size:1.8rem;font-weight:900;letter-spacing:1px;" id="mr-regime">–</div>
-      <div style="font-size:0.62rem;margin-top:6px;color:var(--muted);" id="mr-desc">–</div>
+      <div style="font-size:0.82rem;margin-top:6px;color:var(--muted);" id="mr-desc">–</div>
     </div>
     <!-- Confiança + Multiplicador -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
       <div style="text-align:center;">
-        <div style="font-size:0.5rem;color:var(--muted)">Confiança</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Confiança</div>
         <div style="font-size:1.1rem;font-weight:800;" id="mr-confidence">–</div>
       </div>
       <div style="text-align:center;">
-        <div style="font-size:0.5rem;color:var(--muted)">Thr. Mult</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Thr. Mult</div>
         <div style="font-size:1.1rem;font-weight:800;" id="mr-thr-mult">–</div>
       </div>
       <div style="text-align:center;">
-        <div style="font-size:0.5rem;color:var(--muted)">Efeito</div>
+        <div style="font-size:0.75rem;color:var(--muted)">Efeito</div>
         <div style="font-size:0.75rem;font-weight:700;" id="mr-effect">–</div>
       </div>
     </div>
@@ -1559,9 +1685,9 @@
   <!-- Distâncias aos Arquétipos -->
   <div class="card">
     <div class="clabel" style="margin-bottom:10px">Distância aos Arquétipos</div>
-    <div style="font-size:0.55rem;color:var(--muted);margin-bottom:8px">Menor = mais próximo do regime</div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">Menor = mais próximo do regime</div>
     <div style="display:flex;flex-direction:column;gap:6px;" id="mr-archetypes"></div>
-    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:8px;font-size:0.58rem;color:var(--muted);">
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:8px;font-size:0.75rem;color:var(--muted);">
       Thresholds: RISK_ON ×0.92 · ALTSEASON ×0.95 · SIDEWAYS ×1.0 · TRANSITION ×1.05 · RISK_OFF ×1.20
     </div>
   </div>
@@ -1569,10 +1695,10 @@
 </div>
 
 <!-- Feature Governance (conteúdo — cabeçalho unificado com MLOps acima) -->
-<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;">
   <div style="width:5px;height:5px;border-radius:50%;background:var(--purple)"></div>
   Feature Governance
-  <span id="gov-schema-ver" style="margin-left:auto;font-size:0.65rem"></span>
+  <span id="gov-schema-ver" style="margin-left:auto;font-size:0.82rem"></span>
 </div>
 
 <!-- Row 1: Drift + Live Stats + Schema -->
@@ -1581,27 +1707,27 @@
   <!-- Drift Monitor -->
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <div class="clabel" style="margin:0">Drift Monitor <span style="font-size:0.58rem;color:var(--muted)">(PSI)</span></div>
+      <div class="clabel" style="margin:0">Drift Monitor <span style="font-size:0.75rem;color:var(--muted)">(PSI)</span></div>
       <span class="hbadge hbadge-gray" id="gov-drift-badge">–</span>
     </div>
     <div id="gov-drift-list" style="display:flex;flex-direction:column;gap:8px;">
-      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando baseline...</div>
+      <div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Aguardando baseline...</div>
     </div>
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:0.6rem;color:var(--muted)">
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:0.75rem;color:var(--muted)">
       PSI &lt;0.1 estável · 0.1–0.2 atenção · &gt;0.2 drift significativo
     </div>
   </div>
 
   <!-- Live Feature Stats + Schema -->
   <div class="card">
-    <div class="clabel" style="margin-bottom:12px">Live Feature Stats <span style="font-size:0.58rem;color:var(--muted)">(últimas 500 obs.)</span></div>
+    <div class="clabel" style="margin-bottom:12px">Live Feature Stats <span style="font-size:0.75rem;color:var(--muted)">(últimas 500 obs.)</span></div>
     <div id="gov-live-list" style="display:flex;flex-direction:column;gap:8px;">
-      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando dados ao vivo...</div>
+      <div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Aguardando dados ao vivo...</div>
     </div>
     <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
       <div class="clabel" style="margin-bottom:8px">Schema de Features</div>
       <div id="gov-schema-list" style="display:flex;flex-direction:column;gap:5px;">
-        <div class="m" style="font-size:0.72rem">Carregando schema...</div>
+        <div class="m" style="font-size:0.92rem">Carregando schema...</div>
       </div>
     </div>
   </div>
@@ -1614,13 +1740,13 @@
   <!-- Feature Importance -->
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <div class="clabel" style="margin:0">Feature Importance <span style="font-size:0.58rem;color:var(--muted)">(permutação)</span></div>
+      <div class="clabel" style="margin:0">Feature Importance <span style="font-size:0.75rem;color:var(--muted)">(permutação)</span></div>
       <span class="hbadge hbadge-gray" id="imp-computed-at">–</span>
     </div>
     <div id="imp-list" style="display:flex;flex-direction:column;gap:10px;">
-      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/feature_analysis.py</div>
+      <div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Rode: python scripts/feature_analysis.py</div>
     </div>
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);">
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);">
       <span id="imp-meta"></span>
       <span>verde = alinhado · vermelho = desalinhado</span>
     </div>
@@ -1633,7 +1759,7 @@
       <span class="hbadge hbadge-gray" id="wfo-run-at">–</span>
     </div>
     <div id="wfo-content">
-      <div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/walk_forward.py</div>
+      <div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Rode: python scripts/walk_forward.py</div>
     </div>
   </div>
 
@@ -1868,7 +1994,7 @@ function updateDonut(portfolio,prices){
   // Separador visual entre operacionais e fixos
   const sepHtml = fixed.length
     ? `<div style="margin:5px 0;border-top:1px dashed rgba(255,255,255,0.08);padding-top:5px;">
-         <div style="font-size:0.52rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:5px;">Ativos fixos (não operados)</div>
+         <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:5px;">Ativos fixos (não operados)</div>
        </div>`
     : '';
 
@@ -1918,7 +2044,7 @@ function buildSignalFeed(log){
     rateEl.innerHTML=`<span style="color:${col};font-weight:700">${rate.toFixed(1)}%</span> exec · ${total.toLocaleString('pt-BR')} aval.`;
   }
 
-  if(!entries.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Aguardando avaliações...</div>';
+  if(!entries.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.92rem">Aguardando avaliações...</div>';
 
   const RESULT_COL={
     'SIGNAL':'var(--green)','SCORE_LOW':'var(--yellow)','EV_LOW':'var(--orange)',
@@ -1945,7 +2071,7 @@ function buildSignalFeed(log){
         <span class="sfeed-ts">${ts}</span>
       </div>
       <div class="sfeed-tags">
-        <span style="font-size:0.62rem;padding:2px 8px;border-radius:5px;border:1px solid ${col}44;color:${col};font-weight:700">${lbl}</span>
+        <span style="font-size:0.82rem;padding:2px 8px;border-radius:5px;border:1px solid ${col}44;color:${col};font-weight:700">${lbl}</span>
         <span class="spill">${score}</span>
         ${isSig&&e.ev?`<span class="evpill ${e.ev>0?'pos':e.ev<0?'neg':'neu'}">EV ${e.ev>0?'+':''}${(e.ev*100).toFixed(2)}%</span>`:''}
       </div>
@@ -1955,9 +2081,9 @@ function buildSignalFeed(log){
 
 // ── Trade history ──────────────────────────────────────────
 function buildTradeHistory(orders, totalFilled){
-  if(!orders||!orders.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Nenhum trade executado ainda</div>';
+  if(!orders||!orders.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.92rem">Nenhum trade executado ainda</div>';
   const filled=orders.filter(o=>(o.status||'').toLowerCase()==='filled');
-  if(!filled.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.72rem">Nenhum trade preenchido ainda</div>';
+  if(!filled.length) return'<div class="m" style="padding:20px;text-align:center;font-size:0.92rem">Nenhum trade preenchido ainda</div>';
   // Usa o total real da API (não o length do array limitado)
   const total = totalFilled || filled.length;
   const showing = filled.length < total ? ` (mostrando ${filled.length})` : '';
@@ -2030,7 +2156,7 @@ function regimeBadge(regime){
   else if(r.includes('BEAR'))    {bg='rgba(239,68,68,0.12)'; color='#f87171';border='rgba(239,68,68,0.35)';}
   else if(r.includes('PANIC'))   {bg='rgba(239,68,68,0.18)'; color='#ef4444';border='rgba(239,68,68,0.5)';}
   else                           {bg='rgba(90,106,126,0.10)';color='#5a6a7e';border='rgba(90,106,126,0.2)';}
-  return`<span style="background:${bg};color:${color};border:1px solid ${border};border-radius:6px;padding:2px 8px;font-size:0.6rem;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;white-space:nowrap">${lbl}</span>`;
+  return`<span style="background:${bg};color:${color};border:1px solid ${border};border-radius:6px;padding:2px 8px;font-size:0.75rem;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;white-space:nowrap">${lbl}</span>`;
 }
 
 const COIN_NAMES={
@@ -2058,13 +2184,13 @@ function buildOkxAssetCards(portfolio){
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
         <div class="coin-icon" style="background:linear-gradient(135deg,#26a17b,#1a7a5e);color:#fff;font-size:0.75rem;font-weight:800;">$</div>
         <div><div style="font-weight:800;font-size:0.95rem;">Tether USD</div>
-          <div style="font-size:0.6rem;color:var(--muted)">USDT · Stablecoin</div></div>
+          <div style="font-size:0.75rem;color:var(--muted)">USDT · Stablecoin</div></div>
         <div style="margin-left:auto;text-align:right;">
           <div style="font-size:1.2rem;font-weight:900">${usd(v)}</div>
-          <div style="font-size:0.6rem;color:var(--muted)">${q.toLocaleString('pt-BR',{maximumFractionDigits:2})} USDT</div>
+          <div style="font-size:0.75rem;color:var(--muted)">${q.toLocaleString('pt-BR',{maximumFractionDigits:2})} USDT</div>
         </div>
       </div>
-      <div style="font-size:0.62rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;">
+      <div style="font-size:0.82rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;">
         Capital operacional · Usado nas compras do bot
       </div>
     </div>`);
@@ -2079,13 +2205,13 @@ function buildOkxAssetCards(portfolio){
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <div class="coin-icon" style="background:linear-gradient(135deg,#0b5eda,#083da5);color:#fff;font-size:0.75rem;font-weight:800;">OK</div>
           <div><div style="font-weight:800;font-size:0.95rem;">OKX Token</div>
-            <div style="font-size:0.6rem;color:var(--muted)">OKB · Token nativo OKX</div></div>
+            <div style="font-size:0.75rem;color:var(--muted)">OKB · Token nativo OKX</div></div>
           <div style="margin-left:auto;text-align:right;">
             <div style="font-size:1.2rem;font-weight:900">${usd(v)}</div>
-            <div style="font-size:0.6rem;color:var(--muted)">${q.toLocaleString('pt-BR',{maximumFractionDigits:4})} OKB</div>
+            <div style="font-size:0.75rem;color:var(--muted)">${q.toLocaleString('pt-BR',{maximumFractionDigits:4})} OKB</div>
           </div>
         </div>
-        <div style="font-size:0.62rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;">
+        <div style="font-size:0.82rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;">
           Preço unitário: ${usd(q>0?v/q:0)} · Apenas monitorado (não negociado)
         </div>
       </div>`);
@@ -2097,13 +2223,13 @@ function buildOkxAssetCards(portfolio){
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <div class="coin-icon" style="background:linear-gradient(135deg,#009c3b,#002776);color:#ffdf00;font-size:0.75rem;font-weight:800;">R$</div>
           <div><div style="font-weight:800;font-size:0.95rem;">Brazilian Real</div>
-            <div style="font-size:0.6rem;color:var(--muted)">BRL · Dinheiro fiat</div></div>
+            <div style="font-size:0.75rem;color:var(--muted)">BRL · Dinheiro fiat</div></div>
           <div style="margin-left:auto;text-align:right;">
             <div style="font-size:1.2rem;font-weight:900">${usd(v)}</div>
-            <div style="font-size:0.6rem;color:var(--muted)">${brlFmt}</div>
+            <div style="font-size:0.75rem;color:var(--muted)">${brlFmt}</div>
           </div>
         </div>
-        <div style="font-size:0.62rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;">
+        <div style="font-size:0.82rem;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;">
           Câmbio: 1 USD = ${(1/rate).toFixed(4)} BRL · Apenas monitorado
         </div>
       </div>`);
@@ -2171,12 +2297,12 @@ function buildCards(prices,sym,exits,recentOrders=[]){
           <div class="coin-icon ${coinCls}">${icon}</div>
           <div>
             <div style="font-size:1.0rem;font-weight:800;letter-spacing:-0.3px;line-height:1.2">${fullName}</div>
-            <div style="font-size:0.6rem;color:#4b5563;margin-top:2px;">${s.replace('-','-')}</div>
+            <div style="font-size:0.75rem;color:#4b5563;margin-top:2px;">${s.replace('-','-')}</div>
           </div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:1.5rem;font-weight:900;letter-spacing:-1px;line-height:1">${p>0?usd(p,2):'–'}</div>
-          <div style="font-size:0.6rem;margin-top:3px;display:flex;align-items:center;gap:6px;justify-content:flex-end;">
+          <div style="font-size:0.75rem;margin-top:3px;display:flex;align-items:center;gap:6px;justify-content:flex-end;">
             <span style="color:${chgCol};font-weight:700">${chgArrow} ${chgStr}</span>
             <span style="color:#374151">·</span>
             <span style="color:#4b5563">▲ ${buyCount} ↓ ${sellCount}</span>
@@ -2199,7 +2325,7 @@ function buildCards(prices,sym,exits,recentOrders=[]){
       </div>
 
       <!-- Row 3: meta info -->
-      <div style="display:flex;align-items:center;gap:6px;font-size:0.6rem;color:#4b5563;margin-bottom:0px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:#4b5563;margin-bottom:0px;flex-wrap:wrap;">
         ${hasPos?`<span style="color:#10b981;font-weight:600">● posição ativa</span><span>·</span>`:''}
         <span>EV <span class="${evCls}" style="font-weight:600">${ev}</span></span>
         <span>·</span>
@@ -2265,7 +2391,7 @@ function renderFunnel(data){
   const stepsEl = document.getElementById('funnel-steps');
   if(!stepsEl) return;
   const steps = f.steps || [];
-  if(!steps.length){ stepsEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Sem dados ainda</div>'; return; }
+  if(!steps.length){ stepsEl.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Sem dados ainda</div>'; return; }
 
   const maxPct = Math.max(...steps.map(s=>s.pct), 1);
   const isSignal = s => s.result === 'SIGNAL';
@@ -2276,12 +2402,12 @@ function renderFunnel(data){
     const isSig = isSignal(s);
     const border = isSig ? `border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.05);border-radius:8px;padding:4px 8px;margin-top:4px;` : '';
     return`<div style="${border}display:grid;grid-template-columns:140px 1fr 52px 60px;align-items:center;gap:10px;">
-      <span style="font-size:0.65rem;color:${isSig?'var(--green)':'var(--text)'};font-weight:${isSig?'800':'500'}">${s.label}</span>
+      <span style="font-size:0.82rem;color:${isSig?'var(--green)':'var(--text)'};font-weight:${isSig?'800':'500'}">${s.label}</span>
       <div style="height:${isSig?'10':'6'}px;background:#0d1520;border-radius:10px;overflow:hidden;">
         <div style="height:100%;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s;${isSig?'box-shadow:0 0 8px rgba(16,185,129,0.4)':''}"></div>
       </div>
-      <span style="font-size:0.72rem;font-weight:800;color:${col};text-align:right">${s.count.toLocaleString('pt-BR')}</span>
-      <span style="font-size:0.65rem;color:${col};text-align:right">${s.pct}%</span>
+      <span style="font-size:0.92rem;font-weight:800;color:${col};text-align:right">${s.count.toLocaleString('pt-BR')}</span>
+      <span style="font-size:0.82rem;color:${col};text-align:right">${s.pct}%</span>
     </div>`;
   }).join('');
 
@@ -2290,7 +2416,7 @@ function renderFunnel(data){
   if(!symEl) return;
   const bySym = f.by_symbol || {};
   const syms = Object.keys(bySym);
-  if(!syms.length){ symEl.innerHTML='<div class="m" style="font-size:0.72rem">–</div>'; return; }
+  if(!syms.length){ symEl.innerHTML='<div class="m" style="font-size:0.92rem">–</div>'; return; }
 
   const RESULT_COLORS = {
     'SIGNAL':'var(--green)', 'REGIME_BLOCKED':'var(--red)',
@@ -2313,14 +2439,14 @@ function renderFunnel(data){
     const chips = Object.entries(d).sort((a,b)=>b[1]-a[1]).map(([r,n])=>{
       const col = RESULT_COLORS[r]||'var(--muted)';
       const lbl = RESULT_LABELS[r]||r;
-      return`<span style="font-size:0.58rem;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,0.04);border:1px solid ${col}22;color:${col}">${lbl} ${n}</span>`;
+      return`<span style="font-size:0.75rem;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,0.04);border:1px solid ${col}22;color:${col}">${lbl} ${n}</span>`;
     }).join('');
     const rateCls = sig>0?'g':'r';
     return`<div style="padding:8px 0;border-bottom:1px solid var(--border);">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
         <span style="font-size:0.75rem;font-weight:700;color:var(--text)">${name}</span>
-        <span class="${rateCls}" style="font-size:0.65rem;font-weight:700">${rate}% exec.</span>
-        <span class="m" style="font-size:0.6rem">${tot} aval.</span>
+        <span class="${rateCls}" style="font-size:0.82rem;font-weight:700">${rate}% exec.</span>
+        <span class="m" style="font-size:0.75rem">${tot} aval.</span>
       </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;">${chips}</div>
     </div>`;
@@ -2413,10 +2539,10 @@ function renderGovernance(status, drift, live, schema){
     const keys=Object.keys(features);
     const FLABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)','m8_vol_state':'Vol.State (M8)','m9_sentiment':'Sentiment (M9)'};
     if(!keys.length && drift.overall_status==='no_baseline'){
-      driftEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Baseline não encontrado — rode feature_analysis.py</div>';
+      driftEl.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Baseline não encontrado — rode feature_analysis.py</div>';
       if(driftBadge){ driftBadge.textContent='sem baseline'; driftBadge.className='hbadge hbadge-gray'; }
     } else if(!keys.length){
-      driftEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Carregando...</div>';
+      driftEl.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Carregando...</div>';
     } else {
       // PSI: só conta features com psi definido (awaiting_data tem psi=null)
       const psiValues=keys.map(k=>features[k].psi).filter(p=>p!=null);
@@ -2441,17 +2567,17 @@ function renderGovernance(status, drift, live, schema){
         const barW=psi!=null?Math.min(psi/0.3*100,100).toFixed(0):0;
         const label=waiting?`${f.n_live||0} obs`:psiLabel(psi);
         return`<div style="display:grid;grid-template-columns:120px 1fr 90px 64px;align-items:center;gap:8px;margin-bottom:4px;">
-          <span style="font-size:0.65rem;color:var(--text);font-weight:600">${FLABELS[k]||k}</span>
+          <span style="font-size:0.82rem;color:var(--text);font-weight:600">${FLABELS[k]||k}</span>
           <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;">
             <div style="height:15px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
           </div>
-          <span style="font-size:0.6rem;color:var(--muted);text-align:center">${liveMean}</span>
-          <span style="font-size:0.62rem;color:${col};font-weight:700;text-align:right">${psi!=null?'PSI '+psi.toFixed(3):label}</span>
+          <span style="font-size:0.75rem;color:var(--muted);text-align:center">${liveMean}</span>
+          <span style="font-size:0.82rem;color:${col};font-weight:700;text-align:right">${psi!=null?'PSI '+psi.toFixed(3):label}</span>
         </div>`;
       }).join('');
     }
   } else if(driftEl){
-    driftEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Carregando governance...</div>';
+    driftEl.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Carregando governance...</div>';
   }
 
   // Live Feature Stats
@@ -2461,15 +2587,15 @@ function renderGovernance(status, drift, live, schema){
     // Verifica se são dados reais ao vivo ou referência do baseline
     const isBaseline = keys.length>0 && live[keys[0]]?._source==='baseline_reference';
     if(!keys.length){
-      liveEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Sem dados ao vivo ainda</div>';
+      liveEl.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Sem dados ao vivo ainda</div>';
     } else {
       const schemaFeats=schema?.features||{};
       const FLIVE={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)','m8_vol_state':'Vol.State (M8)','m9_sentiment':'Sentiment (M9)'};
       // Badge indicador de fonte
       const srcLabel = isBaseline
-        ? '<span style="font-size:0.58rem;color:#f59e0b;margin-left:6px">· referência baseline (aguardando obs. ao vivo)</span>'
+        ? '<span style="font-size:0.75rem;color:#f59e0b;margin-left:6px">· referência baseline (aguardando obs. ao vivo)</span>'
         : '';
-      liveEl.innerHTML = (isBaseline ? `<div style="font-size:0.62rem;color:#f59e0b;margin-bottom:10px;padding:4px 8px;background:rgba(245,158,11,0.08);border-radius:4px;">Exibindo distribuição do baseline como referência — dados ao vivo acumulam com os sinais</div>` : '') +
+      liveEl.innerHTML = (isBaseline ? `<div style="font-size:0.82rem;color:#f59e0b;margin-bottom:10px;padding:4px 8px;background:rgba(245,158,11,0.08);border-radius:4px;">Exibindo distribuição do baseline como referência — dados ao vivo acumulam com os sinais</div>` : '') +
       keys.filter(k=>!k.startsWith('_')).map(k=>{
         const s=live[k];
         const w=schemaFeats[k]?((schemaFeats[k].weight||0)*100).toFixed(0):'–';
@@ -2480,15 +2606,15 @@ function renderGovernance(status, drift, live, schema){
         // grid: [nome+peso | μ σ p50 | n_obs]
         return`<div style="display:grid;grid-template-columns:160px 1fr 90px;align-items:center;gap:12px;padding:5px 0;border-bottom:1px solid #1a2332;">
           <div style="display:flex;align-items:baseline;gap:6px;min-width:0;">
-            <span style="font-size:0.68rem;color:var(--text);font-weight:700;white-space:nowrap;">${FLIVE[k]||k}</span>
-            <span style="font-size:0.6rem;color:var(--muted);white-space:nowrap;">w:${w}%</span>
+            <span style="font-size:0.88rem;color:var(--text);font-weight:700;white-space:nowrap;">${FLIVE[k]||k}</span>
+            <span style="font-size:0.75rem;color:var(--muted);white-space:nowrap;">w:${w}%</span>
           </div>
-          <div style="font-size:0.65rem;display:flex;gap:14px;align-items:center;">
+          <div style="font-size:0.82rem;display:flex;gap:14px;align-items:center;">
             <span style="color:var(--muted)">μ <span style="color:var(--text);font-weight:700">${mean}</span></span>
             <span style="color:var(--muted)">σ <span style="color:var(--text)">${std}</span></span>
             <span style="color:var(--muted)">p50 <span style="color:var(--blue);font-weight:600">${p50}</span></span>
           </div>
-          <div style="text-align:right;font-size:0.6rem;color:var(--muted);white-space:nowrap;">${n}</div>
+          <div style="text-align:right;font-size:0.75rem;color:var(--muted);white-space:nowrap;">${n}</div>
         </div>`;
       }).join('');
     }
@@ -2500,7 +2626,7 @@ function renderGovernance(status, drift, live, schema){
     const feats=schema.features||{};
     const keys=Object.keys(feats);
     if(!keys.length){
-      schemaEl.innerHTML='<div class="m" style="font-size:0.72rem">Schema vazio</div>';
+      schemaEl.innerHTML='<div class="m" style="font-size:0.92rem">Schema vazio</div>';
     } else {
       schemaEl.innerHTML=`<div style="display:grid;grid-template-columns:repeat(${Math.min(keys.length,5)},1fr);gap:5px;">`+
         keys.map(k=>{
@@ -2509,9 +2635,9 @@ function renderGovernance(status, drift, live, schema){
           const lb=f.lookback||0;
           const safe=f.leakage_safe;
           return`<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:7px 9px;text-align:center;">
-            <div style="font-size:0.65rem;font-weight:700;color:var(--text);margin-bottom:3px">${{'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)','m8_vol_state':'Vol.State (M8)','m9_sentiment':'Sentiment (M9)'}[k]||k.replace('_',' ')}</div>
+            <div style="font-size:0.82rem;font-weight:700;color:var(--text);margin-bottom:3px">${{'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)','m8_vol_state':'Vol.State (M8)','m9_sentiment':'Sentiment (M9)'}[k]||k.replace('_',' ')}</div>
             <div style="font-size:1rem;font-weight:900;color:var(--blue)">${w}%</div>
-            <div style="font-size:0.58rem;color:var(--muted);margin-top:2px">lb:${lb} · ${safe?'<span style="color:var(--green)">safe</span>':'<span style="color:var(--red)">⚠</span>'}</div>
+            <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">lb:${lb} · ${safe?'<span style="color:var(--green)">safe</span>':'<span style="color:var(--red)">⚠</span>'}</div>
           </div>`;
         }).join('')+'</div>';
     }
@@ -2524,7 +2650,7 @@ function renderImportance(data){
   const metaEl=document.getElementById('imp-meta');
   const atEl=document.getElementById('imp-computed-at');
   if(!data||!data.available){
-    if(el) el.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/feature_analysis.py</div>';
+    if(el) el.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Rode: python scripts/feature_analysis.py</div>';
     return;
   }
   const feats=data.features||{};
@@ -2560,15 +2686,15 @@ function renderImportance(data){
     const deltaSign=delta>=0?'+':'';
     return`<div style="padding:2px 0;">
       <div style="display:grid;grid-template-columns:120px 1fr 52px 80px;align-items:center;gap:8px;margin-bottom:3px;">
-        <span style="font-size:0.65rem;color:var(--text);font-weight:600">${label}</span>
+        <span style="font-size:0.82rem;color:var(--text);font-weight:600">${label}</span>
         <div style="position:relative;height:15px;background:#0d1520;border-radius:7px;overflow:visible;">
           <div style="position:absolute;top:0;left:0;height:15px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
           <div style="position:absolute;top:-3px;bottom:-3px;left:${schBarW}%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;" title="Schema weight"></div>
         </div>
-        <span style="font-size:0.68rem;font-weight:800;color:${col};text-align:right">${(relImp*100).toFixed(0)}%</span>
-        <span style="font-size:0.6rem;color:${alignCol};text-align:right">${deltaSign}${delta}% <span style="opacity:0.6">(sch ${(schW*100).toFixed(0)}%)</span></span>
+        <span style="font-size:0.88rem;font-weight:800;color:${col};text-align:right">${(relImp*100).toFixed(0)}%</span>
+        <span style="font-size:0.75rem;color:${alignCol};text-align:right">${deltaSign}${delta}% <span style="opacity:0.6">(sch ${(schW*100).toFixed(0)}%)</span></span>
       </div>
-      <div style="font-size:0.58rem;color:var(--muted);padding-left:128px;">
+      <div style="font-size:0.75rem;color:var(--muted);padding-left:128px;">
         Spearman ${corrSign}${corr.toFixed(3)} · PermImp ${(f.perm_importance||0).toFixed(4)}
       </div>
     </div>`;
@@ -2580,7 +2706,7 @@ function renderWfo(data){
   const el=document.getElementById('wfo-content');
   const atEl=document.getElementById('wfo-run-at');
   if(!data||!data.available){
-    if(el) el.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Rode: python scripts/walk_forward.py</div>';
+    if(el) el.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Rode: python scripts/walk_forward.py</div>';
     return;
   }
   const syms=data.symbols||{};
@@ -2618,7 +2744,7 @@ function renderWfo(data){
       const rrCls=f.oos_return>0?'g':f.oos_return<0?'r':'m';
       return`<tr>
         <td style="color:${vCol};font-weight:700">${f.fold}${vMark}</td>
-        <td class="m" style="font-size:0.6rem">${(f.oos_start||'').slice(0,7)}</td>
+        <td class="m" style="font-size:0.75rem">${(f.oos_start||'').slice(0,7)}</td>
         <td>${f.oos_trades||0}</td>
         <td>${oWr}</td>
         <td class="${rrCls}">${oor}</td>
@@ -2629,8 +2755,8 @@ function renderWfo(data){
     return`<div style="margin-bottom:14px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
         <span style="font-size:0.78rem;font-weight:800;color:var(--text)">${name}</span>
-        <span style="font-size:0.62rem;color:var(--muted)">${validFolds.length}/${folds.length} folds válidos</span>
-        <span class="${retCls}" style="font-size:0.72rem;font-weight:700;margin-left:auto">OOS ${ret}</span>
+        <span style="font-size:0.82rem;color:var(--muted)">${validFolds.length}/${folds.length} folds válidos</span>
+        <span class="${retCls}" style="font-size:0.92rem;font-weight:700;margin-left:auto">OOS ${ret}</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
         <div class="calib-item"><div class="calib-val ${retCls}">${ret}</div><div class="calib-label">Retorno OOS</div></div>
@@ -2638,7 +2764,7 @@ function renderWfo(data){
         <div class="calib-item"><div class="calib-val ${stabCls}">${stab}</div><div class="calib-label">Stability</div></div>
       </div>
       <div style="max-height:102px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;">
-        <table style="font-size:0.65rem;width:100%;">
+        <table style="font-size:0.82rem;width:100%;">
           <thead style="position:sticky;top:0;background:var(--surface);z-index:1;">
             <tr><th>Fold</th><th>OOS Start</th><th>Trades</th><th>WR</th><th>Retorno</th><th>PF</th></tr>
           </thead>
@@ -2765,7 +2891,7 @@ function buildMetaOverfitting(mo){
       const s=cfg[v.status]||cfg.GREY;
       return `<div style="display:flex;align-items:flex-start;gap:8px;">
         <span style="color:${s.c};font-size:0.8rem;line-height:1.2;">${s.icon}</span>
-        <div style="flex:1;font-size:0.6rem;">
+        <div style="flex:1;font-size:0.75rem;">
           <div style="font-weight:600;color:${s.c}">${label}</div>
           <div style="color:var(--muted)">${v.note||''}</div>
         </div>
@@ -2888,9 +3014,9 @@ function buildRealityCheck(rc){
       const icon = f.profitable?'✓':'✗';
       const pnl  = f.total_pnl>=0?'+$'+f.total_pnl.toFixed(0):'-$'+Math.abs(f.total_pnl).toFixed(0);
       const wr   = (f.win_rate*100).toFixed(0)+'%';
-      return `<div style="display:flex;align-items:center;gap:8px;font-size:0.6rem;">
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:0.75rem;">
         <span style="width:34px;text-align:center;padding:1px 4px;border-radius:3px;border:1px solid ${col}33;color:${col};font-weight:700;">${f.fee_multiplier}×</span>
-        <span style="color:${col};font-size:0.7rem;">${icon}</span>
+        <span style="color:${col};font-size:0.88rem;">${icon}</span>
         <span style="flex:1;color:var(--muted)">P&L: <span style="color:${col};font-weight:600">${pnl}</span></span>
         <span style="color:var(--muted)">WR: ${wr}</span>
         <span style="color:var(--muted)">${f.sharpe!=null?'SR:'+f.sharpe.toFixed(2):''}</span>
@@ -2972,7 +3098,7 @@ function buildEquityCharts(eq){
   if(symEl && eq.by_symbol){
     symEl.innerHTML = Object.entries(eq.by_symbol).map(([sym,s])=>{
       const p=s.pnl, cls=p>=0?'var(--green)':'var(--red)';
-      return`<span style="font-size:0.62rem;padding:2px 8px;border-radius:4px;border:1px solid ${cls}33;color:${cls}">
+      return`<span style="font-size:0.82rem;padding:2px 8px;border-radius:4px;border:1px solid ${cls}33;color:${cls}">
         ${sym.replace('-USDT','')} ${p>=0?'+':''}$${Math.abs(p).toFixed(0)} (${(s.win_rate*100).toFixed(0)}% WR)
       </span>`;
     }).join('');
@@ -3097,7 +3223,7 @@ function buildDistributionPanel(dist){
       const col = r.pnl>=0 ? 'var(--green)' : 'var(--red)';
       const sign = r.pnl>=0?'+':'';
       return `<div style="margin-bottom:6px;">
-        <div style="display:flex;justify-content:space-between;font-size:0.58rem;margin-bottom:2px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:2px;">
           <span style="color:var(--muted)">${regime}</span>
           <span>${r.trades}t · WR ${(r.win_rate*100).toFixed(0)}% · <span style="color:${col}">${sign}$${Math.abs(r.avg_pnl).toFixed(0)}/t</span></span>
         </div>
@@ -3120,9 +3246,9 @@ function buildDistributionPanel(dist){
 
   // Extremos (top 3)
   const fmtTrade = t => `<div style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-    <span style="color:var(--muted);font-size:0.55rem">${t.symbol.replace('-USDT','')} ${t.exit_at}</span><br>
+    <span style="color:var(--muted);font-size:0.75rem">${t.symbol.replace('-USDT','')} ${t.exit_at}</span><br>
     <span style="font-weight:700">${t.pnl>=0?'+':''}$${Math.abs(t.pnl).toFixed(0)}</span>
-    <span style="color:var(--muted);font-size:0.55rem"> (${t.pnl_pct.toFixed(2)}%)</span>
+    <span style="color:var(--muted);font-size:0.75rem"> (${t.pnl_pct.toFixed(2)}%)</span>
   </div>`;
   const bestEl  = document.getElementById('dist-best-trades');
   const worstEl = document.getElementById('dist-worst-trades');
@@ -3206,7 +3332,7 @@ function buildPortfolioAllocator(pa){
   if(!rowsEl) return;
   const entries = Object.entries(signals);
   if(!entries.length){
-    rowsEl.innerHTML='<div style="color:var(--muted);font-size:0.6rem;padding:10px 0">Aguardando sinais…</div>';
+    rowsEl.innerHTML='<div style="color:var(--muted);font-size:0.75rem;padding:10px 0">Aguardando sinais…</div>';
     return;
   }
   // Sort by calibrated_score desc
@@ -3219,14 +3345,14 @@ function buildPortfolioAllocator(pa){
     const rankCol = rank===1?'var(--green)':rank===2?'var(--yellow)':'var(--muted)';
     const inOpen  = openList.includes(sym);
     return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-      <span style="font-size:0.65rem;font-weight:700;color:${rankCol};min-width:14px">#${rank}</span>
+      <span style="font-size:0.82rem;font-weight:700;color:${rankCol};min-width:14px">#${rank}</span>
       <span style="font-weight:600;min-width:42px">${sym.replace('-USDT','')}</span>
-      ${inOpen?'<span style="font-size:0.48rem;background:rgba(16,185,129,0.15);color:var(--green);border-radius:3px;padding:0 4px">OPEN</span>':''}
+      ${inOpen?'<span style="font-size:0.75rem;background:rgba(16,185,129,0.15);color:var(--green);border-radius:3px;padding:0 4px">OPEN</span>':''}
       <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:3px;height:5px;overflow:hidden;">
         <div style="height:100%;width:${Math.min(parseFloat(score),100)}%;background:${rankCol};border-radius:3px;"></div>
       </div>
       <span style="color:${rankCol};min-width:30px;text-align:right;font-weight:600">${score}%</span>
-      <span style="font-size:0.52rem;color:var(--muted)">${regLbl} · ${age}</span>
+      <span style="font-size:0.75rem;color:var(--muted)">${regLbl} · ${age}</span>
     </div>`;
   }).join('');
 
@@ -3234,7 +3360,7 @@ function buildPortfolioAllocator(pa){
   const corr = pa.correlation_map||{};
   const corrEntries = Object.entries(corr).filter(([,v])=>Math.abs(v)>0.5);
   if(corrEntries.length){
-    rowsEl.innerHTML += `<div style="margin-top:6px;font-size:0.55rem;color:var(--muted)">Correlações altas: `
+    rowsEl.innerHTML += `<div style="margin-top:6px;font-size:0.75rem;color:var(--muted)">Correlações altas: `
       + corrEntries.map(([pair,v])=>`<span style="color:${Math.abs(v)>0.85?'var(--red)':'var(--yellow)'}">${pair.replace('|','↔')} ${v.toFixed(2)}</span>`).join(' · ')
       + '</div>';
   }
@@ -3254,7 +3380,7 @@ function buildExecutionIntelligence(ei){
   const bySymbol = ei.slippage_by_symbol||{};
   const entries = Object.entries(bySymbol).filter(([,v])=>v.n>0);
   if(!entries.length){
-    rowsEl.innerHTML='<div style="color:var(--muted);font-size:0.6rem;padding:10px 0">Nenhum fill registrado ainda</div>';
+    rowsEl.innerHTML='<div style="color:var(--muted);font-size:0.75rem;padding:10px 0">Nenhum fill registrado ainda</div>';
     return;
   }
   rowsEl.innerHTML = entries.map(([sym, s])=>{
@@ -3266,13 +3392,13 @@ function buildExecutionIntelligence(ei){
     const qPct  = (q*100).toFixed(0);
     return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
       <span style="font-weight:600;min-width:36px">${sym.replace('-USDT','')}</span>
-      <span style="font-size:0.55rem;color:var(--muted)">n=${s.n}</span>
+      <span style="font-size:0.75rem;color:var(--muted)">n=${s.n}</span>
       <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:3px;height:5px;overflow:hidden;">
         <div style="height:100%;width:${qPct}%;background:${qCol};border-radius:3px;"></div>
       </div>
       <span style="color:${qCol};font-weight:700;min-width:28px;text-align:right">${qPct}%</span>
-      <span style="font-size:0.55rem;color:var(--muted)">avg ${avg.toFixed(1)} bps · worst ${worst.toFixed(1)}</span>
-      <span style="font-size:0.55rem;background:rgba(255,255,255,0.06);border-radius:3px;padding:0 4px;">×${mult.toFixed(2)}</span>
+      <span style="font-size:0.75rem;color:var(--muted)">avg ${avg.toFixed(1)} bps · worst ${worst.toFixed(1)}</span>
+      <span style="font-size:0.75rem;background:rgba(255,255,255,0.06);border-radius:3px;padding:0 4px;">×${mult.toFixed(2)}</span>
     </div>`;
   }).join('');
 }
@@ -3296,11 +3422,11 @@ function buildAlphaOrthogonality(ao){
   const avgBoost  = allBoosts.length ? allBoosts.reduce((a,b)=>a+b,0)/allBoosts.length : 1.0;
   const boostCol  = avgBoost>1.03?'var(--green)':avgBoost<0.97?'var(--red)':'var(--muted)';
   badgesEl.innerHTML = `
-    <span style="background:rgba(255,255,255,0.06);border-radius:4px;padding:2px 8px;font-size:0.6rem">
+    <span style="background:rgba(255,255,255,0.06);border-radius:4px;padding:2px 8px;font-size:0.75rem">
       kelly avg <b style="color:${boostCol}">×${avgBoost.toFixed(2)}</b>
     </span>
     ${Object.entries(syms).filter(([,s])=>s.active&&s.active.length).map(([sym,s])=>
-      `<span style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:4px;padding:2px 8px;font-size:0.57rem;color:var(--purple)">
+      `<span style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:4px;padding:2px 8px;font-size:0.75rem;color:var(--purple)">
         ${sym.replace('-USDT','')} ${s.active.join('+')} ×${(s.kelly_boost||1).toFixed(2)}
       </span>`
     ).join('')}
@@ -3308,7 +3434,7 @@ function buildAlphaOrthogonality(ao){
 
   // Per-symbol breakdown
   symbolsEl.innerHTML = Object.entries(syms).map(([sym, s])=>{
-    if(s.error) return `<div style="font-size:0.6rem;color:var(--red)">${sym}: ${s.error}</div>`;
+    if(s.error) return `<div style="font-size:0.75rem;color:var(--red)">${sym}: ${s.error}</div>`;
     const sigs = s.signals||{};
     const boost = s.kelly_boost||1;
     const boostC = boost>1.02?'var(--green)':boost<0.98?'var(--red)':'var(--muted)';
@@ -3316,20 +3442,20 @@ function buildAlphaOrthogonality(ao){
       const col = sig.kelly_mult>1.01?'var(--green)':sig.kelly_mult<0.99?'var(--red)':'var(--muted)';
       const bar = Math.round(sig.score*100);
       return `<div style="display:flex;align-items:center;gap:5px;margin:2px 0;">
-        <span style="font-size:0.52rem;color:var(--muted);min-width:28px">${name.toUpperCase()}</span>
+        <span style="font-size:0.75rem;color:var(--muted);min-width:28px">${name.toUpperCase()}</span>
         <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:2px;height:4px;overflow:hidden;">
           <div style="height:100%;width:${bar}%;background:${col};border-radius:2px;"></div>
         </div>
-        <span style="font-size:0.52rem;color:${col};min-width:28px;text-align:right">×${sig.kelly_mult.toFixed(2)}</span>
+        <span style="font-size:0.75rem;color:${col};min-width:28px;text-align:right">×${sig.kelly_mult.toFixed(2)}</span>
       </div>`;
     }).join('');
     return `<div style="flex:1;min-width:160px;max-width:220px;padding:8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:6px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <span style="font-weight:700;font-size:0.68rem">${sym.replace('-USDT','')}</span>
-        <span style="font-size:0.62rem;font-weight:700;color:${boostC}">×${boost.toFixed(2)}</span>
+        <span style="font-weight:700;font-size:0.88rem">${sym.replace('-USDT','')}</span>
+        <span style="font-size:0.82rem;font-weight:700;color:${boostC}">×${boost.toFixed(2)}</span>
       </div>
       ${sigRows}
-      ${s.threshold_adj?`<div style="font-size:0.5rem;color:var(--muted);margin-top:4px">thr adj: ${s.threshold_adj>0?'+':''}${s.threshold_adj.toFixed(3)}</div>`:''}
+      ${s.threshold_adj?`<div style="font-size:0.75rem;color:var(--muted);margin-top:4px">thr adj: ${s.threshold_adj>0?'+':''}${s.threshold_adj.toFixed(3)}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -3438,7 +3564,7 @@ function buildStressBacktest(st){
       const col=ST_COL[s]||'var(--muted)';
       const bar=Math.round(d.pct/maxPct*100);
       return `<div>
-        <div style="display:flex;justify-content:space-between;font-size:0.58rem;margin-bottom:2px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:2px;">
           <span style="color:${col}">${s}</span>
           <span style="color:var(--muted)">${d.pct.toFixed(1)}% (${d.n.toLocaleString('pt-BR')}h)</span>
         </div>
@@ -3465,11 +3591,11 @@ function buildStressBacktest(st){
         const lag=b.regime_lag_hours;
         const lagCol=lag&&lag>72?'var(--red)':lag&&lag>24?'var(--yellow)':'var(--green)';
         return `<div style="background:rgba(255,255,255,0.03);border-radius:6px;padding:8px;">
-          <div style="display:flex;justify-content:space-between;font-size:0.6rem;margin-bottom:4px;">
+          <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:4px;">
             <span style="font-weight:700">${b.label}</span>
             <span style="color:var(--red)">${b.bear_ret_pct||0}%</span>
           </div>
-          <div style="font-size:0.55rem;display:grid;grid-template-columns:1fr 1fr;gap:2px;">
+          <div style="font-size:0.75rem;display:grid;grid-template-columns:1fr 1fr;gap:2px;">
             <span style="color:var(--muted)">BEAR_TREND lag:</span>
             <span style="color:${lagCol};font-weight:600">${lag!=null?lag+'h':'NAO ATIVOU'}</span>
             <span style="color:var(--muted)">Trades no lag:</span>
@@ -3498,7 +3624,7 @@ function buildStressBacktest(st){
         <div><span style="color:var(--muted)">Max DD</span><br><b style="color:var(--red)">${full.max_drawdown_pct||0}%</b></div>
       </div>
       <div style="margin-top:6px;padding:4px 8px;border-radius:4px;background:${vCol}22;border:1px solid ${vCol}33;">
-        <span style="font-size:0.55rem;color:${vCol}">${full.verdict||'–'}</span>
+        <span style="font-size:0.75rem;color:${vCol}">${full.verdict||'–'}</span>
       </div>`;
   }
 
@@ -3552,7 +3678,7 @@ function buildModelHealth(mh, ens){
     dimEl.innerHTML=Object.entries(mh.dimensions).map(([k,d])=>{
       const sc_=d.score||50;
       const col=sc_>=80?'var(--green)':sc_>=60?'var(--yellow)':'var(--red)';
-      return `<div style="display:flex;align-items:center;gap:8px;font-size:0.58rem;">
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:0.75rem;">
         <span style="width:80px;color:var(--muted)">${DIM_LABELS[k]||k}</span>
         <div style="flex:1;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
           <div style="height:100%;width:${sc_}%;background:${col};border-radius:3px;"></div>
@@ -3565,7 +3691,7 @@ function buildModelHealth(mh, ens){
   // Recomendações
   const recEl=document.getElementById('mh-recs');
   if(recEl&&mh.recommendations){
-    recEl.innerHTML=mh.recommendations.map(r=>`<div style="font-size:0.58rem;margin-bottom:3px">${r}</div>`).join('');
+    recEl.innerHTML=mh.recommendations.map(r=>`<div style="font-size:0.75rem;margin-bottom:3px">${r}</div>`).join('');
   }
 
   // Experiment tracking
@@ -3584,7 +3710,7 @@ function buildModelHealth(mh, ens){
       const dwr=e.delta_wr;
       const dwrCol=dwr==null?'var(--muted)':dwr>0?'var(--green)':'var(--red)';
       return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-        <span style="color:var(--muted)">${e.version} <span style="font-size:0.5rem">${(e.run_at||'').slice(0,10)}</span></span>
+        <span style="color:var(--muted)">${e.version} <span style="font-size:0.75rem">${(e.run_at||'').slice(0,10)}</span></span>
         <span>WR:${((e.win_rate||0)*100).toFixed(1)}% <span style="color:${dwrCol}">${dwr!=null?(dwr>0?'+':'')+((dwr||0)*100).toFixed(1)+'%':''}</span></span>
       </div>`;
     }).join('') || '<span style="color:var(--muted)">Nenhuma calibração registrada</span>';
@@ -3613,12 +3739,12 @@ function buildModelHealth(mh, ens){
       psiEl.innerHTML=items.map(([k,v])=>{
         const col=v>=0.20?'var(--red)':v>=0.10?'var(--yellow)':'var(--green)';
         const pct=Math.round(v/maxP*100);
-        return `<div style="display:flex;align-items:center;gap:6px;font-size:0.55rem;">
+        return `<div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;">
           <span style="width:70px;color:var(--muted);overflow:hidden;text-overflow:ellipsis">${k.replace('_',' ')}</span>
           <div style="flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;">
             <div style="height:100%;width:${pct}%;background:${col};border-radius:2px;"></div>
           </div>
-          <span style="color:${col};font-size:0.5rem;width:32px;text-align:right">${v.toFixed(3)}</span>
+          <span style="color:${col};font-size:0.75rem;width:32px;text-align:right">${v.toFixed(3)}</span>
         </div>`;
       }).join('');
     } else {
@@ -3678,7 +3804,7 @@ function buildAdvancedRisk(ar){
       const ok=!v.triggered;
       rows.push(`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
         <span style="font-size:0.75rem;color:${ok?'var(--green)':'var(--red)'};">${ok?'✓':'✗'}</span>
-        <div style="flex:1;font-size:0.6rem;">
+        <div style="flex:1;font-size:0.75rem;">
           <span style="font-weight:600">Losses Consec. ${sym.replace('-USDT','')}</span>
           <span style="color:var(--muted);margin-left:6px">${v.consec_losses}/${v.threshold}</span>
           ${v.triggered&&v.pause_remaining_h?`<span style="color:var(--yellow);margin-left:4px">(${v.pause_remaining_h}h restantes)</span>`:''}
@@ -3695,13 +3821,13 @@ function buildAdvancedRisk(ar){
                    v.action||'';
       rows.push(`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
         <span style="font-size:0.75rem;color:${ok?'var(--green)':'var(--red)'};">${ok?'✓':'✗'}</span>
-        <div style="flex:1;font-size:0.6rem;">
+        <div style="flex:1;font-size:0.75rem;">
           <span style="font-weight:600">${label}</span>
           <span style="color:var(--muted);margin-left:6px">${detail}</span>
         </div>
       </div>`);
     });
-    cbEl.innerHTML = rows.join('') || '<span style="color:var(--muted);font-size:0.6rem">Nenhum dado</span>';
+    cbEl.innerHTML = rows.join('') || '<span style="color:var(--muted);font-size:0.75rem">Nenhum dado</span>';
   }
 
   // ── Correlação ──────────────────────────────────────────────────────────
@@ -3714,7 +3840,7 @@ function buildAdvancedRisk(ar){
       const col=c>=0.85?'var(--red)':c>=0.60?'var(--yellow)':'var(--green)';
       const pct=Math.round(c/maxC*100);
       return `<div style="margin-bottom:5px;">
-        <div style="display:flex;justify-content:space-between;font-size:0.58rem;margin-bottom:2px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:2px;">
           <span style="color:var(--muted)">${p.sym1.replace('-USDT','')}//${p.sym2.replace('-USDT','')}</span>
           <span style="color:${col};font-weight:700">${c.toFixed(3)}</span>
         </div>
@@ -3741,14 +3867,14 @@ function buildAdvancedRisk(ar){
   if(stEl && ar.stress?.scenarios){
     stEl.innerHTML=ar.stress.scenarios.map(s=>{
       const col=s.severity==='CRÍTICO'?'var(--red)':s.severity==='ALTO'?'var(--orange)':'var(--yellow)';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.58rem;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+      return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.75rem;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
         <div>
           <div style="font-weight:600">${s.name}</div>
-          <div style="color:var(--muted);font-size:0.5rem">${s.description}</div>
+          <div style="color:var(--muted);font-size:0.75rem">${s.description}</div>
         </div>
         <div style="text-align:right">
           <div style="color:${col};font-weight:700">${s.portfolio_impact_pct>0?'+':''}${s.portfolio_impact_pct}%</div>
-          <div style="color:var(--muted);font-size:0.5rem">${s.severity}</div>
+          <div style="color:var(--muted);font-size:0.75rem">${s.severity}</div>
         </div>
       </div>`;
     }).join('');
@@ -3758,11 +3884,11 @@ function buildAdvancedRisk(ar){
   const liqEl = document.getElementById('ar-liq-list');
   if(liqEl && ar.liquidity?.by_symbol){
     liqEl.innerHTML=Object.entries(ar.liquidity.by_symbol).map(([sym,d])=>{
-      if(!d.available && d.available===false) return `<div style="font-size:0.6rem;color:var(--muted)">${sym}: sem dados</div>`;
+      if(!d.available && d.available===false) return `<div style="font-size:0.75rem;color:var(--muted)">${sym}: sem dados</div>`;
       const col=d.illiquid?'var(--red)':d.ratio<0.8?'var(--yellow)':'var(--green)';
       const pct=Math.min(100,Math.round((d.ratio||0)*100));
       return `<div>
-        <div style="display:flex;justify-content:space-between;font-size:0.58rem;margin-bottom:2px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:2px;">
           <span>${sym.replace('-USDT','')}</span>
           <span style="color:${col};font-weight:700">×${(d.ratio||0).toFixed(2)} vol ${d.illiquid?'🔴 ILÍQUIDO':''}</span>
         </div>
@@ -3831,11 +3957,11 @@ function buildWeightEngine(sw){
       const wr=e.win_rate!=null?` WR:${(e.win_rate*100).toFixed(0)}%`:'';
       const n=e.n_real?` n=${e.n_real}`:'';
       return`<td style="text-align:center;padding:3px 6px;">
-        <span style="font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:5px;${cs}" title="${e.confidence}${n}${wr}">${pct}</span>
+        <span style="font-size:0.88rem;font-weight:700;padding:2px 7px;border-radius:5px;${cs}" title="${e.confidence}${n}${wr}">${pct}</span>
       </td>`;
     }).join('');
     return`<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
-      <td style="padding:4px 6px;white-space:nowrap;font-size:0.63rem;color:var(--text);font-weight:600">${shortReg(regime)}</td>
+      <td style="padding:4px 6px;white-space:nowrap;font-size:0.82rem;color:var(--text);font-weight:600">${shortReg(regime)}</td>
       ${cells}
     </tr>`;
   }).join('');
@@ -3870,15 +3996,17 @@ function updateRegimeDistribution(latest){
   distRow.style.display=hasData?'':'none';
   if(!hasData) return;
 
-  const maxP=Math.max(...REGIMES.map(({k})=>f[k]||0));
+  const maxP=Math.max(...REGIMES.map(({k})=>f[k]||0),0.001);
   barsEl.innerHTML=REGIMES.map(({k,label,col})=>{
     const p=f[k]||0;
-    const h=Math.max(4,Math.round(p/maxP*24));
+    const barH=Math.max(6,Math.round(p/maxP*40));
     const dominant=p===maxP;
-    return`<div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:28px;">
-      <span style="font-size:0.42rem;color:${col};font-weight:${dominant?800:400}">${(p*100).toFixed(0)}%</span>
-      <div style="width:100%;height:${h}px;background:${col};border-radius:2px 2px 0 0;opacity:${dominant?1:0.55};transition:height .4s;"></div>
-      <span style="font-size:0.40rem;color:${col};opacity:0.7;white-space:nowrap">${label}</span>
+    return`<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <span style="font-size:0.75rem;font-weight:${dominant?800:500};color:${col};">${(p*100).toFixed(0)}%</span>
+      <div style="width:100%;height:${barH}px;background:${col};border-radius:4px 4px 0 0;
+                  opacity:${dominant?1:0.5};transition:height .4s;min-height:6px;"></div>
+      <span style="font-size:0.75rem;color:${col};opacity:0.8;text-align:center;
+                   line-height:1.2;word-break:break-word;">${label}</span>
     </div>`;
   }).join('');
 
@@ -3911,17 +4039,18 @@ function updateEdgeGatesAndKelly(latest){
       kellyChips.innerHTML=szFields.map(({k,label})=>{
         const v=f[k]; if(v==null) return'';
         const col=v>1.05?'#10b981':v<0.85?'#ef4444':v<0.98?'#f59e0b':'#94a3b8';
-        return`<span style="font-size:0.58rem;padding:1px 8px;border-radius:10px;border:1px solid ${col}44;color:${col};background:${col}10;white-space:nowrap" title="${k}">${label} ×${v.toFixed(2)}</span>`;
+        return`<span style="font-size:0.75rem;padding:1px 8px;border-radius:10px;border:1px solid ${col}44;color:${col};background:${col}10;white-space:nowrap" title="${k}">${label} ×${v.toFixed(2)}</span>`;
       }).join('');
     }
   }
 
-  // ── Edge Gates (ec_* fields) ──
-  const edgeChips=document.getElementById('edge-chips');
-  const edgeSizingRow=document.getElementById('edge-sizing-row');
-  const edgeSizingChip=document.getElementById('edge-sizing-chip');
-  const edgeWrdiffChip=document.getElementById('edge-wrdiff-chip');
-  const edgeBlockedChip=document.getElementById('edge-blocked-chip');
+  // ── Edge Gates — tudo numa faixa única que quebra em mobile ──
+  const allChipsEl   = document.getElementById('edge-chips-all');
+  const placeholder  = document.getElementById('edge-chips-placeholder');
+  const sepEl        = document.getElementById('edge-sep');
+  const edgeSizingChip  = document.getElementById('edge-sizing-chip');
+  const edgeWrdiffChip  = document.getElementById('edge-wrdiff-chip');
+  const edgeBlockedChip = document.getElementById('edge-blocked-chip');
 
   const ecFields=[
     {k:'ec_psi_mult',    label:'PSI'},
@@ -3930,35 +4059,57 @@ function updateEdgeGatesAndKelly(latest){
     {k:'ec_wr_mult',     label:'WR'},
     {k:'ec_thr_mult',    label:'Thr'},
   ];
-  const hasEc=ecFields.some(({k})=>f[k]!=null);
-  if(edgeChips&&hasEc){
-    edgeChips.innerHTML=ecFields.map(({k,label})=>{
-      const v=f[k]; if(v==null) return'';
-      const col=v>1.05?'#10b981':v<0.90?'#ef4444':v<0.99?'#f59e0b':'#94a3b8';
-      return`<span style="font-size:0.58rem;padding:1px 8px;border-radius:10px;border:1px solid ${col}44;color:${col};background:${col}10;white-space:nowrap" title="${k}">${label} ×${v.toFixed(2)}</span>`;
-    }).join('');
-  } else if(edgeChips&&!hasEc){
-    edgeChips.innerHTML=`<span style="font-size:0.55rem;color:var(--muted);font-style:italic">aguardando sinal…</span>`;
+  const hasEc = ecFields.some(({k})=>f[k]!=null);
+
+  if(allChipsEl){
+    if(hasEc){
+      // Remove placeholder e insere chips no início do container
+      if(placeholder) placeholder.style.display='none';
+      // Limpa chips anteriores (preserva os IDs fixos no final)
+      allChipsEl.querySelectorAll('.ec-chip').forEach(el=>el.remove());
+      const frag = document.createDocumentFragment();
+      ecFields.forEach(({k,label})=>{
+        const v=f[k]; if(v==null) return;
+        const col=v>1.05?'#10b981':v<0.90?'#ef4444':v<0.99?'#f59e0b':'#94a3b8';
+        const sp=document.createElement('span');
+        sp.className='ec-chip';
+        sp.title=k;
+        sp.style.cssText=`font-size:0.75rem;padding:3px 10px;border-radius:12px;border:1px solid ${col}44;color:${col};background:${col}10;white-space:nowrap;`;
+        sp.textContent=`${label} ×${v.toFixed(2)}`;
+        frag.appendChild(sp);
+      });
+      allChipsEl.insertBefore(frag, allChipsEl.firstChild);
+      if(sepEl) sepEl.style.display='inline-block';
+    } else {
+      if(placeholder) placeholder.style.display='';
+      if(sepEl) sepEl.style.display='none';
+      allChipsEl.querySelectorAll('.ec-chip').forEach(el=>el.remove());
+    }
   }
 
-  const ecSizing=f.ec_sizing_mult;
-  const ecWrDiff=f.ec_wr_diff;
-  const ecBlocked=f.ec_blocked;
-  if(edgeSizingRow){
-    const hasDetail=ecSizing!=null||ecWrDiff!=null;
-    edgeSizingRow.style.display=hasDetail?'flex':'none';
-    if(ecSizing!=null&&edgeSizingChip){
-      const sc=ecSizing>0.85?'#10b981':ecSizing>0.5?'#f59e0b':'#ef4444';
-      edgeSizingChip.textContent=`Sizing ×${ecSizing.toFixed(2)}`;
-      edgeSizingChip.style.color=sc; edgeSizingChip.style.borderColor=sc+'44';
-    }
-    if(ecWrDiff!=null&&edgeWrdiffChip){
-      const wc=ecWrDiff>0?'#10b981':ecWrDiff>-0.1?'#f59e0b':'#ef4444';
-      edgeWrdiffChip.textContent=`WR diff ${ecWrDiff>=0?'+':''}${(ecWrDiff*100).toFixed(1)}%`;
-      edgeWrdiffChip.style.color=wc; edgeWrdiffChip.style.borderColor=wc+'44';
-    }
-  }
-  if(edgeBlockedChip) edgeBlockedChip.style.display=(ecBlocked&&ecBlocked>0)?'':'none';
+  // Sizing / WR diff / Bloqueado — sempre inline na mesma faixa
+  const ecSizing  = f.ec_sizing_mult;
+  const ecWrDiff  = f.ec_wr_diff;
+  const ecBlocked = f.ec_blocked;
+
+  if(ecSizing!=null && edgeSizingChip){
+    const sc=ecSizing>0.85?'#10b981':ecSizing>0.5?'#f59e0b':'#ef4444';
+    edgeSizingChip.textContent=`Sizing ×${ecSizing.toFixed(2)}`;
+    edgeSizingChip.style.color=sc;
+    edgeSizingChip.style.borderColor=sc+'44';
+    edgeSizingChip.style.display='';
+  } else if(edgeSizingChip){ edgeSizingChip.style.display='none'; }
+
+  if(ecWrDiff!=null && edgeWrdiffChip){
+    const wc=ecWrDiff>0?'#10b981':ecWrDiff>-0.1?'#f59e0b':'#ef4444';
+    edgeWrdiffChip.textContent=`WR diff ${ecWrDiff>=0?'+':''}${(ecWrDiff*100).toFixed(1)}%`;
+    edgeWrdiffChip.style.color=wc;
+    edgeWrdiffChip.style.borderColor=wc+'44';
+    edgeWrdiffChip.style.display='';
+  } else if(edgeWrdiffChip){ edgeWrdiffChip.style.display='none'; }
+
+  if(edgeBlockedChip)
+    edgeBlockedChip.style.display=(ecBlocked&&ecBlocked>0)?'':'none';
 }
 
 function buildMetaRegime(mr){
@@ -4017,7 +4168,7 @@ function buildMetaRegime(mr){
       const pct=Math.round((v||0)*100);
       const col=(v||0)>0.6?'var(--green)':(v||0)<0.4?'var(--red)':'var(--yellow)';
       return `<div>
-        <div style="display:flex;justify-content:space-between;font-size:0.58rem;margin-bottom:2px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:2px;">
           <span style="color:var(--muted)">${FLABELS[k]||k}</span>
           <span style="color:${col};font-weight:700">${(v||0).toFixed(3)}</span>
         </div>
@@ -4039,11 +4190,11 @@ function buildMetaRegime(mr){
       const barPct=Math.round((1-dist/maxD)*100);
       const isBest=i===0;
       return `<div style="display:flex;align-items:center;gap:8px;">
-        <span style="width:80px;font-size:0.55rem;color:${isBest?ac.c:'var(--muted)'};font-weight:${isBest?700:400}">${name}</span>
+        <span style="width:80px;font-size:0.75rem;color:${isBest?ac.c:'var(--muted)'};font-weight:${isBest?700:400}">${name}</span>
         <div style="flex:1;height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;">
           <div style="height:100%;width:${barPct}%;background:${isBest?ac.c:'rgba(255,255,255,0.15)'};border-radius:3px;"></div>
         </div>
-        <span style="font-size:0.55rem;color:${isBest?ac.c:'var(--muted)'};width:38px;text-align:right">${dist.toFixed(3)}</span>
+        <span style="font-size:0.75rem;color:${isBest?ac.c:'var(--muted)'};width:38px;text-align:right">${dist.toFixed(3)}</span>
       </div>`;
     }).join('');
   }
@@ -4228,13 +4379,13 @@ async function updateAll(){
 
     // Fix 1: Regime box cor correta (usa rg com espaço, não underscore)
     const box=document.getElementById('motor-regime-box');
-    let boxCls='motor-regime-box', arrow='⇄';
-    if(rg.includes('PANIC'))      { boxCls+=' rb-panic'; arrow='⚠'; }
-    else if(rg.includes('BEAR'))  { boxCls+=' rb-panic'; arrow='↓'; }  // BEAR = vermelho
+    let boxCls='motor-section motor-regime-box', arrow='⇄';
+    if(rg.includes('PANIC'))        { boxCls+=' rb-panic'; arrow='⚠'; }
+    else if(rg.includes('BEAR'))    { boxCls+=' rb-panic'; arrow='↓'; }
     else if(rg.includes('EXPANSION')){ boxCls+=' rb-trend'; arrow='↗'; }
     else if(rg.includes('EXHAUSTION')){ boxCls+=' rb-other'; arrow='↘'; }
-    else if(rg.includes('CHOP'))  { arrow='⇄'; }
-    box.className=boxCls;
+    else if(rg.includes('CHOP'))    { arrow='⇄'; }
+    if(box) box.className=boxCls;
     document.getElementById('motor-regime').textContent=`${arrow} ${rg} — ${subTxt}`;
 
     // Fix 2: Risk Engine badge — verde quando Normal (risco controlado)
@@ -4394,6 +4545,56 @@ async function updateAll(){
       el.style.opacity=active?'1':'0.55';
       el.style.transform=active?'scale(1.04)':'';
     });
+
+    // ── Decisão Final banner ──────────────────────────────────
+    const banner=document.getElementById('motor-decision-banner');
+    const dbadge=document.getElementById('motor-decision-badge');
+    const dscore=document.getElementById('motor-decision-score');
+    const dkelly=document.getElementById('motor-decision-kelly');
+    const dthr  =document.getElementById('motor-decision-thr');
+    if(banner){
+      const isSignal=(latest.result==='SIGNAL');
+      const isBlocked=rg.includes('BEAR')||rg.includes('PANIC');
+      if(isSignal){
+        const dir=(latest.direction||'LONG').toUpperCase();
+        banner.className='motor-decision '+(dir==='LONG'?'md-long':'md-short');
+        if(dbadge){ dbadge.textContent=dir==='LONG'?'▲ LONG':'▼ SHORT'; dbadge.style.color=dir==='LONG'?'var(--green)':'var(--red)'; }
+      } else if(isBlocked){
+        banner.className='motor-decision md-hold';
+        if(dbadge){ dbadge.textContent='⛔ BLOQUEADO'; dbadge.style.color='var(--red)'; }
+      } else {
+        banner.className='motor-decision md-hold';
+        if(dbadge){ dbadge.textContent='⏸ AGUARDANDO'; dbadge.style.color='var(--muted)'; }
+      }
+      if(dscore) dscore.textContent=rawScore.toFixed(1)+'%';
+      if(dkelly) dkelly.textContent=(effKelly*100).toFixed(1)+'%';
+      if(dthr)   dthr.textContent=thrVal.toFixed(1)+'%';
+    }
+
+    // ── Funil de Decisão ─────────────────────────────────────
+    function setFunnelStage(id, iconId, detailId, pass, detail, skip){
+      const el=document.getElementById(id);
+      const ic=document.getElementById(iconId);
+      const dt=document.getElementById(detailId);
+      if(!el) return;
+      el.className='funnel-stage'+(skip?' fs-skip':pass?' fs-pass':' fs-fail');
+      if(ic) ic.textContent=skip?'–':pass?'✓':'✗';
+      if(dt) dt.textContent=detail||'–';
+    }
+    const regimeOk=!rg.includes('BEAR')&&!rg.includes('PANIC');
+    const scoreOk =rawScore>=thrVal;
+    const ecBlocked2=(latest.factors||{}).ec_blocked;
+    const gatesOk  =!(ecBlocked2&&ecBlocked2>0);
+    const evOk     =(latest.calibrated||0)>0.45;
+    const sizingOk =effKelly>0.001;
+
+    // Cada etapa sempre mostra seu valor real — nunca apaga por causa de etapa anterior.
+    // O funil indica onde o bloqueio ocorreu, não torna as outras etapas invisíveis.
+    setFunnelStage('fs-regime','fs-regime-icon','fs-regime-detail', regimeOk, rg.split(' ')[0], false);
+    setFunnelStage('fs-score', 'fs-score-icon', 'fs-score-detail',  scoreOk,  rawScore.toFixed(1)+'%', false);
+    setFunnelStage('fs-gates', 'fs-gates-icon', 'fs-gates-detail',  gatesOk,  gatesOk?'OK':'bloq.',   false);
+    setFunnelStage('fs-ev',    'fs-ev-icon',    'fs-ev-detail',     evOk,     ((latest.calibrated||0)*100).toFixed(0)+'%', false);
+    setFunnelStage('fs-sizing','fs-sizing-icon','fs-sizing-detail', sizingOk, (effKelly*100).toFixed(1)+'%', false);
   }
   // Motor risk bars (from portfolio)
   // rb-beta, rb-dd, rb-wr, rb-exp already set above in portfolio section
@@ -4443,7 +4644,7 @@ async function updateAll(){
       <div style="flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;">
         <div style="height:100%;width:${cv.toFixed(0)}%;background:${cvCol};border-radius:2px;transition:width .4s;"></div>
       </div>
-      <span style="color:${cvCol};font-size:0.6rem;font-weight:700;min-width:38px;text-align:right">${cv.toFixed(0)}% ${cs}</span>
+      <span style="color:${cvCol};font-size:0.75rem;font-weight:700;min-width:38px;text-align:right">${cv.toFixed(0)}% ${cs}</span>
     </div>`;
     const tpCell = p.running_mode
       ? `<span style="color:var(--green);font-weight:700">∞ RUNNING</span>`
@@ -4462,11 +4663,11 @@ async function updateAll(){
       const v=cc[k];if(v==null) return'';
       const col=v>=0.65?'var(--green)':v>=0.4?'#f59e0b':'var(--red)';
       return`<div style="display:flex;align-items:center;gap:4px;" title="${label} (w${w}%)">
-        <span style="font-size:0.48rem;color:var(--muted);width:36px;text-align:right;white-space:nowrap">${label}</span>
+        <span style="font-size:0.75rem;color:var(--muted);width:36px;text-align:right;white-space:nowrap">${label}</span>
         <div style="flex:1;height:4px;background:rgba(255,255,255,0.07);border-radius:2px;">
           <div style="height:100%;width:${(v*100).toFixed(0)}%;background:${col};border-radius:2px;transition:width .4s;"></div>
         </div>
-        <span style="font-size:0.48rem;color:${col};width:26px">${(v*100).toFixed(0)}%</span>
+        <span style="font-size:0.75rem;color:${col};width:26px">${(v*100).toFixed(0)}%</span>
       </div>`;
     }).join('')}</div>`:'<span class="m">–</span>';
     return`<tr>
@@ -4489,7 +4690,7 @@ async function updateAll(){
   document.getElementById('orders-body').innerHTML=all.length?all.map(o=>{
     const q=parseFloat(o.quantity||0),f=parseFloat(o.filled_quantity||0),px=parseFloat(o.avg_fill_price||0),n=f>0&&px>0?f*px:0;
     const si=(o.side||'').toLowerCase(),st=(o.status||'').toLowerCase();
-    return`<tr><td class="b">${o.symbol||'–'}</td><td>${pill(si.toUpperCase(),si)}</td><td>${pill(st.toUpperCase(),st)}</td><td>${q.toFixed(4)}</td><td>${f.toFixed(4)}</td><td>${px>0?usd(px):'–'}</td><td>${n>0?usd(n,0):'–'}</td><td class="m" style="font-size:0.65rem">${o.strategy_id||'–'}</td><td class="m" style="font-size:0.65rem">${dt(o.created_at)}</td></tr>`;
+    return`<tr><td class="b">${o.symbol||'–'}</td><td>${pill(si.toUpperCase(),si)}</td><td>${pill(st.toUpperCase(),st)}</td><td>${q.toFixed(4)}</td><td>${f.toFixed(4)}</td><td>${px>0?usd(px):'–'}</td><td>${n>0?usd(n,0):'–'}</td><td class="m" style="font-size:0.82rem">${o.strategy_id||'–'}</td><td class="m" style="font-size:0.82rem">${dt(o.created_at)}</td></tr>`;
   }).join(''):'<tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr>';
 
   const luEl=document.getElementById('last-update');
@@ -4537,7 +4738,7 @@ async function updateAll(){
     const rbEl=document.getElementById('regime-breakdown');
     const regimeEntries=Object.entries(rb).sort((a,b)=>b[1].total-a[1].total);
     if(!regimeEntries.length){
-      rbEl.innerHTML='<div class="m" style="font-size:0.72rem;padding:8px;text-align:center">Aguardando avaliações...</div>';
+      rbEl.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Aguardando avaliações...</div>';
     } else {
       const maxTotal=Math.max(...regimeEntries.map(([,v])=>v.total));
       rbEl.innerHTML=regimeEntries.map(([r,v])=>{
@@ -4545,10 +4746,10 @@ async function updateAll(){
         const rShort=r.replace(/_/g,' ').replace('MEAN REVERTING','MR').replace('VOLATILITY','VOL').replace('CORRELATION','CORR').replace('HIGH ','');
         const rCls=r.includes('EXPANSION')?'var(--green)':r.includes('PANIC')?'var(--red)':r.includes('CHOP')?'var(--yellow)':r.includes('CORR')?'var(--orange)':'var(--blue)';
         return`<div style="display:grid;grid-template-columns:130px 1fr 40px 60px;align-items:center;gap:8px;padding:4px 0;">
-          <span style="font-size:0.65rem;color:var(--muted)">${rShort}</span>
+          <span style="font-size:0.82rem;color:var(--muted)">${rShort}</span>
           <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div style="height:15px;width:${pct}%;background:${rCls};border-radius:10px;transition:width 0.5s"></div></div>
-          <span style="font-size:0.62rem;color:var(--muted);text-align:right">${v.total}</span>
-          <span style="font-size:0.62rem;font-weight:700;text-align:right;color:${rCls}">${(v.signal_rate*100).toFixed(0)}% sig</span>
+          <span style="font-size:0.82rem;color:var(--muted);text-align:right">${v.total}</span>
+          <span style="font-size:0.82rem;font-weight:700;text-align:right;color:${rCls}">${(v.signal_rate*100).toFixed(0)}% sig</span>
         </div>`;
       }).join('');
     }

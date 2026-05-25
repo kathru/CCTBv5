@@ -1,0 +1,137 @@
+name: Approve & Apply Changes
+
+# Disparado manualmente pelo usuario via GitHub Actions UI
+# (link enviado no Discord pelo Weekly Review)
+
+on:
+  workflow_dispatch:
+    inputs:
+      approved_ids:
+        description: "IDs das mudancas aprovadas (ex: change_0,change_1 | ou 'all')"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry-run (simula sem modificar arquivos no Oracle)"
+        type: boolean
+        default: false
+
+jobs:
+  apply:
+    name: Aplicar Mudancas Aprovadas
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements_ci.txt
+
+      # -- Valida pending_changes.json --
+      - name: Verificar pending_changes.json
+        run: |
+          echo "=== Mudancas pendentes ==="
+          python -c "
+          import json, sys
+          data = json.load(open('data/agent/pending_changes.json'))
+          changes = data.get('pending_for_approval', [])
+          print(f'Health: {data.get(\"overall_health\")}')
+          print(f'Gerado em: {data.get(\"generated_at\")}')
+          print(f'Total pendente: {len(changes)}')
+          for c in changes:
+              print(f'  [{c.get(\"id\",\"?\")}] ({c.get(\"priority\")}) {c.get(\"target\")}: {c.get(\"description\",\"\")[:80]}')
+          "
+
+      # -- Aplica no Oracle via SSH --
+      - name: Aplicar mudancas no Oracle
+        uses: appleboy/ssh-action@v1
+        with:
+          host:     ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key:      ${{ secrets.ORACLE_SSH_KEY }}
+          timeout:  15m
+          script: |
+            set -e
+            cd ${{ secrets.ORACLE_PROJECT_PATH }}
+
+            echo ">> Atualizando repositorio..."
+            git pull --ff-only origin main || true
+
+            echo ">> Copiando scripts para o container..."
+            docker cp scripts/apply_changes.py cctb_app:/app/scripts/apply_changes.py
+
+            echo ">> Copiando pending_changes.json para o container..."
+            docker cp data/agent/pending_changes.json cctb_app:/app/data/agent/pending_changes.json
+
+            DRY_FLAG=""
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              DRY_FLAG="--dry-run"
+            fi
+
+            IDS="${{ inputs.approved_ids }}"
+            if [ "$IDS" = "all" ]; then
+              ID_FLAG="--all"
+            else
+              ID_FLAG="--approved-ids $IDS"
+            fi
+
+            echo ">> Rodando apply_changes.py $ID_FLAG $DRY_FLAG..."
+            docker exec \
+              -e DISCORD_WEBHOOK_URL=${{ secrets.DISCORD_WEBHOOK_URL }} \
+              -e PROJECT_ROOT=/app \
+              cctb_app \
+              python scripts/apply_changes.py $ID_FLAG $DRY_FLAG
+
+            if [ "${{ inputs.dry_run }}" = "false" ]; then
+              echo ">> Reiniciando container para recarregar configuracoes..."
+              docker restart cctb_app
+
+              echo ">> Aguardando container subir..."
+              WAITED=0
+              while [ "$WAITED" -lt 60 ]; do
+                sleep 5
+                WAITED=$((WAITED + 5))
+                STATUS=$(curl -s --max-time 3 http://localhost:8001/health 2>/dev/null \
+                  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status',''))" \
+                  2>/dev/null) || STATUS=""
+                if [ "$STATUS" = "ok" ]; then
+                  echo "   Container OK (${WAITED}s)"
+                  break
+                fi
+                echo "   aguardando... (${WAITED}s) status=${STATUS:-sem resposta}"
+              done
+            fi
+
+            echo "OK Aplicacao concluida: $(date -u)"
+
+      # -- Salva apply_log.json de volta ao repo (somente se nao dry-run) --
+      - name: Copiar apply_log do Oracle para repo
+        if: ${{ inputs.dry_run == false }}
+        uses: appleboy/ssh-action@v1
+        with:
+          host:     ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key:      ${{ secrets.ORACLE_SSH_KEY }}
+          script: |
+            cd ${{ secrets.ORACLE_PROJECT_PATH }}
+            docker cp cctb_app:/app/data/agent/apply_log.json data/agent/apply_log.json 2>/dev/null || true
+
+      - name: Commit apply_log
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --ff-only || true
+          git add data/agent/
+          if git diff --staged --quiet; then
+            echo "Nenhuma mudanca para commitar."
+          else
+            git commit -m "chore: apply_changes ${{ inputs.approved_ids }} $(date -u '+%Y-%m-%d')"
+            git push
+          fi

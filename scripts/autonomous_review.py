@@ -250,6 +250,12 @@ REGRAS DO MODELO FROZEN:
 - Mudancas auto-aplicaveis: regime_weights (delta < 20%), feature_baseline
 - Mudancas que requerem aprovacao humana: Platt, thresholds criticos, nova logica
 
+ACTION_SPEC para cada pending_change (obrigatorio):
+- Para mudanca em constante Python: {"type":"python_replace","file":"src/...","old":"linha exata atual","new":"linha exata nova"}
+- Para mudanca em arquivo JSON: {"type":"json_patch","file":"data/...","patches":[{"op":"replace","path":"/chave","value":novo_valor}]}
+- Use o campo "old" com a string EXATA como aparece no arquivo (incluindo espacos e comentarios)
+- Se nao souber o arquivo exato, omita action_spec (o campo ficara ausente)
+
 Responda em JSON estruturado conforme solicitado. Seja quantitativo e acionavel."""
 
 
@@ -324,7 +330,13 @@ Analise todos os dados acima e responda em JSON com EXATAMENTE esta estrutura:
       "description": "descricao da mudanca",
       "requires_human_approval": true,
       "priority": "HIGH|MEDIUM|LOW",
-      "justification": "dados que justificam"
+      "justification": "dados que justificam",
+      "action_spec": {{
+        "type": "python_replace",
+        "file": "caminho/relativo/ao/projeto.py",
+        "old": "linha exata atual no codigo",
+        "new": "linha exata com a mudanca aplicada"
+      }}
     }}
   ],
 
@@ -448,10 +460,18 @@ async def post_discord(analysis: dict, data: dict) -> None:
 
 # -- Salvar pending_changes ---------------------------------------------------
 
-def save_pending(analysis: dict) -> None:
+def save_pending(analysis: dict) -> dict:
     from pathlib import Path
     pending_path = Path(__file__).parent.parent / "data" / "agent" / "pending_changes.json"
     pending_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Adiciona ID sequencial a cada mudanca pendente
+    raw_changes = [
+        c for c in analysis.get("pending_changes", [])
+        if c.get("requires_human_approval", True)
+    ]
+    for idx, c in enumerate(raw_changes):
+        c["id"] = f"change_{idx}"
 
     pending = {
         "generated_at":       datetime.now(UTC).isoformat(),
@@ -459,16 +479,80 @@ def save_pending(analysis: dict) -> None:
         "overall_health":     analysis.get("overall_health"),
         "executive_summary":  analysis.get("executive_summary"),
         "m_factors_status":   {m: analysis.get("m_factors", {}).get(m, {}).get("status", "?") for m in M_FACTORS},
-        "pending_for_approval": [
-            c for c in analysis.get("pending_changes", [])
-            if c.get("requires_human_approval", True)
-        ],
+        "pending_for_approval": raw_changes,
         "alerts": analysis.get("alerts", []),
         "outlook": analysis.get("outlook_next_week", ""),
     }
 
     pending_path.write_text(json.dumps(pending, indent=2, ensure_ascii=False), encoding="utf-8")
     logger.info("pending_changes.json salvo em %s", pending_path)
+    return pending
+
+
+async def post_discord_approval(pending: dict) -> None:
+    """Posta mensagem separada de aprovacao com link para o workflow do GitHub."""
+    if not DISCORD_WEBHOOK_URL:
+        return
+
+    changes = pending.get("pending_for_approval", [])
+    if not changes:
+        return
+
+    # Link para o workflow de aprovacao no GitHub
+    # O usuario precisa configurar GITHUB_REPO como variavel de ambiente ou hardcodar
+    github_repo   = os.environ.get("GITHUB_REPOSITORY", "seu-usuario/CCTBv5")
+    workflow_link = f"https://github.com/{github_repo}/actions/workflows/approve_changes.yml"
+
+    health      = pending.get("overall_health", "?")
+    health_emoji = {"SAUDAVEL": ":white_check_mark:", "ATENCAO": ":warning:", "CRITICO": ":red_circle:"}.get(health, ":grey_question:")
+
+    priority_emoji = {"HIGH": ":red_circle:", "MEDIUM": ":orange_circle:", "LOW": ":yellow_circle:"}
+
+    lines = [
+        f"{health_emoji} **CCTBv5 -- Aprovacoes Pendentes** | {len(changes)} mudanca(s)",
+        "",
+    ]
+
+    all_ids = ",".join(c.get("id", "?") for c in changes)
+
+    for c in changes:
+        cid      = c.get("id", "?")
+        priority = c.get("priority", "?")
+        target   = c.get("target", "?")
+        desc     = c.get("description", "")[:120]
+        p_emoji  = priority_emoji.get(priority, ":white_circle:")
+
+        lines.append(f"{p_emoji} **`{cid}`** | {priority} | {target}")
+        lines.append(f"   {desc}")
+
+        spec = c.get("action_spec")
+        if spec:
+            lines.append(f"   > `{spec.get('type')}` em `{spec.get('file')}`")
+
+        lines.append("")
+
+    lines += [
+        "---",
+        "**Para aprovar, acesse o link abaixo e clique em \"Run workflow\":**",
+        f":link: {workflow_link}",
+        "",
+        f"**Aprovados IDs:** `{all_ids}` (todos) ou IDs especificos separados por virgula",
+        f"**Dry-run disponivel** para testar sem modificar o sistema.",
+    ]
+
+    msg = "\n".join(lines)
+    if len(msg) > 1990:
+        msg = msg[:1987] + "..."
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.post(
+            DISCORD_WEBHOOK_URL,
+            json={"content": msg, "username": "CCTBv5 Aprovacoes"},
+        )
+        if resp.status_code in (200, 204):
+            logger.info("Discord: mensagem de aprovacao postada")
+        else:
+            logger.warning("Discord aprovacao: status %d -- %s", resp.status_code, resp.text[:200])
 
 
 # -- Entry point --------------------------------------------------------------
@@ -510,10 +594,14 @@ async def main() -> None:
     )
 
     # 3. Salva pending_changes
-    save_pending(analysis)
+    pending = save_pending(analysis)
 
-    # 4. Posta no Discord
+    # 4. Posta relatorio semanal no Discord
     await post_discord(analysis, data)
+
+    # 5. Posta mensagem de aprovacao (se houver mudancas pendentes)
+    if pending.get("pending_for_approval"):
+        await post_discord_approval(pending)
 
     logger.info("=== Weekly Review concluido ===")
 

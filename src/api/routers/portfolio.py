@@ -28,6 +28,13 @@ async def portfolio_allocator_status(request: Request) -> dict:
     return {"available": True, **portfolio_allocator.status()}
 
 
+@router.get("/execution_quality")
+async def execution_quality_status(request: Request) -> dict:
+    """Phase 17 — ExecutionIntelligence: slippage tracking + smart order routing config."""
+    from ...oms.execution_intelligence import execution_intelligence
+    return {"available": True, **execution_intelligence.status()}
+
+
 @router.get("/exits")
 async def exit_plans(request: Request) -> dict:
     """Status dos planos de saída ativos (PositionMonitor)."""

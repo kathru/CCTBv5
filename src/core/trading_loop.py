@@ -57,6 +57,7 @@ from .config import settings
 from .events import SignalEvent, Topic
 from .events.risk_events import RiskAction
 from ..portfolio.allocator import portfolio_allocator as _portfolio_allocator
+from ..oms.execution_intelligence import execution_intelligence as _exec_intel
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +150,7 @@ class TradingLoop:
         )
         # Rastreia posições abertas em memória (atualizado a cada fill)
         self._positions: dict = {}   # symbol → Position (importado localmente nos métodos)
+        self._exec_expected_price: dict[str, float] = {}  # Phase 17: expected price at signal time
         self._cash: float = 10000.0
 
         # ── ML Inference ──────────────────────────────────────
@@ -627,6 +629,17 @@ class TradingLoop:
             "HIGH_CORRELATION_RISK":  0.05,
         }
         kelly     = min(kelly, KELLY_CAP.get(regime, 0.08))
+
+        # Phase 17 — Execution Intelligence: sizing mult por qualidade histórica de execução
+        exec_quality_mult = _exec_intel.sizing_mult(signal.symbol)
+        if exec_quality_mult < 1.0:
+            logger.info(
+                "ExecutionIntelligence: %s quality_mult=%.2f → kelly %.1f%% → %.1f%%",
+                signal.symbol, exec_quality_mult,
+                kelly * 100, kelly * exec_quality_mult * 100,
+            )
+        kelly *= exec_quality_mult
+
         notional  = portfolio_value * kelly
         precision = QTY_PRECISION.get(signal.symbol, 4)
         quantity  = round(notional / price, precision)
@@ -645,7 +658,27 @@ class TradingLoop:
             kelly * 100, KELLY_CAP.get(regime, 0.08) * 100,
         )
 
-        # 3. Criar e submeter ordem via OMS
+        # 3. Phase 17 — SmartOrderRouter: decide maker vs taker
+        try:
+            ticker = await self._okx.get_ticker(signal.symbol)
+            spread_pct = ticker.spread_pct if ticker else 0.005
+            mid_price  = ticker.mid         if ticker else price
+        except Exception:
+            spread_pct = 0.005
+            mid_price  = price
+
+        order_decision = _exec_intel.decide_order_type(
+            symbol=signal.symbol,
+            side=signal.direction,
+            mid_price=mid_price,
+            spread_pct=spread_pct,
+            atr_pct=getattr(signal, "atr_pct", 0.01),
+            regime=regime,
+        )
+        # Armazena preço esperado para slippage tracking no fill
+        self._exec_expected_price[signal.symbol] = mid_price
+
+        # 4. Criar e submeter ordem via OMS
         await self._oms.create_order_from_signal(event, quantity)
 
         # Alerta Discord — trade executado (paper + live)
@@ -934,6 +967,21 @@ class TradingLoop:
             side_raw = str(getattr(order, "side", "")).lower()
             is_buy   = side_raw in ("buy", "long")
             symbol   = order.symbol
+
+            # Phase 17 — Slippage tracking
+            fill_price = float(order.avg_fill_price or 0)
+            if fill_price > 0:
+                expected = self._exec_expected_price.pop(symbol, fill_price)
+                try:
+                    _exec_intel.record_fill(
+                        symbol=symbol,
+                        side="buy" if is_buy else "sell",
+                        expected_price=expected,
+                        fill_price=fill_price,
+                        quantity=float(order.filled_quantity or order.quantity or 0),
+                    )
+                except Exception as _exc:
+                    logger.debug("record_fill error: %s", _exc)
             qty      = order.filled_quantity or order.quantity
             price    = order.avg_fill_price or 0.0
             fees     = order.fees_paid or 0.0

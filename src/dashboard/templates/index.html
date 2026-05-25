@@ -729,6 +729,40 @@
   </div>
 </div>
 
+<!-- ══ PORTFOLIO INTELLIGENCE + EXECUTION INTELLIGENCE ══════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--blue)"></div>Portfolio Intelligence &amp; Execution Quality
+  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 15/17 · alocação cross-asset · slippage · maker/taker</span>
+</div>
+<div class="grid g12">
+
+  <!-- Portfolio Allocator — Phase 15 -->
+  <div class="card">
+    <div class="clabel">Portfolio Allocator <span style="font-size:0.55rem;color:var(--muted)">Phase 15 · edge ranking cross-asset</span></div>
+    <div id="pa-rows" style="font-size:0.62rem;">
+      <div style="color:var(--muted);font-size:0.6rem;padding:10px 0">Aguardando sinais…</div>
+    </div>
+    <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;display:flex;gap:14px;font-size:0.57rem;color:var(--muted)">
+      <span>Budget: <b id="pa-budget">–</b></span>
+      <span>Sinais ativos: <b id="pa-signals">–</b></span>
+      <span>Open: <b id="pa-open">–</b></span>
+    </div>
+  </div>
+
+  <!-- Execution Intelligence — Phase 17 -->
+  <div class="card">
+    <div class="clabel">Execution Intelligence <span style="font-size:0.55rem;color:var(--muted)">Phase 17 · slippage · maker/taker</span></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;font-size:0.57rem;">
+      <span style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:4px;padding:1px 6px;color:var(--blue)">maker thr: <b id="ei-maker-thr">–</b> bps</span>
+      <span style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:4px;padding:1px 6px;color:var(--red)">taker thr: <b id="ei-taker-thr">–</b> bps</span>
+      <span style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--muted)">timeout: <b id="ei-timeout">–</b>s</span>
+    </div>
+    <div id="ei-rows" style="font-size:0.62rem;">
+      <div style="color:var(--muted);font-size:0.6rem;padding:10px 0">Nenhum fill registrado ainda</div>
+    </div>
+  </div>
+
+</div>
+
 <!-- ══ GRÁFICOS ════════════════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Evolução & Distribuição</div>
 <div class="grid g21">
@@ -3080,10 +3114,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null,sw:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null,sw:null,pa:null,ei:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st,sw]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st,sw,pa,ei]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -3103,6 +3137,8 @@ async function updateSlow(){
     fetchJSON('/api/analytics/ensemble_robustness'),
     fetchJSON('/api/analytics/stress_backtest'),
     fetchJSON('/api/analytics/strategy_weights'),
+    fetchJSON('/api/portfolio/allocator'),
+    fetchJSON('/api/portfolio/execution_quality'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -3128,6 +3164,98 @@ async function updateSlow(){
   if(ens)       _slowData.ens=ens;
   if(st)        _slowData.st=st;
   if(sw)        { _slowData.sw=sw; buildWeightEngine(sw); }
+  if(pa)        { _slowData.pa=pa; buildPortfolioAllocator(pa); }
+  if(ei)        { _slowData.ei=ei; buildExecutionIntelligence(ei); }
+}
+
+// ── Phase 15new — Portfolio Allocator ────────────────────────────────────────
+
+function buildPortfolioAllocator(pa){
+  if(!pa||!pa.available) return;
+  const signals  = pa.active_signals || {};
+  const openList = (pa.open_positions||[]);
+  setEl('pa-signals', Object.keys(signals).length);
+  setEl('pa-open', openList.map(s=>s.replace('-USDT','')).join(', ') || '–');
+
+  // Detect regime budget from first active signal's regime
+  const firstSig = Object.values(signals)[0];
+  const regime   = firstSig?.regime || '';
+  const BUDGETS  = {'TREND_EXPANSION':25,'VOLATILITY_COMPRESSION':18,'TREND_EXHAUSTION':12,'MEAN_REVERTING_CHOP':10,'HIGH_CORRELATION_RISK':8};
+  setEl('pa-budget', (BUDGETS[regime]||'–')+(BUDGETS[regime]?'%':''));
+
+  const rowsEl = document.getElementById('pa-rows');
+  if(!rowsEl) return;
+  const entries = Object.entries(signals);
+  if(!entries.length){
+    rowsEl.innerHTML='<div style="color:var(--muted);font-size:0.6rem;padding:10px 0">Aguardando sinais…</div>';
+    return;
+  }
+  // Sort by calibrated_score desc
+  entries.sort((a,b)=>(b[1].calibrated_score||0)-(a[1].calibrated_score||0));
+  rowsEl.innerHTML = entries.map(([sym, s], i)=>{
+    const rank    = i+1;
+    const score   = ((s.calibrated_score||0)*100).toFixed(1);
+    const age     = s.age_s!=null ? (s.age_s<60?s.age_s+'s':(s.age_s/60).toFixed(0)+'m') : '–';
+    const regLbl  = (s.regime||'').replace('_',' ').toLowerCase();
+    const rankCol = rank===1?'var(--green)':rank===2?'var(--yellow)':'var(--muted)';
+    const inOpen  = openList.includes(sym);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <span style="font-size:0.65rem;font-weight:700;color:${rankCol};min-width:14px">#${rank}</span>
+      <span style="font-weight:600;min-width:42px">${sym.replace('-USDT','')}</span>
+      ${inOpen?'<span style="font-size:0.48rem;background:rgba(16,185,129,0.15);color:var(--green);border-radius:3px;padding:0 4px">OPEN</span>':''}
+      <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:3px;height:5px;overflow:hidden;">
+        <div style="height:100%;width:${Math.min(parseFloat(score),100)}%;background:${rankCol};border-radius:3px;"></div>
+      </div>
+      <span style="color:${rankCol};min-width:30px;text-align:right;font-weight:600">${score}%</span>
+      <span style="font-size:0.52rem;color:var(--muted)">${regLbl} · ${age}</span>
+    </div>`;
+  }).join('');
+
+  // Correlações entre pares ativos
+  const corr = pa.correlation_map||{};
+  const corrEntries = Object.entries(corr).filter(([,v])=>Math.abs(v)>0.5);
+  if(corrEntries.length){
+    rowsEl.innerHTML += `<div style="margin-top:6px;font-size:0.55rem;color:var(--muted)">Correlações altas: `
+      + corrEntries.map(([pair,v])=>`<span style="color:${Math.abs(v)>0.85?'var(--red)':'var(--yellow)'}">${pair.replace('|','↔')} ${v.toFixed(2)}</span>`).join(' · ')
+      + '</div>';
+  }
+}
+
+// ── Phase 17 — Execution Intelligence ────────────────────────────────────────
+
+function buildExecutionIntelligence(ei){
+  if(!ei||!ei.available) return;
+  const cfg = ei.router_config||{};
+  setEl('ei-maker-thr', (cfg.spread_maker_thr_bps||3).toFixed(1));
+  setEl('ei-taker-thr', (cfg.spread_taker_thr_bps||10).toFixed(1));
+  setEl('ei-timeout',   cfg.limit_timeout_s||30);
+
+  const rowsEl = document.getElementById('ei-rows');
+  if(!rowsEl) return;
+  const bySymbol = ei.slippage_by_symbol||{};
+  const entries = Object.entries(bySymbol).filter(([,v])=>v.n>0);
+  if(!entries.length){
+    rowsEl.innerHTML='<div style="color:var(--muted);font-size:0.6rem;padding:10px 0">Nenhum fill registrado ainda</div>';
+    return;
+  }
+  rowsEl.innerHTML = entries.map(([sym, s])=>{
+    const q   = s.quality_score||1;
+    const avg = s.avg_slippage_bps||0;
+    const worst = s.worst_slippage_bps||0;
+    const mult  = s.sizing_mult||1;
+    const qCol  = q>=0.85?'var(--green)':q>=0.70?'var(--yellow)':'var(--red)';
+    const qPct  = (q*100).toFixed(0);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <span style="font-weight:600;min-width:36px">${sym.replace('-USDT','')}</span>
+      <span style="font-size:0.55rem;color:var(--muted)">n=${s.n}</span>
+      <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:3px;height:5px;overflow:hidden;">
+        <div style="height:100%;width:${qPct}%;background:${qCol};border-radius:3px;"></div>
+      </div>
+      <span style="color:${qCol};font-weight:700;min-width:28px;text-align:right">${qPct}%</span>
+      <span style="font-size:0.55rem;color:var(--muted)">avg ${avg.toFixed(1)} bps · worst ${worst.toFixed(1)}</span>
+      <span style="font-size:0.55rem;background:rgba(255,255,255,0.06);border-radius:3px;padding:0 4px;">×${mult.toFixed(2)}</span>
+    </div>`;
+  }).join('');
 }
 
 // ── Phase 10 — Futures Flow ──────────────────────────────────────────────────

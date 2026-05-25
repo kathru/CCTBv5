@@ -3,7 +3,7 @@
   "symbol": "BTC-USDT",
   "n_samples": 20819,
   "win_rate": 0.3318,
-  "computed_at": "2026-05-24T16:03:30.139484+00:00",
+  "computed_at": "2026-05-25T23:55:43.801136+00:00",
   "features": {
     "m3_volume": {
       "spearman_corr": 0.0168,
@@ -32,6 +32,14 @@
       "perm_importance": 0.0,
       "relative_importance": 0.0,
       "schema_weight": 0.11,
+      "aligned": null,
+      "note": "n\u00e3o mensur\u00e1vel \u2014 dado externo ao backtest"
+    },
+    "m9_sentiment": {
+      "spearman_corr": 0.5248,
+      "perm_importance": 0.0,
+      "relative_importance": 0.0,
+      "schema_weight": 0.06,
       "aligned": null,
       "note": "n\u00e3o mensur\u00e1vel \u2014 dado externo ao backtest"
     },

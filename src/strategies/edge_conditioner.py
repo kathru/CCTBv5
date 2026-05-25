@@ -89,6 +89,11 @@ WR_MICRO_HIGH         = -0.15   # -0.25 a -0.15 → sizing 40% | thr ×1.20
 WR_HIGH_DRIFT         = -0.10   # -0.15 a -0.10 → sizing 75% | thr ×1.12
 WR_MOD_DRIFT          = -0.05   # -0.10 a -0.05 → sizing 90% | thr ×1.06
 
+# Mínimo de sinais ao vivo para ativar a penalidade de WR drift.
+# Com n < WR_MIN_SAMPLE o live_wr não tem significância estatística
+# e aplicar a penalidade geraria um falso bloqueio.
+WR_MIN_SAMPLE         = 50
+
 WR_MULT_CATASTROPHIC  = 1.25
 WR_MULT_SEVERE        = 1.25
 WR_MULT_HIGH_         = 1.20
@@ -309,10 +314,24 @@ class EdgeConditioner:
         - Bloqueio total apenas em divergência catastrófica (< -0.35)
         - Entre -0.15 e -0.35: micro-trades com sizing reduzido
         - Isso permite re-calibração do WR live sem exposição total
+
+        Guard de amostra: se n_signals < WR_MIN_SAMPLE, o live_wr não tem
+        significância estatística e a penalidade NÃO é aplicada.
         """
-        wr_diff = _extract_wr_diff(model_health)
+        wr_diff   = _extract_wr_diff(model_health)
+        n_signals = _extract_n_signals(model_health)
+
         if wr_diff is None:
             return 1.0, 1.0, False, None
+
+        # Amostra insuficiente → não penalizar (falso positivo estatístico)
+        if n_signals is not None and n_signals < WR_MIN_SAMPLE:
+            logger.info(
+                "EdgeConditioner: WR gate inativo — amostra insuficiente "
+                "(n=%d < %d) wr_diff=%.3f",
+                n_signals, WR_MIN_SAMPLE, wr_diff,
+            )
+            return 1.0, 1.0, False, wr_diff
 
         if wr_diff < WR_BLOCK:                   # < -0.35: catastrófico
             return WR_MULT_CATASTROPHIC, 0.0, True, wr_diff
@@ -354,5 +373,16 @@ def _extract_wr_diff(model_health: dict | None) -> float | None:
         if live is None or calib is None:
             return None
         return round(float(live) - float(calib), 4)
+    except Exception:
+        return None
+
+
+def _extract_n_signals(model_health: dict | None) -> int | None:
+    """Extrai o número de sinais ao vivo usados no cálculo do WR live."""
+    if not model_health:
+        return None
+    try:
+        v = model_health.get("dimensions", {}).get("win_rate", {}).get("n_signals")
+        return int(v) if v is not None else None
     except Exception:
         return None

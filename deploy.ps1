@@ -1,4 +1,4 @@
-﻿# deploy.ps1 -- Commit, push e deploy em Oracle + local com um unico comando
+# deploy.ps1 -- Commit, push e deploy em Oracle + local
 #
 # Uso:
 #   .\deploy.ps1                  # commit automatico + deploy em ambos
@@ -6,7 +6,14 @@
 #   .\deploy.ps1 -OracleOnly      # so Oracle (sem rebuild local)
 #   .\deploy.ps1 -LocalOnly       # so local (sem SSH)
 #
-# Pre-requisito: SSH key em "D:\oracle server\ssh-key-2026-05-03.key"
+# VERSIONAMENTO: vX.Y.Z
+#   X = 5            (fixo: versao geral do projeto)
+#   Y = fase atual   (lido de phases.json -> current)
+#   Z = total commits (git rev-list --count HEAD)
+#
+# REGRA DE DEPLOY:
+#   Antes de executar, sempre apresentar fase + commits ao usuario para confirmacao.
+#   O Claude atualiza phases.json ao concluir cada nova fase.
 
 param(
     [string]$msg        = "",
@@ -28,7 +35,30 @@ function Write-Fail($text) { Write-Host "  ERRO $text"  -ForegroundColor Red }
 
 Set-Location $PROJECT_DIR
 
-# -- 1. Commit das alteracoes de codigo (se houver) ---------------------------
+# -- 1. Calcular versao a partir de phases.json + git -------------------------
+$PHASES_FILE = "$PROJECT_DIR\phases.json"
+if (-not (Test-Path $PHASES_FILE)) {
+    Write-Fail "phases.json nao encontrado em $PROJECT_DIR"
+    exit 1
+}
+$phases    = Get-Content $PHASES_FILE | ConvertFrom-Json
+$GIT_MINOR = [int]$phases.current
+$GIT_PATCH = [int](git rev-list --count HEAD)
+$VERSION   = "5.$GIT_MINOR.$GIT_PATCH"
+$PHASE_NAME= ($phases.phases | Where-Object { $_.n -eq $GIT_MINOR } | Select-Object -First 1).name
+
+# -- Resumo do deploy (apresentar ao usuario antes de prosseguir) -------------
+Write-Host ""
+Write-Host "  ============================================" -ForegroundColor DarkCyan
+Write-Host "   RESUMO DO DEPLOY" -ForegroundColor Yellow
+Write-Host "  ============================================" -ForegroundColor DarkCyan
+Write-Host "   Fase    : $GIT_MINOR -- $PHASE_NAME" -ForegroundColor White
+Write-Host "   Commits : $GIT_PATCH" -ForegroundColor White
+Write-Host "   Versao  : v$VERSION" -ForegroundColor Cyan
+Write-Host "  ============================================" -ForegroundColor DarkCyan
+Write-Host ""
+
+# -- 2. Commit das alteracoes de codigo (se houver) ---------------------------
 Write-Step "Verificando git status..."
 $dirty = git status --porcelain | Where-Object { $_ -notmatch '^\?\? ' -and $_ -notmatch '_version\.txt' }
 if ($dirty) {
@@ -41,31 +71,15 @@ if ($dirty) {
     git commit -m "$msg`n`n$COAUTHOR"
     if ($LASTEXITCODE -ne 0) { Write-Fail "git commit falhou"; exit 1 }
     Write-Ok "Commit feito"
+
+    # Recalcular patch apos novo commit
+    $GIT_PATCH = [int](git rev-list --count HEAD)
+    $VERSION   = "5.$GIT_MINOR.$GIT_PATCH"
 } else {
     Write-Host "  (nenhuma alteracao de codigo para commitar)" -ForegroundColor Gray
 }
 
-# -- 2. Calcular versao -------------------------------------------------------
-# REGRA DE VERSIONAMENTO: vX.Y.Z
-#   X = 5      versao geral do projeto (fixo)
-#   Y = fases  total de fases implementadas -- lido de _phase.txt
-#              (atualizar _phase.txt manualmente ao concluir cada nova fase)
-#   Z = commits total de commits no branch (git rev-list --count HEAD)
-$PHASE_FILE = "$PROJECT_DIR\_phase.txt"
-if (Test-Path $PHASE_FILE) {
-    $GIT_MINOR = [int](Get-Content $PHASE_FILE -Raw).Trim()
-} else {
-    Write-Warn "_phase.txt nao encontrado -- usando 0"
-    $GIT_MINOR = 0
-}
-$GIT_PATCH = [int](git rev-list --count HEAD)
-$VERSION   = "5.$GIT_MINOR.$GIT_PATCH"
-Write-Host ""
-Write-Host "  Versao calculada: v$VERSION" -ForegroundColor Yellow
-
 # -- 3. Gravar _version.txt e commitar (antes do push) -----------------------
-# Critico: _version.txt deve chegar ao Oracle via git pull,
-# e tambem e copiado ao container em deploy_oracle.sh.
 Write-Step "Atualizando _version.txt -> v$VERSION..."
 Set-Content -Path "$PROJECT_DIR\_version.txt" -Value $VERSION -NoNewline
 $vDirty = git status --porcelain "_version.txt"
@@ -73,12 +87,15 @@ if ($vDirty) {
     git add "_version.txt"
     git commit --no-verify -m "chore: bump version -> v$VERSION`n`n$COAUTHOR"
     if ($LASTEXITCODE -ne 0) { Write-Fail "git commit _version.txt falhou"; exit 1 }
-    Write-Ok "_version.txt commitado (v$VERSION)"
+    # Recalcular novamente apos commit do version
+    $GIT_PATCH = [int](git rev-list --count HEAD)
+    $VERSION   = "5.$GIT_MINOR.$GIT_PATCH"
+    Write-Ok "_version.txt commitado -> v$VERSION"
 } else {
     Write-Host "  (_version.txt ja estava em v$VERSION)" -ForegroundColor Gray
 }
 
-# -- 4. Sync com GitHub (pull + push) ----------------------------------------
+# -- 4. Sync com GitHub (pull + push) -----------------------------------------
 Write-Step "Sincronizando com GitHub..."
 git pull --rebase
 if ($LASTEXITCODE -ne 0) { Write-Fail "git pull falhou - resolva conflitos manualmente"; exit 1 }
@@ -104,7 +121,7 @@ if (-not $LocalOnly) {
     Write-Ok "Oracle atualizado -> http://137.131.220.216:8001"
 }
 
-# -- 7. Health check final (informativo, nao falha o deploy) ------------------
+# -- 7. Health check final (informativo) -------------------------------------
 Write-Step "Verificando health..."
 Start-Sleep -Seconds 3
 
@@ -113,9 +130,7 @@ if (-not $OracleOnly) {
         $h = Invoke-RestMethod "http://localhost:8001/health" -TimeoutSec 8
         if ($h.status -eq "ok") { Write-Ok "Local:  OK (v$($h.version))" }
         else                     { Write-Warn "Local: status=$($h.status)" }
-    } catch {
-        Write-Warn "Local: sem resposta (tunnel SSH pode estar iniciando)"
-    }
+    } catch { Write-Warn "Local: sem resposta (tunnel SSH pode estar iniciando)" }
 }
 
 if (-not $LocalOnly) {
@@ -123,11 +138,9 @@ if (-not $LocalOnly) {
         $h = Invoke-RestMethod "http://137.131.220.216:8001/health" -TimeoutSec 10
         if ($h.status -eq "ok") { Write-Ok "Oracle: OK (v$($h.version))" }
         else                     { Write-Warn "Oracle: status=$($h.status)" }
-    } catch {
-        Write-Warn "Oracle: sem resposta no health check final"
-    }
+    } catch { Write-Warn "Oracle: sem resposta no health check final" }
 }
 
 Write-Host ""
-Write-Host "  >> Deploy v$VERSION concluido!" -ForegroundColor Green
+Write-Host "  >> Deploy v$VERSION concluido! (Fase $GIT_MINOR -- $PHASE_NAME)" -ForegroundColor Green
 Write-Host ""

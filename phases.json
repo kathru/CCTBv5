@@ -1,0 +1,23 @@
+{
+  "current": 18,
+  "phases": [
+    { "n":  1, "name": "Alertas Discord",                  "status": "done" },
+    { "n":  2, "name": "Daily Digest",                     "status": "done" },
+    { "n":  3, "name": "Autonomous Review Agent",          "status": "done" },
+    { "n":  4, "name": "M9 News Sentiment Factor",         "status": "done" },
+    { "n":  5, "name": "Adaptive Thresholds ATR",          "status": "done" },
+    { "n":  6, "name": "Equity Analytics + Versioning",    "status": "done" },
+    { "n":  7, "name": "Distribution Analytics",           "status": "done" },
+    { "n":  8, "name": "Reality Check",                    "status": "done" },
+    { "n":  9, "name": "Meta-Overfitting (Lopez de Prado)","status": "done" },
+    { "n": 10, "name": "Futures Flow (M6 Factor)",         "status": "done" },
+    { "n": 11, "name": "Relative Strength (M7 Factor)",    "status": "done" },
+    { "n": 12, "name": "Volatility State Machine (M8)",    "status": "done" },
+    { "n": 13, "name": "Meta-Regime Macro Cross-Asset",    "status": "done" },
+    { "n": 14, "name": "Advanced Risk Management",         "status": "done" },
+    { "n": 15, "name": "Portfolio Intelligence Layer",     "status": "done" },
+    { "n": 16, "name": "Meta-learning de Regimes",         "status": "done" },
+    { "n": 17, "name": "Execution Intelligence",           "status": "done" },
+    { "n": 18, "name": "Alpha Orthogonality",              "status": "done" }
+  ]
+}

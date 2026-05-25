@@ -1,12 +1,12 @@
-# deploy.ps1 — Commit, push e deploy em Oracle + local com um único comando
+﻿# deploy.ps1 -- Commit, push e deploy em Oracle + local com um unico comando
 #
 # Uso:
-#   .\deploy.ps1                  # commit automático + deploy em ambos
+#   .\deploy.ps1                  # commit automatico + deploy em ambos
 #   .\deploy.ps1 -msg "fix: ..."  # commit com mensagem customizada
-#   .\deploy.ps1 -OracleOnly      # só Oracle (sem rebuild local)
-#   .\deploy.ps1 -LocalOnly       # só local (sem SSH)
+#   .\deploy.ps1 -OracleOnly      # so Oracle (sem rebuild local)
+#   .\deploy.ps1 -LocalOnly       # so local (sem SSH)
 #
-# Pré-requisito: SSH key em "D:\oracle server\ssh-key-2026-05-03.key"
+# Pre-requisito: SSH key em "D:\oracle server\ssh-key-2026-05-03.key"
 
 param(
     [string]$msg        = "",
@@ -22,13 +22,13 @@ $COAUTHOR    = "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 $PROJECT_DIR = $PSScriptRoot
 
 function Write-Step($text) { Write-Host ""; Write-Host "  >> $text" -ForegroundColor Cyan }
-function Write-Ok($text)   { Write-Host "  OK $text"   -ForegroundColor Green }
+function Write-Ok($text)   { Write-Host "  OK $text"    -ForegroundColor Green }
 function Write-Warn($text) { Write-Host "  AVISO $text" -ForegroundColor Yellow }
 function Write-Fail($text) { Write-Host "  ERRO $text"  -ForegroundColor Red }
 
 Set-Location $PROJECT_DIR
 
-# ── 1. Commit das alterações de código (se houver) ───────────────────────────
+# -- 1. Commit das alteracoes de codigo (se houver) ---------------------------
 Write-Step "Verificando git status..."
 $dirty = git status --porcelain | Where-Object { $_ -notmatch '^\?\? ' -and $_ -notmatch '_version\.txt' }
 if ($dirty) {
@@ -36,17 +36,17 @@ if ($dirty) {
         $date = Get-Date -Format "yyyy-MM-dd HH:mm"
         $msg  = "chore: deploy $date"
     }
-    Write-Step "Commitando alterações: '$msg'"
+    Write-Step "Commitando alteracoes: '$msg'"
     git add -A
     git commit -m "$msg`n`n$COAUTHOR"
     if ($LASTEXITCODE -ne 0) { Write-Fail "git commit falhou"; exit 1 }
     Write-Ok "Commit feito"
 } else {
-    Write-Host "  (nenhuma alteração de código para commitar)" -ForegroundColor Gray
+    Write-Host "  (nenhuma alteracao de codigo para commitar)" -ForegroundColor Gray
 }
 
-# ── 2. Calcular versão ────────────────────────────────────────────────────────
-# MINOR = nº de tags fase/* | PATCH = commits desde a última tag fase/*
+# -- 2. Calcular versao -------------------------------------------------------
+# MINOR = no de tags fase/* | PATCH = commits desde a ultima tag fase/*
 $GIT_MINOR = (git tag --list 'fase/*' | Measure-Object -Line).Lines
 $LAST_TAG  =  git tag --list 'fase/*' | Select-Object -Last 1
 if ($LAST_TAG) {
@@ -56,17 +56,16 @@ if ($LAST_TAG) {
 }
 $VERSION = "5.$GIT_MINOR.$GIT_PATCH"
 Write-Host ""
-Write-Host "  Versão calculada: v$VERSION" -ForegroundColor Yellow
+Write-Host "  Versao calculada: v$VERSION" -ForegroundColor Yellow
 
-# ── 3. Gravar _version.txt e commitar (antes do push) ────────────────────────
-# Crítico: _version.txt deve estar no commit que chega ao Oracle via git pull,
-# e também é copiado explicitamente ao container em deploy_oracle.sh.
+# -- 3. Gravar _version.txt e commitar (antes do push) -----------------------
+# Critico: _version.txt deve chegar ao Oracle via git pull,
+# e tambem e copiado ao container em deploy_oracle.sh.
 Write-Step "Atualizando _version.txt -> v$VERSION..."
 Set-Content -Path "$PROJECT_DIR\_version.txt" -Value $VERSION -NoNewline
 $vDirty = git status --porcelain "_version.txt"
 if ($vDirty) {
     git add "_version.txt"
-    # --no-verify: commit mecânico, não precisa passar por hooks de qualidade
     git commit --no-verify -m "chore: bump version -> v$VERSION`n`n$COAUTHOR"
     if ($LASTEXITCODE -ne 0) { Write-Fail "git commit _version.txt falhou"; exit 1 }
     Write-Ok "_version.txt commitado (v$VERSION)"
@@ -74,15 +73,15 @@ if ($vDirty) {
     Write-Host "  (_version.txt ja estava em v$VERSION)" -ForegroundColor Gray
 }
 
-# ── 4. Sync com GitHub (pull + push) ─────────────────────────────────────────
+# -- 4. Sync com GitHub (pull + push) ----------------------------------------
 Write-Step "Sincronizando com GitHub..."
 git pull --rebase
-if ($LASTEXITCODE -ne 0) { Write-Fail "git pull --rebase falhou — resolva conflitos manualmente"; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Fail "git pull falhou - resolva conflitos manualmente"; exit 1 }
 git push
 if ($LASTEXITCODE -ne 0) { Write-Fail "git push falhou"; exit 1 }
 Write-Ok "GitHub atualizado (v$VERSION)"
 
-# ── 5. Deploy LOCAL (monitor SSH tunnel -> Oracle) ────────────────────────────
+# -- 5. Deploy LOCAL (monitor SSH tunnel -> Oracle) ---------------------------
 if (-not $OracleOnly) {
     Write-Step "Iniciando monitor local (SSH tunnel -> Oracle)..."
     $env:GIT_MINOR = $GIT_MINOR
@@ -92,7 +91,7 @@ if (-not $OracleOnly) {
     Write-Ok "Local -> http://localhost:8001 (dados via Oracle)"
 }
 
-# ── 6. Deploy ORACLE ──────────────────────────────────────────────────────────
+# -- 6. Deploy ORACLE ---------------------------------------------------------
 if (-not $LocalOnly) {
     Write-Step "Deploying no Oracle Cloud (137.131.220.216:8001)..."
     ssh -i $ORACLE_KEY -o StrictHostKeyChecking=no $ORACLE_HOST "bash ~/CCTBv5/deploy_oracle.sh"
@@ -100,7 +99,7 @@ if (-not $LocalOnly) {
     Write-Ok "Oracle atualizado -> http://137.131.220.216:8001"
 }
 
-# ── 7. Health check final (informativo, não falha o deploy) ──────────────────
+# -- 7. Health check final (informativo, nao falha o deploy) ------------------
 Write-Step "Verificando health..."
 Start-Sleep -Seconds 3
 

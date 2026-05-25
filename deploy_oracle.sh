@@ -13,6 +13,9 @@ FAIL() { echo "   ERRO $1" >&2; exit 1; }
 # -- 1. Atualiza repositorio --------------------------------------------------
 STEP "Atualizando repositorio..."
 cd ~/CCTBv5 || FAIL "cd ~/CCTBv5 falhou"
+# Descarta mudancas locais em arquivos gerados pelo sistema (nao precisam ser preservados aqui;
+# a versao definitiva vem do git apos o weekly_review commitar via Actions)
+git checkout -- data/agent/ 2>/dev/null || true
 git pull origin main || FAIL "git pull falhou"
 
 # -- 2. Copia arquivos para o container ---------------------------------------

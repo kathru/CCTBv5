@@ -1,0 +1,51 @@
+name: Daily Agent (06:00 UTC)
+
+on:
+  schedule:
+    - cron: "0 6 * * *"    # 06:00 UTC todos os dias (03:00 BRT / 08:00 Lisboa)
+  workflow_dispatch:         # permite rodar manualmente pelo GitHub
+
+jobs:
+  daily-agent:
+    name: Análise Diária + Recalibração
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run daily_agent.py no Oracle via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host:     ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key:      ${{ secrets.ORACLE_SSH_KEY }}
+          timeout:  30m
+          script: |
+            set -e
+            cd ${{ secrets.ORACLE_PROJECT_PATH }}
+
+            echo ">> [$(date -u '+%H:%M:%S')] Atualizando repositório..."
+            git pull --ff-only origin main
+
+            echo ">> [$(date -u '+%H:%M:%S')] Copiando scripts para o container..."
+            docker cp scripts/ cctb_app:/app/scripts/
+
+            echo ">> [$(date -u '+%H:%M:%S')] Rodando daily_agent.py..."
+            docker exec \
+              -e ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
+              -e DISCORD_WEBHOOK_URL=${{ secrets.DISCORD_REVIEW_WEBHOOK_URL }} \
+              cctb_app \
+              python scripts/daily_agent.py \
+                --oracle-url http://localhost:8001
+
+            echo ">> [$(date -u '+%H:%M:%S')] Verificando mudanças nos modelos..."
+            if git diff --quiet data/models/; then
+              echo "Nenhuma mudança — commit ignorado."
+            else
+              git config user.name  "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add data/models/ data/agent/
+              git commit -m "chore: daily agent $(date -u '+%Y-%m-%d') — recalibração + análise LLM"
+              git push origin main
+              echo ">> Modelos atualizados e commitados."
+            fi
+
+            echo "OK Daily agent concluído: $(date -u)"

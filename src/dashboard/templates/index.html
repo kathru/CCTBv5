@@ -138,11 +138,12 @@
 
     .section-hdr {
       display: flex; align-items: center; gap: 8px;
-      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted);
+      font-size: 0.82rem; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--text); font-weight: 700;
       padding-bottom: 6px; border-bottom: 1px solid var(--border);
     }
-    .section-hdr .dot { width:5px; height:5px; border-radius:50%; background:var(--blue); }
-    .section-hdr .cnt { margin-left:auto; font-size:0.82rem; color:var(--muted); }
+    .section-hdr .dot { width:6px; height:6px; border-radius:50%; background:var(--blue); }
+    .section-hdr .cnt { margin-left:auto; font-size:0.82rem; color:var(--muted); font-weight:400; }
 
     /* ══ BASE CARD ════════════════════════════════════════════ */
     .card {
@@ -155,7 +156,7 @@
     .card:hover { border-color: var(--border2); }
     .card-sm { padding: 12px 14px; border-radius: 12px; }
 
-    .clabel { font-size:0.75rem; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+    .clabel { font-size:0.78rem; text-transform:uppercase; letter-spacing:1.2px; color:var(--text); font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
     .clabel .ico { width:14px; height:14px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.82rem; }
 
     /* ══ KPI CARDS ════════════════════════════════════════════ */
@@ -856,14 +857,12 @@
 </div>
 
 <!-- ══ PORTFOLIO INTELLIGENCE + EXECUTION INTELLIGENCE ══════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--blue)"></div>Portfolio Intelligence &amp; Execution Quality
-  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 15/17 · alocação cross-asset · slippage · maker/taker</span>
-</div>
+<div class="section-hdr"><div class="dot" style="background:var(--blue)"></div>Portfolio Intelligence &amp; Execution Quality</div>
 <div class="grid g12">
 
   <!-- Portfolio Allocator — Phase 15 -->
   <div class="card">
-    <div class="clabel">Portfolio Allocator <span style="font-size:0.75rem;color:var(--muted)">Phase 15 · edge ranking cross-asset</span></div>
+    <div class="clabel">Portfolio Allocator</div>
     <div id="pa-rows" style="font-size:0.82rem;">
       <div style="color:var(--muted);font-size:0.75rem;padding:10px 0">Aguardando sinais…</div>
     </div>
@@ -876,7 +875,7 @@
 
   <!-- Execution Intelligence — Phase 17 -->
   <div class="card">
-    <div class="clabel">Execution Intelligence <span style="font-size:0.75rem;color:var(--muted)">Phase 17 · slippage · maker/taker</span></div>
+    <div class="clabel">Execution Intelligence</div>
     <div style="display:flex;gap:6px;margin-bottom:8px;font-size:0.75rem;">
       <span style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:4px;padding:1px 6px;color:var(--blue)">maker thr: <b id="ei-maker-thr">–</b> bps</span>
       <span style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:4px;padding:1px 6px;color:var(--red)">taker thr: <b id="ei-taker-thr">–</b> bps</span>
@@ -923,7 +922,6 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--purple)"></div>
   Alpha Orthogonality
-  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 18 · FD · LV · OD · MRM — sinais ortogonais ao M1-M9</span>
 </div>
 <div class="card" id="ao-card">
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" id="ao-badges">
@@ -1137,7 +1135,6 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--blue)"></div>
   Equity Analytics
-  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 6 · por trade</span>
   <a href="/api/analytics/equity_curve/csv" style="margin-left:auto;font-size:0.75rem;color:var(--blue);text-decoration:none;padding:2px 8px;border:1px solid rgba(59,130,246,0.3);border-radius:4px">↓ CSV</a>
 </div>
 
@@ -1212,7 +1209,6 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--orange)"></div>
   Distribuição & Diagnóstico
-  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 7 · padrões estatísticos</span>
 </div>
 <div class="grid g21">
 
@@ -1296,7 +1292,6 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--red)"></div>
   Reality Check
-  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 8 · bootstrap · permutação · stress de fees</span>
   <span id="rc-overall-badge" style="margin-left:auto;font-size:0.75rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
 </div>
 <div class="grid g31">
@@ -1388,7 +1383,6 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--purple)"></div>
   Meta-Overfitting
-  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 9 · DSR · MinTRL · IS/OOS · López de Prado</span>
   <span id="mo-overall-badge" style="margin-left:auto;font-size:0.75rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
 </div>
 <div class="grid g31">
@@ -1492,7 +1486,6 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--red)"></div>
   Risco Avançado
-  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 14 · correlação · VaR · circuit breakers · liquidez</span>
   <span id="ar-cb-badge" style="margin-left:auto;font-size:0.75rem;padding:2px 10px;border-radius:4px;font-weight:700;">–</span>
 </div>
 <div class="grid g22">
@@ -1536,7 +1529,6 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--blue)"></div>
   MLOps, Saúde do Modelo &amp; Feature Governance
-  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 15 · experiment tracking · drift · ensemble · WFO</span>
   <span id="mh-health-badge" style="margin-left:auto;font-size:0.82rem;font-weight:800;padding:3px 12px;border-radius:5px;">–</span>
 </div>
 <div class="grid g31">
@@ -1566,7 +1558,7 @@
   <!-- Experiment Tracking -->
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <div class="clabel" style="margin:0">Experiment Tracking <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(15.1)</span></div>
+      <div class="clabel" style="margin:0">Experiment Tracking</div>
       <span class="hbadge hbadge-gray" id="calib-ts-badge">–</span>
     </div>
     <!-- Calibração atual -->
@@ -1583,14 +1575,14 @@
     </div>
     <!-- Ensemble robustness -->
     <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:8px;">
-      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">Ensemble Robustness (15.4)</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">Ensemble Robustness</div>
       <div id="mh-ensemble" style="font-size:0.75rem;"></div>
     </div>
   </div>
 
   <!-- Online Validation -->
   <div class="card">
-    <div class="clabel" style="margin-bottom:10px">Online Validation <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(15.2)</span></div>
+    <div class="clabel" style="margin-bottom:10px">Online Validation</div>
     <!-- PSI -->
     <div style="margin-bottom:10px;">
       <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px">PSI — Drift de Features</div>
@@ -1619,7 +1611,6 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--yellow)"></div>
   Regime Robustness &amp; Meta-Regime Macro
-  <span style="font-size:0.75rem;color:var(--muted);margin-left:8px">Phase 13/16 · bear market · volatility stress · cross-asset</span>
   <span id="mr-regime-badge" style="margin-left:auto;font-size:0.82rem;font-weight:800;padding:3px 12px;border-radius:5px;letter-spacing:0.5px;">–</span>
 </div>
 <div class="grid g31">

@@ -47,10 +47,17 @@ if ($dirty) {
 
 # -- 2. Calcular versao -------------------------------------------------------
 # REGRA DE VERSIONAMENTO: vX.Y.Z
-#   X = 5 (versao geral do projeto, fixo)
-#   Y = numero total de fases implementadas (contagem de tags fase/*)
-#   Z = numero total de commits no branch (git rev-list --count HEAD)
-$GIT_MINOR = (git tag --list 'fase/*' | Measure-Object -Line).Lines
+#   X = 5      versao geral do projeto (fixo)
+#   Y = fases  total de fases implementadas -- lido de _phase.txt
+#              (atualizar _phase.txt manualmente ao concluir cada nova fase)
+#   Z = commits total de commits no branch (git rev-list --count HEAD)
+$PHASE_FILE = "$PROJECT_DIR\_phase.txt"
+if (Test-Path $PHASE_FILE) {
+    $GIT_MINOR = [int](Get-Content $PHASE_FILE -Raw).Trim()
+} else {
+    Write-Warn "_phase.txt nao encontrado -- usando 0"
+    $GIT_MINOR = 0
+}
 $GIT_PATCH = [int](git rev-list --count HEAD)
 $VERSION   = "5.$GIT_MINOR.$GIT_PATCH"
 Write-Host ""

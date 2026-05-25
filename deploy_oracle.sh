@@ -21,6 +21,7 @@ STEP "Copiando arquivos para o container..."
 # src/. = copia CONTEUDOS de src/ para /app/src/ (sem criar src/src/ aninhado)
 docker cp src/. cctb_app:/app/src/                     || FAIL "docker cp src/. falhou"
 docker cp _version.txt cctb_app:/app/_version.txt      || FAIL "docker cp _version.txt falhou"
+docker cp _phase.txt   cctb_app:/app/_phase.txt        || FAIL "docker cp _phase.txt falhou"
 
 # Remove o diretorio aninhado /app/src/src/ criado por deploys anteriores com bug
 # (arquivos foram copiados como root, entao a limpeza precisa de --user root)

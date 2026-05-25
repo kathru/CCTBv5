@@ -88,6 +88,15 @@ jobs:
         env:
           PYTHONPATH: .
 
+      # Feature Importance: permutação para verificar alinhamento schema vs dados reais.
+      # continue-on-error: não bloqueia se não houver dados suficientes.
+      - name: Feature Importance (permutacao)
+        continue-on-error: true
+        timeout-minutes: 10
+        run: python scripts/feature_analysis.py
+        env:
+          PYTHONPATH: .
+
       # Persiste banco atualizado no cache para o próximo run.
       - name: Save calibration DB
         uses: actions/cache/save@v4
@@ -96,25 +105,25 @@ jobs:
           path: data/calibration.db
           key: calibration-db-1h-v2.5.0-${{ runner.os }}-${{ github.run_id }}
 
-      # Verifica se houve mudança nos modelos.
+      # Verifica se houve mudança nos modelos ou WFO.
       - name: Check for model changes
         id: changes
         run: |
-          git diff --quiet data/models/ && \
+          git diff --quiet data/models/ data/wfo/ && \
             echo "changed=false" >> $GITHUB_OUTPUT || \
             echo "changed=true" >> $GITHUB_OUTPUT
 
-      # Commita e faz push se houve atualização dos modelos.
-      - name: Commit updated models
+      # Commita e faz push se houve atualizacao dos modelos ou WFO.
+      - name: Commit updated models and WFO
         if: steps.changes.outputs.changed == 'true'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/models/
+          git add data/models/ data/wfo/
           if git diff --staged --quiet data/models/calibration_coef.json; then
-            MSG="chore: recalibração incremental 1H $(date -u '+%Y-%m-%d')"
+            MSG="chore: recalibracao incremental 1H $(date -u '+%Y-%m-%d')"
           else
-            MSG="chore: recalibração + WFO auto-apply 1H $(date -u '+%Y-%m-%d')"
+            MSG="chore: recalibracao + WFO auto-apply 1H $(date -u '+%Y-%m-%d')"
           fi
           git commit -m "$MSG"
           git push

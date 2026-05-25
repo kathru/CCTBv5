@@ -1543,7 +1543,10 @@
 
   <!-- Health Score + Dimensões -->
   <div class="card">
-    <div class="clabel" style="margin-bottom:6px">Saúde do Modelo</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <div class="clabel" style="margin:0">Saúde do Modelo</div>
+      <span class="hbadge hbadge-gray" id="mh-computed-at">–</span>
+    </div>
     <!-- Gauge circular simplificado via barra -->
     <div style="text-align:center;padding:8px 0 12px;">
       <div style="font-size:0.75rem;color:var(--muted)">Health Score</div>
@@ -1562,7 +1565,10 @@
 
   <!-- Experiment Tracking -->
   <div class="card">
-    <div class="clabel" style="margin-bottom:10px">Experiment Tracking <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(15.1)</span></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="clabel" style="margin:0">Experiment Tracking <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(15.1)</span></div>
+      <span class="hbadge hbadge-gray" id="calib-ts-badge">–</span>
+    </div>
     <!-- Calibração atual -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;font-size:0.75rem;">
       <div><span style="color:var(--muted)">Platt A</span><br><span id="mh-platt-a" style="font-weight:700;font-size:0.9rem;">–</span></div>
@@ -2660,7 +2666,7 @@ function renderImportance(data){
   // Data badge
   if(atEl&&data.computed_at){
     const d=new Date(data.computed_at);
-    atEl.textContent=d.toLocaleDateString('pt-BR');
+    atEl.textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     atEl.className='hbadge hbadge-blue';
   }
   if(metaEl) metaEl.textContent=`${(data.n_samples||0).toLocaleString('pt-BR')} amostras · Win Rate ${((data.win_rate||0)*100).toFixed(1)}%`;
@@ -3660,9 +3666,17 @@ function buildModelHealth(mh, ens){
   };
   const sc = SCFG[status]||{c:'var(--muted)',bg:'rgba(100,100,100,0.1)',label:'–'};
 
-  // Badge
+  // Badge status
   const bEl=document.getElementById('mh-health-badge');
   if(bEl){bEl.textContent=sc.label;bEl.style.background=sc.bg;bEl.style.color=sc.c;}
+
+  // Badge timestamp
+  const mhAt=document.getElementById('mh-computed-at');
+  if(mhAt&&mh.evaluated_at){
+    const d=new Date(mh.evaluated_at);
+    mhAt.textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    mhAt.className='hbadge hbadge-blue';
+  }
 
   // Score
   const scEl=document.getElementById('mh-score');
@@ -4606,6 +4620,11 @@ async function updateAll(){
     document.getElementById('calib-n').textContent=(calib.n||0).toLocaleString('pt-BR');
     const d=calib.calibrated_at?new Date(calib.calibrated_at):null;
     document.getElementById('calib-date').textContent=d?d.toLocaleDateString('pt-BR'):'–';
+    const tsBadge=document.getElementById('calib-ts-badge');
+    if(tsBadge&&d){
+      tsBadge.textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      tsBadge.className='hbadge hbadge-blue';
+    }
     // Win rate bar
     const wrN=(calib.win_rate||0)*100;
     const wrBar=document.getElementById('rb-wr');

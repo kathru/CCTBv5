@@ -2,12 +2,12 @@ name: Weekly Autonomous Review
 
 on:
   schedule:
-    - cron: "0 8 * * 1"   # Segunda-feira às 08:00 UTC
+    - cron: "0 8 * * 1"   # Segunda-feira 08:00 UTC (05:00 BRT / 09:00 Lisboa)
   workflow_dispatch:        # permite rodar manualmente
 
 jobs:
   review:
-    name: AI Performance Review
+    name: AI Full Review (M1-M9 + Portfolio + Regime)
     runs-on: ubuntu-latest
 
     steps:
@@ -19,13 +19,23 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: |
-          pip install anthropic httpx python-dotenv
+        run: pip install anthropic httpx python-dotenv
 
-      - name: Run autonomous review agent
+      - name: Run weekly review agent
         env:
-          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
-          DISCORD_WEBHOOK_URL:  ${{ secrets.DISCORD_REVIEW_WEBHOOK_URL }}
-          ORACLE_API_BASE:      ${{ secrets.ORACLE_API_BASE }}    # https://137.131.220.216:8001
-          ORACLE_API_TOKEN:     ${{ secrets.ORACLE_API_TOKEN }}   # opcional, se houver auth
+          ANTHROPIC_API_KEY:   ${{ secrets.ANTHROPIC_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_REVIEW_WEBHOOK_URL }}
+          ORACLE_API_BASE:     ${{ secrets.ORACLE_API_BASE }}
         run: python scripts/autonomous_review.py
+
+      - name: Commit pending_changes (se houver)
+        run: |
+          if git diff --quiet data/agent/pending_changes.json 2>/dev/null; then
+            echo "Sem mudancas em pending_changes.json"
+          else
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add data/agent/
+            git commit -m "chore: weekly review $(date -u '+%Y-%m-%d') -- pending_changes atualizado"
+            git push
+          fi

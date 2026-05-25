@@ -1,13 +1,23 @@
-name: Daily Agent (06:00 UTC)
+name: Daily Agent (manual only)
+
+# Desativado como cron diario — logica de analise AI incorporada ao Weekly Review.
+# Mantido para execucao manual quando necessario (ex: investigar anomalia pontual).
 
 on:
-  schedule:
-    - cron: "0 6 * * *"    # 06:00 UTC todos os dias (03:00 BRT / 08:00 Lisboa)
-  workflow_dispatch:         # permite rodar manualmente pelo GitHub
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run (nao aplica mudancas)"
+        type: boolean
+        default: true
+      no_recalibrate:
+        description: "Pular recalibracao"
+        type: boolean
+        default: false
 
 jobs:
   daily-agent:
-    name: Análise Diária + Recalibração
+    name: Analise Manual + Recalibracao
     runs-on: ubuntu-latest
 
     steps:
@@ -19,33 +29,44 @@ jobs:
           key:      ${{ secrets.ORACLE_SSH_KEY }}
           timeout:  30m
           script: |
-            set -e
             cd ${{ secrets.ORACLE_PROJECT_PATH }}
 
-            echo ">> [$(date -u '+%H:%M:%S')] Atualizando repositório..."
-            git pull --ff-only origin main
+            echo ">> Atualizando repositorio..."
+            git pull --ff-only origin main || echo "AVISO: git pull falhou, continuando com versao atual"
 
-            echo ">> [$(date -u '+%H:%M:%S')] Copiando scripts para o container..."
-            docker cp scripts/ cctb_app:/app/scripts/
+            echo ">> Copiando scripts para o container..."
+            docker cp scripts/ cctb_app:/app/scripts/ || echo "AVISO: docker cp falhou"
 
-            echo ">> [$(date -u '+%H:%M:%S')] Rodando daily_agent.py..."
+            DRY_RUN_FLAG=""
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              DRY_RUN_FLAG="--dry-run"
+            fi
+
+            NO_RECAL_FLAG=""
+            if [ "${{ inputs.no_recalibrate }}" = "true" ]; then
+              NO_RECAL_FLAG="--no-recalibrate"
+            fi
+
+            echo ">> Rodando daily_agent.py $DRY_RUN_FLAG $NO_RECAL_FLAG..."
             docker exec \
               -e ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
               -e DISCORD_WEBHOOK_URL=${{ secrets.DISCORD_REVIEW_WEBHOOK_URL }} \
               cctb_app \
               python scripts/daily_agent.py \
-                --oracle-url http://localhost:8001
+                --oracle-url http://localhost:8001 \
+                $DRY_RUN_FLAG \
+                $NO_RECAL_FLAG
 
-            echo ">> [$(date -u '+%H:%M:%S')] Verificando mudanças nos modelos..."
-            if git diff --quiet data/models/; then
-              echo "Nenhuma mudança — commit ignorado."
+            echo ">> Verificando mudancas nos modelos..."
+            if git diff --quiet data/models/ 2>/dev/null; then
+              echo "Nenhuma mudanca -- commit ignorado."
             else
               git config user.name  "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
               git add data/models/ data/agent/
-              git commit -m "chore: daily agent $(date -u '+%Y-%m-%d') — recalibração + análise LLM"
+              git commit -m "chore: daily agent manual $(date -u '+%Y-%m-%d') -- recalibracao + analise LLM"
               git push origin main
               echo ">> Modelos atualizados e commitados."
             fi
 
-            echo "OK Daily agent concluído: $(date -u)"
+            echo "OK Daily agent concluido: $(date -u)"

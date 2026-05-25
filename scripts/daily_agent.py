@@ -400,17 +400,18 @@ async def call_claude(system_data: dict, recal_results: dict) -> dict:
     client = anthropic.Anthropic(api_key=api_key)
     user_prompt = build_user_prompt(system_data, recal_results)
 
-    logger.info("Chamando Claude (claude-sonnet-4-6) para análise...")
+    logger.info("Chamando Claude (claude-opus-4-7) para análise...")
 
     try:
         response = client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-opus-4-7",
             max_tokens=8192,
+            thinking={"type": "adaptive"},
             system=[
                 {
                     "type": "text",
                     "text": SYSTEM_PROMPT,
-                    "cache_control": {"type": "ephemeral"},  # prompt caching
+                    "cache_control": {"type": "ephemeral"},
                 }
             ],
             messages=[

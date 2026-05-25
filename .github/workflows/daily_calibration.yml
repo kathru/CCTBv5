@@ -130,12 +130,14 @@ jobs:
           key:      ${{ secrets.ORACLE_SSH_KEY }}
           script: |
             cd ${{ secrets.ORACLE_PROJECT_PATH }}
-            # Descarta qualquer mudança local no modelo (gerada por calibração direta)
+            # Descarta qualquer mudanca local no modelo (gerada por calibracao direta)
             git checkout -- data/models/ 2>/dev/null || true
-            git pull --ff-only
-            # Reinicia o container para recarregar calibration_coef.json do volume
-            sudo docker compose restart cctb
-            echo "Deploy concluído: $(date -u)"
+            git pull --ff-only || true
+            # Copia calibration_coef.json atualizado para o container
+            docker cp data/models/calibration_coef.json cctb_app:/app/data/models/calibration_coef.json || true
+            # Reinicia o container para recarregar os modelos
+            docker restart cctb_app
+            echo "Deploy concluido: $(date -u)"
 
       - name: Skip deploy (no changes)
         if: steps.changes.outputs.changed == 'false'

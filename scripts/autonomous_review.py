@@ -1,15 +1,15 @@
 """
-Autonomous Review Agent — Phase 3 CCTBv5
+autonomous_review.py -- Weekly Autonomous Review Agent CCTBv5
 
-Roda semanalmente via GitHub Actions.
-Coleta dados de performance do Oracle, usa Claude para analisar e
-posta um relatório estruturado no Discord.
+Roda toda segunda-feira 08:00 UTC via GitHub Actions.
+Incorpora a logica de analise do daily_agent: coleta dados completos
+de todos os endpoints, analisa M1-M9, portfolio, regime, alpha signals,
+execution quality e posta relatorio estruturado no Discord.
 
-Variáveis de ambiente necessárias:
-  ANTHROPIC_API_KEY     — chave Anthropic (Claude API)
-  DISCORD_WEBHOOK_URL   — webhook Discord para o canal #review
-  ORACLE_API_BASE       — URL base da API Oracle (ex: http://137.131.220.216:8001)
-  ORACLE_API_TOKEN      — token Bearer opcional
+Variaveis de ambiente:
+  ANTHROPIC_API_KEY     chave Anthropic (Claude API)
+  DISCORD_WEBHOOK_URL   webhook Discord para o canal #review
+  ORACLE_API_BASE       URL base da API Oracle (ex: http://137.131.220.216:8001)
 """
 
 from __future__ import annotations
@@ -25,253 +25,497 @@ import httpx
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 logger = logging.getLogger(__name__)
 
-# ── Configuração ──────────────────────────────────────────────────────────────
+# -- Configuracao --------------------------------------------------------------
 
 ANTHROPIC_API_KEY   = os.environ.get("ANTHROPIC_API_KEY", "")
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 ORACLE_API_BASE     = os.environ.get("ORACLE_API_BASE", "http://137.131.220.216:8001").rstrip("/")
-ORACLE_API_TOKEN    = os.environ.get("ORACLE_API_TOKEN", "")
 
-CLAUDE_MODEL = "claude-opus-4-5"   # melhor para análise e geração de texto
-MAX_TOKENS   = 1500
+CLAUDE_MODEL = "claude-opus-4-7"   # modelo mais capaz para analise quantitativa
+MAX_TOKENS   = 8192
 
-# ── Coleta de dados da API Oracle ─────────────────────────────────────────────
-
-def _headers() -> dict:
-    h = {"Content-Type": "application/json", "Accept": "application/json"}
-    if ORACLE_API_TOKEN:
-        h["Authorization"] = f"Bearer {ORACLE_API_TOKEN}"
-    return h
+M_FACTORS = ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9"]
 
 
-async def fetch_data() -> dict:
-    """Coleta todos os dados de performance da API Oracle."""
+# -- Coleta de dados ----------------------------------------------------------
+
+async def fetch_all(base: str) -> dict:
+    """Coleta todos os endpoints relevantes do Oracle."""
+    endpoints = {
+        # Core
+        "health":              "/health",
+        "version":             "/version",
+        # Metrics
+        "system":              "/api/metrics/system",
+        "performance":         "/api/metrics/performance",
+        "prices":              "/api/metrics/prices",
+        # Portfolio e posicoes
+        "portfolio":           "/api/portfolio/summary",
+        "positions_open":      "/api/positions/open",
+        # Ordens
+        "orders_filled":       "/api/orders/filled",
+        "orders_recent":       "/api/orders/recent",
+        # Sinais
+        "signals_log":         "/api/signals/log",
+        "signals_calibration": "/api/signals/calibration",
+        "signals_funnel":      "/api/signals/funnel",
+        # Analytics
+        "distribution":        "/api/analytics/distribution",
+        "meta_regime":         "/api/analytics/meta_regime",
+        "volatility_state":    "/api/analytics/volatility_state",
+        "futures_flow":        "/api/analytics/futures_flow",
+        "relative_strength":   "/api/analytics/relative_strength",
+        "reality_check":       "/api/analytics/reality_check",
+        "model_health":        "/api/analytics/model_health",
+        "alpha_orthogonality": "/api/analytics/alpha_orthogonality",
+        "quantitative":        "/api/analytics/quantitative",
+        # Governance (Feature drift / PSI)
+        "governance_drift":    "/api/governance/drift",
+        "governance_live":     "/api/governance/live-stats",
+        "governance_importance": "/api/governance/importance",
+        # Watchdog
+        "watchdog":            "/api/watchdog/status",
+    }
+
     results: dict = {}
-    async with httpx.AsyncClient(timeout=30, verify=False) as client:
-        endpoints = {
-            "portfolio":   f"{ORACLE_API_BASE}/api/portfolio/summary",
-            "performance": f"{ORACLE_API_BASE}/api/metrics/performance",
-            "analytics":   f"{ORACLE_API_BASE}/api/analytics/summary",
-            "system":      f"{ORACLE_API_BASE}/api/metrics/system",
-        }
-        for key, url in endpoints.items():
+    async with httpx.AsyncClient(timeout=20) as client:
+        for key, path in endpoints.items():
             try:
-                resp = await client.get(url, headers=_headers())
-                resp.raise_for_status()
-                results[key] = resp.json()
-                logger.info("  ✓ %s — %d bytes", key, len(resp.content))
+                resp = await client.get(f"{base}{path}")
+                if resp.status_code == 200:
+                    results[key] = resp.json()
+                    logger.info("  v %s", key)
+                else:
+                    logger.warning("  x %s -- HTTP %d", key, resp.status_code)
+                    results[key] = {}
             except Exception as exc:
-                logger.warning("  ✗ %s — %s", key, exc)
+                logger.warning("  x %s -- %s", key, exc)
                 results[key] = {}
-
-    # Últimas ordens filled (para análise de trades recentes)
-    try:
-        async with httpx.AsyncClient(timeout=30, verify=False) as client:
-            resp = await client.get(
-                f"{ORACLE_API_BASE}/api/orders/filled",
-                params={"limit": 30},
-                headers=_headers(),
-            )
-            resp.raise_for_status()
-            results["recent_orders"] = resp.json()
-    except Exception as exc:
-        logger.warning("  ✗ recent_orders — %s", exc)
-        results["recent_orders"] = {}
 
     return results
 
 
-def _fmt_data_for_claude(data: dict) -> str:
-    """Formata os dados coletados como texto estruturado para o prompt."""
-    p   = data.get("portfolio", {})
-    perf = data.get("performance", {})
-    ana  = data.get("analytics", {})
-    sys_ = data.get("system", {})
-    orders = data.get("recent_orders", {}).get("orders", [])
+# -- Formatacao para Claude ---------------------------------------------------
 
-    now = datetime.now(UTC)
-    week_start = (now - timedelta(days=7)).strftime("%d/%m/%Y")
-
-    lines = [
-        f"# CCTBv5 — Relatório Semanal ({week_start} → {now.strftime('%d/%m/%Y')})",
-        "",
-        "## Portfolio",
-        f"- Valor total: ${p.get('total_value', 0):,.2f}",
-        f"- Capital inicial: ${p.get('initial_capital', 0):,.2f}",
-        f"- Retorno acumulado: {p.get('total_return_pct', 0)*100:+.2f}%",
-        f"- Drawdown atual: {p.get('drawdown_pct', 0)*100:.2f}%",
-        f"- P&L realizado: ${p.get('realized_pnl', 0):,.2f}",
-        f"- P&L não realizado: ${p.get('unrealized_pnl', 0):,.2f}",
-        f"- Posições abertas: {p.get('open_position_count', 0)}",
-        f"- Exposição: {p.get('total_exposure_pct', 0)*100:.1f}%",
-        "",
-        "## Performance Operacional",
-        f"- Total de trades (ordens filled): {perf.get('total_trades', 0)}",
-        f"- Compras: {perf.get('total_buys', 0)} | Vendas: {perf.get('total_sells', 0)}",
-        f"- Volume total negociado: ${perf.get('total_volume', 0):,.2f}",
-        f"- Taxas pagas: ${perf.get('total_fees', 0):,.2f}",
-        f"- P&L realizado (ordens): ${perf.get('total_pnl', 0):,.2f}",
-        f"- P&L por símbolo: {json.dumps(perf.get('pnl_by_symbol', {}), indent=2)}",
-        "",
-        "## Analytics",
-        f"- Sharpe Ratio: {ana.get('sharpe_ratio', 'N/A')}",
-        f"- Calmar Ratio: {ana.get('calmar_ratio', 'N/A')}",
-        f"- Max Drawdown: {ana.get('max_drawdown_pct', ana.get('max_drawdown', 'N/A'))}",
-        f"- Win Rate Rolling: {ana.get('win_rate', ana.get('rolling_win_rate', 'N/A'))}",
-        f"- Expectância média: {ana.get('avg_expectancy', 'N/A')}",
-        "",
-        "## Sistema",
-        f"- Modo: {sys_.get('mode', 'unknown')} | Monitor only: {sys_.get('monitor_only', False)}",
-        f"- Versão: {sys_.get('version', 'N/A')}",
-        f"- Status: {sys_.get('system_status', 'N/A')}",
-        "",
-    ]
-
-    if orders:
-        lines.append("## Últimas 30 Ordens Filled (bot)")
-        for o in orders[:30]:
-            side = str(o.get("side", "")).upper()
-            sym  = o.get("symbol", "?").replace("-USDT", "")
-            qty  = o.get("filled_quantity", 0)
-            px   = o.get("avg_fill_price", 0)
-            fee  = o.get("fees_paid", 0)
-            ts   = (o.get("filled_at") or "")[:10]
-            lines.append(f"  {ts} {side:4s} {sym:3s} qty={qty:.4f} px=${px:,.2f} fee=${fee:.2f}")
-
-    return "\n".join(lines)
+def _safe_json(obj, limit=1500) -> str:
+    try:
+        return json.dumps(obj, indent=2, ensure_ascii=False)[:limit]
+    except Exception:
+        return str(obj)[:limit]
 
 
-# ── Claude API ────────────────────────────────────────────────────────────────
+def build_prompt(data: dict, week_start: str, week_end: str) -> str:
+    health      = data.get("health", {})
+    version     = data.get("version", {})
+    system      = data.get("system", {})
+    perf        = data.get("performance", {})
+    portfolio   = data.get("portfolio", {})
+    signals_log = data.get("signals_log", {})
+    funnel      = data.get("signals_funnel", {})
+    cal         = data.get("signals_calibration", {})
+    dist        = data.get("distribution", {})
+    meta        = data.get("meta_regime", {})
+    vol         = data.get("volatility_state", {})
+    ff          = data.get("futures_flow", {})
+    rs          = data.get("relative_strength", {})
+    rc          = data.get("reality_check", {})
+    mh          = data.get("model_health", {})
+    alpha       = data.get("alpha_orthogonality", {})
+    drift       = data.get("governance_drift", {})
+    live_stats  = data.get("governance_live", {})
+    importance  = data.get("governance_importance", {})
+    quant       = data.get("quantitative", {})
+    positions   = data.get("positions_open", [])
+    wd          = data.get("watchdog", {})
 
-async def call_claude(data_text: str) -> str:
-    """Envia dados para Claude e obtém análise estruturada."""
-    import anthropic   # importação tardia — só disponível em Actions
+    orders = data.get("orders_filled", {})
+    if isinstance(orders, dict):
+        orders = orders.get("orders", [])
+    if not isinstance(orders, list):
+        orders = []
+
+    # Filtra trades da semana
+    cutoff = datetime.now(UTC) - timedelta(days=7)
+    week_trades = []
+    for o in orders:
+        try:
+            ts = datetime.fromisoformat(str(o.get("filled_at", "")).replace("Z", "+00:00"))
+            if ts.replace(tzinfo=UTC) >= cutoff:
+                week_trades.append({
+                    "symbol":   o.get("symbol"),
+                    "side":     o.get("side"),
+                    "pnl":      o.get("pnl_usdt"),
+                    "strategy": o.get("strategy_id"),
+                    "regime":   o.get("regime"),
+                    "date":     str(o.get("filled_at", ""))[:10],
+                })
+        except Exception:
+            pass
+
+    return f"""PERIODO DA ANALISE: {week_start} -> {week_end}
+VERSAO DO SISTEMA: {version.get("version", "?")} | Fase: {version.get("minor", "?")} -- Alpha Orthogonality
+
+=== SAUDE GERAL ===
+{_safe_json(health, 400)}
+
+=== METRICAS DE PERFORMANCE ===
+{_safe_json(perf, 1200)}
+
+=== PORTFOLIO ===
+{_safe_json(portfolio, 800)}
+
+=== TRADES DA SEMANA ({len(week_trades)} trades) ===
+{_safe_json(week_trades, 1500)}
+
+=== FUNIL DE SINAIS ===
+{_safe_json(funnel, 600)}
+
+=== CALIBRACAO (WR, Platt) ===
+{_safe_json(cal, 600)}
+
+=== DISTRIBUICAO DE TRADES ===
+{_safe_json(dist, 800)}
+
+=== META REGIME (M1-M9 regime context) ===
+{_safe_json(meta, 800)}
+
+=== ESTADO DE VOLATILIDADE (M8) ===
+{_safe_json(vol, 600)}
+
+=== FUTURES FLOW (M6) ===
+{_safe_json(ff, 600)}
+
+=== RELATIVE STRENGTH (M7) ===
+{_safe_json(rs, 600)}
+
+=== REALITY CHECK ===
+{_safe_json(rc, 600)}
+
+=== MODEL HEALTH (PSI, drift por feature) ===
+{_safe_json(mh, 800)}
+
+=== ALPHA ORTHOGONALITY (FD/LV/OD/MRM - Fase 18) ===
+{_safe_json(alpha, 800)}
+
+=== GOVERNANCE DRIFT (PSI por feature) ===
+{_safe_json(drift, 800)}
+
+=== GOVERNANCE LIVE STATS ===
+{_safe_json(live_stats, 600)}
+
+=== FEATURE IMPORTANCE ===
+{_safe_json(importance, 600)}
+
+=== ANALYTICS QUANTITATIVOS ===
+{_safe_json(quant, 800)}
+
+=== POSICOES ABERTAS ===
+{_safe_json(positions, 600)}
+
+=== WATCHDOGS ===
+{_safe_json(wd, 400)}
+"""
+
+
+SYSTEM_PROMPT = """Voce e o Analista Quantitativo Senior do CCTBv5, sistema de trading algoritmico de criptomoedas.
+
+ARQUITETURA ATUAL (Fase 18 -- Alpha Orthogonality):
+- Motor Probabilistico: Platt v12, WR baseline=37.5%, modelo FROZEN ate Day 90
+- Estrategias: momentum_v2 (principal), reversal_v1, trend_v1
+- Regimes: TREND_EXPANSION, VOLATILITY_COMPRESSION, MEAN_REVERTING_CHOP, TREND_EXHAUSTION,
+           HIGH_CORRELATION_RISK, BEAR_TREND, PANIC_LIQUIDATION, TRANSITION
+- Hold Engine: Conviction Score 0-100 (HOLD>=70, WATCH 50-69, ALERT 30-49, EXIT<30)
+- SizingEngine: kelly = base x regime x drift x vol_state x calibration x score x exceptional
+- WeightEngine: online learning sim->real, convergencia em 30 trades
+- EdgeConditioner: PSI mult, Health mult, Liq mult, WR mult, Thr mult
+- Portfolio Intelligence (Fase 15): edge ranking cross-asset, kelly proporcional
+- Meta-learning de Regimes (Fase 16): softmax probabilistico, EMA alpha=0.35, threshold blendado
+- Execution Intelligence (Fase 17): SmartOrderRouter maker/taker, SlippageTracker 20-trade rolling
+- Alpha Orthogonality (Fase 18): FD (Funding Dislocation), LV (Liquidity Vacuum),
+  OD (Overnight Drift), MRM (Mean Reversion Micro) -- kelly x[0.65-1.30], thr adj +-3%
+
+FATORES M:
+- M1: Momentum (RSI, MACD, EMA cross)
+- M2: Estrutura de mercado (suporte/resistencia, padroes de candle)
+- M3: Volume/OBV (confirmacao de movimento)
+- M4: Sentimento (neutro, weight=0%)
+- M5: Score composto Platt
+- M6: Fluxo de futuros (open interest, funding rate) -- Fase 10
+- M7: Forca relativa vs BTC/mercado -- Fase 11
+- M8: Estado de volatilidade (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC) -- Fase 12
+- M9: Sentimento de noticias (FinNLP) -- Fase 4
+
+REGRAS DO MODELO FROZEN:
+- NAO sugerir mudancas nos pesos de features M1-M9 (frozen ate Day 90)
+- Mudancas auto-aplicaveis: regime_weights (delta < 20%), feature_baseline
+- Mudancas que requerem aprovacao humana: Platt, thresholds criticos, nova logica
+
+Responda em JSON estruturado conforme solicitado. Seja quantitativo e acionavel."""
+
+
+def build_claude_message(data: dict, week_start: str, week_end: str) -> str:
+    system_data_text = build_prompt(data, week_start, week_end)
+
+    return f"""{system_data_text}
+
+=== TAREFA: RELATORIO SEMANAL COMPLETO ===
+
+Analise todos os dados acima e responda em JSON com EXATAMENTE esta estrutura:
+
+{{
+  "period": "{week_start} -> {week_end}",
+  "overall_health": "SAUDAVEL|ATENCAO|CRITICO",
+  "executive_summary": "Resumo executivo em 3-4 frases, quantitativo",
+
+  "performance": {{
+    "pnl_week_usdt": null,
+    "win_rate_week": null,
+    "trades_count": 0,
+    "best_trade": "descricao",
+    "worst_trade": "descricao",
+    "sharpe_estimate": null,
+    "assessment": "avaliacao qualitativa"
+  }},
+
+  "m_factors": {{
+    "M1": {{"status": "OK|ATENCAO|DEGRADADO", "observations": "...", "deviation": "...", "recommendation": "..."}},
+    "M2": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
+    "M3": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
+    "M4": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
+    "M5": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
+    "M6": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
+    "M7": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
+    "M8": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
+    "M9": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}}
+  }},
+
+  "regime_analysis": {{
+    "dominant_regime": "nome do regime dominante da semana",
+    "regime_distribution": {{}},
+    "threshold_mult_blended": null,
+    "meta_confidence": null,
+    "assessment": "impacto do regime na performance"
+  }},
+
+  "alpha_orthogonality": {{
+    "active_signals": [],
+    "boost_impact": "impacto estimado dos sinais ortogonais",
+    "assessment": "eficacia dos sinais FD/LV/OD/MRM esta semana"
+  }},
+
+  "execution_quality": {{
+    "slippage_assessment": "avaliacao do slippage (SmartOrderRouter)",
+    "maker_taker_ratio": "estimativa",
+    "funnel_blockage": "analise do funil (regime_blocked vs liquidity_gate vs score)"
+  }},
+
+  "risk_assessment": {{
+    "model_drift_psi": "resumo do PSI por feature",
+    "calibration_health": "WR calibration status",
+    "drawdown_current": null,
+    "beta_portfolio": null,
+    "watchdog_status": "OK|ATENCAO|CRITICO"
+  }},
+
+  "pending_changes": [
+    {{
+      "change_type": "threshold|param|logic|scoring_weight",
+      "target": "arquivo ou componente",
+      "description": "descricao da mudanca",
+      "requires_human_approval": true,
+      "priority": "HIGH|MEDIUM|LOW",
+      "justification": "dados que justificam"
+    }}
+  ],
+
+  "alerts": [
+    {{
+      "severity": "CRITICAL|WARNING|INFO",
+      "message": "descricao do alerta",
+      "action": "acao recomendada"
+    }}
+  ],
+
+  "outlook_next_week": "perspectiva para a proxima semana baseada em dados (3-4 frases)",
+
+  "discord_summary": "Resumo para Discord em markdown com emojis (max 1800 chars)"
+}}
+
+Retorne APENAS o JSON, sem texto antes ou depois."""
+
+
+# -- Claude API ---------------------------------------------------------------
+
+async def call_claude(data: dict, week_start: str, week_end: str) -> dict:
+    import anthropic
 
     client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+    user_message = build_claude_message(data, week_start, week_end)
 
-    system_prompt = (
-        "Você é um analista quantitativo especializado em sistemas de trading algorítmico."
-        " Analise os dados de performance do bot CCTBv5 e produza um relatório semanal"
-        " objetivo e acionável.\n\n"
-        "Formato obrigatório (use exatamente estas seções com os emojis):\n"
-        "📊 **RESUMO EXECUTIVO** — 2-3 frases sobre o resultado da semana\n"
-        "📈 **PERFORMANCE** — métricas-chave com interpretação (Sharpe, Calmar, WR, P&L)\n"
-        "🎯 **SINAIS & REGIME** — qualidade dos sinais, distribuição, taxa de disparo\n"
-        "⚠️ **ALERTAS** — drawdown, exposição excessiva, degradação de WR, anomalias\n"
-        "🔧 **RECOMENDAÇÕES** — 3-5 ações concretas e priorizadas (curto/médio prazo)\n"
-        "🔮 **PERSPECTIVA** — outlook para a próxima semana baseado nos dados\n\n"
-        "Seja direto, quantitativo e acionável. Máximo 1200 palavras."
-    )
+    logger.info("Chamando Claude %s (max_tokens=%d)...", CLAUDE_MODEL, MAX_TOKENS)
 
-    user_message = f"""Dados coletados agora do sistema CCTBv5:
-
-{data_text}
-
-Parâmetros do motor (referência):
-- Motor Probabilístico v2.4.0 (Platt calibrado, WR calibrado: 37.5%, n=38788)
-- Pesos: M1=2%, M2=12%, M3=35%, M5=6%, M6=13%, M7=12%, M8=20%
-- Thresholds: TREND_EXPANSION=0.56, VOL_COMP=0.58, CHOP=0.68
-- Regimes bloqueados: TREND_EXHAUSTION, BEAR_TREND, HIGH_CORRELATION_RISK, PANIC_LIQUIDATION
-
-Produza o relatório semanal."""
-
-    message = await client.messages.create(
+    response = await client.messages.create(
         model=CLAUDE_MODEL,
         max_tokens=MAX_TOKENS,
-        system=system_prompt,
+        thinking={"type": "adaptive"},
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": user_message}],
     )
-    return message.content[0].text
+
+    # Extrai o bloco de texto (ignora thinking blocks)
+    raw_text = ""
+    for block in response.content:
+        if block.type == "text":
+            raw_text = block.text.strip()
+            break
+
+    logger.info("Tokens: input=%d output=%d", response.usage.input_tokens, response.usage.output_tokens)
+
+    # Remove code fences se presentes
+    if raw_text.startswith("```"):
+        raw_text = raw_text.split("```")[1]
+        if raw_text.startswith("json"):
+            raw_text = raw_text[4:]
+        raw_text = raw_text.strip()
+
+    try:
+        return json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        logger.error("JSON invalido do Claude: %s", exc)
+        return {"error": str(exc), "raw": raw_text[:500]}
 
 
-# ── Discord ───────────────────────────────────────────────────────────────────
+# -- Discord ------------------------------------------------------------------
 
-async def post_to_discord(report: str, data: dict) -> None:
-    """Posta o relatório no Discord via webhook com embed."""
-    p    = data.get("portfolio", {})
-    perf = data.get("performance", {})
-    total = p.get("total_value", 0)
-    ret   = p.get("total_return_pct", 0)
-    dd    = p.get("drawdown_pct", 0)
-    pnl   = perf.get("total_pnl", 0)
-    trades = perf.get("total_trades", 0)
+async def post_discord(analysis: dict, data: dict) -> None:
+    if not DISCORD_WEBHOOK_URL:
+        logger.warning("DISCORD_WEBHOOK_URL nao configurado -- pulando")
+        return
 
-    # Cor do embed baseada em performance
-    color = 0x00C853 if pnl >= 0 else 0xFF1744  # verde ou vermelho
+    health      = analysis.get("overall_health", "?")
+    health_emoji = {"SAUDAVEL": "v", "ATENCAO": "o", "CRITICO": "x"}.get(health, "?")
+    now_str     = datetime.now(UTC).strftime("%d/%m/%Y %H:%M UTC")
 
-    # Divide o relatório em chunks (Discord tem limite de 4096 chars por field)
-    chunks = [report[i:i+1000] for i in range(0, len(report), 1000)]
+    perf  = analysis.get("performance", {})
+    pnl   = perf.get("pnl_week_usdt")
+    wr    = perf.get("win_rate_week")
+    trades = perf.get("trades_count", 0)
 
-    now_str = datetime.now(UTC).strftime("%d/%m/%Y %H:%M UTC")
+    pnl_str = f"${pnl:+,.2f}" if pnl is not None else "N/A"
+    wr_str  = f"{wr*100:.1f}%" if wr is not None else "N/A"
 
-    embed: dict = {
-        "title": f"🤖 Relatório Semanal CCTBv5 — {now_str}",
-        "color": color,
-        "description": chunks[0] if chunks else "Sem dados",
-        "fields": [
-            {
-                "name": "📊 Resumo Rápido",
-                "value": (
-                    f"Portfolio: **${total:,.2f}** | "
-                    f"Retorno: **{ret*100:+.2f}%** | "
-                    f"P&L: **${pnl:,.2f}** | "
-                    f"Trades: **{trades}** | "
-                    f"DD: **{dd*100:.2f}%**"
-                ),
-                "inline": False,
-            },
+    # M-factor status resumido
+    mf = analysis.get("m_factors", {})
+    mf_status = " | ".join(
+        f"**{m}**: {mf.get(m, {}).get('status', '?')}"
+        for m in M_FACTORS
+    )
+
+    # Alertas criticos
+    alerts = analysis.get("alerts", [])
+    critical_alerts = [a for a in alerts if a.get("severity") == "CRITICAL"]
+    alert_text = ""
+    if critical_alerts:
+        alert_text = "\n".join(f"x **{a['message']}**" for a in critical_alerts[:3])
+        alert_text = f"\n\n**ALERTAS CRITICOS:**\n{alert_text}"
+
+    # Alpha signals
+    alpha = analysis.get("alpha_orthogonality", {})
+    active = alpha.get("active_signals", [])
+    alpha_text = f"\n\n**Alpha Signals ativos:** {', '.join(active) if active else 'nenhum'}" if active else ""
+
+    discord_summary = analysis.get("discord_summary", analysis.get("executive_summary", ""))
+
+    header = (
+        f"**CCTBv5 -- Relatorio Semanal** | {now_str}\n"
+        f"{health_emoji} **{health}** | P&L: **{pnl_str}** | WR: **{wr_str}** | Trades: **{trades}**\n"
+        f"{mf_status}"
+        f"{alert_text}"
+        f"{alpha_text}\n\n"
+    )
+
+    full_msg = header + discord_summary
+    if len(full_msg) > 1990:
+        full_msg = full_msg[:1987] + "..."
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.post(DISCORD_WEBHOOK_URL, json={"content": full_msg, "username": "CCTBv5 Weekly Review"})
+        if resp.status_code in (200, 204):
+            logger.info("Discord: relatorio postado com sucesso")
+        else:
+            logger.warning("Discord: status %d -- %s", resp.status_code, resp.text[:200])
+
+
+# -- Salvar pending_changes ---------------------------------------------------
+
+def save_pending(analysis: dict) -> None:
+    from pathlib import Path
+    pending_path = Path(__file__).parent.parent / "data" / "agent" / "pending_changes.json"
+    pending_path.parent.mkdir(parents=True, exist_ok=True)
+
+    pending = {
+        "generated_at":       datetime.now(UTC).isoformat(),
+        "source":             "weekly_review",
+        "overall_health":     analysis.get("overall_health"),
+        "executive_summary":  analysis.get("executive_summary"),
+        "m_factors_status":   {m: analysis.get("m_factors", {}).get(m, {}).get("status", "?") for m in M_FACTORS},
+        "pending_for_approval": [
+            c for c in analysis.get("pending_changes", [])
+            if c.get("requires_human_approval", True)
         ],
-        "footer": {"text": "CCTBv5 Autonomous Review Agent • Phase 3"},
+        "alerts": analysis.get("alerts", []),
+        "outlook": analysis.get("outlook_next_week", ""),
     }
 
-    # Adiciona chunks adicionais como fields
-    for i, chunk in enumerate(chunks[1:], 1):
-        embed["fields"].append({
-            "name": f"(continuação {i})",
-            "value": chunk,
-            "inline": False,
-        })
-
-    payload = {"embeds": [embed]}
-
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(DISCORD_WEBHOOK_URL, json=payload)
-        resp.raise_for_status()
-        logger.info("Discord: relatório postado (status=%d)", resp.status_code)
+    pending_path.write_text(json.dumps(pending, indent=2, ensure_ascii=False), encoding="utf-8")
+    logger.info("pending_changes.json salvo em %s", pending_path)
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# -- Entry point --------------------------------------------------------------
 
 async def main() -> None:
+    import asyncio
 
     if not ANTHROPIC_API_KEY:
-        logger.error("ANTHROPIC_API_KEY não configurada — abortando")
-        sys.exit(1)
-    if not DISCORD_WEBHOOK_URL:
-        logger.error("DISCORD_WEBHOOK_URL não configurada — abortando")
+        logger.error("ANTHROPIC_API_KEY nao configurada -- abortando")
         sys.exit(1)
 
-    logger.info("=== CCTBv5 Autonomous Review Agent ===")
-    logger.info("Oracle API: %s", ORACLE_API_BASE)
+    now       = datetime.now(UTC)
+    week_end  = now.strftime("%Y-%m-%d")
+    week_start = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+
+    logger.info("=== CCTBv5 Weekly Review Agent ===")
+    logger.info("Periodo: %s -> %s", week_start, week_end)
+    logger.info("Oracle: %s", ORACLE_API_BASE)
+    logger.info("Modelo: %s", CLAUDE_MODEL)
 
     # 1. Coleta dados
-    logger.info("Coletando dados da API Oracle...")
-    data = await fetch_data()
+    logger.info("Coletando dados do Oracle (%d endpoints)...", 27)
+    data = await fetch_all(ORACLE_API_BASE)
+    ok = sum(1 for v in data.values() if v)
+    logger.info("  %d/%d endpoints responderam", ok, len(data))
 
-    # 2. Formata para Claude
-    data_text = _fmt_data_for_claude(data)
-    logger.info("Texto preparado: %d chars", len(data_text))
+    # 2. Chama Claude
+    analysis = await call_claude(data, week_start, week_end)
 
-    # 3. Chama Claude
-    logger.info("Chamando Claude %s...", CLAUDE_MODEL)
-    report = await call_claude(data_text)
-    logger.info("Relatório gerado: %d chars", len(report))
+    if "error" in analysis:
+        logger.error("Analise falhou: %s", analysis["error"])
+        sys.exit(1)
+
+    logger.info(
+        "Analise concluida: health=%s alerts=%d pending=%d",
+        analysis.get("overall_health", "?"),
+        len(analysis.get("alerts", [])),
+        len(analysis.get("pending_changes", [])),
+    )
+
+    # 3. Salva pending_changes
+    save_pending(analysis)
 
     # 4. Posta no Discord
-    logger.info("Postando no Discord...")
-    await post_to_discord(report, data)
+    await post_discord(analysis, data)
 
-    logger.info("✓ Autonomous Review concluído")
+    logger.info("=== Weekly Review concluido ===")
 
 
 if __name__ == "__main__":

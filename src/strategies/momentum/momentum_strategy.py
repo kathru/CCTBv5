@@ -27,6 +27,7 @@ from ...oms.sizing_engine import SizingEngine
 from ..base import BaseStrategy, StrategyContext
 from ..edge_conditioner import EdgeConditioner
 from ..ml.inference import PlattCalibrator
+from ...market.alpha_orthogonality import alpha_orthogonality
 
 MODELS_DIR = Path("data") / "models"
 logger     = logging.getLogger(__name__)
@@ -200,8 +201,24 @@ class MomentumStrategy(BaseStrategy):
         factors.update(edge.to_factors())
         calibrated = self._calibrate(score)
 
+        # ── Phase 18: Alpha Orthogonality ────────────────────────────────────
+        # 4 sinais ortogonais ao M1-M9 (FD, LV, OD, MRM).
+        # Calculados SEMPRE — mesmo em regime bloqueado (para diagnóstico).
+        # Somente aplicados ao kelly/threshold se o sinal passar todos os filtros.
+        spread_pct_now = float((ctx.extra or {}).get("spread_pct", 0.0))
+        alpha_result = alpha_orthogonality.evaluate(
+            candles_1h=ctx.candles_1h,
+            spread_pct=spread_pct_now,
+            futures_flow=(ctx.extra or {}).get("futures_flow") or {},
+            regime=regime,
+        )
+        factors.update(alpha_result.to_factors())
+
         # Aplica edge threshold mult (eleva a barra quando condições degradam)
         threshold = round(min(threshold * edge.threshold_mult, 0.99), 4)
+
+        # Aplica alpha threshold adjustment (aditivo, clampado em [0.44, 0.99])
+        threshold = round(min(max(threshold + alpha_result.threshold_adj, 0.44), 0.99), 4)
 
         if regime in BLOCKED_REGIMES:
             _log("REGIME_BLOCKED",
@@ -270,11 +287,23 @@ class MomentumStrategy(BaseStrategy):
         # Adiciona breakdown do sizing aos factors para rastreabilidade no dashboard
         factors.update(sizing.to_factors())
 
+        # Phase 18 — Alpha Orthogonality kelly boost (após todos os outros mults)
+        if abs(alpha_result.kelly_boost - 1.0) >= 0.01:
+            kelly_pre = kelly
+            kelly = round(min(max(kelly * alpha_result.kelly_boost, 0.01), 0.20), 4)
+            logger.info(
+                "AlphaOrtho %s: kelly %.1f%% → %.1f%% (boost×%.2f active=%s)",
+                symbol, kelly_pre * 100, kelly * 100,
+                alpha_result.kelly_boost, alpha_result.active,
+            )
+
+        ao_tag = f" [AO boost×{alpha_result.kelly_boost:.2f} active={alpha_result.active}]" \
+            if alpha_result.active else ""
         micro_tag = f" [MICRO-TRADE ec_sizing={edge.sizing_mult:.0%}]" \
             if edge.sizing_mult < 0.99 else ""
         _log("SIGNAL",
              f"BUY {regime} score={score:.3f} prob={calibrated:.3f} "
-             f"kelly={kelly:.1%} [{sizing.summary()}]{micro_tag}",
+             f"kelly={kelly:.1%} [{sizing.summary()}]{micro_tag}{ao_tag}",
              regime=regime, score=score, calibrated=calibrated,
              threshold=threshold, ev=ev, direction=dir_str, factors=factors)
 

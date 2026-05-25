@@ -1466,6 +1466,23 @@
 
 </div>
 
+<!-- ══ ALPHA ORTHOGONALITY — Phase 18 ══════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="dot" style="background:var(--purple)"></div>
+  Alpha Orthogonality
+  <span style="font-size:0.6rem;color:var(--muted);margin-left:8px">Phase 18 · FD · LV · OD · MRM — sinais ortogonais ao M1-M9</span>
+</div>
+<div class="card" id="ao-card">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" id="ao-badges">
+    <span style="font-size:0.6rem;color:var(--muted)">Aguardando dados…</span>
+  </div>
+  <div id="ao-symbols" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+  <div style="margin-top:8px;font-size:0.55rem;color:var(--muted);border-top:1px solid var(--border);padding-top:6px">
+    <b>FD</b> Funding Dislocation · <b>LV</b> Liquidity Vacuum · <b>OD</b> Overnight Drift · <b>MRM</b> Mean Reversion Micro
+    · Kelly clamp [×0.65, ×1.30] · Threshold adj ±3%
+  </div>
+</div>
+
 <!-- ══ REGIME ROBUSTNESS + META-REGIME — Phase 13/16 ═══════════════════════ -->
 <div class="section-hdr">
   <div class="dot" style="background:var(--yellow)"></div>
@@ -3114,10 +3131,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null,sw:null,pa:null,ei:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null,sw:null,pa:null,ei:null,ao:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st,sw,pa,ei]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st,sw,pa,ei,ao]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -3139,6 +3156,7 @@ async function updateSlow(){
     fetchJSON('/api/analytics/strategy_weights'),
     fetchJSON('/api/portfolio/allocator'),
     fetchJSON('/api/portfolio/execution_quality'),
+    fetchJSON('/api/analytics/alpha_orthogonality'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -3166,6 +3184,7 @@ async function updateSlow(){
   if(sw)        { _slowData.sw=sw; buildWeightEngine(sw); }
   if(pa)        { _slowData.pa=pa; buildPortfolioAllocator(pa); }
   if(ei)        { _slowData.ei=ei; buildExecutionIntelligence(ei); }
+  if(ao)        { _slowData.ao=ao; buildAlphaOrthogonality(ao); }
 }
 
 // ── Phase 15new — Portfolio Allocator ────────────────────────────────────────
@@ -3254,6 +3273,63 @@ function buildExecutionIntelligence(ei){
       <span style="color:${qCol};font-weight:700;min-width:28px;text-align:right">${qPct}%</span>
       <span style="font-size:0.55rem;color:var(--muted)">avg ${avg.toFixed(1)} bps · worst ${worst.toFixed(1)}</span>
       <span style="font-size:0.55rem;background:rgba(255,255,255,0.06);border-radius:3px;padding:0 4px;">×${mult.toFixed(2)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Phase 18 — Alpha Orthogonality ───────────────────────────────────────────
+
+const AO_LABELS = {fd:'Funding Disloc.', lv:'Liquidity Vacuum', od:'Overnight Drift', mrm:'MR Micro'};
+const AO_COLORS = {
+  boost: 'var(--green)', cut: 'var(--red)', neutral: 'var(--muted)'
+};
+
+function buildAlphaOrthogonality(ao){
+  if(!ao||!ao.available) return;
+  const syms = ao.symbols||{};
+  const badgesEl  = document.getElementById('ao-badges');
+  const symbolsEl = document.getElementById('ao-symbols');
+  if(!badgesEl||!symbolsEl) return;
+
+  // Summary badges — global kelly boost across symbols
+  const allBoosts = Object.values(syms).map(s=>s.kelly_boost||1.0);
+  const avgBoost  = allBoosts.length ? allBoosts.reduce((a,b)=>a+b,0)/allBoosts.length : 1.0;
+  const boostCol  = avgBoost>1.03?'var(--green)':avgBoost<0.97?'var(--red)':'var(--muted)';
+  badgesEl.innerHTML = `
+    <span style="background:rgba(255,255,255,0.06);border-radius:4px;padding:2px 8px;font-size:0.6rem">
+      kelly avg <b style="color:${boostCol}">×${avgBoost.toFixed(2)}</b>
+    </span>
+    ${Object.entries(syms).filter(([,s])=>s.active&&s.active.length).map(([sym,s])=>
+      `<span style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:4px;padding:2px 8px;font-size:0.57rem;color:var(--purple)">
+        ${sym.replace('-USDT','')} ${s.active.join('+')} ×${(s.kelly_boost||1).toFixed(2)}
+      </span>`
+    ).join('')}
+  `;
+
+  // Per-symbol breakdown
+  symbolsEl.innerHTML = Object.entries(syms).map(([sym, s])=>{
+    if(s.error) return `<div style="font-size:0.6rem;color:var(--red)">${sym}: ${s.error}</div>`;
+    const sigs = s.signals||{};
+    const boost = s.kelly_boost||1;
+    const boostC = boost>1.02?'var(--green)':boost<0.98?'var(--red)':'var(--muted)';
+    const sigRows = Object.entries(sigs).map(([name, sig])=>{
+      const col = sig.kelly_mult>1.01?'var(--green)':sig.kelly_mult<0.99?'var(--red)':'var(--muted)';
+      const bar = Math.round(sig.score*100);
+      return `<div style="display:flex;align-items:center;gap:5px;margin:2px 0;">
+        <span style="font-size:0.52rem;color:var(--muted);min-width:28px">${name.toUpperCase()}</span>
+        <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:2px;height:4px;overflow:hidden;">
+          <div style="height:100%;width:${bar}%;background:${col};border-radius:2px;"></div>
+        </div>
+        <span style="font-size:0.52rem;color:${col};min-width:28px;text-align:right">×${sig.kelly_mult.toFixed(2)}</span>
+      </div>`;
+    }).join('');
+    return `<div style="flex:1;min-width:160px;max-width:220px;padding:8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:6px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-weight:700;font-size:0.68rem">${sym.replace('-USDT','')}</span>
+        <span style="font-size:0.62rem;font-weight:700;color:${boostC}">×${boost.toFixed(2)}</span>
+      </div>
+      ${sigRows}
+      ${s.threshold_adj?`<div style="font-size:0.5rem;color:var(--muted);margin-top:4px">thr adj: ${s.threshold_adj>0?'+':''}${s.threshold_adj.toFixed(3)}</div>`:''}
     </div>`;
   }).join('');
 }

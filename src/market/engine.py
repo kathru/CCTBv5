@@ -153,6 +153,9 @@ class MarketEngine:
             "open_24h":   ticker.open_24h,
             "volume_24h": ticker.volume_24h,
             "change_pct": round(change_pct, 2),
+            "bid":        ticker.bid,
+            "ask":        ticker.ask,
+            "spread_pct": round(ticker.spread_pct, 6),  # Phase 18 — Alpha Orthogonality
         })
         # Publish to bus
         await self._bus.publish(Topic.MARKET, TickerEvent(ticker=ticker))

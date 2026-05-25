@@ -334,6 +334,18 @@ class StrategyRunner:
         except Exception as exc:
             logger.debug("model_health cache read falhou: %s", exc)
 
+        # ── Phase 18: Spread Pct para Alpha Orthogonality (LV signal) ────────
+        # Lê o spread bid-ask do ticker cacheado pela MarketEngine.
+        # Fallback 0.0 → LV retorna neutro (sem penalidade).
+        spread_pct_now = 0.0
+        try:
+            ticker_data = await self._cache.get_ticker(symbol)
+            if ticker_data:
+                td = ticker_data if isinstance(ticker_data, dict) else json.loads(ticker_data)
+                spread_pct_now = float(td.get("spread_pct", 0.0))
+        except Exception as exc:
+            logger.debug("spread_pct cache read falhou: %s", exc)
+
         return StrategyContext(
             symbol=symbol,
             candles_1h=candles_1h,
@@ -349,6 +361,7 @@ class StrategyRunner:
                 "meta_regime":       meta_regime_data,
                 "news_sentiment":    news_data,
                 "model_health":      model_health_data,
+                "spread_pct":        spread_pct_now,   # Phase 18
             },
         )
 

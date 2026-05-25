@@ -1534,6 +1534,65 @@ async def get_meta_regime(request: Request) -> dict:
     return data
 
 
+@router.get("/alpha_orthogonality")
+async def get_alpha_orthogonality(request: Request) -> dict:
+    """
+    Phase 18 — Alpha Orthogonality: 4 sinais ortogonais ao M1-M9.
+    Calcula on-demand a partir dos dados de cache para cada símbolo.
+    """
+    from ...market.alpha_orthogonality import alpha_orthogonality
+    import json as _json
+
+    cache = request.app.state.cache
+    SYMBOLS = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
+    result: dict = {"available": True, "symbols": {}}
+
+    for sym in SYMBOLS:
+        try:
+            # Candles 1H do market engine (in-memory via trading loop)
+            loop_ref = getattr(request.app.state, "trading_loop", None)
+            candles_1h = []
+            if loop_ref and hasattr(loop_ref, "_market"):
+                candles_1h = loop_ref._market.get_candles(sym, "1H")
+
+            # Spread do ticker cacheado
+            spread_pct = 0.0
+            raw_t = await cache.get_ticker(sym)
+            if raw_t:
+                td = raw_t if isinstance(raw_t, dict) else _json.loads(raw_t)
+                spread_pct = float(td.get("spread_pct", 0.0))
+
+            # Futures flow
+            ff_data = {}
+            raw_ff = await cache.get(f"futures_flow:{sym}")
+            if raw_ff:
+                ff_data = raw_ff if isinstance(raw_ff, dict) else _json.loads(raw_ff)
+
+            ao = alpha_orthogonality.evaluate(
+                candles_1h=candles_1h,
+                spread_pct=spread_pct,
+                futures_flow=ff_data,
+            )
+            result["symbols"][sym] = {
+                "kelly_boost":   ao.kelly_boost,
+                "threshold_adj": ao.threshold_adj,
+                "active":        ao.active,
+                "signals": {
+                    name: {
+                        "score":       sig.score,
+                        "kelly_mult":  sig.kelly_mult,
+                        "thr_adj":     sig.thr_adj,
+                        "description": sig.description,
+                    }
+                    for name, sig in ao.signals.items()
+                },
+            }
+        except Exception as exc:
+            result["symbols"][sym] = {"error": str(exc)}
+
+    return result
+
+
 # ── Cleanup: endpoint consolidado M6+M7+M8 ───────────────────────────────────
 
 SYMBOLS_ALL = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]

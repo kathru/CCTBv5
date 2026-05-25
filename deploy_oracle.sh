@@ -23,7 +23,8 @@ docker cp src/. cctb_app:/app/src/                     || FAIL "docker cp src/. 
 docker cp _version.txt cctb_app:/app/_version.txt      || FAIL "docker cp _version.txt falhou"
 
 # Remove o diretorio aninhado /app/src/src/ criado por deploys anteriores com bug
-docker exec cctb_app bash -c "rm -rf /app/src/src" 2>/dev/null || true
+# (arquivos foram copiados como root, entao a limpeza precisa de --user root)
+docker exec --user root cctb_app rm -rf /app/src/src 2>/dev/null || true
 OK "Arquivos copiados (src/. -> /app/src/)"
 
 # -- 3. Reinicia o container --------------------------------------------------

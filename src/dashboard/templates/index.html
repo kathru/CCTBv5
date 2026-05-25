@@ -511,6 +511,12 @@
           </div>
         </div>
       </div>
+      <!-- Regime Distribution — Phase 16 meta-learning probabilístico -->
+      <div id="regime-dist-row" style="margin-top:6px;margin-bottom:6px;display:none;">
+        <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px;">Distribuição de Regime <span id="regime-dist-conf" style="color:var(--muted)"></span></div>
+        <div style="display:flex;gap:3px;align-items:flex-end;height:28px;" id="regime-dist-bars"></div>
+        <div style="font-size:0.48rem;color:var(--muted);margin-top:2px;">thr blendado: ×<span id="regime-thr-blend">–</span> · hard: ×<span id="regime-thr-hard">–</span></div>
+      </div>
       <!-- Edge Gates — condicionadores do EdgeConditioner (ec_*) -->
       <div id="edge-gates-row" style="margin-top:8px;margin-bottom:4px;">
         <div style="font-size:0.52rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px;">Edge Gates</div>
@@ -3638,9 +3644,50 @@ function buildWeightEngine(sw){
 
 // ── Kelly Breakdown + Edge Gates (fast, from sym) ────────────────────────────
 
+function updateRegimeDistribution(latest){
+  if(!latest) return;
+  const f=latest.factors||{};
+  const distRow=document.getElementById('regime-dist-row');
+  const barsEl=document.getElementById('regime-dist-bars');
+  const confEl=document.getElementById('regime-dist-conf');
+  const blendEl=document.getElementById('regime-thr-blend');
+  const hardEl=document.getElementById('regime-thr-hard');
+  if(!distRow||!barsEl) return;
+
+  // Coleta probabilidades mr_* dos factors
+  const REGIMES=[
+    {k:'mr_risk_on',   label:'RISK ON',  col:'#10b981'},
+    {k:'mr_altseason', label:'ALT',      col:'#3b82f6'},
+    {k:'mr_sideways',  label:'SIDE',     col:'#f59e0b'},
+    {k:'mr_transition',label:'TRANS',    col:'#f97316'},
+    {k:'mr_risk_off',  label:'RISK OFF', col:'#ef4444'},
+  ];
+  const hasData=REGIMES.some(({k})=>f[k]!=null);
+  distRow.style.display=hasData?'':'none';
+  if(!hasData) return;
+
+  const maxP=Math.max(...REGIMES.map(({k})=>f[k]||0));
+  barsEl.innerHTML=REGIMES.map(({k,label,col})=>{
+    const p=f[k]||0;
+    const h=Math.max(4,Math.round(p/maxP*24));
+    const dominant=p===maxP;
+    return`<div style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:28px;">
+      <span style="font-size:0.42rem;color:${col};font-weight:${dominant?800:400}">${(p*100).toFixed(0)}%</span>
+      <div style="width:100%;height:${h}px;background:${col};border-radius:2px 2px 0 0;opacity:${dominant?1:0.55};transition:height .4s;"></div>
+      <span style="font-size:0.40rem;color:${col};opacity:0.7;white-space:nowrap">${label}</span>
+    </div>`;
+  }).join('');
+
+  if(confEl){const conf=f.meta_regime_conf||0;confEl.textContent=conf?`conf ${(conf*100).toFixed(0)}%`:'';}
+  if(blendEl) blendEl.textContent=(latest.factors?.meta_thr_mult||1.0).toFixed(3);
+  if(hardEl)  hardEl.textContent='–'; // hard não está exposto diretamente
+}
+
 function updateEdgeGatesAndKelly(latest){
   if(!latest) return;
   const f=latest.factors||{};
+  // Phase 16 — Regime Distribution
+  updateRegimeDistribution(latest);
 
   // ── Kelly Breakdown (sz_* multipliers) ──
   const kellyBreakdown=document.getElementById('kelly-breakdown');

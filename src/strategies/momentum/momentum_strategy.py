@@ -155,8 +155,16 @@ class MomentumStrategy(BaseStrategy):
         # Nunca bloqueia sozinho — apenas facilita/dificulta a passagem.
         meta_regime_data = (ctx.extra or {}).get("meta_regime") or {}
         meta_regime_name = meta_regime_data.get("regime", "UNKNOWN")
-        meta_thr_mult    = float(meta_regime_data.get("threshold_mult", 1.0))
-        threshold        = round(min(threshold * meta_thr_mult, 0.99), 4)
+        # Phase 16: usa threshold_mult BLENDADO (softmax EMA) se disponível.
+        # Fallback para threshold_mult_hard (legado) se distribuição não presente.
+        meta_thr_mult = float(
+            meta_regime_data.get("threshold_mult")          # blendado (novo)
+            or meta_regime_data.get("threshold_mult_hard")  # hard label (legado)
+            or 1.0
+        )
+        # Expõe distribuição de probabilidade para diagnóstico
+        regime_distribution = meta_regime_data.get("regime_distribution", {})
+        threshold = round(min(threshold * meta_thr_mult, 0.99), 4)
 
         # ── Phase 5: Adaptive Threshold — percentil de ATR 1H ────────────────
         # ATR alto (mercado agitado) → exige score maior → mult > 1.0
@@ -182,9 +190,13 @@ class MomentumStrategy(BaseStrategy):
         # independente do resultado final. Permite diagnóstico contínuo.
         score, factors = self._score_signal(ctx, regime)
         # Adiciona moduladores ao factors para diagnóstico no dashboard
-        factors["meta_thr_mult"] = round(meta_thr_mult, 3)
-        factors["atr_thr_mult"]  = round(atr_mult, 3)
-        factors["atr_pct_now"]   = round(atr_pct_now, 3)
+        factors["meta_thr_mult"]      = round(meta_thr_mult, 3)
+        factors["atr_thr_mult"]       = round(atr_mult, 3)
+        factors["atr_pct_now"]        = round(atr_pct_now, 3)
+        factors["meta_regime_name"]   = meta_regime_name
+        # Phase 16: distribuição probabilística de regime (para dashboard)
+        for rname, rprob in regime_distribution.items():
+            factors[f"mr_{rname.lower()}"] = round(rprob, 4)
         factors.update(edge.to_factors())
         calibrated = self._calibrate(score)
 

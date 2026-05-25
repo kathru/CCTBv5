@@ -126,6 +126,7 @@ jobs:
             MSG="chore: recalibracao + WFO auto-apply 1H $(date -u '+%Y-%m-%d')"
           fi
           git commit -m "$MSG"
+          git pull --rebase origin main
           git push
 
       # Deploy no Oracle: descarta mudanças locais no modelo antes do pull,

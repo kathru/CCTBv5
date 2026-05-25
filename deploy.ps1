@@ -46,15 +46,13 @@ if ($dirty) {
 }
 
 # -- 2. Calcular versao -------------------------------------------------------
-# MINOR = no de tags fase/* | PATCH = commits desde a ultima tag fase/*
+# REGRA DE VERSIONAMENTO: vX.Y.Z
+#   X = 5 (versao geral do projeto, fixo)
+#   Y = numero total de fases implementadas (contagem de tags fase/*)
+#   Z = numero total de commits no branch (git rev-list --count HEAD)
 $GIT_MINOR = (git tag --list 'fase/*' | Measure-Object -Line).Lines
-$LAST_TAG  =  git tag --list 'fase/*' | Select-Object -Last 1
-if ($LAST_TAG) {
-    $GIT_PATCH = [int](git rev-list --count "$LAST_TAG..HEAD")
-} else {
-    $GIT_PATCH = [int](git rev-list --count HEAD)
-}
-$VERSION = "5.$GIT_MINOR.$GIT_PATCH"
+$GIT_PATCH = [int](git rev-list --count HEAD)
+$VERSION   = "5.$GIT_MINOR.$GIT_PATCH"
 Write-Host ""
 Write-Host "  Versao calculada: v$VERSION" -ForegroundColor Yellow
 

@@ -48,7 +48,7 @@ PSI_ALERT      = 0.20
 WR_DRIFT_WARN  = 0.05   # diferença absoluta no win rate
 WR_DRIFT_CRIT  = 0.10
 SCORE_DRIFT    = 0.10   # queda > 10% no score médio
-MIN_OBS        = 10     # mínimo de observações ao vivo para avaliar
+MIN_OBS        = 50     # mínimo de observações ao vivo para avaliar
 
 
 def _load_json(path: Path) -> dict:

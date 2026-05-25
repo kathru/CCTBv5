@@ -51,7 +51,7 @@ REGIME_THRESHOLD_MULT: dict[str, float] = {
     "RISK_ON":    0.92,
     "ALTSEASON":  0.95,
     "SIDEWAYS":   1.00,
-    "TRANSITION": 1.05,
+    "TRANSITION": 1.035,
     "RISK_OFF":   1.20,
     "UNKNOWN":    1.00,
 }

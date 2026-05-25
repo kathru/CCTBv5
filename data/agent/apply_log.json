@@ -1,0 +1,38 @@
+[
+  {
+    "applied_at": "2026-05-25T22:48:43.590292+00:00",
+    "dry_run": true,
+    "results": [
+      {
+        "id": "change_0",
+        "status": "ok",
+        "description": "Avaliar reducao do threshold_mult_blended de 1,0625 para 1,03-1,04 se confidence permanecer <30% por",
+        "result": "python_replace OK: src/market/meta_regime.py | '    \"TRANSITION\": 1.05,' -> '    \"TRANSITION\": 1.035,'"
+      },
+      {
+        "id": "change_1",
+        "status": "ok",
+        "description": "Aumentar tamanho minimo de amostra para acionar drift_critico de WR de 10 para 50 sinais para evitar",
+        "result": "python_replace OK: src/monitoring/model_health.py | 'MIN_OBS        = 10     # mínimo de observações ao vivo para avaliar' -> 'MIN_OBS        = 50     # mínimo de observações ao vivo para avaliar'"
+      }
+    ]
+  },
+  {
+    "applied_at": "2026-05-25T22:48:49.894969+00:00",
+    "dry_run": false,
+    "results": [
+      {
+        "id": "change_0",
+        "status": "ok",
+        "description": "Avaliar reducao do threshold_mult_blended de 1,0625 para 1,03-1,04 se confidence permanecer <30% por",
+        "result": "python_replace OK: src/market/meta_regime.py | '    \"TRANSITION\": 1.05,' -> '    \"TRANSITION\": 1.035,'"
+      },
+      {
+        "id": "change_1",
+        "status": "ok",
+        "description": "Aumentar tamanho minimo de amostra para acionar drift_critico de WR de 10 para 50 sinais para evitar",
+        "result": "python_replace OK: src/monitoring/model_health.py | 'MIN_OBS        = 10     # mínimo de observações ao vivo para avaliar' -> 'MIN_OBS        = 50     # mínimo de observações ao vivo para avaliar'"
+      }
+    ]
+  }
+]

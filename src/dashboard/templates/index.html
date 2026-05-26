@@ -150,9 +150,8 @@
         rgba(59,130,246,0.12) 0%,
         rgba(139,92,246,0.10) 50%,
         rgba(16,185,129,0.08) 100%);
-      border: 1px solid rgba(99,102,241,0.30);
-      border-bottom: none;
-      border-radius: 10px 10px 0 0;
+      border-bottom: 1px solid rgba(99,102,241,0.20);
+      border-radius: 0;
       padding: 14px 20px 14px;
       margin-bottom: 0;
       display: flex; align-items: center; gap: 16px;
@@ -526,37 +525,38 @@
 
 
 <!-- ══ MOTOR ═══════════════════════════════════════════════ -->
-<div class="motor-hero">
-  <div class="motor-hero-pulse">⚡</div>
-  <div style="flex:1;min-width:0">
-    <div class="motor-hero-title">Motor Probabilístico</div>
-    <div class="motor-hero-sub">Coração do sistema · Score · Gates · EV · Sizing</div>
-  </div>
-  <!-- Métricas centrais -->
-  <div style="display:flex;gap:14px;align-items:center;margin-right:14px;flex-shrink:0">
-    <div style="text-align:center">
-      <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Score</div>
-      <div id="motor-decision-score" style="font-size:1rem;font-weight:800;color:#a5b4fc">–</div>
-    </div>
-    <div style="width:1px;height:28px;background:rgba(255,255,255,0.10);border-radius:1px"></div>
-    <div style="text-align:center">
-      <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Kelly</div>
-      <div id="motor-decision-kelly" style="font-size:1rem;font-weight:800;color:#7dd3fc">–</div>
-    </div>
-    <div style="width:1px;height:28px;background:rgba(255,255,255,0.10);border-radius:1px"></div>
-    <div style="text-align:center">
-      <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Thr</div>
-      <div id="motor-decision-thr" style="font-size:1rem;font-weight:800;color:#6ee7b7">–</div>
-    </div>
-  </div>
-  <!-- Badge de decisão -->
-  <div class="motor-hero-badge" id="motor-hero-decision">–</div>
-</div>
+<div style="margin-bottom:12px;border:1px solid rgba(99,102,241,0.30);border-radius:10px;overflow:hidden">
 
-<div style="margin-bottom:12px">
+  <!-- Hero do Motor -->
+  <div class="motor-hero" style="border:none;border-radius:0;margin-bottom:0">
+    <div class="motor-hero-pulse">⚡</div>
+    <div style="flex:1;min-width:0">
+      <div class="motor-hero-title">Motor Probabilístico</div>
+      <div class="motor-hero-sub">Coração do sistema · Score · Gates · EV · Sizing</div>
+    </div>
+    <!-- Métricas centrais -->
+    <div style="display:flex;gap:14px;align-items:center;margin-right:14px;flex-shrink:0">
+      <div style="text-align:center">
+        <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Score</div>
+        <div id="motor-decision-score" style="font-size:1rem;font-weight:800;color:#a5b4fc">–</div>
+      </div>
+      <div style="width:1px;height:28px;background:rgba(255,255,255,0.10);border-radius:1px"></div>
+      <div style="text-align:center">
+        <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Kelly</div>
+        <div id="motor-decision-kelly" style="font-size:1rem;font-weight:800;color:#7dd3fc">–</div>
+      </div>
+      <div style="width:1px;height:28px;background:rgba(255,255,255,0.10);border-radius:1px"></div>
+      <div style="text-align:center">
+        <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Thr</div>
+        <div id="motor-decision-thr" style="font-size:1rem;font-weight:800;color:#6ee7b7">–</div>
+      </div>
+    </div>
+    <!-- Badge de decisão -->
+    <div class="motor-hero-badge" id="motor-hero-decision">–</div>
+  </div>
 
-  <!-- Motor Probabilístico — card colado no hero -->
-  <div class="card" style="border-top-left-radius:0;border-top-right-radius:0;border-top:none;border-left:1px solid rgba(99,102,241,0.30);border-right:1px solid rgba(99,102,241,0.30);border-bottom:1px solid rgba(99,102,241,0.30);margin-top:0;padding-top:14px">
+  <!-- Card do Motor — sem borda própria, container externo gerencia -->
+  <div class="card" style="border:none;border-radius:0;margin:0;padding-top:14px">
 
     <!-- FUNIL DE DECISÃO (primeiro elemento visível) -->
     <div class="motor-section" style="margin-top:0">

@@ -138,8 +138,8 @@
 
     .section-hdr {
       display: flex; align-items: center; gap: 8px;
-      font-size: 0.82rem; text-transform: uppercase; letter-spacing: 1.5px;
-      color: var(--text); font-weight: 700;
+      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1.2px;
+      color: var(--text); font-weight: 700; white-space: nowrap;
       padding-bottom: 6px; border-bottom: 1px solid var(--border);
     }
     .section-hdr .dot { width:6px; height:6px; border-radius:50%; background:var(--blue); }
@@ -156,7 +156,7 @@
     .card:hover { border-color: var(--border2); }
     .card-sm { padding: 12px 14px; border-radius: 12px; }
 
-    .clabel { font-size:0.78rem; text-transform:uppercase; letter-spacing:1.2px; color:var(--text); font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
+    .clabel { font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--text); font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:5px; white-space:nowrap; }
     .clabel .ico { width:14px; height:14px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.82rem; }
 
     /* ══ KPI CARDS ════════════════════════════════════════════ */
@@ -3159,14 +3159,14 @@ function buildRollingCharts(roll){
   }
 }
 
+// ── Shared helper (usado por múltiplos painéis) ───────────────────────────────
+function setEl(id, val, cls){ const el=document.getElementById(id); if(el){el.textContent=val; if(cls)el.style.color=cls;} }
+
 // ── Phase 7 — Distribution Analytics ────────────────────────────────────────
 
 function buildDistributionPanel(dist){
   if(!dist||!dist.n_trades) return;
   const s = dist.summary||{};
-
-  // KPIs
-  const setEl = (id, val, cls) => { const el=document.getElementById(id); if(el){el.textContent=val; if(cls)el.style.color=cls;} };
   const skew = s.skewness;
   setEl('dist-skew', skew!=null ? skew.toFixed(3) : '–', skew>0?'var(--green)':skew<0?'var(--red)':null);
   setEl('dist-kurt', s.excess_kurtosis!=null ? s.excess_kurtosis.toFixed(3) : '–');

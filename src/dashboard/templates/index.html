@@ -518,24 +518,19 @@
 <!-- ══ KPI STRIP ══════════════════════════════════════════════ -->
 <div class="grid g6">
   <div class="kpi-card kpi-blue">
-    <div class="clabel">Portfolio Total</div>
+    <div class="clabel">Portfolio OKX</div>
     <div class="kpi-val b" id="kpi-portfolio">–</div>
-    <div class="kpi-sub">Inicial: <b id="kpi-initial">–</b> · Retorno: <b id="kpi-return">–</b></div>
-  </div>
-  <div class="kpi-card kpi-green">
-    <div class="clabel">P&L Realizado · Não Realizado</div>
-    <div class="kpi-val" id="kpi-rpnl">–</div>
-    <div class="kpi-sub">NR: <b id="kpi-upnl">–</b> · Diário: <b id="kpi-dpnl">–</b> · DD: <b id="kpi-dd" class="r">–</b></div>
-  </div>
-  <div class="kpi-card kpi-blue">
-    <div class="clabel">Saldo Disponível</div>
-    <div class="kpi-val" id="kpi-cash">–</div>
-    <div class="kpi-sub">USDT: <b id="kpi-usdt">–</b> · Exposição: <b id="kpi-exp">–</b> · Pos: <b id="kpi-pos">–</b></div>
+    <div class="kpi-sub">Inicial: <b id="kpi-initial">–</b></div>
   </div>
   <div class="kpi-card kpi-yellow">
     <div class="clabel">Trades</div>
     <div class="kpi-val" id="kpi-trades">–</div>
     <div class="kpi-sub"><b id="kpi-trades-buy">–</b> compras · <b id="kpi-trades-sell">–</b> vendas · Vol: <b id="kpi-vol">–</b></div>
+  </div>
+  <div class="kpi-card kpi-green">
+    <div class="clabel">P&L Realizado</div>
+    <div class="kpi-val" id="kpi-rpnl">–</div>
+    <div class="kpi-sub">&nbsp;</div>
   </div>
   <div class="kpi-card kpi-red">
     <div class="clabel">Taxas Pagas</div>
@@ -545,7 +540,12 @@
   <div class="kpi-card" id="kpi-net-card" style="border-color:rgba(255,255,255,0.08)">
     <div class="clabel">P&L Líquido</div>
     <div class="kpi-val b" id="kpi-net-pnl">–</div>
-    <div class="kpi-sub">Bruto: <b id="kpi-net-gross">–</b> · Fees: <b id="kpi-net-fees">–</b></div>
+    <div class="kpi-sub">DD: <b id="kpi-dd" class="r">–</b></div>
+  </div>
+  <div class="kpi-card kpi-blue">
+    <div class="clabel">Saldo Disponível</div>
+    <div class="kpi-val" id="kpi-cash">–</div>
+    <div class="kpi-sub">Retorno: <b id="kpi-return">–</b> · Exposição: <b id="kpi-exp">–</b> · <b id="kpi-pos">–</b></div>
   </div>
 </div>
 
@@ -4417,15 +4417,7 @@ async function updateAll(){
     document.getElementById('kpi-portfolio').textContent=usd(tv);
     document.getElementById('kpi-initial').textContent=usd(ic);
     document.getElementById('kpi-rpnl').innerHTML=colored(portfolio.realized_pnl);
-    document.getElementById('kpi-dpnl').innerHTML=colored(portfolio.daily_pnl);
-    document.getElementById('kpi-upnl').innerHTML=colored(portfolio.unrealized_pnl);
-    document.getElementById('kpi-dd').textContent=pct(portfolio.drawdown_pct);
-    // Saldo Disponível = total líquido (USDT + toda crypto a preço atual)
-    const liquidTotal = portfolio.liquid_total || portfolio.total_value || 0;
-    document.getElementById('kpi-cash').textContent=usd(liquidTotal);
-    document.getElementById('kpi-usdt').textContent=usd(portfolio.cash_available);
     document.getElementById('kpi-exp').textContent=pct(portfolio.total_exposure_pct);
-    document.getElementById('kpi-return').innerHTML=colored(portfolio.total_return_pct,false);
     document.getElementById('kpi-pos').textContent=portfolio.open_position_count+' posições';
     // Motor risk bars (mrisk)
     const bt=portfolio.portfolio_beta||0,dd=portfolio.drawdown_pct||0,ex=portfolio.total_exposure_pct||0;
@@ -4440,6 +4432,8 @@ async function updateAll(){
     document.getElementById('rs-dd').textContent=dd<0.01?'baixo':dd<0.02?'moderado':'alto';
     mbar('rb-exp',ex,0.5); document.getElementById('rv-exp').textContent=(ex*100).toFixed(1)+'%';
     document.getElementById('rs-exp').textContent=ex<0.2?'baixo':ex<0.4?'moderado':'alto';
+    // DD no box P&L Líquido
+    document.getElementById('kpi-dd').textContent=pct(dd);
   }
   if(perf){
     document.getElementById('kpi-trades').textContent=perf.total_trades||0;
@@ -4450,26 +4444,24 @@ async function updateAll(){
     document.getElementById('kpi-trades-buy-vol').textContent  = perf.total_buys  || 0;
     document.getElementById('kpi-trades-sell-vol').textContent = perf.total_sells || 0;
   }
-  // P&L Líquido = Realizado − Fees (resultado real das operações)
+  // P&L Líquido = Realizado − Fees; Saldo = Inicial − |P&L Líquido|
   {
     const grossPnl = portfolio ? (portfolio.realized_pnl || 0) : 0;
     const fees     = perf      ? (perf.total_fees       || 0) : 0;
+    const ic       = portfolio ? (portfolio.initial_capital || 0) : 0;
     const netPnl   = grossPnl - fees;
-    const netEl    = document.getElementById('kpi-net-pnl');
-    const card     = document.getElementById('kpi-net-card');
-    if(netEl){
-      netEl.innerHTML = colored(netPnl);
-    }
-    if(card){
-      // Border color reflects result
-      card.style.borderColor = netPnl >= 0
-        ? 'rgba(52,211,153,0.35)'   // verde suave
-        : 'rgba(248,113,113,0.35)'; // vermelho suave
-    }
-    const grossEl = document.getElementById('kpi-net-gross');
-    const feesEl2 = document.getElementById('kpi-net-fees');
-    if(grossEl) grossEl.innerHTML = colored(grossPnl);
-    if(feesEl2) feesEl2.textContent = usd(fees);
+    // P&L Líquido box
+    const netEl = document.getElementById('kpi-net-pnl');
+    const card  = document.getElementById('kpi-net-card');
+    if(netEl) netEl.innerHTML = colored(netPnl);
+    if(card)  card.style.borderColor = netPnl >= 0
+      ? 'rgba(52,211,153,0.35)'
+      : 'rgba(248,113,113,0.35)';
+    // Saldo Disponível = Inicial + P&L Líquido (negativo diminui)
+    const saldo = ic + netPnl;
+    const retPct = ic > 0 ? (netPnl / ic) : 0;
+    document.getElementById('kpi-cash').textContent = usd(saldo);
+    document.getElementById('kpi-return').innerHTML = colored(retPct, false);
   }
 
   // Crypto cards

@@ -546,7 +546,7 @@
   <div class="kpi-card kpi-blue">
     <div class="clabel">Saldo Disponível</div>
     <div class="kpi-val" id="kpi-cash">–</div>
-    <div class="kpi-sub">Retorno: <b id="kpi-return">–</b> · <b id="kpi-pos">–</b></div>
+    <div class="kpi-sub">Retorno: <b id="kpi-return">–</b></div>
   </div>
   <div class="kpi-card kpi-blue">
     <div class="clabel">Exposição</div>
@@ -4401,7 +4401,6 @@ async function updateAll(){
     document.getElementById('kpi-portfolio').textContent=usd(okxFull);
     document.getElementById('kpi-initial').textContent=usd(ic);
     document.getElementById('kpi-rpnl').innerHTML=colored(portfolio.realized_pnl);
-    document.getElementById('kpi-pos').textContent=portfolio.open_position_count+' posições';
     // Exposição
     const expPct = portfolio.total_exposure_pct || 0;
     const expUsd = portfolio.notional_crypto    || 0;

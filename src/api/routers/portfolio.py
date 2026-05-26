@@ -222,10 +222,12 @@ async def portfolio_summary(request: Request) -> dict:
     # Total OKX completo (para o box "Portfolio OKX" — puramente informativo)
     okx_full_total = float(okx_full_total_raw) if okx_full_total_raw else total_value
 
-    unrealized    = unrealized_bot + unrealized_sync
+    unrealized       = unrealized_bot + unrealized_sync
     notional_trading = notional_bot + notional_sync
-    notional_all     = total_value - cash_value
-    exposure_pct     = (
+    # notional_all = soma direta dos USD values de BTC/ETH/SOL (nunca negativo)
+    # evita artefato de subtração com chaves Redis de timestamps diferentes
+    notional_all  = max(notional_trading, 0.0)
+    exposure_pct  = (
         notional_trading / total_value if total_value > 0 and notional_trading > 0 else 0.0
     )
     total_return_pct = (total_value - initial) / initial if initial > 0 else 0.0

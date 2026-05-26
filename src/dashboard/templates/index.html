@@ -4389,8 +4389,10 @@ async function updateAll(){
 
   // KPIs
   if(portfolio){
-    const tv=portfolio.liquid_total||portfolio.total_value||0,ic=portfolio.initial_capital||0;
-    document.getElementById('kpi-portfolio').textContent=usd(tv);
+    // Portfolio OKX = total real da conta OKX (todos os ativos, incl. OKB/BRL)
+    const okxFull = portfolio.okx_full_total || portfolio.total_value || 0;
+    const ic = portfolio.initial_capital || 0;
+    document.getElementById('kpi-portfolio').textContent=usd(okxFull);
     document.getElementById('kpi-initial').textContent=usd(ic);
     document.getElementById('kpi-rpnl').innerHTML=colored(portfolio.realized_pnl);
     document.getElementById('kpi-exp').textContent=pct(portfolio.total_exposure_pct);

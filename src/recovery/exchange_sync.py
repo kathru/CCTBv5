@@ -252,9 +252,12 @@ class ExchangeSync:
             }
             await self._cache.set(key, str(payload), ttl=BALANCE_TTL)
 
-        # Armazena total operacional (sem OKB/BRL) para o portfolio router
+        # Total operacional (USDT + BTC/ETH/SOL) — base para saldo disponível e P&L
         total_usd = sum(d["usdValue"] for d in details if d["ccy"] in VALID_CCYS)
         await self._cache.set("okx:portfolio_total_usd", str(round(total_usd, 4)), ttl=BALANCE_TTL)
+        # Total OKX completo (todos os ativos) — exibido no box "Portfolio OKX"
+        total_all_usd = sum(d["usdValue"] for d in details)
+        await self._cache.set("okx:portfolio_total_all_usd", str(round(total_all_usd, 4)), ttl=BALANCE_TTL)
 
     @staticmethod
     def _normalize_client_id(raw: str) -> str:

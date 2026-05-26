@@ -206,36 +206,23 @@ async def portfolio_summary(request: Request) -> dict:
             "strategy_id":    strategy,
         }
 
-    # ── Portfolio total = soma de TODOS os ativos OKX via Redis ─────────────────
-    # Se Redis tem dados frescos do sync periódico, usa eles (mais preciso)
-    # Fallback: recalcula com o que temos localmente
-    okx_total_raw = await cache.get("okx:portfolio_total_usd") if cache else None
+    # ── Totais OKX do Redis ──────────────────────────────────────────────────────
+    # total_value   = operacional (USDT+BTC/ETH/SOL) — base para P&L, DD, retorno
+    # okx_full_total = todos os ativos OKX (inclui OKB/BRL) — exibido no box Portfolio OKX
+    okx_total_raw     = await cache.get("okx:portfolio_total_usd")     if cache else None
+    okx_full_total_raw= await cache.get("okx:portfolio_total_all_usd") if cache else None
+
+    cash_value = float(okx_balances.get("USDT", {}).get("cashBal", s.cash_available))
+
     if okx_total_raw:
-        total_value = float(okx_total_raw)
-        cash_value  = float(okx_balances.get("USDT", {}).get("cashBal", s.cash_available))
+        total_value = float(okx_total_raw)      # operacional sem OKB/BRL
     else:
-        cash_value  = s.cash_available
         total_value = cash_value + notional_bot + notional_sync
 
-    # OKB e BRL: lidos do Redis apenas para exibição informativa (NÃO entram no portfolio)
-    okx_extra_assets = {}
-    for ccy in ["OKB", "BRL"]:
-        bal = okx_balances.get(ccy, {})
-        usd_val = float(bal.get("usdValue", 0.0))
-        if usd_val > 0:
-            okx_extra_assets[ccy] = {
-                "cashBal":  float(bal.get("cashBal", 0.0)),
-                "usdValue": usd_val,
-                "ccy":      ccy,
-            }
-
-    # total_value = apenas ativos operacionais (USDT + BTC/ETH/SOL), sem OKB/BRL
-    # Se Redis tem total operacional (gravado sem OKB/BRL pelo exchange_sync), usa direto
-    # Caso contrário recalcula do que temos
-    # (okx_total_raw já foi gravado sem OKB/BRL pelo exchange_sync atualizado)
+    # Total OKX completo (para o box "Portfolio OKX" — puramente informativo)
+    okx_full_total = float(okx_full_total_raw) if okx_full_total_raw else total_value
 
     unrealized    = unrealized_bot + unrealized_sync
-    # Exposição = posições de trading (BTC/ETH/SOL) sobre total operacional
     notional_trading = notional_bot + notional_sync
     notional_all     = total_value - cash_value
     exposure_pct     = (
@@ -249,12 +236,12 @@ async def portfolio_summary(request: Request) -> dict:
     return {
         "available":           True,
         "initial_capital":     initial,
-        "total_value":         round(total_value, 2),
+        "total_value":         round(total_value, 2),    # operacional
+        "okx_full_total":      round(okx_full_total, 2), # todos os ativos OKX (display)
         "cash_available":      round(cash_value, 2),
         "liquid_total":        round(liquid_total, 2),
         "notional_crypto":     round(notional_all, 2),
-        "okx_balances":        okx_balances,        # todos os saldos OKX brutos
-        "okx_extra_assets":    okx_extra_assets,    # OKB e BRL para display
+        "okx_balances":        okx_balances,             # saldos OKX brutos por CCY
         "total_exposure_pct":  round(exposure_pct, 4),
         "open_position_count": open_count,
         "positions":           positions_data,

@@ -126,6 +126,7 @@
 
     .grid { display: grid; gap: 12px; }
     .g7  { grid-template-columns: repeat(7,1fr); }
+    .g6  { grid-template-columns: repeat(6,1fr); }
     .g5  { grid-template-columns: repeat(5,1fr); }
     .g3  { grid-template-columns: repeat(3,1fr); }
     .g31 { grid-template-columns: repeat(3,1fr); }
@@ -134,8 +135,9 @@
     .g12 { grid-template-columns: 1fr 2fr; }
     .g11 { grid-template-columns: 1fr 1fr; }
     .g13 { grid-template-columns: 1fr 3fr; }
+    @media(max-width:1400px){ .g6{grid-template-columns:repeat(3,1fr)} }
     @media(max-width:1300px){ .g7{grid-template-columns:repeat(4,1fr)} .g5{grid-template-columns:repeat(3,1fr)} }
-    @media(max-width:900px) { .g3,.g31,.g22,.g21,.g11,.g12,.g13{grid-template-columns:1fr} .g7{grid-template-columns:repeat(2,1fr)} .g5{grid-template-columns:repeat(2,1fr)} }
+    @media(max-width:900px) { .g3,.g31,.g22,.g21,.g11,.g12,.g13{grid-template-columns:1fr} .g7{grid-template-columns:repeat(2,1fr)} .g5{grid-template-columns:repeat(2,1fr)} .g6{grid-template-columns:repeat(2,1fr)} }
 
     .section-hdr {
       display: flex; align-items: center; gap: 8px;
@@ -514,7 +516,7 @@
 <main>
 
 <!-- ══ KPI STRIP ══════════════════════════════════════════════ -->
-<div class="grid g5">
+<div class="grid g6">
   <div class="kpi-card kpi-blue">
     <div class="clabel">Portfolio Total</div>
     <div class="kpi-val b" id="kpi-portfolio">–</div>
@@ -539,6 +541,11 @@
     <div class="clabel">Taxas Pagas</div>
     <div class="kpi-val r" id="kpi-fees">–</div>
     <div class="kpi-sub"><b id="kpi-trades-buy-vol">–</b> compras · <b id="kpi-trades-sell-vol">–</b> vendas executadas</div>
+  </div>
+  <div class="kpi-card" id="kpi-net-card" style="border-color:rgba(255,255,255,0.08)">
+    <div class="clabel">P&L Líquido</div>
+    <div class="kpi-val b" id="kpi-net-pnl">–</div>
+    <div class="kpi-sub">Bruto: <b id="kpi-net-gross">–</b> · Fees: <b id="kpi-net-fees">–</b></div>
   </div>
 </div>
 
@@ -4442,6 +4449,27 @@ async function updateAll(){
     document.getElementById('kpi-fees').textContent=usd(perf.total_fees||0);
     document.getElementById('kpi-trades-buy-vol').textContent  = perf.total_buys  || 0;
     document.getElementById('kpi-trades-sell-vol').textContent = perf.total_sells || 0;
+  }
+  // P&L Líquido = Realizado − Fees (resultado real das operações)
+  {
+    const grossPnl = portfolio ? (portfolio.realized_pnl || 0) : 0;
+    const fees     = perf      ? (perf.total_fees       || 0) : 0;
+    const netPnl   = grossPnl - fees;
+    const netEl    = document.getElementById('kpi-net-pnl');
+    const card     = document.getElementById('kpi-net-card');
+    if(netEl){
+      netEl.innerHTML = colored(netPnl);
+    }
+    if(card){
+      // Border color reflects result
+      card.style.borderColor = netPnl >= 0
+        ? 'rgba(52,211,153,0.35)'   // verde suave
+        : 'rgba(248,113,113,0.35)'; // vermelho suave
+    }
+    const grossEl = document.getElementById('kpi-net-gross');
+    const feesEl2 = document.getElementById('kpi-net-fees');
+    if(grossEl) grossEl.innerHTML = colored(grossPnl);
+    if(feesEl2) feesEl2.textContent = usd(fees);
   }
 
   // Crypto cards

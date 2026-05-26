@@ -2057,7 +2057,7 @@ function updateDonut(portfolio,prices){
   // Apenas ativos OPERACIONAIS (bot pode tradear): USDT + BTC/ETH/SOL
   // OKB e BRL são ativos fixos e não integram o portfolio operacional
   const assets = [
-    { name:'USDT', color:'#3b82f6', val: bal.USDT?.usdValue || portfolio.cash_available || 0 },
+    { name:'USDT', color:'#3b82f6', val: parseFloat(bal.USDT?.usdValue || portfolio.cash_available || 0) },
     { name:'BTC',  color:'#f97316', val: bal.BTC?.usdValue  || 0 },
     { name:'ETH',  color:'#6366f1', val: bal.ETH?.usdValue  || 0 },
     { name:'SOL',  color:'#8b5cf6', val: bal.SOL?.usdValue  || 0 },

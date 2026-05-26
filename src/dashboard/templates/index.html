@@ -2746,7 +2746,7 @@ function renderImportance(data){
   const sorted=keys.sort((a,b)=>(feats[b].relative_importance||0)-(feats[a].relative_importance||0));
   const maxImp=Math.max(...sorted.map(k=>Math.max(feats[k].relative_importance||0,0)),0.01);
 
-  const FEAT_LABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)','m8_vol_state':'Vol.State (M8)','m9_sentiment':'Sentiment (M9)'};
+  const FEAT_LABELS={'m1_momentum':'M1','m2_consistency':'M2','m3_volume':'M3','m4_regime_str':'M4','m5_candle':'M5','m6_futures':'M6','m7_rel_strength':'M7','m8_vol_state':'M8','m9_sentiment':'M9'};
   el.innerHTML=sorted.map(k=>{
     const f=feats[k];
     const label=FEAT_LABELS[k]||k;

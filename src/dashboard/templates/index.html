@@ -142,6 +142,56 @@
       color: var(--text); font-weight: 700; white-space: nowrap;
       padding-bottom: 6px; border-bottom: 1px solid var(--border);
     }
+
+    /* ══ MOTOR PROBABILÍSTICO — hero header ══════════════════════ */
+    .motor-hero {
+      position: relative; overflow: hidden;
+      background: linear-gradient(135deg,
+        rgba(59,130,246,0.12) 0%,
+        rgba(139,92,246,0.10) 50%,
+        rgba(16,185,129,0.08) 100%);
+      border: 1px solid rgba(99,102,241,0.30);
+      border-radius: 10px;
+      padding: 14px 20px 12px;
+      margin-bottom: 0;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .motor-hero::before {
+      content:''; position:absolute; inset:0;
+      background: radial-gradient(ellipse 60% 80% at 10% 50%,
+        rgba(99,102,241,0.15) 0%, transparent 70%);
+      pointer-events:none;
+    }
+    .motor-hero-pulse {
+      width:34px; height:34px; border-radius:50%; flex-shrink:0;
+      background: radial-gradient(circle, #6366f1 30%, rgba(99,102,241,0.3) 70%);
+      box-shadow: 0 0 0 0 rgba(99,102,241,0.7);
+      animation: motor-pulse 2.2s ease-in-out infinite;
+      display:flex; align-items:center; justify-content:center;
+      font-size:1rem;
+    }
+    @keyframes motor-pulse {
+      0%   { box-shadow: 0 0 0 0   rgba(99,102,241,0.70); }
+      60%  { box-shadow: 0 0 0 10px rgba(99,102,241,0.00); }
+      100% { box-shadow: 0 0 0 0   rgba(99,102,241,0.00); }
+    }
+    .motor-hero-title {
+      font-size: 1.05rem; font-weight: 800; letter-spacing: 0.5px;
+      background: linear-gradient(90deg, #a5b4fc 0%, #7dd3fc 60%, #6ee7b7 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height:1.2;
+    }
+    .motor-hero-sub {
+      font-size: 0.72rem; color: var(--muted); letter-spacing: 0.8px;
+      text-transform: uppercase; margin-top: 2px;
+    }
+    .motor-hero-badge {
+      margin-left: auto; font-size: 0.72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+      padding: 3px 10px; border-radius: 20px;
+      background: rgba(99,102,241,0.18); color: #a5b4fc;
+      border: 1px solid rgba(99,102,241,0.35); white-space: nowrap;
+    }
     .section-hdr .dot { width:6px; height:6px; border-radius:50%; background:var(--blue); }
     .section-hdr .cnt { margin-left:auto; font-size:0.82rem; color:var(--muted); font-weight:400; }
 
@@ -475,11 +525,19 @@
 
 
 <!-- ══ MOTOR ═══════════════════════════════════════════════ -->
+<div class="motor-hero">
+  <div class="motor-hero-pulse">⚡</div>
+  <div>
+    <div class="motor-hero-title">Motor Probabilístico</div>
+    <div class="motor-hero-sub">Coração do sistema · Score · Gates · EV · Sizing</div>
+  </div>
+  <div class="motor-hero-badge" id="motor-hero-decision">–</div>
+</div>
+
 <div class="grid" style="grid-template-columns:1fr">
 
   <!-- Motor Probabilístico — redesigned -->
-  <div class="card">
-    <div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:0.5px;margin-bottom:12px;">Motor Probabilístico</div>
+  <div class="card" style="border-top-left-radius:0;border-top-right-radius:0;border-top:none;margin-top:0">
 
     <!-- ① DECISÃO FINAL -->
     <div id="motor-decision-banner" class="motor-decision md-hold">
@@ -4574,6 +4632,28 @@ async function updateAll(){
       if(dscore) dscore.textContent=rawScore.toFixed(1)+'%';
       if(dkelly) dkelly.textContent=(effKelly*100).toFixed(1)+'%';
       if(dthr)   dthr.textContent=thrVal.toFixed(1)+'%';
+
+      // Sincroniza badge hero com a decisão
+      const heroBadge=document.getElementById('motor-hero-decision');
+      if(heroBadge){
+        if(isSignal){
+          const dir=(latest.direction||'LONG').toUpperCase();
+          heroBadge.textContent=dir==='LONG'?'▲ LONG':'▼ SHORT';
+          heroBadge.style.background=dir==='LONG'?'rgba(16,185,129,0.18)':'rgba(239,68,68,0.18)';
+          heroBadge.style.color=dir==='LONG'?'var(--green)':'var(--red)';
+          heroBadge.style.borderColor=dir==='LONG'?'rgba(16,185,129,0.4)':'rgba(239,68,68,0.4)';
+        } else if(isBlocked){
+          heroBadge.textContent='⛔ Bloqueado';
+          heroBadge.style.background='rgba(239,68,68,0.12)';
+          heroBadge.style.color='var(--red)';
+          heroBadge.style.borderColor='rgba(239,68,68,0.3)';
+        } else {
+          heroBadge.textContent='⏸ Aguardando';
+          heroBadge.style.background='rgba(99,102,241,0.18)';
+          heroBadge.style.color='#a5b4fc';
+          heroBadge.style.borderColor='rgba(99,102,241,0.35)';
+        }
+      }
     }
 
     // ── Funil de Decisão ─────────────────────────────────────

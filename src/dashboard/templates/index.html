@@ -4667,8 +4667,11 @@ async function updateAll(){
     const scoreOk =rawScore>=thrVal;
     const ecBlocked2=(latest.factors||{}).ec_blocked;
     const gatesOk  =!(ecBlocked2&&ecBlocked2>0);
-    const evReal   =(latest.ev!=null?latest.ev:(latest.calibrated||0)*2.0-(1-(latest.calibrated||0)));
-    const evOk     =evReal>0.0;
+    // EV calculado sempre a partir do calibrated (ratio TP/SL=2× padrão do sistema)
+    // latest.ev=0 nos HOLDs (default), então usamos a fórmula diretamente
+    const _cal    =(latest.calibrated||0);
+    const evReal  =2.0*_cal-(1-_cal);   // EV em R-múltiplos: ratio×P(win) − P(loss)
+    const evOk    =evReal>0.0;
     const sizingOk =effKelly>0.001;
 
     // Cada etapa sempre mostra seu valor real — nunca apaga por causa de etapa anterior.

@@ -4538,10 +4538,13 @@ async function updateAll(){
     const kCap=document.getElementById('motor-kelly-cap-line');
     const kVal=document.getElementById('motor-kelly-val');
     const kCapLbl=document.getElementById('motor-kelly-cap-lbl');
-    if(kFill) kFill.style.width=(rawKelly*100).toFixed(1)+'%';
-    if(kCap)  kCap.style.left=(cap*100).toFixed(1)+'%';
+    // Barra relativa ao cap: cap = 100% da largura visual (evita barra minúscula)
+    const barMax=cap>0?cap:0.12;  // fallback 12% em regime BEAR (barra zerada mesmo)
+    const fillPct=cap>0?Math.min(rawKelly/barMax*100,100):0;
+    if(kFill) kFill.style.width=fillPct.toFixed(1)+'%';
+    if(kCap)  kCap.style.left='100%';  // cap é sempre a borda direita
     if(kVal)  kVal.textContent=(effKelly*100).toFixed(1)+'%';
-    if(kCapLbl) kCapLbl.textContent=(cap*100).toFixed(0)+'%';
+    if(kCapLbl) kCapLbl.textContent='cap '+(cap*100).toFixed(0)+'%';
     const notEl=document.getElementById('motor-notional');
     if(notEl) notEl.textContent=notional>0?'~'+usd(notional,0):'–';
 

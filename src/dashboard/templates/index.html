@@ -280,9 +280,32 @@
     .motor-regime-box.rb-other .motor-regime-txt { color:var(--blue); }
     .motor-sizing-row { display:flex; gap:14px; flex-wrap:wrap; font-size:0.82rem; color:rgba(255,255,255,0.4); }
     .msr-val { color:rgba(255,255,255,0.72); font-weight:600; }
-    /* Sizing grid colapsa para 2 colunas em telas estreitas */
-    @media (max-width: 520px) {
-      #motor-sizing-grid { grid-template-columns: 1fr 1fr !important; }
+    /* ── Mobile fixes ─────────────────────────────────────── */
+    @media (max-width: 600px) {
+      /* Motor hero: empilha métricas abaixo do título */
+      .motor-hero { flex-wrap: wrap; gap: 10px; padding: 12px 14px; }
+      .motor-hero > div:nth-child(2) { flex: 1 1 100%; min-width: 0; order: 1; }
+      .motor-hero-pulse { order: 0; }
+      .motor-hero > div:nth-child(3) { order: 2; flex: 1 1 auto; margin-right: 0; justify-content: flex-start; }
+      .motor-hero-badge { order: 3; }
+      .motor-hero-sub { display: none; }
+
+      /* Sizing: Kelly ocupa linha inteira, boxes em linha separada */
+      #motor-sizing-grid { grid-template-columns: 1fr !important; }
+      #motor-sizing-grid > div:nth-child(2),
+      #motor-sizing-grid > div:nth-child(3),
+      #motor-sizing-grid > div:nth-child(4) { display: inline-flex; }
+      #motor-sizing-grid { display: flex !important; flex-direction: column; gap: 8px; }
+      #motor-sizing-boxes { display: flex; gap: 8px; }
+
+      /* Drawdown 5 boxes: 3 + 2 */
+      .dd-grid-5 { grid-template-columns: repeat(3,1fr) !important; }
+
+      /* Feature importance: grid adaptável */
+      .fi-row-grid { grid-template-columns: 90px 1fr 40px !important; }
+      .fi-sch-col { display: none !important; }
+      .fi-badge-wrap { flex-wrap: wrap; gap: 4px; }
+      .fi-badge-wrap .hbadge { font-size: 0.68rem !important; white-space: nowrap; }
     }
     /* Motor — Funil de Decisão */
     .motor-section { background:rgba(255,255,255,0.025); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
@@ -780,7 +803,7 @@
       <div class="motor-section-lbl">⑥ Sizing</div>
 
       <!-- Linha única: barra Kelly + Notional + SL + TP -->
-      <div id="motor-sizing-grid" style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;">
+      <div id="motor-sizing-grid" style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;flex-direction:column;">
 
         <!-- Kelly bar — ocupa o espaço restante -->
         <div style="min-width:100px;">
@@ -1142,7 +1165,7 @@
   <!-- Drawdown & Win/Loss detail -->
   <div class="card">
     <div class="clabel">Drawdown & Distribuição</div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px;">
+    <div class="dd-grid-5" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px;">
       <div class="calib-item">
         <div class="calib-val r" id="q-maxdd">–</div>
         <div class="calib-label">Max Drawdown</div>
@@ -1802,9 +1825,9 @@
 
   <!-- Feature Importance -->
   <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <div class="clabel" style="margin:0">Feature Importance <span style="font-size:0.75rem;color:var(--muted)">(permutação)</span></div>
-      <span class="hbadge hbadge-gray" id="imp-computed-at">–</span>
+    <div class="fi-badge-wrap" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:6px;">
+      <div class="clabel" style="margin:0;white-space:normal">Feature Importance <span style="font-size:0.75rem;color:var(--muted)">(permutação)</span></div>
+      <span class="hbadge hbadge-gray" id="imp-computed-at" style="flex-shrink:0;font-size:0.72rem">–</span>
     </div>
     <div id="imp-list" style="display:flex;flex-direction:column;gap:10px;">
       <div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Rode: python scripts/feature_analysis.py</div>
@@ -2748,16 +2771,16 @@ function renderImportance(data){
     const delta=((relImp-schW)*100).toFixed(0);
     const deltaSign=delta>=0?'+':'';
     return`<div style="padding:2px 0;">
-      <div style="display:grid;grid-template-columns:120px 1fr 52px 80px;align-items:center;gap:8px;margin-bottom:3px;">
+      <div class="fi-row-grid" style="display:grid;grid-template-columns:110px 1fr 44px 72px;align-items:center;gap:6px;margin-bottom:3px;">
         <span style="font-size:0.82rem;color:var(--text);font-weight:600">${label}</span>
         <div style="position:relative;height:15px;background:#0d1520;border-radius:7px;overflow:visible;">
           <div style="position:absolute;top:0;left:0;height:15px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
           <div style="position:absolute;top:-3px;bottom:-3px;left:${schBarW}%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;" title="Schema weight"></div>
         </div>
         <span style="font-size:0.88rem;font-weight:800;color:${col};text-align:right">${(relImp*100).toFixed(0)}%</span>
-        <span style="font-size:0.75rem;color:${alignCol};text-align:right">${deltaSign}${delta}% <span style="opacity:0.6">(sch ${(schW*100).toFixed(0)}%)</span></span>
+        <span class="fi-sch-col" style="font-size:0.72rem;color:${alignCol};text-align:right;white-space:nowrap">${deltaSign}${delta}%<span style="opacity:0.6"> (sch ${(schW*100).toFixed(0)}%)</span></span>
       </div>
-      <div style="font-size:0.75rem;color:var(--muted);padding-left:128px;">
+      <div style="font-size:0.72rem;color:var(--muted);padding-left:116px;">
         Spearman ${corrSign}${corr.toFixed(3)} · PermImp ${(f.perm_importance||0).toFixed(4)}
       </div>
     </div>`;

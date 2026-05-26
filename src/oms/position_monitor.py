@@ -424,6 +424,18 @@ class PositionMonitor:
         if self._check_cycle % 10 == 1:
             await self._detect_ghost_plans()
 
+        # Fix: Refresha TTL do Redis para todas as posições abertas em memória.
+        # O TTL padrão é 60s e só é escrito no fill event — posições em hold
+        # expiram silenciosamente, causando falso ghost detection.
+        for symbol in list(self._plans.keys()):
+            try:
+                mem_pos = self._portfolio.state.positions.get(symbol)
+                if mem_pos:
+                    pos_data = mem_pos if isinstance(mem_pos, dict) else vars(mem_pos)
+                    await self._cache.set_position(symbol, pos_data)
+            except Exception as exc:
+                logger.debug("Refresh Redis pos %s: %s", symbol, exc)
+
         now = datetime.now(UTC)
         for symbol, plan in list(self._plans.items()):
             try:
@@ -477,7 +489,22 @@ class PositionMonitor:
                 )
 
                 if streak >= 2:
-                    # Confirmado: ExitPlan sem posição real → remove
+                    # Fix: Antes de remover, cruza com estado em-memória.
+                    # Redis pode ter expirado (TTL 60s) enquanto a posição é real.
+                    # Só remove se AMBOS Redis e in-memory concordam que não existe.
+                    mem_pos = self._portfolio.state.positions.get(symbol)
+                    if mem_pos:
+                        logger.warning(
+                            "GHOST FALSE POSITIVE %s: Redis expirou mas posicao "
+                            "existe em memoria — refresh Redis, ExitPlan mantido.",
+                            symbol,
+                        )
+                        pos_data = mem_pos if isinstance(mem_pos, dict) else vars(mem_pos)
+                        await self._cache.set_position(symbol, pos_data)
+                        self._ghost_streak.pop(symbol, None)
+                        continue
+
+                    # Confirmado: ausente no Redis E em memória → ExitPlan fantasma
                     plan = self._plans.pop(symbol, None)
                     self._ghost_streak.pop(symbol, None)
 
@@ -489,7 +516,7 @@ class PositionMonitor:
                         logger.error(
                             "GHOST FILL CONFIRMADO: %s | entry=%.2f | "
                             "entry_age=%.0fmin | regime=%s | "
-                            "ExitPlan removido — posicao nunca existiu no OKX. "
+                            "ExitPlan removido — posicao ausente no Redis E em memoria. "
                             "Verifique fill parcial na OKX demo.",
                             symbol, plan.entry_price, entry_age, plan.entry_regime,
                         )

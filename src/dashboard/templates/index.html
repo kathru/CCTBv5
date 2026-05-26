@@ -87,6 +87,7 @@
     .hbadge-green  { background:rgba(16,185,129,0.12);  color:var(--green);  border-color:rgba(16,185,129,0.3); box-shadow:0 0 8px rgba(16,185,129,0.15); }
     .hbadge-yellow { background:rgba(245,158,11,0.12);  color:var(--yellow); border-color:rgba(245,158,11,0.3); }
     .hbadge-gray   { background:rgba(90,106,126,0.08);  color:var(--muted);  border-color:rgba(90,106,126,0.2); }
+    .hbadge-ts     { font-size:0.72rem !important; font-weight:600; letter-spacing:0.3px; text-transform:none !important; padding:3px 10px; flex-shrink:0; }
 
     /* Header regime — destaque especial */
     .regime-badge {
@@ -1616,7 +1617,7 @@
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
       <div class="clabel" style="margin:0">Saúde do Modelo</div>
-      <span class="hbadge hbadge-gray" id="mh-computed-at">–</span>
+      <span class="hbadge hbadge-gray hbadge-ts" id="mh-computed-at">–</span>
     </div>
     <!-- Gauge circular simplificado via barra -->
     <div style="text-align:center;padding:8px 0 12px;">
@@ -1638,7 +1639,7 @@
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <div class="clabel" style="margin:0">Experiment Tracking</div>
-      <span class="hbadge hbadge-gray" id="calib-ts-badge">–</span>
+      <span class="hbadge hbadge-gray hbadge-ts" id="calib-ts-badge">–</span>
     </div>
     <!-- Calibração atual -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;font-size:0.75rem;">
@@ -1817,7 +1818,7 @@
   <div class="card">
     <div class="fi-badge-wrap" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:6px;">
       <div class="clabel" style="margin:0;white-space:normal">Feature Importance <span style="font-size:0.75rem;color:var(--muted)">(permutação)</span></div>
-      <span class="hbadge hbadge-gray" id="imp-computed-at" style="flex-shrink:0;font-size:0.72rem">–</span>
+      <span class="hbadge hbadge-gray hbadge-ts" id="imp-computed-at">–</span>
     </div>
     <div id="imp-list" style="display:flex;flex-direction:column;gap:10px;">
       <div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Rode: python scripts/feature_analysis.py</div>
@@ -1832,7 +1833,7 @@
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
       <div class="clabel" style="margin:0">Walk-Forward Optimization</div>
-      <span class="hbadge hbadge-gray" id="wfo-run-at">–</span>
+      <span class="hbadge hbadge-gray hbadge-ts" id="wfo-run-at">–</span>
     </div>
     <div id="wfo-content">
       <div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Rode: python scripts/walk_forward.py</div>

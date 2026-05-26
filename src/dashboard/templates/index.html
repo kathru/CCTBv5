@@ -2459,7 +2459,7 @@ function renderFunnel(data){
   if(rateEl){
     const rate = allTime.execution_rate || 0;
     const col = rate>5?'var(--green)':rate>1?'var(--yellow)':'var(--red)';
-    rateEl.innerHTML = ` — taxa de execução: <span style="color:${col};font-weight:800">${rate.toFixed(1)}%</span> (${allTime.signals||0} sinais / ${(allTime.total||0).toLocaleString('pt-BR')} aval.)`;
+    rateEl.innerHTML = ` — tx. exec.: <span style="color:${col};font-weight:800">${rate.toFixed(1).replace('.',',')}%</span> (${allTime.signals||0}/${allTime.total||0})`;
   }
 
   // Label de janela

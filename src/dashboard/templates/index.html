@@ -282,27 +282,24 @@
     .msr-val { color:rgba(255,255,255,0.72); font-weight:600; }
     /* ── Mobile fixes ─────────────────────────────────────── */
     @media (max-width: 600px) {
-      /* Motor hero: empilha métricas abaixo do título */
-      .motor-hero { flex-wrap: wrap; gap: 10px; padding: 12px 14px; }
-      .motor-hero > div:nth-child(2) { flex: 1 1 100%; min-width: 0; order: 1; }
-      .motor-hero-pulse { order: 0; }
-      .motor-hero > div:nth-child(3) { order: 2; flex: 1 1 auto; margin-right: 0; justify-content: flex-start; }
-      .motor-hero-badge { order: 3; }
+      /* Motor hero: título linha 1, métricas linha 2, badge linha 3 */
+      .motor-hero { flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+      .motor-hero-pulse { order: 0; flex-shrink: 0; }
+      .motor-hero-title-wrap { order: 1; flex: 1 1 0; min-width: 0; }
       .motor-hero-sub { display: none; }
+      .motor-hero-metrics { order: 2; width: 100%; justify-content: flex-start; margin-right: 0 !important; }
+      .motor-hero-badge { order: 3; }
 
-      /* Sizing: Kelly ocupa linha inteira, boxes em linha separada */
-      #motor-sizing-grid { grid-template-columns: 1fr !important; }
-      #motor-sizing-grid > div:nth-child(2),
-      #motor-sizing-grid > div:nth-child(3),
-      #motor-sizing-grid > div:nth-child(4) { display: inline-flex; }
+      /* Sizing: Kelly full width, 3 boxes em linha */
       #motor-sizing-grid { display: flex !important; flex-direction: column; gap: 8px; }
-      #motor-sizing-boxes { display: flex; gap: 8px; }
+      .motor-sizing-boxes { display: flex !important; gap: 8px; }
+      .motor-sizing-boxes > div { flex: 1; }
 
       /* Drawdown 5 boxes: 3 + 2 */
       .dd-grid-5 { grid-template-columns: repeat(3,1fr) !important; }
 
-      /* Feature importance: grid adaptável */
-      .fi-row-grid { grid-template-columns: 90px 1fr 40px !important; }
+      /* Feature importance */
+      .fi-row-grid { grid-template-columns: 80px 1fr 38px !important; }
       .fi-sch-col { display: none !important; }
       .fi-badge-wrap { flex-wrap: wrap; gap: 4px; }
       .fi-badge-wrap .hbadge { font-size: 0.68rem !important; white-space: nowrap; }
@@ -553,12 +550,12 @@
   <!-- Hero do Motor -->
   <div class="motor-hero" style="border:none;border-radius:0;margin-bottom:0">
     <div class="motor-hero-pulse">⚡</div>
-    <div style="flex:1;min-width:0">
+    <div class="motor-hero-title-wrap" style="flex:1;min-width:0">
       <div class="motor-hero-title">Motor Probabilístico</div>
       <div class="motor-hero-sub">Coração do sistema · Score · Gates · EV · Sizing</div>
     </div>
     <!-- Métricas centrais -->
-    <div style="display:flex;gap:14px;align-items:center;margin-right:14px;flex-shrink:0">
+    <div class="motor-hero-metrics" style="display:flex;gap:14px;align-items:center;margin-right:14px;flex-shrink:0">
       <div style="text-align:center">
         <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Score</div>
         <div id="motor-decision-score" style="font-size:1rem;font-weight:800;color:#a5b4fc">–</div>
@@ -802,52 +799,45 @@
     <div class="motor-section">
       <div class="motor-section-lbl">⑥ Sizing</div>
 
-      <!-- Linha única: barra Kelly + Notional + SL + TP -->
-      <div id="motor-sizing-grid" style="display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;flex-direction:column;">
-
-        <!-- Kelly bar — ocupa o espaço restante -->
-        <div style="min-width:100px;">
-          <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-bottom:4px;">
-            Kelly · cap <span id="motor-kelly-cap-lbl">–%</span>
-          </div>
-          <div style="position:relative;height:22px;background:#0d1520;border-radius:11px;overflow:hidden;">
-            <div id="motor-kelly-fill"
-                 style="position:relative;height:100%;border-radius:11px;background:var(--blue);
-                        transition:width 0.5s;width:0%">
-              <span id="motor-kelly-val"
-                    style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
-                           font-size:0.88rem;font-weight:800;color:#fff;white-space:nowrap;">–</span>
-            </div>
-            <div id="motor-kelly-cap-line"
-                 style="position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.45);
-                        border-radius:2px;left:8%"></div>
-          </div>
+      <!-- Kelly bar — full width -->
+      <div id="motor-sizing-grid">
+        <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-bottom:4px;">
+          Kelly · cap <span id="motor-kelly-cap-lbl">–%</span>
         </div>
+        <div style="position:relative;height:22px;background:#0d1520;border-radius:11px;overflow:hidden;">
+          <div id="motor-kelly-fill"
+               style="position:relative;height:100%;border-radius:11px;background:var(--blue);
+                      transition:width 0.5s;width:0%">
+            <span id="motor-kelly-val"
+                  style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+                         font-size:0.88rem;font-weight:800;color:#fff;white-space:nowrap;">–</span>
+          </div>
+          <div id="motor-kelly-cap-line"
+               style="position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.45);
+                      border-radius:2px;left:8%"></div>
+        </div>
+      </div>
 
-        <!-- Notional -->
-        <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);
-                    border-radius:8px;padding:5px 12px;text-align:center;white-space:nowrap;">
-          <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
+      <!-- Notional + SL + TP em linha -->
+      <div class="motor-sizing-boxes" style="display:flex;gap:8px;margin-top:8px;">
+        <div style="flex:1;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);
+                    border-radius:8px;padding:5px 10px;text-align:center;">
+          <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
                       letter-spacing:0.5px;margin-bottom:2px;">Notional</div>
           <div style="font-size:0.92rem;font-weight:800;color:var(--blue)" id="motor-notional">–</div>
         </div>
-
-        <!-- Stop Loss -->
-        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);
-                    border-radius:8px;padding:5px 12px;text-align:center;white-space:nowrap;">
-          <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
+        <div style="flex:1;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);
+                    border-radius:8px;padding:5px 10px;text-align:center;">
+          <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
                       letter-spacing:0.5px;margin-bottom:2px;">Stop Loss</div>
           <div style="font-size:0.92rem;font-weight:800;color:var(--red)" id="motor-sl">–1.5%</div>
         </div>
-
-        <!-- Take Profit -->
-        <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);
-                    border-radius:8px;padding:5px 12px;text-align:center;white-space:nowrap;">
-          <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
+        <div style="flex:1;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);
+                    border-radius:8px;padding:5px 10px;text-align:center;">
+          <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
                       letter-spacing:0.5px;margin-bottom:2px;">Take Profit</div>
           <div style="font-size:0.92rem;font-weight:800;color:var(--green)" id="motor-tp">+3.0%</div>
         </div>
-
       </div>
 
       <!-- Kelly multiplicadores (expandível, aparece só com sinal) -->
@@ -2721,7 +2711,7 @@ function renderGovernance(status, drift, live, schema){
           const lb=f.lookback||0;
           const safe=f.leakage_safe;
           return`<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:7px 9px;text-align:center;">
-            <div style="font-size:0.82rem;font-weight:700;color:var(--text);margin-bottom:3px">${{'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)','m8_vol_state':'Vol.State (M8)','m9_sentiment':'Sentiment (M9)'}[k]||k.replace('_',' ')}</div>
+            <div style="font-size:0.82rem;font-weight:700;color:var(--text);margin-bottom:3px">${{'m1_momentum':'M1','m2_consistency':'M2','m3_volume':'M3','m4_regime_str':'M4','m5_candle':'M5','m6_futures':'M6','m7_rel_strength':'M7','m8_vol_state':'M8','m9_sentiment':'M9'}[k]||k.replace('_',' ')}</div>
             <div style="font-size:1rem;font-weight:900;color:var(--blue)">${w}%</div>
             <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">lb:${lb} · ${safe?'<span style="color:var(--green)">safe</span>':'<span style="color:var(--red)">⚠</span>'}</div>
           </div>`;

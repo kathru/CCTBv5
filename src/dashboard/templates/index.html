@@ -4667,7 +4667,8 @@ async function updateAll(){
     const scoreOk =rawScore>=thrVal;
     const ecBlocked2=(latest.factors||{}).ec_blocked;
     const gatesOk  =!(ecBlocked2&&ecBlocked2>0);
-    const evOk     =(latest.calibrated||0)>0.45;
+    const evReal   =(latest.ev!=null?latest.ev:(latest.calibrated||0)*2.0-(1-(latest.calibrated||0)));
+    const evOk     =evReal>0.0;
     const sizingOk =effKelly>0.001;
 
     // Cada etapa sempre mostra seu valor real — nunca apaga por causa de etapa anterior.
@@ -4675,7 +4676,7 @@ async function updateAll(){
     setFunnelStage('fs-regime','fs-regime-icon','fs-regime-detail', regimeOk, rg.split(' ')[0], false);
     setFunnelStage('fs-score', 'fs-score-icon', 'fs-score-detail',  scoreOk,  rawScore.toFixed(1)+'%', false);
     setFunnelStage('fs-gates', 'fs-gates-icon', 'fs-gates-detail',  gatesOk,  gatesOk?'OK':'bloq.',   false);
-    setFunnelStage('fs-ev',    'fs-ev-icon',    'fs-ev-detail',     evOk,     ((latest.calibrated||0)*100).toFixed(0)+'%', false);
+    setFunnelStage('fs-ev',    'fs-ev-icon',    'fs-ev-detail',     evOk,     (evReal>=0?'+':'')+evReal.toFixed(2)+'R',  false);
     setFunnelStage('fs-sizing','fs-sizing-icon','fs-sizing-detail', sizingOk, (effKelly*100).toFixed(1)+'%', false);
   }
   // Motor risk bars (from portfolio)

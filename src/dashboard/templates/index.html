@@ -314,7 +314,9 @@
     .funnel-stage.fs-fail { background:rgba(239,68,68,0.09); border-color:rgba(239,68,68,0.35); }
     .funnel-stage.fs-skip { opacity:0.3; filter:saturate(0); }
     .fs-label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:3px; }
-    .fs-icon  { font-size:0.85rem; line-height:1; margin-bottom:2px; }
+    .fs-icon  { font-size:0.85rem; line-height:1; margin-bottom:2px; font-weight:700; }
+    .fs-pass .fs-icon { color:var(--green); }
+    .fs-fail .fs-icon { color:var(--red); }
     .fs-detail { font-size:0.75rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
     .funnel-arrow { color:var(--border2); font-size:0.82rem; padding:0 3px; align-self:center; flex-shrink:0; }
     /* Motor — Decisão Final banner */

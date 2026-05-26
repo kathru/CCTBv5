@@ -135,9 +135,10 @@
     .g12 { grid-template-columns: 1fr 2fr; }
     .g11 { grid-template-columns: 1fr 1fr; }
     .g13 { grid-template-columns: 1fr 3fr; }
+    @media(max-width:1500px){ .g7{grid-template-columns:repeat(4,1fr)} }
     @media(max-width:1400px){ .g6{grid-template-columns:repeat(3,1fr)} }
-    @media(max-width:1300px){ .g7{grid-template-columns:repeat(4,1fr)} .g5{grid-template-columns:repeat(3,1fr)} }
-    @media(max-width:900px) { .g3,.g31,.g22,.g21,.g11,.g12,.g13{grid-template-columns:1fr} .g7{grid-template-columns:repeat(2,1fr)} .g5{grid-template-columns:repeat(2,1fr)} .g6{grid-template-columns:repeat(2,1fr)} }
+    @media(max-width:1300px){ .g5{grid-template-columns:repeat(3,1fr)} }
+    @media(max-width:900px) { .g3,.g31,.g22,.g21,.g11,.g12,.g13{grid-template-columns:1fr} .g7,.g6,.g5{grid-template-columns:repeat(2,1fr)} }
 
     .section-hdr {
       display: flex; align-items: center; gap: 8px;
@@ -516,7 +517,7 @@
 <main>
 
 <!-- ══ KPI STRIP ══════════════════════════════════════════════ -->
-<div class="grid g6">
+<div class="grid g7">
   <div class="kpi-card kpi-blue">
     <div class="clabel">Portfolio OKX</div>
     <div class="kpi-val b" id="kpi-portfolio">–</div>
@@ -545,7 +546,12 @@
   <div class="kpi-card kpi-blue">
     <div class="clabel">Saldo Disponível</div>
     <div class="kpi-val" id="kpi-cash">–</div>
-    <div class="kpi-sub">Retorno: <b id="kpi-return">–</b> · Exposição: <b id="kpi-exp">–</b> · <b id="kpi-pos">–</b></div>
+    <div class="kpi-sub">Retorno: <b id="kpi-return">–</b> · <b id="kpi-pos">–</b></div>
+  </div>
+  <div class="kpi-card kpi-blue">
+    <div class="clabel">Exposição</div>
+    <div class="kpi-val b" id="kpi-exp-pct">–</div>
+    <div class="kpi-sub"><b id="kpi-exp-usd">–</b> · <b id="kpi-pos-exp">–</b></div>
   </div>
 </div>
 
@@ -4395,8 +4401,18 @@ async function updateAll(){
     document.getElementById('kpi-portfolio').textContent=usd(okxFull);
     document.getElementById('kpi-initial').textContent=usd(ic);
     document.getElementById('kpi-rpnl').innerHTML=colored(portfolio.realized_pnl);
-    document.getElementById('kpi-exp').textContent=pct(portfolio.total_exposure_pct);
     document.getElementById('kpi-pos').textContent=portfolio.open_position_count+' posições';
+    // Exposição
+    const expPct = portfolio.total_exposure_pct || 0;
+    const expUsd = portfolio.notional_crypto    || 0;
+    const expPctEl = document.getElementById('kpi-exp-pct');
+    if(expPctEl){
+      expPctEl.innerHTML = `<span style="color:${expPct>0.3?'var(--red)':expPct>0.1?'var(--yellow)':'var(--green)'};font-weight:800">${(expPct*100).toFixed(1)}%</span>`;
+    }
+    const expUsdEl = document.getElementById('kpi-exp-usd');
+    if(expUsdEl) expUsdEl.textContent = usd(expUsd);
+    const posExpEl = document.getElementById('kpi-pos-exp');
+    if(posExpEl) posExpEl.textContent = portfolio.open_position_count+' pos';
     // Motor risk bars (mrisk)
     const bt=portfolio.portfolio_beta||0,dd=portfolio.drawdown_pct||0,ex=portfolio.total_exposure_pct||0;
     function mbar(fillId,val,max,w=0.6,d=0.85){

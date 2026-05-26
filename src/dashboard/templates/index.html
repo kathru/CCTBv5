@@ -151,8 +151,9 @@
         rgba(139,92,246,0.10) 50%,
         rgba(16,185,129,0.08) 100%);
       border: 1px solid rgba(99,102,241,0.30);
-      border-radius: 10px;
-      padding: 14px 20px 12px;
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+      padding: 14px 20px 14px;
       margin-bottom: 0;
       display: flex; align-items: center; gap: 16px;
     }
@@ -527,36 +528,39 @@
 <!-- ══ MOTOR ═══════════════════════════════════════════════ -->
 <div class="motor-hero">
   <div class="motor-hero-pulse">⚡</div>
-  <div>
+  <div style="flex:1;min-width:0">
     <div class="motor-hero-title">Motor Probabilístico</div>
     <div class="motor-hero-sub">Coração do sistema · Score · Gates · EV · Sizing</div>
   </div>
+  <!-- Métricas centrais -->
+  <div style="display:flex;gap:14px;align-items:center;margin-right:14px;flex-shrink:0">
+    <div style="text-align:center">
+      <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Score</div>
+      <div id="motor-decision-score" style="font-size:1rem;font-weight:800;color:#a5b4fc">–</div>
+    </div>
+    <div style="width:1px;height:28px;background:rgba(255,255,255,0.10);border-radius:1px"></div>
+    <div style="text-align:center">
+      <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Kelly</div>
+      <div id="motor-decision-kelly" style="font-size:1rem;font-weight:800;color:#7dd3fc">–</div>
+    </div>
+    <div style="width:1px;height:28px;background:rgba(255,255,255,0.10);border-radius:1px"></div>
+    <div style="text-align:center">
+      <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Thr</div>
+      <div id="motor-decision-thr" style="font-size:1rem;font-weight:800;color:#6ee7b7">–</div>
+    </div>
+  </div>
+  <!-- Badge de decisão -->
   <div class="motor-hero-badge" id="motor-hero-decision">–</div>
 </div>
 
 <div class="grid" style="grid-template-columns:1fr">
 
-  <!-- Motor Probabilístico — redesigned -->
-  <div class="card" style="border-top-left-radius:0;border-top-right-radius:0;border-top:none;margin-top:0">
+  <!-- Motor Probabilístico — card colado no hero -->
+  <div class="card" style="border-top-left-radius:0;border-top-right-radius:0;border-top:none;border-left:1px solid rgba(99,102,241,0.30);border-right:1px solid rgba(99,102,241,0.30);border-bottom:1px solid rgba(99,102,241,0.30);margin-top:0;padding-top:14px">
 
-    <!-- ① DECISÃO FINAL -->
-    <div id="motor-decision-banner" class="motor-decision md-hold">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span id="motor-decision-badge" class="md-badge" style="color:var(--muted)">– –</span>
-        <div>
-          <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px;">Decisão Final</div>
-          <div style="font-size:0.88rem;">Score: <b id="motor-decision-score">–</b> · Kelly: <b id="motor-decision-kelly">–</b> · Thr: <b id="motor-decision-thr">–</b></div>
-        </div>
-      </div>
-      <div style="text-align:right;">
-        <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px;">Risk Engine</div>
-        <span id="motor-badge" class="hbadge hbadge-gray" style="font-size:0.75rem">normal</span>
-      </div>
-    </div>
-
-    <!-- ② FUNIL DE DECISÃO -->
-    <div class="motor-section">
-      <div class="motor-section-lbl">② Funil de Decisão</div>
+    <!-- FUNIL DE DECISÃO (primeiro elemento visível) -->
+    <div class="motor-section" style="margin-top:0">
+      <div class="motor-section-lbl">Funil de Decisão</div>
       <div class="funnel-row">
         <div class="funnel-stage" id="fs-regime">
           <div class="fs-label">Regime</div>
@@ -833,7 +837,11 @@
 
     <!-- ⑦ MÉTRICAS DE RISCO -->
     <div class="motor-section">
-      <div class="motor-section-lbl">⑦ Métricas de Risco</div>
+      <div class="motor-section-lbl" style="display:flex;align-items:center;gap:8px">
+        ⑦ Métricas de Risco
+        <span style="margin-left:auto;font-size:0.7rem;color:rgba(255,255,255,0.4);font-weight:400;text-transform:none;letter-spacing:0">Risk Engine:</span>
+        <span id="motor-badge" class="hbadge hbadge-gray" style="font-size:0.72rem">normal</span>
+      </div>
       <div class="mrisk-list">
         <div class="mrisk-item">
           <div class="mrisk-top">
@@ -4609,35 +4617,24 @@ async function updateAll(){
       el.style.transform=active?'scale(1.04)':'';
     });
 
-    // ── Decisão Final banner ──────────────────────────────────
-    const banner=document.getElementById('motor-decision-banner');
-    const dbadge=document.getElementById('motor-decision-badge');
-    const dscore=document.getElementById('motor-decision-score');
-    const dkelly=document.getElementById('motor-decision-kelly');
-    const dthr  =document.getElementById('motor-decision-thr');
-    if(banner){
-      const isSignal=(latest.result==='SIGNAL');
+    // ── Hero do Motor — decisão + métricas ───────────────────
+    {
+      const isSignal =(latest.result==='SIGNAL');
       const isBlocked=rg.includes('BEAR')||rg.includes('PANIC');
-      if(isSignal){
-        const dir=(latest.direction||'LONG').toUpperCase();
-        banner.className='motor-decision '+(dir==='LONG'?'md-long':'md-short');
-        if(dbadge){ dbadge.textContent=dir==='LONG'?'▲ LONG':'▼ SHORT'; dbadge.style.color=dir==='LONG'?'var(--green)':'var(--red)'; }
-      } else if(isBlocked){
-        banner.className='motor-decision md-hold';
-        if(dbadge){ dbadge.textContent='⛔ BLOQUEADO'; dbadge.style.color='var(--red)'; }
-      } else {
-        banner.className='motor-decision md-hold';
-        if(dbadge){ dbadge.textContent='⏸ AGUARDANDO'; dbadge.style.color='var(--muted)'; }
-      }
+      const dir      =(latest.direction||'LONG').toUpperCase();
+
+      // Métricas no hero
+      const dscore=document.getElementById('motor-decision-score');
+      const dkelly=document.getElementById('motor-decision-kelly');
+      const dthr  =document.getElementById('motor-decision-thr');
       if(dscore) dscore.textContent=rawScore.toFixed(1)+'%';
       if(dkelly) dkelly.textContent=(effKelly*100).toFixed(1)+'%';
       if(dthr)   dthr.textContent=thrVal.toFixed(1)+'%';
 
-      // Sincroniza badge hero com a decisão
+      // Badge de decisão no hero
       const heroBadge=document.getElementById('motor-hero-decision');
       if(heroBadge){
         if(isSignal){
-          const dir=(latest.direction||'LONG').toUpperCase();
           heroBadge.textContent=dir==='LONG'?'▲ LONG':'▼ SHORT';
           heroBadge.style.background=dir==='LONG'?'rgba(16,185,129,0.18)':'rgba(239,68,68,0.18)';
           heroBadge.style.color=dir==='LONG'?'var(--green)':'var(--red)';

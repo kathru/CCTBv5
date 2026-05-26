@@ -2617,7 +2617,7 @@ function renderGovernance(status, drift, live, schema){
     const FLABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)','m8_vol_state':'Vol.State (M8)','m9_sentiment':'Sentiment (M9)'};
     if(!keys.length && drift.overall_status==='no_baseline'){
       driftEl.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Baseline não encontrado — rode feature_analysis.py</div>';
-      if(driftBadge){ driftBadge.textContent='sem baseline'; driftBadge.className='hbadge hbadge-gray'; }
+      if(driftBadge){ driftBadge.textContent='sem baseline'; driftBadge.className='hbadge hbadge-gray hbadge-ts'; }
     } else if(!keys.length){
       driftEl.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Carregando...</div>';
     } else {
@@ -2628,10 +2628,10 @@ function renderGovernance(status, drift, live, schema){
       if(driftBadge){
         if(allAwaiting){
           driftBadge.textContent='baseline carregado · aguardando obs.';
-          driftBadge.className='hbadge hbadge-blue';
+          driftBadge.className='hbadge hbadge-blue hbadge-ts';
         } else {
           driftBadge.textContent=maxPsi<0.1?'ESTÁVEL':maxPsi<0.2?'ATENÇÃO':'DRIFT';
-          driftBadge.className='hbadge '+(maxPsi<0.1?'hbadge-green':maxPsi<0.2?'hbadge-yellow':'hbadge-red');
+          driftBadge.className='hbadge hbadge-ts '+(maxPsi<0.1?'hbadge-green':maxPsi<0.2?'hbadge-yellow':'hbadge-red');
         }
       }
       driftEl.innerHTML=keys.map(k=>{
@@ -2738,7 +2738,7 @@ function renderImportance(data){
   if(atEl&&data.computed_at){
     const d=new Date(data.computed_at);
     atEl.textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    atEl.className='hbadge hbadge-blue';
+    atEl.className='hbadge hbadge-blue hbadge-ts';
   }
   if(metaEl) metaEl.textContent=`${(data.n_samples||0).toLocaleString('pt-BR')} amostras · Win Rate ${((data.win_rate||0)*100).toFixed(1)}%`;
 
@@ -2795,7 +2795,7 @@ function renderWfo(data){
   if(atEl&&latestRun){
     const d=new Date(latestRun);
     atEl.textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    atEl.className='hbadge hbadge-blue';
+    atEl.className='hbadge hbadge-blue hbadge-ts';
   }
 
   el.innerHTML=symKeys.map(sym=>{
@@ -3746,7 +3746,7 @@ function buildModelHealth(mh, ens){
   if(mhAt&&mh.evaluated_at){
     const d=new Date(mh.evaluated_at);
     mhAt.textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    mhAt.className='hbadge hbadge-blue';
+    mhAt.className='hbadge hbadge-blue hbadge-ts';
   }
 
   // Score
@@ -4709,7 +4709,7 @@ async function updateAll(){
     const tsBadge=document.getElementById('calib-ts-badge');
     if(tsBadge&&d){
       tsBadge.textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      tsBadge.className='hbadge hbadge-blue';
+      tsBadge.className='hbadge hbadge-blue hbadge-ts';
     }
     // Win rate bar
     const wrN=(calib.win_rate||0)*100;

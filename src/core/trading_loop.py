@@ -146,7 +146,7 @@ class TradingLoop:
         # ── Portfolio Engine ──────────────────────────────────
         self._portfolio = PortfolioEngine(
             bus=self._bus,
-            initial_capital=10000.0,
+            initial_capital=82_515.77,  # capital operacional (USDT, excl. OKB/BRL)
         )
         # Rastreia posições abertas em memória (atualizado a cada fill)
         self._positions: dict = {}   # symbol → Position (importado localmente nos métodos)

@@ -309,7 +309,7 @@ async def get_equity_curve(request: Request) -> dict:
     """
     db      = request.app.state.db
     cache   = request.app.state.cache
-    initial = 96_592.87  # capital inicial configurado
+    initial = 82_515.77  # capital operacional (USDT, excl. OKB/BRL)
 
     all_orders = await _get_filled_orders(db)
     trades     = _pair_trades(all_orders)
@@ -505,7 +505,7 @@ async def export_equity_csv(request: Request):
     db     = request.app.state.db
     orders = await _get_filled_orders(db)
     trades = _pair_trades(orders)
-    initial = 96_592.87
+    initial = 82_515.77  # capital operacional (USDT, excl. OKB/BRL)
 
     lines = ["trade,symbol,entry_ts,exit_ts,pnl,pnl_pct,equity,drawdown_pct"]
     equity = initial

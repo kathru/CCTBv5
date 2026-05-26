@@ -54,9 +54,9 @@ async def portfolio_summary(request: Request) -> dict:
     if portfolio is None:
         return {
             "available": False,
-            "initial_capital":    85_000.0,
-            "total_value":        85_000.0,
-            "cash_available":     85_000.0,
+            "initial_capital":    82_515.77,
+            "total_value":        82_515.77,
+            "cash_available":     82_515.77,
             "total_exposure_pct": 0.0,
             "open_position_count": 0,
             "realized_pnl":       0.0,
@@ -74,10 +74,13 @@ async def portfolio_summary(request: Request) -> dict:
 
     db = getattr(request.app.state, "db", None)
     cache = getattr(request.app.state, "cache", None)
-    initial = s.initial_capital if s.initial_capital > 1000.0 else 96_592.87
+    # Capital operacional = USDT disponível para negociação (sem OKB/BRL)
+    INITIAL_CAPITAL = 82_515.77
+    initial = s.initial_capital if s.initial_capital > 1000.0 else INITIAL_CAPITAL
 
     # ── Lê saldos OKX do Redis (atualizados pelo sync periódico) ───────────────
-    # Inclui TODOS os ativos: USDT, BTC, ETH, SOL, OKB, BRL
+    # Operacionais (portfolio): USDT, BTC, ETH, SOL
+    # Watch-only (display): OKB, BRL  — NÃO entram no portfolio total
     ALL_OKX_CCYS = ["USDT", "BTC", "ETH", "SOL", "OKB", "BRL"]
     okx_balances: dict[str, dict] = {}
     if cache:
@@ -214,29 +217,27 @@ async def portfolio_summary(request: Request) -> dict:
         cash_value  = s.cash_available
         total_value = cash_value + notional_bot + notional_sync
 
-    # Adiciona OKB e BRL ao total (se não incluídos no notional_sync)
-    extra_usd = 0.0
-    okx_extra_assets = {}   # OKB, BRL para exibição
+    # OKB e BRL: lidos do Redis apenas para exibição informativa (NÃO entram no portfolio)
+    okx_extra_assets = {}
     for ccy in ["OKB", "BRL"]:
         bal = okx_balances.get(ccy, {})
-        usd_val = bal.get("usdValue", 0.0)
+        usd_val = float(bal.get("usdValue", 0.0))
         if usd_val > 0:
-            extra_usd += usd_val
             okx_extra_assets[ccy] = {
-                "cashBal":  bal.get("cashBal", 0.0),
+                "cashBal":  float(bal.get("cashBal", 0.0)),
                 "usdValue": usd_val,
                 "ccy":      ccy,
             }
 
-    # Se o total do Redis não inclui OKB/BRL, adiciona
-    if not okx_total_raw:
-        total_value += extra_usd
+    # total_value = apenas ativos operacionais (USDT + BTC/ETH/SOL), sem OKB/BRL
+    # Se Redis tem total operacional (gravado sem OKB/BRL pelo exchange_sync), usa direto
+    # Caso contrário recalcula do que temos
+    # (okx_total_raw já foi gravado sem OKB/BRL pelo exchange_sync atualizado)
 
     unrealized    = unrealized_bot + unrealized_sync
-    # Exposição = apenas posições de trading (BTC/ETH/SOL), NÃO inclui OKB/BRL
-    # OKB e BRL são ativos watch-only, não representam risco de trading
-    notional_trading = notional_bot + notional_sync   # só BTC/ETH/SOL
-    notional_all     = total_value - cash_value       # total incl. OKB/BRL (para donut)
+    # Exposição = posições de trading (BTC/ETH/SOL) sobre total operacional
+    notional_trading = notional_bot + notional_sync
+    notional_all     = total_value - cash_value
     exposure_pct     = (
         notional_trading / total_value if total_value > 0 and notional_trading > 0 else 0.0
     )

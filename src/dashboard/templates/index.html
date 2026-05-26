@@ -2046,61 +2046,37 @@ function initDonutChart(){
 
 function updateDonut(portfolio,prices){
   if(!_donutChart||!portfolio) return;
-  const tv  = portfolio.liquid_total||portfolio.total_value||1;
-  const pos = portfolio.positions||{};
   const bal = portfolio.okx_balances||{};
-  const extra = portfolio.okx_extra_assets||{};
 
-  // Ativos OPERACIONAIS (bot pode tradear): USDT + BTC/ETH/SOL
-  const tradeable = [
+  // Apenas ativos OPERACIONAIS (bot pode tradear): USDT + BTC/ETH/SOL
+  // OKB e BRL são ativos fixos e não integram o portfolio operacional
+  const assets = [
     { name:'USDT', color:'#3b82f6', val: bal.USDT?.usdValue || portfolio.cash_available || 0 },
     { name:'BTC',  color:'#f97316', val: bal.BTC?.usdValue  || 0 },
     { name:'ETH',  color:'#6366f1', val: bal.ETH?.usdValue  || 0 },
     { name:'SOL',  color:'#8b5cf6', val: bal.SOL?.usdValue  || 0 },
   ].filter(a=>a.val>=1.0);
 
-  // Ativos FIXOS (watch-only, fora do alcance do bot): OKB + BRL
-  // Cores dessaturadas para indicar que não são operacionais
-  const fixed = [
-    { name:'OKB',      color:'#4a7ab5', val: bal.OKB?.usdValue || extra.OKB?.usdValue || 0, fixed:true },
-    { name:'BRL',      color:'#2d6e47', val: bal.BRL?.usdValue || extra.BRL?.usdValue || 0, fixed:true },
-  ].filter(a=>a.val>=1.0);
+  const tv = assets.reduce((s,a)=>s+a.val, 0) || 1;
 
-  const assets = [...tradeable, ...fixed];
-
-  // No donut: fixos têm borderDash para indicar separação visual
   _donutChart.data.labels   = assets.map(a=>a.name);
   _donutChart.data.datasets[0].backgroundColor = assets.map(a=>a.color);
-  _donutChart.data.datasets[0].borderColor      = assets.map(a=>a.fixed?'rgba(255,255,255,0.15)':'#0f1623');
-  _donutChart.data.datasets[0].borderWidth      = assets.map(a=>a.fixed?1:3);
+  _donutChart.data.datasets[0].borderColor      = assets.map(()=>'#0f1623');
+  _donutChart.data.datasets[0].borderWidth      = assets.map(()=>3);
   _donutChart.data.datasets[0].data = assets.map(a=>a.val);
   _donutChart.update('none');
 
   const leg = document.getElementById('donut-legend');
-  // Separador visual entre operacionais e fixos
-  const sepHtml = fixed.length
-    ? `<div style="margin:5px 0;border-top:1px dashed rgba(255,255,255,0.08);padding-top:5px;">
-         <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:5px;">Ativos fixos (não operados)</div>
-       </div>`
-    : '';
-
-  const rowHtml = (a) => {
-    const pct = tv>0?(a.val/tv*100).toFixed(1):'0.0';
-    const nameHtml = a.fixed
-      ? `<span style="color:var(--muted)">${a.name}</span>`
-      : a.name;
-    return`<div class="donut-row" style="${a.fixed?'opacity:0.7':''}">
+  leg.innerHTML = assets.map(a=>{
+    const pct = (a.val/tv*100).toFixed(1);
+    return`<div class="donut-row">
       <div class="donut-sym">
-        <div class="donut-dot" style="background:${a.color};${a.fixed?'border:1px dashed rgba(255,255,255,0.3)':''}"></div>
-        ${nameHtml}
+        <div class="donut-dot" style="background:${a.color}"></div>
+        ${a.name}
       </div>
-      <div><span class="donut-val" style="${a.fixed?'color:var(--muted)':''}">${usd(a.val)}</span><span class="donut-pct">(${pct}%)</span></div>
+      <div><span class="donut-val">${usd(a.val)}</span><span class="donut-pct">(${pct}%)</span></div>
     </div>`;
-  };
-
-  leg.innerHTML =
-    tradeable.map(rowHtml).join('') +
-    (fixed.length ? sepHtml + fixed.map(rowHtml).join('') : '');
+  }).join('');
 }
 
 // ── Regime tag helper ──────────────────────────────────────

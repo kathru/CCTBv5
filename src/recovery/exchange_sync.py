@@ -2,15 +2,17 @@
 ExchangeSync — Sincronização completa com o estado real do OKX.
 
 Ao iniciar (e a cada SYNC_INTERVAL_SECS), lê da exchange:
-  1. Saldo de TODOS os ativos (USDT, BTC, ETH, SOL, OKB, BRL, etc.)
+  1. Saldo dos ativos operacionais (USDT, BTC, ETH, SOL)
   2. Histórico de ordens preenchidas
   3. Reconstrói posições a partir do histórico
 
-Ativos monitorados:
+Ativos operacionais (incluídos no portfolio):
   USDT — stablecoin operacional (base para trades)
   BTC, ETH, SOL — cryptos negociadas pelo bot
-  OKB  — token nativo OKX (apenas monitorado, não negociado)
-  BRL  — fiat brasileiro (apenas monitorado, não negociado)
+
+Ativos excluídos do portfolio (watch-only, sem significância operacional):
+  OKB  — token nativo OKX (fixo, não negociado)
+  BRL  — fiat brasileiro (fixo, não negociado)
 
 Garante que, após um restart, o bot reflete exatamente o estado da exchange.
 """
@@ -20,22 +22,24 @@ from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
-# ── Ativos monitorados ────────────────────────────────────────────────────────
-# Todos incluídos no portfolio total e exibidos no dashboard.
-VALID_CCYS = {"USDT", "BTC", "ETH", "SOL", "OKB", "BRL"}
+# ── Ativos operacionais ───────────────────────────────────────────────────────
+# Portfolio = apenas ativos que o bot pode negociar (USDT + trading cryptos).
+# OKB e BRL são ativos fixos e NÃO entram no portfolio/P&L/drawdown.
+VALID_CCYS = {"USDT", "BTC", "ETH", "SOL"}
 
 # Cryptos que o bot negocia ativamente (pares com USDT)
 TRADING_CCYS    = {"BTC", "ETH", "SOL"}
 TRADING_SYMBOLS = {"BTC-USDT", "ETH-USDT", "SOL-USDT"}
 
-# Ativos monitorados mas NÃO negociados pelo bot
+# Ativos watch-only lidos do OKX apenas para exibição informativa no dashboard
 WATCH_ONLY_CCYS = {"OKB", "BRL"}
 
 # Ativos fiduciários (fiat) — valor em moeda local, convertido para USD
 FIAT_CCYS = {"BRL"}
 
-# Capital inicial do demo — sobrescrito pelo Redis na 1ª execução
-INITIAL_CAPITAL_USD = 96_592.87
+# Capital inicial operacional = saldo USDT disponível para negociação
+# Exclui OKB ($9.122,10) e BRL ($4.955,00) que são ativos fixos
+INITIAL_CAPITAL_USD = 82_515.77
 
 # Chave Redis para capital inicial persistente
 INITIAL_CAPITAL_KEY = "portfolio:initial_capital_usdt"
@@ -76,28 +80,35 @@ class ExchangeSync:
             all_details = await self._okx.get_account_details()
             summary["assets"] = all_details
 
-            # Separa válidos vs ignorados
-            valid   = [d for d in all_details if d["ccy"] in VALID_CCYS]
-            ignored = [d for d in all_details if d["ccy"] not in VALID_CCYS]
+            # Ativos operacionais (entram no portfolio) vs watch-only (só display)
+            KNOWN_CCYS = VALID_CCYS | WATCH_ONLY_CCYS
+            operational = [d for d in all_details if d["ccy"] in VALID_CCYS]
+            watch_only  = [d for d in all_details if d["ccy"] in WATCH_ONLY_CCYS]
+            ignored     = [d for d in all_details if d["ccy"] not in KNOWN_CCYS]
             if ignored:
-                logger.warning(
-                    "ExchangeSync: ativos ignorados: %s",
+                logger.debug(
+                    "ExchangeSync: ativos desconhecidos ignorados: %s",
                     [f"{d['ccy']}={d['cashBal']:.4f}" for d in ignored],
                 )
 
-            details = valid
+            details = operational  # usado para cálculo de portfolio
 
             usdt = next((d for d in details if d["ccy"] == "USDT"), {})
             summary["usdt_balance"]     = usdt.get("cashBal", 0.0)
             summary["total_equity_usd"] = sum(d["usdValue"] for d in details)
 
             logger.info(
-                "ExchangeSync: ativos válidos — %s | Total=%.2f USD",
+                "ExchangeSync: ativos operacionais — %s | Total=%.2f USD",
                 " | ".join(
                     f"{d['ccy']}={d['cashBal']:.4f}(~${d['usdValue']:.2f})" for d in details
                 ),
                 summary["total_equity_usd"],
             )
+            if watch_only:
+                logger.info(
+                    "ExchangeSync: ativos watch-only (excluídos do portfolio) — %s",
+                    " | ".join(f"{d['ccy']}=${d['usdValue']:.2f}" for d in watch_only),
+                )
 
             # ── 2. Separa crypto tradeable vs watch-only ─────────────────────
             # Threshold de dust: ignora saldos < $1 USD para evitar posições fantasma
@@ -107,15 +118,22 @@ class ExchangeSync:
                 if ccy in TRADING_CCYS and d["cashBal"] > 0 and d["usdValue"] >= DUST_USD:
                     symbol = f"{ccy}-USDT"
                     summary["crypto_positions"][symbol] = d["cashBal"]
-                elif ccy in WATCH_ONLY_CCYS or ccy == "USDT":
+                elif ccy == "USDT":
                     summary["watch_balances"][ccy] = {
                         "cashBal":  d["cashBal"],
                         "usdValue": d["usdValue"],
                         "ccy":      ccy,
                     }
+            # Armazena watch-only no summary (para display, não para portfolio)
+            for d in watch_only:
+                summary["watch_balances"][d["ccy"]] = {
+                    "cashBal":  d["cashBal"],
+                    "usdValue": d["usdValue"],
+                    "ccy":      d["ccy"],
+                }
 
-            # ── 3. Atualiza Redis com todos os saldos ───────────────────────
-            await self._store_balances(details)
+            # ── 3. Atualiza Redis com todos os saldos (operacionais + watch-only)
+            await self._store_balances(details + watch_only)
 
             # ── 4. Histórico de ordens (paginado) ────────────────────────────
             logger.info("ExchangeSync: importando histórico de ordens OKX...")
@@ -166,11 +184,13 @@ class ExchangeSync:
         """
         try:
             all_details = await self._okx.get_account_details()
-            details = [d for d in all_details if d["ccy"] in VALID_CCYS]
+            # Operacionais entram no total; watch-only vão pro Redis só para display
+            details    = [d for d in all_details if d["ccy"] in VALID_CCYS]
+            watch_only = [d for d in all_details if d["ccy"] in WATCH_ONLY_CCYS]
 
-            await self._store_balances(details)
+            await self._store_balances(details + watch_only)
 
-            total = sum(d["usdValue"] for d in details)
+            total = sum(d["usdValue"] for d in details)   # SEM OKB/BRL
             usdt  = next((d for d in details if d["ccy"] == "USDT"), {})
             cash  = usdt.get("cashBal", 0.0)
 
@@ -232,8 +252,8 @@ class ExchangeSync:
             }
             await self._cache.set(key, str(payload), ttl=BALANCE_TTL)
 
-        # Armazena total também
-        total_usd = sum(d["usdValue"] for d in details)
+        # Armazena total operacional (sem OKB/BRL) para o portfolio router
+        total_usd = sum(d["usdValue"] for d in details if d["ccy"] in VALID_CCYS)
         await self._cache.set("okx:portfolio_total_usd", str(round(total_usd, 4)), ttl=BALANCE_TTL)
 
     @staticmethod
@@ -326,9 +346,9 @@ class ExchangeSync:
         from ..core.models import Position, PositionSide, PositionStatus
         from ..persistence.repositories.positions import PositionRepository
 
-        # Portfolio total = soma dos usdValues de todos os ativos válidos
-        # (USDT + BTC + ETH + SOL + OKB + BRL)
-        total_portfolio = sum(d["usdValue"] for d in details)
+        # Portfolio total = soma dos usdValues dos ativos OPERACIONAIS
+        # (USDT + BTC + ETH + SOL) — OKB e BRL excluídos (ativos fixos)
+        total_portfolio = sum(d["usdValue"] for d in details if d["ccy"] in VALID_CCYS)
 
         usdt = next((d for d in details if d["ccy"] == "USDT"), {})
         cash = usdt.get("cashBal", 0.0)
@@ -337,13 +357,16 @@ class ExchangeSync:
         self._portfolio._state.total_value    = total_portfolio
 
         # Capital inicial: persistido no Redis, restaurado em reboots
+        # Se o valor armazenado for o antigo (inclui OKB/BRL), força atualização
         stored_initial = await self._cache.get(INITIAL_CAPITAL_KEY)
-        if stored_initial:
+        if stored_initial and abs(float(stored_initial) - INITIAL_CAPITAL_USD) < 1.0:
+            # Valor já correto
             initial_capital = float(stored_initial)
         else:
+            # Não armazenado ou diferente do esperado → usa/corrige para valor operacional
             initial_capital = INITIAL_CAPITAL_USD
             await self._cache.set(INITIAL_CAPITAL_KEY, str(initial_capital), ttl=0)
-            logger.info("Capital inicial demo registrado: $%.2f", initial_capital)
+            logger.info("Capital inicial operacional registrado/corrigido: $%.2f", initial_capital)
 
         self._portfolio._state.initial_capital = initial_capital
 

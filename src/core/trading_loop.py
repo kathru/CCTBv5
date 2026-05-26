@@ -893,6 +893,7 @@ class TradingLoop:
         Detecta fills de ordens paper trading:
           - PAPER-xxx: simulação local (sem credenciais demo) — usa preço do cache
           - OKX demo IDs: verifica status real via OKX e propaga fill
+          - Fallback: ordens SUBMITTED há >10min são verificadas via histórico OKX
         """
         if not settings.okx_paper_trading or settings.monitor_only:
             return
@@ -926,13 +927,14 @@ class TradingLoop:
                 await self._on_fill_update_portfolio(order)
 
             elif eid:
-                # OKX demo path — query real status (timeout 5s para não bloquear o loop)
+                # OKX demo path — query real status (timeout 8s para não bloquear o loop)
                 try:
                     remote = await asyncio.wait_for(
                         self._okx.get_order_status(eid, symbol=order.symbol),
-                        timeout=5.0,
+                        timeout=8.0,
                     )
-                    if remote.get("status") == "filled":
+                    remote_status = remote.get("status", "")
+                    if remote_status == "filled":
                         order.status          = OrderStatus.FILLED
                         order.filled_quantity = float(remote.get("filled_qty") or order.quantity)
                         order.avg_fill_price  = float(remote.get("avg_px") or 0)
@@ -941,8 +943,8 @@ class TradingLoop:
                             order.avg_fill_price * order.filled_quantity * 0.001, 6
                         )
                         logger.info(
-                            "[DEMO-FILL] order=%s symbol=%s qty=%s price=%s",
-                            order.client_order_id, order.symbol,
+                            "[DEMO-FILL] order=%s symbol=%s side=%s qty=%s price=%s",
+                            order.client_order_id, order.symbol, order.side,
                             order.filled_quantity, order.avg_fill_price,
                         )
                         await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
@@ -952,10 +954,77 @@ class TradingLoop:
                             name=f"persist_fill_{order.client_order_id[:8]}",
                         )
                         await self._on_fill_update_portfolio(order)
+                    elif remote_status == "cancelled":
+                        order.status       = OrderStatus.CANCELLED
+                        order.cancelled_at = _dt.datetime.now(_dt.UTC)
+                        logger.warning(
+                            "[DEMO-CANCELLED] order=%s symbol=%s side=%s — cancelada na OKX",
+                            order.client_order_id, order.symbol, order.side,
+                        )
+                        asyncio.create_task(
+                            self._oms._persist(order),
+                            name=f"persist_cancel_{order.client_order_id[:8]}",
+                        )
+                    else:
+                        # Status inesperado ou ainda pendente — loga para diagnóstico
+                        logger.debug(
+                            "[DEMO-STATUS] order=%s symbol=%s side=%s status=%r (aguardando fill)",
+                            order.client_order_id, order.symbol, order.side, remote_status,
+                        )
                 except TimeoutError:
-                    logger.debug("Fill check timeout eid=%s", eid)
+                    logger.warning(
+                        "[DEMO-FILL-TIMEOUT] eid=%s symbol=%s side=%s — "
+                        "verificação de fill excedeu 8s; será retentada no próximo ciclo",
+                        eid, order.symbol, getattr(order, "side", "?"),
+                    )
                 except Exception as exc:
-                    logger.debug("Fill check failed eid=%s: %s", eid, exc)
+                    logger.warning(
+                        "[DEMO-FILL-ERROR] eid=%s symbol=%s: %s — retentando no próximo ciclo",
+                        eid, order.symbol, exc,
+                    )
+
+        # ── Fallback: ordens SUBMITTED há >10min → busca em histórico OKX ────
+        # Cobre o caso em que get_order_status falha repetidamente mas OKX executou
+        stale_cutoff = _dt.datetime.now(_dt.UTC) - _dt.timedelta(minutes=10)
+        for order in self._oms.get_open_orders():
+            eid = order.exchange_order_id or ""
+            if eid.startswith("PAPER-") or not eid:
+                continue
+            sub_at = getattr(order, "submitted_at", None)
+            if not sub_at or sub_at > stale_cutoff:
+                continue  # não é stale
+            try:
+                logger.warning(
+                    "[STALE-ORDER] %s %s %s submitted_at=%s — consultando histórico OKX",
+                    order.client_order_id, order.side, order.symbol, sub_at,
+                )
+                filled_history = await asyncio.wait_for(
+                    self._okx.get_filled_orders(limit=50),
+                    timeout=8.0,
+                )
+                for rec in filled_history:
+                    if str(rec.get("ordId", "")) == str(eid):
+                        order.status          = OrderStatus.FILLED
+                        order.filled_quantity = float(rec.get("fillSz", 0) or order.quantity)
+                        order.avg_fill_price  = float(rec.get("avgPx", 0) or 0)
+                        order.filled_at       = _dt.datetime.now(_dt.UTC)
+                        order.fees_paid       = round(
+                            order.avg_fill_price * order.filled_quantity * 0.001, 6
+                        )
+                        logger.info(
+                            "[STALE-FILL-RECOVERED] order=%s symbol=%s side=%s qty=%s price=%s",
+                            order.client_order_id, order.symbol, order.side,
+                            order.filled_quantity, order.avg_fill_price,
+                        )
+                        await self._bus.publish(Topic.FILL, OrderFilledEvent(order=order))
+                        asyncio.create_task(
+                            self._oms._persist(order),
+                            name=f"persist_stale_{order.client_order_id[:8]}",
+                        )
+                        await self._on_fill_update_portfolio(order)
+                        break
+            except Exception as exc:
+                logger.warning("[STALE-ORDER-CHECK-ERROR] %s: %s", eid, exc)
 
     # ── Main heartbeat loop ────────────────────────────────────────────────────
 
@@ -1019,9 +1088,23 @@ class TradingLoop:
                     if pos.quantity <= 1e-8:
                         pos.status = PositionStatus.CLOSED
                         del self._positions[symbol]
+                        # Remove imediatamente do Redis — não esperar TTL expirar
+                        try:
+                            await self._cache.delete_position(symbol)
+                        except Exception:
+                            pass
+                        logger.info(
+                            "Posição fechada: %s | pnl=%.2f | cash=%.2f",
+                            symbol, pnl, self._cash,
+                        )
                 else:
                     # Venda sem posição registrada (ex: restart)
                     self._cash += qty * price - fees
+                    logger.warning(
+                        "SELL sem posição em memória: %s | qty=%s price=%s "
+                        "(possível restart entre BUY e SELL)",
+                        symbol, qty, price,
+                    )
 
             # Atualiza PortfolioEngine com preços atuais
             prices = {}

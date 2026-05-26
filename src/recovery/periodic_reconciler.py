@@ -112,6 +112,28 @@ class PeriodicReconciler:
         if self._order_manager:
             open_orders = self._order_manager.get_open_orders()
 
+        # Fix: também inclui ordens SUBMITTED no DB que não estão em memória.
+        # Cenário: bot reiniciou entre o SELL e a detecção do fill → ordem
+        # persiste como "submitted" no DB mas restore_oms_state pode tê-la perdido.
+        try:
+            from ..persistence.repositories.orders import OrderRepository
+            repo = OrderRepository(self._db)
+            db_open = await repo.get_open()
+            mem_ids = {o.client_order_id for o in open_orders}
+            for o in db_open:
+                if o.client_order_id not in mem_ids:
+                    logger.warning(
+                        "PeriodicReconciler: ordem %s (%s %s) está SUBMITTED no DB "
+                        "mas ausente da memória OMS — adicionando para reconciliação",
+                        o.client_order_id, o.side.value, o.symbol,
+                    )
+                    open_orders.append(o)
+                    # Registra na memória do OMS para que _simulate_paper_fills detecte
+                    if self._order_manager:
+                        self._order_manager._orders[o.client_order_id] = o
+        except Exception as exc:
+            logger.warning("PeriodicReconciler: falha ao buscar ordens do DB: %s", exc)
+
         if not open_orders:
             logger.debug("No open orders — skipping reconciliation")
             return

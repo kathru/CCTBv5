@@ -80,6 +80,6 @@ def get_version_info() -> dict:
         "minor":         minor,
         "patch":         patch,
         "phase_name":    phase_name,
-        "title_desktop": f"Claude Code Trading Bot v{version}",
-        "title_mobile":  f"CCTB v.{version}",
+        "title_desktop": f"Aether Alpha v{version}",
+        "title_mobile":  f"Aether α v{version}",
     }

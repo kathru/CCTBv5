@@ -3177,7 +3177,7 @@ function buildEquityCharts(eq){
     symEl.innerHTML = Object.entries(eq.by_symbol).map(([sym,s])=>{
       const p=s.pnl, cls=p>=0?'var(--green)':'var(--red)';
       return`<span style="font-size:0.82rem;padding:2px 8px;border-radius:4px;border:1px solid ${cls}33;color:${cls}">
-        ${sym.replace('-USDT','')} ${p>=0?'+':''}$${Math.abs(p).toFixed(0)} (${(s.win_rate*100).toFixed(0)}% WR)
+        ${sym.replace('-USDT','')} ${p>=0?'+$':'-$'}${Math.abs(p).toFixed(0)} (${(s.win_rate*100).toFixed(0)}% WR)
       </span>`;
     }).join('');
   }
@@ -3345,7 +3345,7 @@ async function updateSlow(){
     fetchJSON('/api/governance/importance'),fetchJSON('/api/governance/wfo'),
     fetchJSON('/api/reconciler/status'),
     fetchJSON('/api/analytics/equity_curve'),
-    fetchJSON('/api/analytics/rolling?window=10'),
+    fetchJSON('/api/analytics/rolling?window=5'),
     fetchJSON('/api/analytics/distribution'),
     fetchJSON('/api/analytics/reality_check'),
     fetchJSON('/api/analytics/meta_overfitting?n_trials=10'),

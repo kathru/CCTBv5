@@ -61,6 +61,9 @@ def _sortino(returns: list[float]) -> float | None:
 def _calmar(total_return_pct: float, max_dd_pct: float, days: int) -> float | None:
     if days < 1:
         return None
+    # Calmar requer track record mínimo de 30 dias para anualização ser significativa
+    if days < 30:
+        return None
     # Se drawdown = 0 e retorno positivo → excelente (retorna retorno anualizado como proxy)
     # Se drawdown = 0 e retorno ≤ 0 → N/A (sem informação)
     if max_dd_pct <= 0:
@@ -190,7 +193,8 @@ async def get_quantitative(request: Request) -> dict:
     sortino = _sortino(pnl_pcts)
 
     # ── Max Drawdown & Calmar ───────────────────────────────
-    equity = [0.0]
+    INITIAL_CAPITAL = 82_515.77
+    equity = [INITIAL_CAPITAL]
     for p in pnls:
         equity.append(equity[-1] + p)
 
@@ -209,8 +213,8 @@ async def get_quantitative(request: Request) -> dict:
             cur_dd_dur += 1
             max_dd_dur = max(max_dd_dur, cur_dd_dur)
 
-    # Calmar: retorno total / max_dd (precisa de pelo menos 1 trade)
-    total_return_pct = equity[-1] / 10000 if equity[-1] != 0 else 0  # assume capital 10k
+    # Calmar: retorno total / max_dd
+    total_return_pct = (equity[-1] - INITIAL_CAPITAL) / INITIAL_CAPITAL if INITIAL_CAPITAL > 0 else 0
     days_active = 1
     if trades:
         d0 = trades[0]["entry_ts"]

@@ -39,12 +39,15 @@ Fee OKX Spot (tier VIP0):
   Spread médio BTC: ~0.01–0.05%; ETH/SOL: ~0.02–0.10%
 """
 
+import json
 import logging
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
+
+SLIPPAGE_REDIS_TTL = 7 * 24 * 3600   # 7 dias
 
 # ── Thresholds de decisão maker/taker ────────────────────────────────────────
 
@@ -154,6 +157,70 @@ class SlippageTracker:
 
     def all_stats(self) -> dict:
         return {sym: self.stats(sym) for sym in self._records}
+
+    async def save_symbol(self, cache, symbol: str) -> None:
+        """Persiste janela rolling de um símbolo no Redis."""
+        try:
+            recs = list(self._records.get(symbol, []))
+            data = [
+                {
+                    "symbol":         r.symbol,
+                    "side":           r.side,
+                    "expected_price": r.expected_price,
+                    "fill_price":     r.fill_price,
+                    "quantity":       r.quantity,
+                    "executed_at":    r.executed_at.isoformat(),
+                }
+                for r in recs
+            ]
+            await cache.set(
+                f"exec:slippage:{symbol}",
+                json.dumps(data),
+                ttl=SLIPPAGE_REDIS_TTL,
+            )
+        except Exception as exc:
+            logger.debug("SlippageTracker.save_symbol error: %s", exc)
+
+    async def load_all(self, cache) -> None:
+        """Carrega histórico de slippage do Redis na inicialização."""
+        try:
+            # Usa cliente Redis bruto para KEYS pattern
+            r = cache._r()
+            raw_keys = await r.keys("exec:slippage:*")
+            for bkey in raw_keys:
+                key = bkey.decode() if isinstance(bkey, bytes) else bkey
+                raw = await cache.get(key)
+                if not raw:
+                    continue
+                # cache.get() já faz json.loads — raw pode ser list ou str
+                data = raw if isinstance(raw, list) else json.loads(raw)
+                for item in data:
+                    sym = item.get("symbol", "")
+                    if not sym:
+                        continue
+                    if sym not in self._records:
+                        self._records[sym] = deque(maxlen=self._window)
+                    try:
+                        executed_at = (
+                            datetime.fromisoformat(item["executed_at"])
+                            if item.get("executed_at") else datetime.now(UTC)
+                        )
+                    except Exception:
+                        executed_at = datetime.now(UTC)
+                    rec = SlippageRecord(
+                        symbol=sym,
+                        side=item.get("side", "buy"),
+                        expected_price=float(item.get("expected_price", 0)),
+                        fill_price=float(item.get("fill_price", 0)),
+                        quantity=float(item.get("quantity", 0)),
+                        executed_at=executed_at,
+                    )
+                    self._records[sym].append(rec)
+            loaded = {k: len(v) for k, v in self._records.items()}
+            if loaded:
+                logger.info("SlippageTracker loaded from Redis: %s", loaded)
+        except Exception as exc:
+            logger.debug("SlippageTracker.load_all error: %s", exc)
 
     def quality_sizing_mult(self, symbol: str) -> float:
         """Retorna sizing mult direto — usado pelo SizingEngine."""
@@ -267,6 +334,16 @@ class ExecutionIntelligence:
     def __init__(self) -> None:
         self.router  = SmartOrderRouter()
         self.tracker = SlippageTracker()
+        self._cache  = None
+
+    def set_cache(self, cache) -> None:
+        """Injeta cache (Redis) — chamado na inicialização do TradingLoop."""
+        self._cache = cache
+
+    async def load_history(self) -> None:
+        """Carrega histórico de slippage do Redis. Chamar após set_cache."""
+        if self._cache:
+            await self.tracker.load_all(self._cache)
 
     def decide_order_type(
         self,
@@ -299,7 +376,14 @@ class ExecutionIntelligence:
     ) -> float:
         """Registra fill e retorna slippage em bps."""
         rec = self.tracker.record(symbol, side, expected_price, fill_price, quantity)
+        # Persiste no Redis de forma assíncrona (fire-and-forget via caller)
+        self._pending_save = symbol
         return rec.slippage_bps
+
+    async def flush_to_redis(self, symbol: str) -> None:
+        """Persiste janela rolling do símbolo no Redis após record_fill."""
+        if self._cache:
+            await self.tracker.save_symbol(self._cache, symbol)
 
     def sizing_mult(self, symbol: str) -> float:
         """Multiplicador de sizing baseado em qualidade de execução histórica."""

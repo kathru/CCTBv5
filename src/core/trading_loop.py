@@ -291,6 +291,10 @@ class TradingLoop:
         # Injeta DB no AdvancedRiskManager (disponível pós-boot)
         self._adv_risk.set_db(self._db)
 
+        # Phase 17 — Injeta cache e carrega histórico de slippage do Redis
+        _exec_intel.set_cache(self._cache)
+        await _exec_intel.load_history()
+
         if self._app_state:
             self._app_state.ws_watchdog       = self._ws_watchdog
             self._app_state.heartbeat_watchdog = self._heartbeat
@@ -1049,6 +1053,7 @@ class TradingLoop:
                         fill_price=fill_price,
                         quantity=float(order.filled_quantity or order.quantity or 0),
                     )
+                    await _exec_intel.flush_to_redis(symbol)
                 except Exception as _exc:
                     logger.debug("record_fill error: %s", _exc)
             qty      = order.filled_quantity or order.quantity

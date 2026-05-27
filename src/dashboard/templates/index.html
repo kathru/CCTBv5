@@ -1884,9 +1884,15 @@ function setChartWindow(pts,btnId){
 // ── Sampling independente a cada 60s ───────────────────────
 async function samplePortfolio(){
   const d=await fetchJSON('/api/portfolio/summary');
-  if(d&&(d.liquid_total||d.total_value)>0){
-    // Usa liquid_total (USDT + BTC + ETH + SOL) para o gráfico de evolução
-    pushPortfolioValue(d.liquid_total||d.total_value);
+  if(d){
+    // Gráfico de evolução: Saldo Disponível contábil (initial_capital + net_pnl)
+    // Só muda quando trades são registrados no DB — elimina ruído de preço/sync OKX
+    const perf=await fetchJSON('/api/analytics/performance');
+    const grossPnl = d.realized_pnl || 0;
+    const fees     = perf?.total_fees || 0;
+    const netPnl   = grossPnl - fees;
+    const saldo    = (d.initial_capital || 82515.77) + netPnl;
+    if(saldo > 0) pushPortfolioValue(saldo);
     updatePortfolioChart();
     updateDonut(d, _c.prices);
   }

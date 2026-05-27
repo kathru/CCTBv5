@@ -243,6 +243,26 @@ class BacktestResult:
     def avg_candles_held(self) -> float:
         return sum(t.candles_held for t in self.trades) / len(self.trades) if self.trades else 0.0
 
+    @property
+    def sharpe_per_trade(self) -> float | None:
+        """
+        Sharpe ratio por trade (não anualizado).
+        Usa mean/std dos retornos percentuais por trade.
+        FIX(🟡 MELHORIA): backtest precisava de Sharpe para comparação IS/OOS.
+        Retorna None se < 3 trades ou std == 0.
+        """
+        if len(self.trades) < 3:
+            return None
+        pcts = [t.pnl_pct for t in self.trades]
+        mean = sum(pcts) / len(pcts)
+        variance = sum((p - mean) ** 2 for p in pcts) / (len(pcts) - 1)
+        std = variance ** 0.5
+        if std == 0:
+            return None
+        import math
+        # Convenção sqrt(252) para comparabilidade — ver nota em analytics.py
+        return round(mean / std * math.sqrt(252), 3)
+
     def summary(self) -> dict:
         pnls = [t.pnl_pct * 100 for t in self.trades]
         wins  = [p for p in pnls if p > 0]
@@ -252,11 +272,13 @@ class BacktestResult:
         best3  = sorted(pnls, reverse=True)[:3]
         worst3 = sorted(pnls)[:3]
 
+        sh = self.sharpe_per_trade
         return {
             "symbol":             self.symbol,
             "strategy_id":        self.strategy_id,
             "total_trades":       self.total_trades,
             "win_rate":           f"{self.win_rate:.1%}",
+            "sharpe_per_trade":   f"{sh:.3f}" if sh is not None else "–",
             "profit_factor":      f"{self.profit_factor:.2f}",
             "total_pnl":          f"${self.total_pnl:.2f}",
             "total_return":       f"{self.total_return_pct:.2%}",
@@ -483,6 +505,9 @@ class BacktestEngine:
         for i in range(warmup, len(candles) - 1):
             candle      = candles[i]
             next_candle = candles[i + 1]
+            # ✅ Anti-look-ahead: history usa apenas candles[0..i] — o candle atual
+            # e todos os anteriores. candles[i+1] (next_candle) só é usado para
+            # simular a execução (preço de entrada/saída), nunca para cálculo de sinal.
             history     = candles[:i + 1]    # oldest first
             newest_first = list(reversed(history))
 

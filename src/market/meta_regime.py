@@ -240,7 +240,11 @@ class MetaRegimeDetector:
         returns_map: dict[str, list[float]] = {}
         for _sym, candles in candle_map.items():
             closes = [c.close for c in candles[:26]]
-            returns_map[sym] = _returns_1h(closes, 24)
+            # FIX(🔴 CRÍTICO): era `returns_map[sym]` — usava a variável `sym` do loop
+            # externo de Feature 1 (apontava para o último símbolo iterado), causando
+            # que todos os símbolos sobrescrevessem a mesma key e a correlação calculada
+            # fosse sempre 0 (uma série consigo mesma). Corrigido para `_sym`.
+            returns_map[_sym] = _returns_1h(closes, 24)
 
         syms = list(returns_map.keys())
         corrs = []
@@ -282,7 +286,11 @@ class MetaRegimeDetector:
         )
         alt_rets = []
         for _sym, candles in candle_map.items():
-            if sym == BTC:
+            # FIX(🔴 CRÍTICO): era `if sym == BTC` — usava variável `sym` do loop
+            # externo (Feature 1), que aponta para o último símbolo do dict, não o
+            # símbolo atual do loop. Isso excluía o símbolo errado ou incluía BTC nos
+            # alt_rets, corrompendo o BTC dominance score. Corrigido para `_sym`.
+            if _sym == BTC:
                 continue
             closes = [c.close for c in candles[:7]]
             if len(closes) > 5 and closes[5] > 0:

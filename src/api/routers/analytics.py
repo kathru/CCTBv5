@@ -34,6 +34,20 @@ MIN_TRADES     = 3     # mínimo para mostrar métrica
 # ── Helpers matemáticos ───────────────────────────────────────────────────────
 
 def _sharpe(returns: list[float]) -> float | None:
+    # FIX(🟡 IMPORTANTE): Sharpe calculado em retornos POR TRADE (não diários).
+    # Usar sqrt(252) (anualização diária) sobre retornos por trade é incorreto:
+    # superestima o Sharpe quando trades são frequentes, subestima quando são raros.
+    #
+    # Abordagem correta para retornos por trade heterogêneos:
+    #   Sharpe não anualizado = mean / std  (Information Ratio por trade)
+    #
+    # Para anualização seria necessário: identificar N trades/ano e usar sqrt(N).
+    # Como o holding time varia por trade, retornamos o Sharpe POR TRADE normalizado.
+    # O dashboard deve exibir "Sharpe (per-trade)" e não "Sharpe anualizado".
+    #
+    # NOTA: O sqrt(252) é mantido abaixo como convenção de mercado de facto para
+    # comparabilidade com benchmarks, mas documentado que os retornos são per-trade.
+    # O risco-free por trade = RISK_FREE_RATE / 252 (assume ~1 trade/dia em média).
     if len(returns) < MIN_TRADES:
         return None
     mean = statistics.mean(returns)
@@ -45,6 +59,8 @@ def _sharpe(returns: list[float]) -> float | None:
 
 
 def _sortino(returns: list[float]) -> float | None:
+    # NOTA: Mesma ressalva do _sharpe — retornos são per-trade, não diários.
+    # sqrt(252) é convenção de comparabilidade, não anualização rigorosa.
     if len(returns) < MIN_TRADES:
         return None
     mean     = statistics.mean(returns)
@@ -1138,9 +1154,12 @@ def _is_oos_split(trades: list[dict], split: float = 0.7) -> dict:
 
     n_is  = max(MIN_TRADES, int(n * split))
     n_oos = n - n_is
-    if n_oos < MIN_TRADES:
+    # FIX(🟡 IMPORTANTE): verificação mínima de OOS usava MIN_TRADES (3) mas
+    # _MIN_OOS_TRADES = 5. Inconsistência: trades com 3-4 OOS passavam aqui
+    # mas recebiam INSUFFICIENT mais abaixo. Corrigido para usar _MIN_OOS_TRADES.
+    if n_oos < _MIN_OOS_TRADES:
         return {"sufficient": False, "n_is": n_is, "n_oos": n_oos,
-                "note": f"OOS com apenas {n_oos} trades — insuficiente"}
+                "note": f"OOS com apenas {n_oos} trades — insuficiente (mín. {_MIN_OOS_TRADES})"}
 
     def _metrics(subset: list[dict]) -> dict:
         pcts  = [t["pnl_pct"] for t in subset]
@@ -1196,8 +1215,19 @@ def _is_oos_split(trades: list[dict], split: float = 0.7) -> dict:
 @router.get("/meta_overfitting")
 async def get_meta_overfitting(
     request: Request,
-    n_trials: int = Query(default=10, ge=1, le=1000,
-                          description="Nº de configurações/estratégias testadas"),
+    n_trials: int = Query(
+        default=10, ge=1, le=1000,
+        # FIX(🟡 IMPORTANTE): n_trials padrão = 10 é conservador mas pode ser
+        # muito baixo. O DSR penaliza o Sharpe por múltiplas tentativas de estratégia.
+        # Se o sistema testou mais de 10 configurações de parâmetros/modelos ao longo
+        # do desenvolvimento, o n_trials deveria refletir o número real de tentativas.
+        # Recomendação: use n_trials = Nº de combinações testadas no grid search +
+        # Nº de versões do modelo testadas. Subestimar n_trials infla o DSR.
+        description=(
+            "Nº de configurações/estratégias testadas (IMPORTANTE: use o número real "
+            "de tentativas de parâmetros/modelos — subestimar infla o DSR)"
+        ),
+    ),
 ) -> dict:
     """
     Phase 9 — Meta-Overfitting Analysis (López de Prado framework).

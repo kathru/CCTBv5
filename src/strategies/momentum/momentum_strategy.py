@@ -272,6 +272,13 @@ class MomentumStrategy(BaseStrategy):
         # Cada dimensão modula o sizing de forma independente.
         # ec_sizing_mult: reduz kelly quando WR drift está em zona de micro-trade.
         # Size sobe quando edge sobe, cai agressivamente quando degrada.
+        # NOTA(🟡 Kelly): base_kelly = calibrated * 0.25 é um Fractional Kelly heurístico,
+        # não o Full Kelly. Full Kelly = (p*b - q) / b onde p=win_rate, b=avg_win/avg_loss.
+        # Aqui `calibrated` é a probabilidade de ganho (p) estimada pelo Platt calibrator,
+        # e o fator 0.25 é a fração de segurança (Quarter-Kelly), aceita pela indústria.
+        # O cap de 0.15 (15%) é o teto institucional padrão para crypto.
+        # Não é um bug — é design deliberado mais conservador que o Full Kelly.
+        # O SizingEngine depois modula este base_kelly com 5 dimensões adicionais.
         base_kelly = min(calibrated * 0.25, 0.15)
         sizing     = self._sizing.compute(
             base_kelly=base_kelly,

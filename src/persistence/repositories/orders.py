@@ -4,9 +4,13 @@ from ...core.models import Order, OrderMode, OrderSide, OrderStatus, OrderType
 from ..postgres import Database
 
 # IDs de estratégia que NÃO devem ser contabilizados nas métricas do bot.
-# okx_import   = trades importados do histórico da OKX (não executados pelo bot)
+# okx_import    = trades importados do histórico da OKX (não executados pelo bot)
 # exchange_sync = ordens sintéticas criadas pelo reconciliador de saldo
-EXCLUDED_STRATEGY_IDS: tuple[str, ...] = ("okx_import", "exchange_sync", "okx_adjustment")
+# okx_adjustment= ajustes manuais de saldo
+# reconciler    = ordens sintéticas do TradeReconciler (ajustes internos, não trades reais)
+EXCLUDED_STRATEGY_IDS: tuple[str, ...] = (
+    "okx_import", "exchange_sync", "okx_adjustment", "reconciler"
+)
 
 
 class OrderRepository:

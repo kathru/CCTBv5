@@ -5,9 +5,10 @@
   "win_rate": 0.3318,
   "computed_at": "2026-05-27T21:27:58.251819+00:00",
   "notes": {
-    "m6_futures": "neutro (0.5) \u2014 requer API OKX de futuros em tempo real",
+    "m6_futures": "placeholder (std=0.12) \u2014 FuturesFlowCollector ativo; distribui\u00e7\u00e3o ser\u00e1 atualizada com dados live",
     "m7_rel_strength": "neutro (0.5) \u2014 requer dados multi-s\u00edmbolo simult\u00e2neos",
-    "m8_vol_state": "calculado de candles hist\u00f3ricos via ATR+Bollinger+dir_consistency"
+    "m8_vol_state": "calculado de candles hist\u00f3ricos via ATR+Bollinger+dir_consistency",
+    "m9_sentiment": "placeholder (std=0.15) \u2014 NewsSentimentCollector ativo (F&G + CoinGecko); distribui\u00e7\u00e3o ser\u00e1 atualizada com dados live"
   },
   "features": {
     "m1_momentum": {
@@ -62,12 +63,12 @@
     },
     "m6_futures": {
       "mean": 0.5,
-      "std": 0.0,
-      "p10": 0.5,
-      "p25": 0.5,
+      "std": 0.12,
+      "p10": 0.35,
+      "p25": 0.42,
       "p50": 0.5,
-      "p75": 0.5,
-      "p90": 0.5,
+      "p75": 0.58,
+      "p90": 0.65,
       "n": 20819
     },
     "m7_rel_strength": {
@@ -92,12 +93,12 @@
     },
     "m9_sentiment": {
       "mean": 0.5,
-      "std": 0.0,
-      "p10": 0.5,
-      "p25": 0.5,
+      "std": 0.15,
+      "p10": 0.3,
+      "p25": 0.4,
       "p50": 0.5,
-      "p75": 0.5,
-      "p90": 0.5,
+      "p75": 0.6,
+      "p90": 0.7,
       "n": 20819
     }
   }

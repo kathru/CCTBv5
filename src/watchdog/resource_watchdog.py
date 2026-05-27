@@ -88,12 +88,12 @@ class ResourceWatchdog:
                 await self._check()
             except asyncio.CancelledError:
                 break
-            except Exception as exc:
-                logger.error("ResourceWatchdog error: %s", exc)
+            except Exception:
+                logger.exception("ResourceWatchdog error")
 
     async def _check(self) -> None:
         # Run blocking psutil calls in thread pool
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         cpu = await loop.run_in_executor(
             None, lambda: psutil.cpu_percent(interval=1)
         )

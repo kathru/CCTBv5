@@ -88,8 +88,8 @@ class WebSocketWatchdog:
                 await self._check()
             except asyncio.CancelledError:
                 break
-            except Exception as exc:
-                logger.error("WebSocketWatchdog error: %s", exc)
+            except Exception:
+                logger.exception("WebSocketWatchdog error")
 
     async def _check(self) -> None:
         if self._last_message is None:

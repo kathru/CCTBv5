@@ -32,6 +32,9 @@ def create_app() -> FastAPI:
     db = Database(dsn=settings.database_url)
     cache = Cache(redis_url=settings.redis_url)
 
+    # Keep a module-level strong reference so the task is never GC'd
+    _background_tasks: set[asyncio.Task] = set()
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         await db.connect()
@@ -46,6 +49,9 @@ def create_app() -> FastAPI:
                 trading_task = asyncio.create_task(
                     loop.start(), name="trading_loop"
                 )
+                # Hold a strong reference to prevent GC of the task
+                _background_tasks.add(trading_task)
+                trading_task.add_done_callback(_background_tasks.discard)
                 app.state.trading_loop = loop
             except Exception as exc:
                 import logging
@@ -114,7 +120,7 @@ def create_app() -> FastAPI:
         # is_armed means state==ARMED (normal/ready) — confusingly named
         suspended = ks is not None and not ks.allows_new_entries
         ks_status = ks.state.value if ks else "ok"
-        infra_ok = db_ok and cache_ok
+        infra_ok = db_ok and cache_ok and not suspended
         return {
             "status": "ok" if infra_ok else "degraded",
             "version": get_version(),

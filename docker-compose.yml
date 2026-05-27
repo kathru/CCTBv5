@@ -7,8 +7,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-cctb}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cctb_secret}
       POSTGRES_DB: ${POSTGRES_DB:-cctbv5}
-    ports:
-      - "5432:5432"
+    # SECURITY: portas DB/Redis NÃO expostas ao host em produção.
+    # Acesso apenas pela rede interna Docker (cctb_net).
+    # Descomente a linha abaixo SOMENTE para debug local:
+    # ports:
+    #   - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -18,12 +21,20 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - cctb_net
+    deploy:
+      resources:
+        limits:
+          memory: 512m
 
   redis:
     image: redis:7-alpine
     container_name: cctb_redis
-    ports:
-      - "6379:6379"
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    # SECURITY: porta Redis NÃO exposta ao host em produção.
+    # ports:
+    #   - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -32,6 +43,12 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    networks:
+      - cctb_net
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   cctb:
     build:
@@ -46,8 +63,9 @@ services:
     env_file:
       - .env
     environment:
-      # Override localhost → docker service names
-      DATABASE_URL: postgresql+asyncpg://cctb:cctb_secret@postgres:5432/cctbv5
+      # Override localhost → docker service names.
+      # Lê credenciais do .env via POSTGRES_USER/PASSWORD/DB para não duplicar secrets.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-cctb}:${POSTGRES_PASSWORD:-cctb_secret}@postgres:5432/${POSTGRES_DB:-cctbv5}
       REDIS_URL: redis://redis:6379/0
     depends_on:
       postgres:
@@ -62,9 +80,19 @@ services:
              "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
       interval: 30s
       timeout: 10s
-      start_period: 20s
+      start_period: 60s
       retries: 3
     restart: unless-stopped
+    networks:
+      - cctb_net
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+networks:
+  cctb_net:
+    driver: bridge
 
 volumes:
   postgres_data:

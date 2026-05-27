@@ -1,7 +1,9 @@
 #!/bin/bash
 # deploy_oracle.sh -- Executado no Oracle via SSH pelo deploy.ps1
-# NAO usa set -e: erros sao tratados explicitamente para que o loop
-# de health-check nao seja abortado quando o container ainda esta subindo.
+# NAO usa set -e globalmente: erros no loop de health-check sao tratados
+# explicitamente para que o loop nao seja abortado quando o container
+# ainda esta subindo. Porem ativamos pipefail para detectar falhas em pipes.
+set -uo pipefail
 #
 # BUG CORRIGIDO: "docker cp src/" criava /app/src/src/ (diretorio aninhado).
 # Correto: "docker cp src/." copia os CONTEUDOS de src/ para /app/src/.
@@ -29,7 +31,11 @@ docker cp phases.json  cctb_app:/app/phases.json       || FAIL "docker cp phases
 # Remove o diretorio aninhado /app/src/src/ criado por deploys anteriores com bug
 # (arquivos foram copiados como root, entao a limpeza precisa de --user root)
 docker exec --user root cctb_app rm -rf /app/src/src 2>/dev/null || true
-OK "Arquivos copiados (src/. -> /app/src/)"
+
+# Fix ownership: docker cp escreve como root; container roda como cctb(1000:1000)
+docker exec --user root cctb_app chown -R 1000:1000 /app/src /app/_version.txt /app/phases.json \
+    || FAIL "chown falhou — arquivos podem ser inacesíveis ao container"
+OK "Arquivos copiados e ownership corrigido (src/. -> /app/src/)"
 
 # -- 3. Reinicia o container --------------------------------------------------
 STEP "Reiniciando container..."

@@ -14,6 +14,7 @@ Sequence:
 The OMS gate NEVER opens before step 7 completes successfully.
 """
 
+import asyncio
 import logging
 from pathlib import Path
 
@@ -27,6 +28,29 @@ from .reconciler import BootReconciler, ExchangeStateProtocol
 from .state_loader import StateLoader
 
 logger = logging.getLogger(__name__)
+
+_CONNECT_MAX_RETRIES = 10
+_CONNECT_BASE_DELAY  = 2.0   # seconds (doubles each retry, capped at 30s)
+
+
+async def _connect_with_retry(name: str, connect_fn) -> None:
+    """Retry an async connect() with exponential backoff."""
+    delay = _CONNECT_BASE_DELAY
+    for attempt in range(1, _CONNECT_MAX_RETRIES + 1):
+        try:
+            await connect_fn()
+            return
+        except Exception as exc:
+            if attempt == _CONNECT_MAX_RETRIES:
+                raise RuntimeError(
+                    f"[BOOT] {name} connection failed after {attempt} attempts: {exc}"
+                ) from exc
+            logger.warning(
+                "[BOOT] %s connection attempt %d/%d failed (%s) — retrying in %.0fs",
+                name, attempt, _CONNECT_MAX_RETRIES, exc, delay,
+            )
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, 30.0)
 
 SCHEMA_PATH = Path(__file__).parent.parent.parent / "infra" / "schema.sql"
 
@@ -61,10 +85,10 @@ class BootSequence:
         logger.info("=" * 60)
 
         try:
-            # Step 1: Connect to infrastructure
+            # Step 1: Connect to infrastructure (with retry/backoff)
             logger.info("[BOOT 1/5] Connecting to PostgreSQL and Redis...")
-            await self._db.connect()
-            await self._cache.connect()
+            await _connect_with_retry("PostgreSQL", self._db.connect)
+            await _connect_with_retry("Redis",      self._cache.connect)
             await self._cache.set_system_status(SystemStatus.STARTING)
 
             # Step 2: Apply schema (idempotent — safe to run every boot)

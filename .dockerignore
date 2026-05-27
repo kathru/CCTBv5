@@ -5,8 +5,15 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .env
+.env.*
 logs/
 tests/
 .git/
 .gitignore
 *.md
+data/
+*.key
+*.pem
+deploy.ps1
+monitor.ps1
+deploy_oracle.sh

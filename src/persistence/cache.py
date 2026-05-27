@@ -47,6 +47,9 @@ class Cache:
             self._url,
             encoding="utf-8",
             decode_responses=True,
+            socket_timeout=5.0,          # read/write timeout per operation
+            socket_connect_timeout=5.0,  # connection establishment timeout
+            retry_on_timeout=True,       # auto-retry on transient timeouts
         )
         await self._client.ping()
         logger.info("Redis connected url=%s", self._url)

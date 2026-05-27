@@ -13,13 +13,20 @@ Rate limiting: Discord allows ~30 messages/minute per webhook.
 We add a small delay between sends to stay safe.
 """
 
+import asyncio
 import json
 import logging
+import time
 from datetime import UTC, datetime
 
 import httpx
 
 from .base import Alert, AlertChannel, AlertLevel, NullAlertChannel
+
+# Discord allows ~30 messages/minute per webhook (≈ 2s per message).
+# We enforce a minimum gap and a per-minute bucket to stay under the limit.
+_MIN_SEND_INTERVAL = 2.0   # seconds between any two sends
+_MAX_PER_MINUTE    = 25    # conservative limit (Discord hard limit is 30)
 
 logger = logging.getLogger(__name__)
 
@@ -54,40 +61,78 @@ class DiscordAlertChannel(AlertChannel):
         self._min_level = min_level
         self._sent_count = 0
         self._error_count = 0
+        self._dropped_count = 0
+        # Rate limiting state
+        self._last_sent_at: float = 0.0
+        self._window_start: float = time.monotonic()
+        self._window_count: int = 0
+        self._send_lock = asyncio.Lock()
 
     async def send(self, alert: Alert) -> bool:
         """Send alert as a Discord embed. Returns True if successful."""
         if not self._should_send(alert):
             return True
 
-        payload = self._build_payload(alert)
+        async with self._send_lock:
+            # Per-minute bucket reset
+            now = time.monotonic()
+            if now - self._window_start >= 60.0:
+                self._window_start = now
+                self._window_count = 0
 
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.post(
-                    self._webhook_url,
-                    content=json.dumps(payload),
-                    headers={"Content-Type": "application/json"},
+            # Hard drop if over per-minute limit (avoids Discord 429)
+            if self._window_count >= _MAX_PER_MINUTE:
+                self._dropped_count += 1
+                logger.warning(
+                    "Discord rate limit reached — alert dropped level=%s title=%s",
+                    alert.level, alert.title,
                 )
-                if resp.status_code in {200, 204}:
-                    self._sent_count += 1
-                    logger.debug(
-                        "Discord alert sent level=%s title=%s",
-                        alert.level, alert.title,
-                    )
-                    return True
-                else:
-                    self._error_count += 1
-                    logger.warning(
-                        "Discord alert failed status=%d body=%s",
-                        resp.status_code, resp.text[:200],
-                    )
-                    return False
+                return False
 
-        except Exception as exc:
-            self._error_count += 1
-            logger.error("Discord alert error: %s", exc)
-            return False
+            # Enforce minimum inter-message gap
+            elapsed = now - self._last_sent_at
+            if elapsed < _MIN_SEND_INTERVAL:
+                await asyncio.sleep(_MIN_SEND_INTERVAL - elapsed)
+
+            payload = self._build_payload(alert)
+
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.post(
+                        self._webhook_url,
+                        content=json.dumps(payload),
+                        headers={"Content-Type": "application/json"},
+                    )
+                    self._last_sent_at = time.monotonic()
+                    if resp.status_code in {200, 204}:
+                        self._sent_count += 1
+                        self._window_count += 1
+                        logger.debug(
+                            "Discord alert sent level=%s title=%s",
+                            alert.level, alert.title,
+                        )
+                        return True
+                    elif resp.status_code == 429:
+                        # Discord is telling us to back off
+                        self._error_count += 1
+                        retry_after = float(resp.headers.get("Retry-After", 5))
+                        logger.warning(
+                            "Discord 429 rate-limited — backing off %.1fs", retry_after
+                        )
+                        await asyncio.sleep(retry_after)
+                        return False
+                    else:
+                        self._error_count += 1
+                        logger.warning(
+                            "Discord alert failed status=%d body=%s",
+                            resp.status_code, resp.text[:200],
+                        )
+                        return False
+
+            except Exception as exc:
+                self._error_count += 1
+                logger.error("Discord alert error: %s", exc)
+                return False
 
     def _should_send(self, alert: Alert) -> bool:
         """Filter by minimum level."""
@@ -124,6 +169,8 @@ class DiscordAlertChannel(AlertChannel):
             "provider": "discord",
             "sent_count": self._sent_count,
             "error_count": self._error_count,
+            "dropped_count": self._dropped_count,
+            "window_count": self._window_count,
         }
 
 

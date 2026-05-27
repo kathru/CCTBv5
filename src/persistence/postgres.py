@@ -49,7 +49,9 @@ class Database:
             dsn=dsn,
             min_size=self._min_size,
             max_size=self._max_size,
-            ssl=False,  # local Docker — no SSL needed
+            ssl=False,           # local Docker — no SSL needed
+            timeout=10.0,        # max seconds to acquire a connection from pool
+            command_timeout=30.0, # max seconds per query — prevents runaway queries
         )
         logger.info(
             "PostgreSQL pool ready min=%d max=%d",

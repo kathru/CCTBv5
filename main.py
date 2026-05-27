@@ -17,7 +17,10 @@ def main() -> None:
         app,
         host="0.0.0.0",
         port=settings.app_port,
-        log_config=None,    # disable uvicorn's default logging (we handle it)
+        log_config=None,          # disable uvicorn's default logging (we handle it)
+        access_log=False,         # access logs handled by structlog
+        timeout_keep_alive=30,    # close idle HTTP connections after 30s
+        timeout_graceful_shutdown=30,  # allow up to 30s for in-flight requests on SIGTERM
     )
 
 

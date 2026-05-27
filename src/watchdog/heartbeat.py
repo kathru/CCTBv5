@@ -83,8 +83,8 @@ class HeartbeatWatchdog:
                 await self._check()
             except asyncio.CancelledError:
                 break
-            except Exception as exc:
-                logger.error("HeartbeatWatchdog error: %s", exc)
+            except Exception:
+                logger.exception("HeartbeatWatchdog error")
 
     async def _check(self) -> None:
         if self._last_beat is None:

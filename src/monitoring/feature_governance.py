@@ -335,24 +335,94 @@ class FeatureStats:
 
 def _psi(expected_stats: FeatureStats, actual_stats: FeatureStats) -> float:
     """
-    Population Stability Index — mede drift entre duas distribuições.
-    PSI < 0.10: estável
-    PSI 0.10-0.25: atenção
-    PSI > 0.25: drift significativo → recalibrar
+    Population Stability Index (standard formula using percentile bins).
+    Bins defined by baseline percentiles — each bin gets approx 1/6 of expected mass.
+    PSI < 0.10: stable | 0.10–0.25: watch | > 0.25: significant drift → recalibrate
+
+    NOTE: Previous implementation used raw percentile values in the PSI formula
+    instead of bin proportions, which inflated PSI results significantly (e.g.
+    reporting PSI=0.8 for moderate drift that actually scores ~0.15 with the
+    standard formula). This corrected version uses the standard bin-proportion
+    approach with CDF interpolation from percentile landmarks.
     """
-    # Usa diferença de percentis para estimar PSI sem bins
-    buckets = [
-        (expected_stats.p10,  actual_stats.p10),
-        (expected_stats.p25,  actual_stats.p25),
-        (expected_stats.p50,  actual_stats.p50),
-        (expected_stats.p75,  actual_stats.p75),
-        (expected_stats.p90,  actual_stats.p90),
+    # Constant features (fixed neutral = 0.5) have no spread — PSI is undefined; return 0.
+    if expected_stats.std == 0.0 or expected_stats.p10 == expected_stats.p90:
+        return 0.0
+
+    # Bin edges from baseline (6 bins, each ~16.7% of expected distribution)
+    edges = [
+        float("-inf"),
+        expected_stats.p10,
+        expected_stats.p25,
+        expected_stats.p50,
+        expected_stats.p75,
+        expected_stats.p90,
+        float("inf"),
     ]
+    n_bins = len(edges) - 1  # 6
+
+    def _cdf_at(x: float, stats: FeatureStats) -> float:
+        """
+        Estimate the CDF P(X <= x) for a distribution described by percentile stats.
+        Uses piecewise-linear interpolation between known percentile landmarks.
+        Handles degenerate cases (tied percentiles) gracefully.
+        """
+        xs = [stats.p10, stats.p25, stats.p50, stats.p75, stats.p90]
+        cs = [0.10,       0.25,       0.50,       0.75,       0.90]
+        if x <= xs[0]:
+            return cs[0]   # P10 is a hard lower-bound; everything at or below gets 0.10
+        if x >= xs[-1]:
+            return cs[-1]  # P90 is a hard upper-bound; everything at or above gets 0.90
+        for i in range(len(xs) - 1):
+            if xs[i] <= x <= xs[i + 1]:
+                span = xs[i + 1] - xs[i]
+                if span == 0.0:
+                    # Tied percentiles: use the left CDF value (all mass before the tie)
+                    return cs[i]
+                t = (x - xs[i]) / span
+                return cs[i] + t * (cs[i + 1] - cs[i])
+        return cs[-1]
+
+    finite_edges = [
+        expected_stats.p10,
+        expected_stats.p25,
+        expected_stats.p50,
+        expected_stats.p75,
+        expected_stats.p90,
+    ]
+
+    # Expected proportions: apply baseline CDF to baseline edges.
+    # Because cdf_at(p10, baseline) = 0.10 exactly, etc., this gives the true bin masses
+    # for the baseline distribution (including degenerate tie cases like m8_vol_state).
+    exp_cdf = [_cdf_at(e, expected_stats) for e in finite_edges]
+    exp_props = (
+        [exp_cdf[0]]
+        + [max(exp_cdf[i + 1] - exp_cdf[i], 0.0) for i in range(len(finite_edges) - 1)]
+        + [max(1.0 - exp_cdf[-1], 0.0)]
+    )
+    # Normalise (they should already sum to 1.0 if cdf_at returns exactly 0.10/0.90 at p10/p90)
+    exp_total = sum(exp_props) or 1.0
+    exp_props = [p / exp_total for p in exp_props]
+
+    # Actual proportions: apply live CDF to baseline edges.
+    act_cdf = [_cdf_at(e, actual_stats) for e in finite_edges]
+    act_props = (
+        [act_cdf[0]]
+        + [max(act_cdf[i + 1] - act_cdf[i], 0.0) for i in range(len(finite_edges) - 1)]
+        + [max(1.0 - act_cdf[-1], 0.0)]
+    )
+    act_total = sum(act_props) or 1.0
+    act_props = [p / act_total for p in act_props]
+
+    # PSI = Σ (actual - expected) × ln(actual / expected)
     psi_total = 0.0
-    for exp_val, act_val in buckets:
-        if exp_val > 0 and act_val > 0:
-            psi_total += (act_val - exp_val) * math.log(act_val / exp_val + 1e-9)
-    return abs(psi_total)
+    eps = 1e-4  # avoid log(0)
+    for exp_p, act_p in zip(exp_props, act_props):
+        act_p = max(act_p, eps)
+        exp_p = max(exp_p, eps)
+        psi_total += (act_p - exp_p) * math.log(act_p / exp_p)
+
+    return round(abs(psi_total), 4)
 
 
 class DriftMonitor:

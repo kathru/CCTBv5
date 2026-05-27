@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title id="page-title">CCTBv5</title>
+  <title id="page-title">AETHER αLPHA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -11,37 +11,38 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:         #0d1117;
-      --surface:    #111827;
-      --surface2:   #111827;
-      --surface-el: #1a2332;
-      --border:     #1f2937;
-      --border2:    #2d3748;
-      --text:       #e2e8f0;
-      --muted:      #5a6a7e;
-      --slate:      #94a3b8;
-      --green:      #10b981;
-      --green-dim:  rgba(16,185,129,0.15);
-      --green-bg:   rgba(16,185,129,0.08);
-      --red:        #ef4444;
-      --red-bg:     rgba(239,68,68,0.08);
-      --yellow:     #f59e0b;
-      --yellow-bg:  rgba(245,158,11,0.08);
-      --blue:       #60a5fa;
-      --blue-bg:    rgba(96,165,250,0.08);
-      --cyan:       #22d3ee;
-      --purple:     #8b5cf6;
-      --orange:     #f97316;
+      --bg:          #060d1a;
+      --surface:     #0a1628;
+      --surface2:    #0a1628;
+      --surface-el:  #0f1f35;
+      --border:      #1a3a5c;
+      --border2:     #1e4a6e;
+      --text:        #e8f4fd;
+      --muted:       #3d6a8a;
+      --slate:       #5a90b5;
+      --green:       #00e676;
+      --green-dim:   rgba(0,230,118,0.15);
+      --green-bg:    rgba(0,230,118,0.08);
+      --red:         #ff4560;
+      --red-bg:      rgba(255,69,96,0.08);
+      --yellow:      #ffd700;
+      --yellow-bg:   rgba(255,215,0,0.08);
+      --blue:        #00d4ff;
+      --blue-bg:     rgba(0,212,255,0.08);
+      --purple:      #a855f7;
+      --orange:      #ff9800;
+      --cyan:        #00e5ff;
+      --gold:        #ffd700;
     }
     html { scroll-behavior: smooth; }
     body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
-    ::selection { background: rgba(96,165,250,0.3); }
+    ::selection { background: rgba(0,212,255,0.25); }
 
     /* ── Custom scrollbar ──────────────────────────────────── */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 2px; }
-    ::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+    ::-webkit-scrollbar-thumb { background: #1e4a6e; border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: #2a5f8a; }
 
     /* ── Monospace numeric utility ─────────────────────────── */
     .mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
@@ -55,18 +56,18 @@
 
     /* ══ HEADER ══════════════════════════════════════════════ */
     header {
-      background: linear-gradient(180deg, #090e1a 0%, #0a1020 100%);
-      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #071020 0%, #060d1a 100%);
+      border-bottom: 1px solid #1a3a5c;
       padding: 0 24px;
       height: 64px;
       display: flex; align-items: center; justify-content: space-between;
       position: sticky; top: 0; z-index: 100;
-      box-shadow: 0 1px 0 0 rgba(96,165,250,0.12);
+      box-shadow: 0 1px 0 0 rgba(0,212,255,0.10);
     }
     header::after {
       content: '';
       position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, rgba(96,165,250,0.5) 0%, transparent 70%);
+      background: linear-gradient(90deg, transparent, #00d4ff40, #2196f340, transparent);
       pointer-events: none;
     }
     .hdr-left  { display: flex; align-items: center; gap: 18px; }
@@ -77,12 +78,29 @@
     .logo-wrap { display: flex; align-items: center; gap: 13px; }
     .logo-icon {
       width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
-      background: linear-gradient(135deg, #d97706, #ea580c);
+      background: linear-gradient(135deg, #0a1f3d 0%, #0f2a50 100%);
+      border: 1px solid #1a3a5c;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.3rem; font-weight: 900; color: #fff;
-      box-shadow: 0 2px 12px rgba(234,88,12,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+      box-shadow: 0 2px 12px rgba(0,212,255,0.2), 0 0 0 1px rgba(255,255,255,0.04);
     }
     .logo-title { font-size: 1rem; font-weight: 800; color: var(--text); letter-spacing: -0.2px; white-space: nowrap; }
+    .logo-title .brand-aether {
+      background: linear-gradient(90deg, #2196f3, #00d4ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; font-weight: 900;
+    }
+    .logo-title .brand-alpha-a {
+      background: linear-gradient(90deg, #2196f3, #00d4ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; font-weight: 900; font-size: 1.1rem;
+    }
+    .logo-title .brand-alpha-lpha {
+      color: #e8f4fd; font-weight: 800;
+    }
+    .logo-tagline {
+      font-size: 9px; text-transform: uppercase; letter-spacing: 0.2em;
+      color: #4a7fa5; margin-top: 2px; white-space: nowrap; font-weight: 600;
+    }
     .hdr-short-title { display: none; }
     @media (max-width: 700px) {
       .hdr-full-title  { display: none; }
@@ -96,7 +114,7 @@
     .logo-ver {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.75rem; font-weight: 600; color: var(--blue);
-      background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.25);
+      background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.25);
       padding: 2px 8px; border-radius: 4px;
       vertical-align: middle; letter-spacing: 0.05em;
     }
@@ -112,11 +130,11 @@
       font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
       border: 1px solid transparent; transition: all 0.2s; white-space: nowrap;
     }
-    .hbadge-blue   { background:rgba(96,165,250,0.1);  color:var(--blue);   border-color:rgba(96,165,250,0.25); }
-    .hbadge-red    { background:rgba(239,68,68,0.1);   color:var(--red);    border-color:rgba(239,68,68,0.25); }
-    .hbadge-green  { background:rgba(16,185,129,0.1);  color:var(--green);  border-color:rgba(16,185,129,0.25); }
-    .hbadge-yellow { background:rgba(245,158,11,0.1);  color:var(--yellow); border-color:rgba(245,158,11,0.25); }
-    .hbadge-gray   { background:rgba(148,163,184,0.06);color:var(--slate);  border-color:rgba(148,163,184,0.15); }
+    .hbadge-blue   { background:rgba(0,212,255,0.08);  color:var(--blue);   border-color:rgba(0,212,255,0.25); }
+    .hbadge-red    { background:rgba(255,69,96,0.1);   color:var(--red);    border-color:rgba(255,69,96,0.25); }
+    .hbadge-green  { background:rgba(0,230,118,0.08);  color:var(--green);  border-color:rgba(0,230,118,0.25); }
+    .hbadge-yellow { background:rgba(255,215,0,0.08);  color:var(--yellow); border-color:rgba(255,215,0,0.25); }
+    .hbadge-gray   { background:rgba(90,144,181,0.06); color:var(--slate);  border-color:rgba(90,144,181,0.15); }
     .hbadge-ts     { font-size:0.65rem !important; font-weight:500; letter-spacing:0.02em; text-transform:none !important; padding:2px 8px; flex-shrink:0; white-space:nowrap; font-family:'JetBrains Mono',monospace; }
 
     /* Header regime */
@@ -127,10 +145,10 @@
       border: 1px solid; transition: all 0.3s; cursor: default; text-transform: uppercase;
     }
     .regime-badge .rb-arrow { font-size: 0.65rem; opacity: 0.7; }
-    .rb-chop   { background:rgba(245,158,11,0.08);  color:var(--yellow); border-color:rgba(245,158,11,0.25); }
-    .rb-trend  { background:rgba(16,185,129,0.08);  color:var(--green);  border-color:rgba(16,185,129,0.25); }
-    .rb-panic  { background:rgba(239,68,68,0.10);   color:var(--red);    border-color:rgba(239,68,68,0.35);  animation:pulse-red 1.2s infinite; }
-    .rb-other  { background:rgba(96,165,250,0.07);  color:var(--blue);   border-color:rgba(96,165,250,0.2); }
+    .rb-chop   { background:rgba(255,215,0,0.06);    color:var(--yellow); border-color:rgba(255,215,0,0.25); }
+    .rb-trend  { background:rgba(0,230,118,0.06);   color:var(--green);  border-color:rgba(0,230,118,0.25); }
+    .rb-panic  { background:rgba(255,69,96,0.10);   color:var(--red);    border-color:rgba(255,69,96,0.35);  animation:pulse-red 1.2s infinite; }
+    .rb-other  { background:rgba(0,212,255,0.06);   color:var(--blue);   border-color:rgba(0,212,255,0.2); }
 
     /* Header status / info */
     .hdr-info { display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
@@ -140,20 +158,20 @@
     .status-pill {
       display: flex; align-items: center; gap: 6px;
       padding: 4px 11px; border-radius: 6px;
-      background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2);
+      background: rgba(0,230,118,0.06); border: 1px solid rgba(0,230,118,0.2);
       font-size: 0.72rem; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: 0.08em;
     }
-    .status-pill.bad { background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.2); color:var(--red); }
+    .status-pill.bad { background:rgba(255,69,96,0.08); border-color:rgba(255,69,96,0.2); color:var(--red); }
     .status-dot {
-      width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0;
-      box-shadow: 0 0 0 0 rgba(16,185,129,0.7);
+      width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); flex-shrink: 0;
+      box-shadow: 0 0 0 0 rgba(0,212,255,0.7);
       animation: pulse-live 2s ease-in-out infinite;
     }
-    .status-dot.bad { background:var(--red); box-shadow:0 0 5px rgba(239,68,68,0.5); animation:none; }
+    .status-dot.bad { background:var(--red); box-shadow:0 0 5px rgba(255,69,96,0.5); animation:none; }
     @keyframes pulse-live {
-      0%   { box-shadow: 0 0 0 0   rgba(16,185,129,0.7); }
-      60%  { box-shadow: 0 0 0 6px rgba(16,185,129,0.0); }
-      100% { box-shadow: 0 0 0 0   rgba(16,185,129,0.0); }
+      0%   { box-shadow: 0 0 0 0   rgba(0,212,255,0.7); }
+      60%  { box-shadow: 0 0 0 6px rgba(0,212,255,0.0); }
+      100% { box-shadow: 0 0 0 0   rgba(0,212,255,0.0); }
     }
     @keyframes pulse-green { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
@@ -190,7 +208,7 @@
     .section-hdr::before {
       content: '';
       width: 3px; height: 14px; border-radius: 2px;
-      background: var(--blue); margin-right: 10px; flex-shrink: 0;
+      background: linear-gradient(180deg, #2196f3, #00d4ff); margin-right: 10px; flex-shrink: 0;
     }
     .section-hdr::after {
       content: '';
@@ -202,10 +220,10 @@
     .motor-hero {
       position: relative; overflow: hidden;
       background: linear-gradient(135deg,
-        rgba(59,130,246,0.12) 0%,
-        rgba(139,92,246,0.10) 50%,
-        rgba(16,185,129,0.08) 100%);
-      border-bottom: 1px solid rgba(99,102,241,0.20);
+        rgba(0,212,255,0.08) 0%,
+        rgba(168,85,247,0.07) 50%,
+        rgba(0,230,118,0.05) 100%);
+      border-bottom: 1px solid rgba(0,212,255,0.15);
       border-radius: 0;
       padding: 14px 20px 14px;
       margin-bottom: 0;
@@ -214,25 +232,25 @@
     .motor-hero::before {
       content:''; position:absolute; inset:0;
       background: radial-gradient(ellipse 60% 80% at 10% 50%,
-        rgba(99,102,241,0.15) 0%, transparent 70%);
+        rgba(0,212,255,0.10) 0%, transparent 70%);
       pointer-events:none;
     }
     .motor-hero-pulse {
       width:34px; height:34px; border-radius:50%; flex-shrink:0;
-      background: radial-gradient(circle, #6366f1 30%, rgba(99,102,241,0.3) 70%);
-      box-shadow: 0 0 0 0 rgba(99,102,241,0.7);
+      background: radial-gradient(circle, #2196f3 30%, rgba(0,212,255,0.3) 70%);
+      box-shadow: 0 0 0 0 rgba(0,212,255,0.7);
       animation: motor-pulse 2.2s ease-in-out infinite;
       display:flex; align-items:center; justify-content:center;
       font-size:1rem;
     }
     @keyframes motor-pulse {
-      0%   { box-shadow: 0 0 0 0   rgba(99,102,241,0.70); }
-      60%  { box-shadow: 0 0 0 10px rgba(99,102,241,0.00); }
-      100% { box-shadow: 0 0 0 0   rgba(99,102,241,0.00); }
+      0%   { box-shadow: 0 0 0 0   rgba(0,212,255,0.70); }
+      60%  { box-shadow: 0 0 0 10px rgba(0,212,255,0.00); }
+      100% { box-shadow: 0 0 0 0   rgba(0,212,255,0.00); }
     }
     .motor-hero-title {
       font-size: 1.05rem; font-weight: 800; letter-spacing: 0.5px;
-      background: linear-gradient(90deg, #a5b4fc 0%, #7dd3fc 60%, #6ee7b7 100%);
+      background: linear-gradient(90deg, #a855f7 0%, #00d4ff 60%, #00e676 100%);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text; line-height:1.2;
     }
@@ -244,8 +262,8 @@
       margin-left: auto; font-size: 0.72rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: 1px;
       padding: 3px 10px; border-radius: 20px;
-      background: rgba(99,102,241,0.18); color: #a5b4fc;
-      border: 1px solid rgba(99,102,241,0.35); white-space: nowrap;
+      background: rgba(0,212,255,0.10); color: #00d4ff;
+      border: 1px solid rgba(0,212,255,0.30); white-space: nowrap;
     }
     .section-hdr .dot { display:none; }
     .section-hdr .cnt { margin-left:8px; font-size:0.65rem; color:var(--slate); font-weight:400; letter-spacing:0; }
@@ -274,7 +292,7 @@
       transition: box-shadow 200ms ease, border-color 200ms ease;
     }
     .kpi-card:hover {
-      box-shadow: 0 0 0 1px rgba(96,165,250,0.3);
+      box-shadow: 0 0 0 1px rgba(0,212,255,0.25);
       border-color: var(--border2);
     }
     .kpi-blue   { border-top-color: var(--blue); }
@@ -285,11 +303,11 @@
     .kpi-gray   { border-top-color: var(--border2); }
 
     .kpi-icon { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:0.9rem; margin-bottom:8px; }
-    .kpi-icon-blue   { background:rgba(96,165,250,0.12);  border:1px solid rgba(96,165,250,0.2); }
-    .kpi-icon-green  { background:rgba(16,185,129,0.12);  border:1px solid rgba(16,185,129,0.2); }
-    .kpi-icon-red    { background:rgba(239,68,68,0.12);   border:1px solid rgba(239,68,68,0.2); }
-    .kpi-icon-yellow { background:rgba(245,158,11,0.12);  border:1px solid rgba(245,158,11,0.2); }
-    .kpi-icon-purple { background:rgba(139,92,246,0.12);  border:1px solid rgba(139,92,246,0.2); }
+    .kpi-icon-blue   { background:rgba(0,212,255,0.10);   border:1px solid rgba(0,212,255,0.2); }
+    .kpi-icon-green  { background:rgba(0,230,118,0.10);  border:1px solid rgba(0,230,118,0.2); }
+    .kpi-icon-red    { background:rgba(255,69,96,0.10);  border:1px solid rgba(255,69,96,0.2); }
+    .kpi-icon-yellow { background:rgba(255,215,0,0.10);  border:1px solid rgba(255,215,0,0.2); }
+    .kpi-icon-purple { background:rgba(168,85,247,0.10); border:1px solid rgba(168,85,247,0.2); }
 
     .kpi-val  { font-family:'JetBrains Mono',monospace; font-size:1.1rem; font-weight:700; letter-spacing:-0.03em; line-height:1.1; font-variant-numeric:tabular-nums; color: var(--text); }
     .kpi-sub  { font-size:0.7rem; color:var(--slate); margin-top:6px; }
@@ -305,16 +323,16 @@
     .coin-icon { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.05rem; font-weight:900; flex-shrink:0; }
     .coin-btc  { background:linear-gradient(135deg,#f97316,#c2410c); color:#fff; box-shadow:0 4px 12px rgba(249,115,22,0.35); }
     .coin-eth  { background:linear-gradient(135deg,#818cf8,#4338ca); color:#fff; box-shadow:0 4px 12px rgba(99,102,241,0.35); }
-    .coin-sol  { background:linear-gradient(135deg,#a78bfa,#6d28d9); color:#fff; box-shadow:0 4px 12px rgba(139,92,246,0.35); }
+    .coin-sol  { background:linear-gradient(135deg,#a78bfa,#6d28d9); color:#fff; box-shadow:0 4px 12px rgba(168,85,247,0.28); }
 
     /* pill actions */
     .action-pill { padding:4px 12px; border-radius:6px; font-size:0.68rem; font-weight:700; letter-spacing:0.08em; text-align:center; text-transform:uppercase; flex-shrink:0; }
-    .ap-buy   { background:rgba(16,185,129,0.15);  color:#34d399; border:1px solid rgba(16,185,129,0.35); }
-    .ap-sell  { background:rgba(239,68,68,0.15);   color:#fca5a5; border:1px solid rgba(239,68,68,0.35); }
-    .ap-hold  { background:rgba(255,255,255,0.05); color:#6b7280; border:1px solid rgba(255,255,255,0.10); }
-    .ap-wait  { background:rgba(245,158,11,0.12);  color:#fcd34d; border:1px solid rgba(245,158,11,0.3); }
-    .ap-panic { background:rgba(239,68,68,0.18);   color:#fca5a5; border:1px solid rgba(239,68,68,0.45); animation:pulse-red 1.2s infinite; }
-    @keyframes pulse-red { 0%,100%{box-shadow:0 0 0 rgba(239,68,68,0)} 50%{box-shadow:0 0 14px rgba(239,68,68,0.35)} }
+    .ap-buy   { background:rgba(0,230,118,0.10);  color:#00e676; border:1px solid rgba(0,230,118,0.28); }
+    .ap-sell  { background:rgba(255,69,96,0.12);   color:#ff7090; border:1px solid rgba(255,69,96,0.28); }
+    .ap-hold  { background:rgba(255,255,255,0.05); color:#3d6a8a; border:1px solid rgba(255,255,255,0.10); }
+    .ap-wait  { background:rgba(255,215,0,0.09);  color:#ffd700; border:1px solid rgba(255,215,0,0.22); }
+    .ap-panic { background:rgba(255,69,96,0.14);   color:#ff7090; border:1px solid rgba(255,69,96,0.36); animation:pulse-red 1.2s infinite; }
+    @keyframes pulse-red { 0%,100%{box-shadow:0 0 0 rgba(255,69,96,0)} 50%{box-shadow:0 0 14px rgba(255,69,96,0.35)} }
 
     /* score bar — full width with inline % label */
     .score-wrap   { position:relative; flex:1; height:14px; background:rgba(255,255,255,0.06); border-radius:7px; overflow:hidden; }
@@ -324,17 +342,17 @@
 
     /* SL/TP boxes */
     .sl-tp-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-top:10px; }
-    .sl-box { background:rgba(239,68,68,0.07);   border:1px solid rgba(239,68,68,0.18);  border-radius:6px; padding:7px 8px; text-align:center; }
-    .en-box { background:rgba(96,165,250,0.07);  border:1px solid rgba(96,165,250,0.18); border-radius:6px; padding:7px 8px; text-align:center; }
-    .tp-box { background:rgba(16,185,129,0.07);  border:1px solid rgba(16,185,129,0.18); border-radius:6px; padding:7px 8px; text-align:center; }
+    .sl-box { background:rgba(255,69,96,0.06);   border:1px solid rgba(255,69,96,0.14);  border-radius:6px; padding:7px 8px; text-align:center; }
+    .en-box { background:rgba(0,212,255,0.05);  border:1px solid rgba(0,212,255,0.12); border-radius:6px; padding:7px 8px; text-align:center; }
+    .tp-box { background:rgba(0,230,118,0.06);  border:1px solid rgba(0,230,118,0.12); border-radius:6px; padding:7px 8px; text-align:center; }
     .slt-label { font-size:0.6rem; text-transform:uppercase; letter-spacing:0.1em; color:rgba(255,255,255,0.3); margin-bottom:3px; font-weight:600; }
     .slt-val   { font-family:'JetBrains Mono',monospace; font-size:0.82rem; font-weight:700; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; }
 
     /* ══ MOTOR PROBABILÍSTICO ════════════════════════════════ */
-    .motor-regime-box { border-radius:10px; padding:12px 14px; margin-bottom:14px; background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.2); }
-    .motor-regime-box.rb-trend { background:rgba(16,185,129,0.06); border-color:rgba(16,185,129,0.2); }
-    .motor-regime-box.rb-panic { background:rgba(239,68,68,0.08);  border-color:rgba(239,68,68,0.3); }
-    .motor-regime-box.rb-other { background:rgba(59,130,246,0.06); border-color:rgba(59,130,246,0.15); }
+    .motor-regime-box { border-radius:10px; padding:12px 14px; margin-bottom:14px; background:rgba(255,215,0,0.05); border:1px solid rgba(255,215,0,0.15); }
+    .motor-regime-box.rb-trend { background:rgba(0,230,118,0.05); border-color:rgba(0,230,118,0.15); }
+    .motor-regime-box.rb-panic { background:rgba(255,69,96,0.07);  border-color:rgba(255,69,96,0.22); }
+    .motor-regime-box.rb-other { background:rgba(0,212,255,0.05); border-color:rgba(0,212,255,0.15); }
     .motor-regime-txt { font-size:1rem; font-weight:800; color:var(--yellow); letter-spacing:-0.2px; margin-bottom:8px; }
     .motor-regime-box.rb-trend .motor-regime-txt { color:var(--green); }
     .motor-regime-box.rb-panic .motor-regime-txt { color:var(--red); }
@@ -370,8 +388,8 @@
     .motor-section-lbl { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--slate); margin-bottom:7px; font-weight:600; }
     .funnel-row { display:flex; align-items:center; gap:0; overflow-x:auto; padding-bottom:2px; }
     .funnel-stage { flex:1; min-width:54px; text-align:center; padding:5px 3px; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:5px; transition:all .2s; }
-    .funnel-stage.fs-pass { background:rgba(16,185,129,0.07); border-color:rgba(16,185,129,0.3); }
-    .funnel-stage.fs-fail { background:rgba(239,68,68,0.07); border-color:rgba(239,68,68,0.3); }
+    .funnel-stage.fs-pass { background:rgba(0,230,118,0.06); border-color:rgba(0,230,118,0.22); }
+    .funnel-stage.fs-fail { background:rgba(255,69,96,0.06); border-color:rgba(255,69,96,0.22); }
     .funnel-stage.fs-skip { opacity:0.25; filter:saturate(0); }
     .fs-label { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--slate); margin-bottom:2px; font-weight:600; }
     .fs-icon  { font-size:0.78rem; line-height:1; margin-bottom:2px; font-weight:700; }
@@ -381,8 +399,8 @@
     .funnel-arrow { color:var(--border2); font-size:0.72rem; padding:0 2px; align-self:center; flex-shrink:0; }
     /* Motor — Decisão Final banner */
     .motor-decision { border-radius:10px; padding:10px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); border:1px solid var(--border2); transition:all .3s; }
-    .motor-decision.md-long  { background:rgba(16,185,129,0.09);  border-color:rgba(16,185,129,0.35); }
-    .motor-decision.md-short { background:rgba(239,68,68,0.09);   border-color:rgba(239,68,68,0.35); }
+    .motor-decision.md-long  { background:rgba(0,230,118,0.07);  border-color:rgba(0,230,118,0.28); }
+    .motor-decision.md-short { background:rgba(255,69,96,0.08);   border-color:rgba(255,69,96,0.28); }
     .motor-decision.md-hold  { background:rgba(148,163,184,0.06); border-color:rgba(148,163,184,0.2); }
     .md-badge { font-size:1.05rem; font-weight:900; padding:5px 18px; border-radius:8px; border:2px solid currentColor; opacity:0.85; }
 
@@ -399,18 +417,18 @@
     .motor-adapt-label { font-size:0.82rem; color:var(--muted); }
     .madapt-chip { padding:3px 10px; border-radius:20px; font-size:0.82rem; border:1px solid transparent; }
     .madapt-chip b { font-weight:800; margin-left:3px; }
-    .madapt-blue   { background:rgba(59,130,246,0.1);  border-color:rgba(59,130,246,0.25);  color:var(--blue); }
-    .madapt-green  { background:rgba(16,185,129,0.1);  border-color:rgba(16,185,129,0.25);  color:var(--green); }
-    .madapt-yellow { background:rgba(245,158,11,0.1);  border-color:rgba(245,158,11,0.25);  color:var(--yellow); }
-    .madapt-purple { background:rgba(139,92,246,0.1);  border-color:rgba(139,92,246,0.25);  color:var(--purple); }
+    .madapt-blue   { background:rgba(0,212,255,0.08);  border-color:rgba(0,212,255,0.20);  color:var(--blue); }
+    .madapt-green  { background:rgba(0,230,118,0.08);  border-color:rgba(0,230,118,0.20);  color:var(--green); }
+    .madapt-yellow { background:rgba(255,215,0,0.08);  border-color:rgba(255,215,0,0.20);  color:var(--yellow); }
+    .madapt-purple { background:rgba(168,85,247,0.08);  border-color:rgba(168,85,247,0.20);  color:var(--purple); }
 
     .thresh-row { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:14px; }
     .thresh-box { padding:9px 4px; border-radius:10px; text-align:center; border:1px solid transparent; }
     .thresh-box .tval { font-weight:800; font-size:0.82rem; display:block; }
     .t-hold   { background:rgba(107,114,128,0.08); border-color:rgba(107,114,128,0.25); color:var(--muted); }
-    .t-reduce { background:rgba(245,158,11,0.08); border-color:rgba(245,158,11,0.2); color:var(--yellow); }
-    .t-normal { background:rgba(59,130,246,0.08); border-color:rgba(59,130,246,0.2); color:var(--blue); }
-    .t-agg    { background:rgba(16,185,129,0.08); border-color:rgba(16,185,129,0.2); color:var(--green); }
+    .t-reduce { background:rgba(255,215,0,0.06); border-color:rgba(255,215,0,0.15); color:var(--yellow); }
+    .t-normal { background:rgba(0,212,255,0.06); border-color:rgba(0,212,255,0.15); color:var(--blue); }
+    .t-agg    { background:rgba(0,230,118,0.06); border-color:rgba(0,230,118,0.15); color:var(--green); }
 
     .calib-row  { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding-top:10px; border-top:1px solid var(--border); }
     .calib-item { text-align:center; background:rgba(255,255,255,0.015); border-radius:6px; padding:8px 5px; border:1px solid var(--border); }
@@ -419,8 +437,8 @@
 
 
     .dist-bar { height:4px; border-radius:4px; overflow:hidden; display:flex; margin-top:8px; }
-    .dist-buy  { background:linear-gradient(90deg,var(--green),#059669); transition:flex 0.5s; }
-    .dist-rej  { background:linear-gradient(90deg,#dc2626,var(--red));   transition:flex 0.5s; }
+    .dist-buy  { background:linear-gradient(90deg,var(--green),#00c853); transition:flex 0.5s; }
+    .dist-rej  { background:linear-gradient(90deg,#ff4560,var(--red));   transition:flex 0.5s; }
     .dist-lbls { display:flex; justify-content:space-between; font-size:0.65rem; color:var(--slate); margin-top:4px; }
 
     /* ══ WATCHDOGS ════════════════════════════════════════════ */
@@ -430,15 +448,15 @@
     .wd-status { font-size:0.75rem; font-weight:700; display:flex; align-items:center; gap:5px; margin-bottom:2px; }
     .wd-detail { font-size:0.72rem; color:var(--slate); }
     .wd-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
-    .wd-dot.ok  { background:var(--green); box-shadow:0 0 5px rgba(16,185,129,0.5); }
-    .wd-dot.bad { background:var(--red);   box-shadow:0 0 5px rgba(239,68,68,0.5); }
+    .wd-dot.ok  { background:var(--green); box-shadow:0 0 5px rgba(0,230,118,0.40); }
+    .wd-dot.bad { background:var(--red);   box-shadow:0 0 5px rgba(255,69,96,0.40); }
 
     /* ══ COUNTDOWN ═══════════════════════════════════════════ */
 
     /* ══ SIGNAL FEED REDESIGN ═════════════════════════════════ */
     .feed-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
     .feed-live { display:flex; align-items:center; gap:6px; font-size:0.82rem; color:var(--green); }
-    .feed-live .dot-live { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 5px rgba(16,185,129,0.6); animation:pulse-green 1.5s infinite; }
+    .feed-live .dot-live { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 5px rgba(0,230,118,0.45); animation:pulse-green 1.5s infinite; }
 
     /* ══ SIGNAL FEED ══════════════════════════════════════════ */
     .feed-wrap { max-height:200px; overflow-y:auto; }
@@ -451,26 +469,26 @@
       gap:8px; align-items:center; padding:6px 8px; border-radius:6px;
       font-size:0.82rem; transition:background 150ms ease;
     }
-    .feed-entry:hover { background:rgba(96,165,250,0.05); }
+    .feed-entry:hover { background:rgba(0,212,255,0.04); }
     .feed-time   { color:var(--slate); font-size:0.68rem; font-variant-numeric:tabular-nums; font-family:'JetBrains Mono',monospace; }
     .feed-sym    { font-weight:700; font-size:0.82rem; }
     .feed-result { font-weight:700; font-size:0.65rem; padding:1px 6px; border-radius:4px; text-align:center; white-space:nowrap; text-transform:uppercase; letter-spacing:0.05em; }
     .feed-detail { color:var(--slate); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-    .fr-SIGNAL         { background:rgba(16,185,129,0.12); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
-    .fr-SCORE_LOW      { background:rgba(245,158,11,0.10); color:var(--yellow); border:1px solid rgba(245,158,11,0.2); }
+    .fr-SIGNAL         { background:rgba(0,230,118,0.09); color:var(--green); border:1px solid rgba(0,230,118,0.15); }
+    .fr-SCORE_LOW      { background:rgba(255,215,0,0.07); color:var(--yellow); border:1px solid rgba(255,215,0,0.18); }
     .fr-EV_LOW         { background:rgba(249,115,22,0.10); color:var(--orange); border:1px solid rgba(249,115,22,0.2); }
-    .fr-REGIME_BLOCKED { background:rgba(239,68,68,0.10);  color:var(--red);    border:1px solid rgba(239,68,68,0.2); }
+    .fr-REGIME_BLOCKED { background:rgba(255,69,96,0.08);  color:var(--red);    border:1px solid rgba(255,69,96,0.18); }
     .fr-DIRECTION_FLAT { background:rgba(90,106,126,0.10); color:var(--muted);  border:1px solid var(--border); }
     .fr-NO_CANDLES     { background:transparent; color:#2d3748; border:1px solid var(--border); }
 
     /* ══ TRADE HISTORY ═══════════════════════════════════════ */
     .trade-item { display:grid; grid-template-columns:52px 1fr auto; gap:10px; align-items:center; padding:8px 10px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.015); margin-bottom:5px; transition:background 150ms ease, border-color 150ms ease; }
-    .trade-item:hover { background:rgba(96,165,250,0.05); border-color:var(--border2); }
+    .trade-item:hover { background:rgba(0,212,255,0.04); border-color:var(--border2); }
     .trade-item:last-child { margin-bottom:0; }
     .trade-pill { padding:3px 8px; border-radius:4px; font-size:0.65rem; font-weight:700; letter-spacing:0.08em; text-align:center; text-transform:uppercase; }
-    .tp-buy  { background:rgba(16,185,129,0.1); color:var(--green); border:1px solid rgba(16,185,129,0.25); }
-    .tp-sell { background:rgba(239,68,68,0.1);  color:var(--red);   border:1px solid rgba(239,68,68,0.25); }
+    .tp-buy  { background:rgba(0,230,118,0.08); color:var(--green); border:1px solid rgba(0,230,118,0.20); }
+    .tp-sell { background:rgba(255,69,96,0.08);  color:var(--red);   border:1px solid rgba(255,69,96,0.20); }
     .trade-sym { font-size:0.78rem; font-weight:700; margin-bottom:2px; }
     .trade-meta { font-size:0.68rem; color:var(--slate); }
     .trade-meta .strat { color:var(--blue); }
@@ -480,24 +498,24 @@
 
     /* ══ REGIME TAGS ══════════════════════════════════════════ */
     .rtag { padding:2px 8px; border-radius:5px; font-size:0.75rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; display:inline-block; }
-    .rtag-chop  { background:rgba(245,158,11,0.12); color:var(--yellow); border:1px solid rgba(245,158,11,0.25); }
-    .rtag-trend { background:rgba(16,185,129,0.12); color:var(--green);  border:1px solid rgba(16,185,129,0.25); }
-    .rtag-corr  { background:rgba(239,68,68,0.12);  color:var(--red);    border:1px solid rgba(239,68,68,0.25); }
-    .rtag-vol   { background:rgba(59,130,246,0.12); color:var(--blue);   border:1px solid rgba(59,130,246,0.25); }
-    .rtag-panic { background:rgba(239,68,68,0.2);   color:var(--red);    border:1px solid rgba(239,68,68,0.4); }
-    .rtag-exh   { background:rgba(139,92,246,0.12); color:var(--purple); border:1px solid rgba(139,92,246,0.25); }
+    .rtag-chop  { background:rgba(255,215,0,0.09); color:var(--yellow); border:1px solid rgba(255,215,0,0.20); }
+    .rtag-trend { background:rgba(0,230,118,0.09); color:var(--green);  border:1px solid rgba(0,230,118,0.20); }
+    .rtag-corr  { background:rgba(255,69,96,0.10);  color:var(--red);    border:1px solid rgba(255,69,96,0.20); }
+    .rtag-vol   { background:rgba(0,212,255,0.08); color:var(--blue);   border:1px solid rgba(0,212,255,0.20); }
+    .rtag-panic { background:rgba(255,69,96,0.15);   color:var(--red);    border:1px solid rgba(255,69,96,0.32); }
+    .rtag-exh   { background:rgba(168,85,247,0.09); color:var(--purple); border:1px solid rgba(168,85,247,0.20); }
 
     /* score + EV pills */
     .spill { padding:2px 8px; border-radius:5px; font-size:0.82rem; font-weight:700; background:rgba(255,255,255,0.05); border:1px solid var(--border2); }
     .evpill { padding:2px 8px; border-radius:5px; font-size:0.82rem; font-weight:700; }
-    .evpill.pos { background:rgba(16,185,129,0.1); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
-    .evpill.neg { background:rgba(239,68,68,0.1);  color:var(--red);   border:1px solid rgba(239,68,68,0.2); }
+    .evpill.pos { background:rgba(0,230,118,0.08); color:var(--green); border:1px solid rgba(0,230,118,0.15); }
+    .evpill.neg { background:rgba(255,69,96,0.08);  color:var(--red);   border:1px solid rgba(255,69,96,0.15); }
     .evpill.neu { background:rgba(90,106,126,0.1); color:var(--muted); border:1px solid var(--border); }
 
     /* Signal feed v2 */
     .sfeed-item { padding:7px 10px; border-radius:6px; border:1px solid var(--border); background:rgba(255,255,255,0.015); margin-bottom:4px; transition:background 150ms ease; }
-    .sfeed-item:hover { background:rgba(96,165,250,0.05); border-color:var(--border2); }
-    .sfeed-item.sfeed-signal { border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.04); }
+    .sfeed-item:hover { background:rgba(0,212,255,0.04); border-color:var(--border2); }
+    .sfeed-item.sfeed-signal { border-color:rgba(0,230,118,0.22); background:rgba(0,230,118,0.03); }
     .sfeed-top { display:flex; align-items:center; gap:7px; margin-bottom:4px; }
     .sfeed-ts  { margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:0.65rem; color:var(--slate); font-variant-numeric:tabular-nums; }
     .sfeed-tags { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
@@ -529,16 +547,16 @@
     }
     tr:nth-child(even) td { background:rgba(255,255,255,0.015); }
     tr:last-child td { border-bottom:none; }
-    tr:hover td { background:rgba(96,165,250,0.05) !important; }
+    tr:hover td { background:rgba(0,212,255,0.04) !important; }
     .empty-row td { color:var(--slate); text-align:center; padding:28px; font-size:0.82rem; font-style:italic; }
     .empty-row td::before { content:'⊘ '; opacity:0.5; }
 
     .pill { display:inline-block; padding:1px 6px; border-radius:4px; font-size:0.65rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; }
-    .pill-buy,.pill-long   { background:rgba(16,185,129,0.1); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
-    .pill-sell,.pill-short { background:rgba(239,68,68,0.1);  color:var(--red);   border:1px solid rgba(239,68,68,0.2); }
-    .pill-filled    { background:rgba(16,185,129,0.1); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
-    .pill-submitted { background:rgba(96,165,250,0.1); color:var(--blue);  border:1px solid rgba(96,165,250,0.2); }
-    .pill-pending   { background:rgba(245,158,11,0.1); color:var(--yellow);border:1px solid rgba(245,158,11,0.2); }
+    .pill-buy,.pill-long   { background:rgba(0,230,118,0.08); color:var(--green); border:1px solid rgba(0,230,118,0.15); }
+    .pill-sell,.pill-short { background:rgba(255,69,96,0.08);  color:var(--red);   border:1px solid rgba(255,69,96,0.15); }
+    .pill-filled    { background:rgba(0,230,118,0.08); color:var(--green); border:1px solid rgba(0,230,118,0.15); }
+    .pill-submitted { background:rgba(0,212,255,0.08); color:var(--blue);  border:1px solid rgba(0,212,255,0.18); }
+    .pill-pending   { background:rgba(255,215,0,0.08); color:var(--yellow);border:1px solid rgba(255,215,0,0.15); }
     .pill-cancelled { background:rgba(148,163,184,0.06);color:var(--slate);border:1px solid var(--border); }
 
     /* ══ BUTTONS ══════════════════════════════════════════════ */
@@ -548,7 +566,7 @@
       background:transparent; border:1px solid var(--border2);
       color:var(--slate); cursor:pointer; transition:all 0.15s; text-transform:uppercase;
     }
-    .chart-btn.active { background:rgba(96,165,250,0.12); border-color:rgba(96,165,250,0.35); color:var(--blue); }
+    .chart-btn.active { background:rgba(0,212,255,0.08); border-color:rgba(0,212,255,0.35); color:var(--blue); }
     .chart-btn:hover  { border-color:var(--border2); color:var(--text); }
 
     /* ══ PROGRESS BARS ════════════════════════════════════════ */
@@ -570,12 +588,29 @@
 <header>
   <div class="hdr-left">
     <div class="logo-wrap">
-      <div class="logo-icon">✳</div>
+      <div class="logo-icon">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <circle cx="11" cy="11" r="10" stroke="url(#lg1)" stroke-width="1.5"/>
+          <path d="M6 16 L11 6 L16 16" stroke="url(#lg2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M7.5 13h7" stroke="#00d4ff" stroke-width="1.2" stroke-linecap="round"/>
+          <defs>
+            <linearGradient id="lg1" x1="1" y1="1" x2="21" y2="21">
+              <stop offset="0%" stop-color="#2196f3"/>
+              <stop offset="100%" stop-color="#00d4ff"/>
+            </linearGradient>
+            <linearGradient id="lg2" x1="6" y1="6" x2="16" y2="16">
+              <stop offset="0%" stop-color="#a855f7"/>
+              <stop offset="100%" stop-color="#00d4ff"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
       <div>
         <div class="logo-title">
-          <span class="hdr-full-title" id="title-desktop">Claude Code Trading Bot</span>
-          <span class="hdr-short-title">CCTB</span>
+          <span class="hdr-full-title" id="title-desktop"><span class="brand-aether">AETHER</span> <span class="brand-alpha-a">α</span><span class="brand-alpha-lpha">LPHA</span></span>
+          <span class="hdr-short-title">AETHER αLPHA</span>
         </div>
+        <div class="logo-tagline hdr-full-title">QUANT HEDGE ALPHA SYSTEM · PRECISION · PERFORMANCE · INTELLIGENCE</div>
         <div class="logo-sub">
           <span class="logo-ver" id="hdr-version">v–.–.–</span>
           <span class="hdr-sub-sep hdr-full-title"> · </span>
@@ -646,7 +681,7 @@
 
 
 <!-- ══ MOTOR ═══════════════════════════════════════════════ -->
-<div style="margin-bottom:12px;border:1px solid rgba(99,102,241,0.30);border-radius:10px;overflow:hidden">
+<div style="margin-bottom:12px;border:1px solid rgba(0,212,255,0.20);border-radius:10px;overflow:hidden">
 
   <!-- Hero do Motor -->
   <div class="motor-hero" style="border:none;border-radius:0;margin-bottom:0">
@@ -659,17 +694,17 @@
     <div class="motor-hero-metrics" style="display:flex;gap:14px;align-items:center;margin-right:14px;flex-shrink:0">
       <div style="text-align:center">
         <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Score</div>
-        <div id="motor-decision-score" style="font-size:1rem;font-weight:800;color:#a5b4fc">–</div>
+        <div id="motor-decision-score" style="font-size:1rem;font-weight:800;color:#a855f7">–</div>
       </div>
       <div style="width:1px;height:28px;background:rgba(255,255,255,0.10);border-radius:1px"></div>
       <div style="text-align:center">
         <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Kelly</div>
-        <div id="motor-decision-kelly" style="font-size:1rem;font-weight:800;color:#7dd3fc">–</div>
+        <div id="motor-decision-kelly" style="font-size:1rem;font-weight:800;color:#00d4ff">–</div>
       </div>
       <div style="width:1px;height:28px;background:rgba(255,255,255,0.10);border-radius:1px"></div>
       <div style="text-align:center">
         <div style="font-size:0.65rem;color:rgba(255,255,255,0.4);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:1px">Thr</div>
-        <div id="motor-decision-thr" style="font-size:1rem;font-weight:800;color:#6ee7b7">–</div>
+        <div id="motor-decision-thr" style="font-size:1rem;font-weight:800;color:#00e676">–</div>
       </div>
     </div>
     <!-- Badge de decisão -->
@@ -759,7 +794,7 @@
       <div class="motor-section-lbl">④ Score do Motor</div>
       <!-- Score bar -->
       <div style="margin-bottom:8px;">
-        <div style="height:20px;background:#0d1520;border-radius:10px;position:relative;overflow:hidden;">
+        <div style="height:20px;background:#060d1a;border-radius:10px;position:relative;overflow:hidden;">
           <div id="motor-score-fill" style="position:relative;height:100%;border-radius:10px;background:var(--red);transition:width 0.5s;width:0%">
             <span id="motor-score-now" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:0.88rem;font-weight:800;color:rgba(255,255,255,0.9);white-space:nowrap;">–</span>
           </div>
@@ -770,18 +805,18 @@
       <!-- M factors -->
       <div style="display:grid;grid-template-columns:120px 1fr 40px 44px;align-items:center;gap:5px 8px;margin-bottom:8px;">
         <span style="font-size:0.75rem;color:var(--text)">Momentum (M1)</span>
-        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m1" style="height:13px;border-radius:7px;background:#3b82f6;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.82rem;font-weight:700;color:#3b82f6;text-align:right" id="w-m1">–</span>
+        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m1" style="height:13px;border-radius:7px;background:#00d4ff;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#00d4ff;text-align:right" id="w-m1">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">2%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Estrutura (M2)</span>
-        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m2" style="height:13px;border-radius:7px;background:#10b981;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.82rem;font-weight:700;color:#10b981;text-align:right" id="w-m2">–</span>
+        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m2" style="height:13px;border-radius:7px;background:#00e676;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#00e676;text-align:right" id="w-m2">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">11%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Volume (M3) ★</span>
-        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:13px;border-radius:7px;background:#f59e0b;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.82rem;font-weight:700;color:#f59e0b;text-align:right" id="w-m3">–</span>
+        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:13px;border-radius:7px;background:#ffd700;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#ffd700;text-align:right" id="w-m3">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">33%</span>
 
         <!-- M4 removido (peso 0%) — IDs mantidos para JS -->
@@ -789,27 +824,27 @@
         <span id="wb-m4" style="display:none"></span>
 
         <span style="font-size:0.75rem;color:var(--text)">Candle (M5)</span>
-        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m5" style="height:13px;border-radius:7px;background:#f97316;transition:width 0.5s;width:0%"></div></div>
+        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m5" style="height:13px;border-radius:7px;background:#f97316;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#f97316;text-align:right" id="w-m5">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">6%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Futures (M6)</span>
-        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m6" style="height:13px;border-radius:7px;background:#06b6d4;transition:width 0.5s;width:0%"></div></div>
+        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m6" style="height:13px;border-radius:7px;background:#06b6d4;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#06b6d4;text-align:right" id="w-m6">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">12%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Rel. Strength (M7)</span>
-        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m7" style="height:13px;border-radius:7px;background:#a78bfa;transition:width 0.5s;width:0%"></div></div>
+        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m7" style="height:13px;border-radius:7px;background:#a78bfa;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#a78bfa;text-align:right" id="w-m7">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">11%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Vol. State (M8) ★</span>
-        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m8" style="height:13px;border-radius:7px;background:#ec4899;transition:width 0.5s;width:0%"></div></div>
+        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m8" style="height:13px;border-radius:7px;background:#ec4899;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#ec4899;text-align:right" id="w-m8">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">19%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Sentiment (M9) <span id="m9-fng-badge" style="font-size:0.75rem;color:var(--muted)"></span></span>
-        <div style="height:13px;background:#0d1520;border-radius:7px;overflow:hidden;"><div id="wb-m9" style="height:13px;border-radius:7px;background:#84cc16;transition:width 0.5s;width:0%"></div></div>
+        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m9" style="height:13px;border-radius:7px;background:#84cc16;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#84cc16;text-align:right" id="w-m9">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">6%</span>
       </div>
@@ -888,8 +923,8 @@
                      border:1px solid rgba(255,255,255,0.12);color:var(--muted)">WR diff –</span>
         <span id="edge-blocked-chip"
               style="display:none;font-size:0.75rem;padding:3px 10px;border-radius:12px;
-                     background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);
-                     color:#ef4444;font-weight:700;">⛔ BLOQUEADO</span>
+                     background:rgba(255,69,96,0.12);border:1px solid rgba(255,69,96,0.32);
+                     color:#ff4560;font-weight:700;">⛔ BLOQUEADO</span>
       </div>
       <!-- row antigo mantido oculto para compatibilidade de IDs usados em JS -->
       <div id="edge-chips" style="display:none;"></div>
@@ -905,7 +940,7 @@
         <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-bottom:4px;">
           Kelly · cap <span id="motor-kelly-cap-lbl">–%</span>
         </div>
-        <div style="position:relative;height:22px;background:#0d1520;border-radius:11px;overflow:hidden;">
+        <div style="position:relative;height:22px;background:#060d1a;border-radius:11px;overflow:hidden;">
           <div id="motor-kelly-fill"
                style="position:relative;height:100%;border-radius:11px;background:var(--blue);
                       transition:width 0.5s;width:0%">
@@ -921,19 +956,19 @@
 
       <!-- Notional + SL + TP em linha -->
       <div class="motor-sizing-boxes" style="display:flex;gap:8px;margin-top:8px;">
-        <div style="flex:1;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);
+        <div style="flex:1;background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.15);
                     border-radius:8px;padding:5px 10px;text-align:center;">
           <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
                       letter-spacing:0.5px;margin-bottom:2px;">Notional</div>
           <div style="font-size:0.92rem;font-weight:800;color:var(--blue)" id="motor-notional">–</div>
         </div>
-        <div style="flex:1;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);
+        <div style="flex:1;background:rgba(255,69,96,0.07);border:1px solid rgba(255,69,96,0.15);
                     border-radius:8px;padding:5px 10px;text-align:center;">
           <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
                       letter-spacing:0.5px;margin-bottom:2px;">Stop Loss</div>
           <div style="font-size:0.92rem;font-weight:800;color:var(--red)" id="motor-sl">–1.5%</div>
         </div>
-        <div style="flex:1;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);
+        <div style="flex:1;background:rgba(0,230,118,0.06);border:1px solid rgba(0,230,118,0.15);
                     border-radius:8px;padding:5px 10px;text-align:center;">
           <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);text-transform:uppercase;
                       letter-spacing:0.5px;margin-bottom:2px;">Take Profit</div>
@@ -1084,8 +1119,8 @@
     </div>
     <div style="margin-top:8px;font-size:0.75rem;color:var(--muted)">
       Confiança:
-      <span style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:4px;padding:0 5px;color:#10b981">real</span> ≥30 trades ·
-      <span style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:0 5px;color:#f59e0b">mixed</span> parcial ·
+      <span style="background:rgba(0,230,118,0.10);border:1px solid rgba(0,230,118,0.22);border-radius:4px;padding:0 5px;color:#00e676">real</span> ≥30 trades ·
+      <span style="background:rgba(255,215,0,0.10);border:1px solid rgba(255,215,0,0.22);border-radius:4px;padding:0 5px;color:#ffd700">mixed</span> parcial ·
       <span style="background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.15);border-radius:4px;padding:0 5px;color:var(--muted)">sim</span> apenas simulação
     </div>
   </div>
@@ -1113,8 +1148,8 @@
   <div class="card">
     <div class="clabel">Execution Intelligence</div>
     <div style="display:flex;gap:6px;margin-bottom:8px;font-size:0.75rem;">
-      <span style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:4px;padding:1px 6px;color:var(--blue)">maker thr: <b id="ei-maker-thr">–</b> bps</span>
-      <span style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:4px;padding:1px 6px;color:var(--red)">taker thr: <b id="ei-taker-thr">–</b> bps</span>
+      <span style="background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.22);border-radius:4px;padding:1px 6px;color:var(--blue)">maker thr: <b id="ei-maker-thr">–</b> bps</span>
+      <span style="background:rgba(255,69,96,0.08);border:1px solid rgba(255,69,96,0.22);border-radius:4px;padding:1px 6px;color:var(--red)">taker thr: <b id="ei-taker-thr">–</b> bps</span>
       <span style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--muted)">timeout: <b id="ei-timeout">–</b>s</span>
     </div>
     <div id="ei-rows" style="font-size:0.82rem;">
@@ -1301,8 +1336,8 @@
     <div style="margin-top:12px;">
       <div style="font-size:0.82rem;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.8px">Win/Loss ratio</div>
       <div style="height:15px;border-radius:7px;overflow:hidden;display:flex;">
-        <div id="ql-win"  style="background:linear-gradient(90deg,var(--green),#059669);transition:flex 0.5s;flex:0"></div>
-        <div id="ql-loss" style="background:linear-gradient(90deg,#dc2626,var(--red));transition:flex 0.5s;flex:1"></div>
+        <div id="ql-win"  style="background:linear-gradient(90deg,var(--green),#00c853);transition:flex 0.5s;flex:0"></div>
+        <div id="ql-loss" style="background:linear-gradient(90deg,#ff4560,var(--red));transition:flex 0.5s;flex:1"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);margin-top:3px;">
         <span id="ql-win-lbl">0 wins</span>
@@ -1325,7 +1360,7 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--blue)"></div>
   Equity Analytics
-  <a href="/api/analytics/equity_curve/csv" style="margin-left:auto;font-size:0.75rem;color:var(--blue);text-decoration:none;padding:2px 8px;border:1px solid rgba(59,130,246,0.3);border-radius:4px">↓ CSV</a>
+  <a href="/api/analytics/equity_curve/csv" style="margin-left:auto;font-size:0.75rem;color:var(--blue);text-decoration:none;padding:2px 8px;border:1px solid rgba(0,212,255,0.22);border-radius:4px">↓ CSV</a>
 </div>
 
 <!-- IDs preservados para o JS (eq-pnl/maxdd/stability são duplicatas do KPI strip e Quant Analytics) -->
@@ -1343,7 +1378,7 @@
       <div class="clabel" style="margin:0">Equity Curve</div>
       <div style="display:flex;gap:6px;font-size:0.75rem;">
         <span style="color:var(--green)">── capital</span>
-        <span style="color:rgba(59,130,246,0.6)">── HWM</span>
+        <span style="color:rgba(0,212,255,0.45)">── HWM</span>
       </div>
     </div>
     <div style="position:relative;height:140px;"><canvas id="equity-chart"></canvas></div>
@@ -1497,7 +1532,7 @@
           <span id="rc-sharpe-real" style="font-weight:700">–</span>
         </div>
         <div style="position:relative;height:20px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
-          <div id="rc-sharpe-bar" style="position:absolute;top:0;height:100%;background:rgba(59,130,246,0.4);border-radius:4px;"></div>
+          <div id="rc-sharpe-bar" style="position:absolute;top:0;height:100%;background:rgba(0,212,255,0.30);border-radius:4px;"></div>
           <div style="position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:0 6px;line-height:20px;font-size:0.75rem;">
             <span id="rc-sharpe-lo">–</span><span id="rc-sharpe-hi">–</span>
           </div>
@@ -1511,7 +1546,7 @@
           <span id="rc-wr-real" style="font-weight:700">–</span>
         </div>
         <div style="position:relative;height:20px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">
-          <div id="rc-wr-bar" style="position:absolute;top:0;height:100%;background:rgba(16,185,129,0.4);border-radius:4px;"></div>
+          <div id="rc-wr-bar" style="position:absolute;top:0;height:100%;background:rgba(0,230,118,0.30);border-radius:4px;"></div>
           <div style="position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:0 6px;line-height:20px;font-size:0.75rem;">
             <span id="rc-wr-lo">–</span><span id="rc-wr-hi">–</span>
           </div>
@@ -2008,15 +2043,15 @@ function initPortfolioChart(){
     type:'line',
     data:{ labels:[], datasets:[{
       label:'Portfolio',data:[],
-      borderColor:'#3b82f6',
+      borderColor:'#00d4ff',
       backgroundColor:(ctx)=>{
         const g=ctx.chart.ctx.createLinearGradient(0,0,0,ctx.chart.height);
-        g.addColorStop(0,'rgba(59,130,246,0.18)');
-        g.addColorStop(1,'rgba(59,130,246,0.01)');
+        g.addColorStop(0,'rgba(0,212,255,0.15)');
+        g.addColorStop(1,'rgba(0,212,255,0.01)');
         return g;
       },
       borderWidth:2.5,pointRadius:0,pointHoverRadius:5,
-      pointHoverBackgroundColor:'#3b82f6',
+      pointHoverBackgroundColor:'#00d4ff',
       fill:true,tension:0.35,
     }]},
     options:{
@@ -2026,9 +2061,9 @@ function initPortfolioChart(){
       plugins:{
         legend:{display:false},
         tooltip:{
-          backgroundColor:'#1a2332',borderColor:'#1f2937',borderWidth:1,
-          titleColor:'#94a3b8',titleFont:{family:'JetBrains Mono',size:10},
-          bodyColor:'#e2e8f0',bodyFont:{family:'JetBrains Mono',size:12,weight:'700'},
+          backgroundColor:'#0a1628',borderColor:'#1a3a5c',borderWidth:1,
+          titleColor:'#5a90b5',titleFont:{family:'JetBrains Mono',size:10},
+          bodyColor:'#e8f4fd',bodyFont:{family:'JetBrains Mono',size:12,weight:'700'},
           padding:10,cornerRadius:6,
           callbacks:{
             title:items=>items[0].label,
@@ -2040,12 +2075,12 @@ function initPortfolioChart(){
         x:{
           grid:{color:'rgba(255,255,255,0.04)',drawTicks:false},
           border:{display:false},
-          ticks:{color:'#94a3b8',font:{family:'JetBrains Mono',size:10},maxTicksLimit:7,maxRotation:0},
+          ticks:{color:'#5a90b5',font:{family:'JetBrains Mono',size:10},maxTicksLimit:7,maxRotation:0},
         },
         y:{
           grid:{color:'rgba(255,255,255,0.04)',drawTicks:false},
           border:{display:false},
-          ticks:{color:'#94a3b8',font:{family:'JetBrains Mono',size:10},
+          ticks:{color:'#5a90b5',font:{family:'JetBrains Mono',size:10},
             callback:v=>'$'+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})},
           position:'right',
         },
@@ -2128,7 +2163,7 @@ function updatePortfolioChart(){
   _portfolioChart.options.scales.y.max=maxV+pad;
 
   const first=values[0], last=values[values.length-1];
-  _portfolioChart.data.datasets[0].borderColor=last>first?'#10b981':last<first?'#ef4444':'#3b82f6';
+  _portfolioChart.data.datasets[0].borderColor=last>first?'#00e676':last<first?'#ff4560':'#00d4ff';
   _portfolioChart.update('none');
 }
 
@@ -2139,15 +2174,15 @@ function initDonutChart(){
     type:'doughnut',
     data:{ labels:['Cash',...['BTC-USDT','ETH-USDT','SOL-USDT']], datasets:[{
       data:[100,0,0,0],
-      backgroundColor:['#3b82f6','#f97316','#6366f1','#8b5cf6'],
-      borderColor:'#0f1623',borderWidth:3,hoverBorderWidth:3,
+      backgroundColor:['#00d4ff','#f97316','#a855f7','#ffd700'],
+      borderColor:'#060d1a',borderWidth:3,hoverBorderWidth:3,
     }]},
     options:{
       responsive:true,maintainAspectRatio:false,cutout:'72%',
       animation:{duration:600},
       plugins:{legend:{display:false},tooltip:{
-        backgroundColor:'#0f1623',borderColor:'#1e2a3a',borderWidth:1,
-        titleColor:'#6b7280',bodyColor:'#e2e8f0',
+        backgroundColor:'#0a1628',borderColor:'#1a3a5c',borderWidth:1,
+        titleColor:'#5a90b5',bodyColor:'#e8f4fd',
       }},
     }
   });
@@ -2160,7 +2195,7 @@ function updateDonut(portfolio,prices){
   // Apenas ativos OPERACIONAIS (bot pode tradear): USDT + BTC/ETH/SOL
   // OKB e BRL são ativos fixos e não integram o portfolio operacional
   const assets = [
-    { name:'USDT', color:'#3b82f6', val: parseFloat(bal.USDT?.usdValue || portfolio.cash_available || 0) },
+    { name:'USDT', color:'#00d4ff', val: parseFloat(bal.USDT?.usdValue || portfolio.cash_available || 0) },
     { name:'BTC',  color:'#f97316', val: bal.BTC?.usdValue  || 0 },
     { name:'ETH',  color:'#6366f1', val: bal.ETH?.usdValue  || 0 },
     { name:'SOL',  color:'#8b5cf6', val: bal.SOL?.usdValue  || 0 },
@@ -2170,7 +2205,7 @@ function updateDonut(portfolio,prices){
 
   _donutChart.data.labels   = assets.map(a=>a.name);
   _donutChart.data.datasets[0].backgroundColor = assets.map(a=>a.color);
-  _donutChart.data.datasets[0].borderColor      = assets.map(()=>'#0f1623');
+  _donutChart.data.datasets[0].borderColor      = assets.map(()=>'#060d1a');
   _donutChart.data.datasets[0].borderWidth      = assets.map(()=>3);
   _donutChart.data.datasets[0].data = assets.map(a=>a.val);
   _donutChart.update('none');
@@ -2334,13 +2369,13 @@ function regimeBadge(regime){
   };
   const lbl=labels[regime]||regime.replace(/_/g,' ');
   let bg,color,border;
-  if(r.includes('EXPANSION'))   {bg='rgba(16,185,129,0.12)';color='#10b981';border='rgba(16,185,129,0.3)';}
-  else if(r.includes('COMPRESS')){bg='rgba(16,185,129,0.08)';color='#34d399';border='rgba(16,185,129,0.2)';}
-  else if(r.includes('EXHAUST')) {bg='rgba(59,130,246,0.10)';color='#60a5fa';border='rgba(59,130,246,0.25)';}
-  else if(r.includes('CHOP'))    {bg='rgba(245,158,11,0.10)';color='#f59e0b';border='rgba(245,158,11,0.3)';}
+  if(r.includes('EXPANSION'))   {bg='rgba(0,230,118,0.09)';color='#00e676';border='rgba(0,230,118,0.22)';}
+  else if(r.includes('COMPRESS')){bg='rgba(0,230,118,0.06)';color='#00e676';border='rgba(0,230,118,0.15)';}
+  else if(r.includes('EXHAUST')) {bg='rgba(0,212,255,0.07)';color='#00d4ff';border='rgba(0,212,255,0.20)';}
+  else if(r.includes('CHOP'))    {bg='rgba(255,215,0,0.06)';color='#ffd700';border='rgba(255,215,0,0.22)';}
   else if(r.includes('CORR'))    {bg='rgba(249,115,22,0.10)';color='#f97316';border='rgba(249,115,22,0.3)';}
-  else if(r.includes('BEAR'))    {bg='rgba(239,68,68,0.12)'; color='#f87171';border='rgba(239,68,68,0.35)';}
-  else if(r.includes('PANIC'))   {bg='rgba(239,68,68,0.18)'; color='#ef4444';border='rgba(239,68,68,0.5)';}
+  else if(r.includes('BEAR'))    {bg='rgba(255,69,96,0.10)'; color='#ff4560';border='rgba(255,69,96,0.28)';}
+  else if(r.includes('PANIC'))   {bg='rgba(255,69,96,0.14)'; color='#ff4560';border='rgba(255,69,96,0.40)';}
   else                           {bg='rgba(90,106,126,0.10)';color='#5a6a7e';border='rgba(90,106,126,0.2)';}
   return`<span style="background:${bg};color:${color};border:1px solid ${border};border-radius:6px;padding:2px 8px;font-size:0.75rem;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;white-space:nowrap">${lbl}</span>`;
 }
@@ -2439,7 +2474,7 @@ function buildCards(prices,sym,exits,recentOrders=[]){
     const act=action(d.result,d.calibrated,d.threshold,d.regime);
     const score=d.score||0, thr=d.threshold||0.56;
     const sPct=Math.min(score*100,100), tPct=Math.min(thr*100,100);
-    const sCol=score>=thr?'#10b981':score>=thr*0.82?'#f59e0b':'#ef4444';
+    const sCol=score>=thr?'#00e676':score>=thr*0.82?'#ffd700':'#ff4560';
     const name=s.replace('-USDT','');
     const fullName=COIN_NAMES[s]||name;
     const icon=name==='BTC'?'₿':name==='ETH'?'Ξ':'◎';
@@ -2465,11 +2500,11 @@ function buildCards(prices,sym,exits,recentOrders=[]){
     const tpPct=tp&&p?(((tp-p)/p)*100).toFixed(1):('+'+regMult.tp.toFixed(1));
     const enPct=hasPos&&ep.entry_price&&p?(((p-ep.entry_price)/ep.entry_price)*100):null;
     const enPctStr=enPct!=null?(enPct>=0?'+':'')+enPct.toFixed(2)+'%':'–';
-    const enPctCol=enPct!=null?(enPct>0?'#10b981':enPct<0?'#ef4444':'#6b7280'):'#6b7280';
+    const enPctCol=enPct!=null?(enPct>0?'#00e676':enPct<0?'#ff4560':'#3d6a8a'):'#3d6a8a';
     const isBuy=act.l==='BUY', isSell=act.l==='SELL';
     const chg=d.change_pct!=null?d.change_pct:null;
     const chgStr=chg!=null?(chg>=0?'+':'')+chg.toFixed(2)+'%':'–';
-    const chgCol=chg>0?'#10b981':chg<0?'#ef4444':'#6b7280';
+    const chgCol=chg>0?'#00e676':chg<0?'#ff4560':'#3d6a8a';
     const chgArrow=chg>0?'▲':chg<0?'▼':'–';
     // Contagem de ordens preenchidas por símbolo
     const buyCount=(recentOrders||[]).filter(o=>o.symbol===s&&['buy','BUY'].includes(o.side)&&o.status==='filled').length;
@@ -2512,26 +2547,26 @@ function buildCards(prices,sym,exits,recentOrders=[]){
 
       <!-- Row 3: meta info -->
       <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:#4b5563;margin-bottom:0px;flex-wrap:wrap;">
-        ${hasPos?`<span style="color:#10b981;font-weight:600">● posição ativa</span><span>·</span>`:''}
+        ${hasPos?`<span style="color:#00e676;font-weight:600">● posição ativa</span><span>·</span>`:''}
         <span>EV <span class="${evCls}" style="font-weight:600">${ev}</span></span>
         <span>·</span>
-        <span>ATR <span style="color:#6b7280">${atr}%</span></span>
-        ${hasPos&&ep.trailing?`<span>·</span><span style="color:#10b981">trailing ✓</span>`:''}
+        <span>ATR <span style="color:#3d6a8a">${atr}%</span></span>
+        ${hasPos&&ep.trailing?`<span>·</span><span style="color:#00e676">trailing ✓</span>`:''}
       </div>
 
       <!-- Row 4: SL / Entry / TP -->
       <div class="sl-tp-row">
         <div class="sl-box">
           <div class="slt-label">SL (${slPct}%)</div>
-          <div class="slt-val" style="color:#f87171">${sl?usd(sl,2):'–'}</div>
+          <div class="slt-val" style="color:#ff4560">${sl?usd(sl,2):'–'}</div>
         </div>
         <div class="en-box">
           <div class="slt-label">${hasPos?`Entrada (${enPctStr})`:'Entrada'}</div>
-          <div class="slt-val" style="color:#60a5fa">${hasPos?usd(ep.entry_price,2):'–'}</div>
+          <div class="slt-val" style="color:#00d4ff">${hasPos?usd(ep.entry_price,2):'–'}</div>
         </div>
         <div class="tp-box">
           <div class="slt-label">TP (+${tpPct}%)</div>
-          <div class="slt-val" style="color:#34d399">${tp?usd(tp,2):'–'}</div>
+          <div class="slt-val" style="color:#00e676">${tp?usd(tp,2):'–'}</div>
         </div>
       </div>
     </div>`;
@@ -2594,11 +2629,11 @@ function renderFunnel(data){
     const barW = (s.pct / maxPct * 100).toFixed(1);
     const col = s.color || 'var(--muted)';
     const isSig = isSignal(s);
-    const border = isSig ? `border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.05);border-radius:8px;padding:4px 8px;margin-top:4px;` : '';
+    const border = isSig ? `border:1px solid rgba(0,230,118,0.22);background:rgba(0,230,118,0.04);border-radius:8px;padding:4px 8px;margin-top:4px;` : '';
     return`<div style="${border}display:grid;grid-template-columns:140px 1fr 52px 60px;align-items:center;gap:10px;">
       <span style="font-size:0.82rem;color:${isSig?'var(--green)':'var(--text)'};font-weight:${isSig?'800':'500'}">${s.label}</span>
-      <div style="height:${isSig?'10':'6'}px;background:#0d1520;border-radius:10px;overflow:hidden;">
-        <div style="height:100%;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s;${isSig?'box-shadow:0 0 8px rgba(16,185,129,0.4)':''}"></div>
+      <div style="height:${isSig?'10':'6'}px;background:#060d1a;border-radius:10px;overflow:hidden;">
+        <div style="height:100%;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s;${isSig?'box-shadow:0 0 8px rgba(0,230,118,0.30)':''}"></div>
       </div>
       <span style="font-size:0.92rem;font-weight:800;color:${col};text-align:right">${s.count.toLocaleString('pt-BR')}</span>
       <span style="font-size:0.82rem;color:${col};text-align:right">${s.pct}%</span>
@@ -2663,17 +2698,17 @@ function updateReconciler(report){
   const msg   = document.getElementById('recon-msg');
 
   if(divs===0){
-    icon.style.background='#10b981';
+    icon.style.background='#00e676';
     badge.textContent='· conciliado';
     badge.style.color='var(--green)';
     msg.textContent='Todos os saldos OKX correspondem ao DB local. Sem divergências.';
   } else if(divs===fixed){
-    icon.style.background='#f59e0b';
+    icon.style.background='#ffd700';
     badge.textContent=`· ${divs} divergência(s) corrigida(s)`;
-    badge.style.color='#f59e0b';
+    badge.style.color='#ffd700';
     msg.textContent=`${divs} divergência(s) detectada(s) e corrigida(s) automaticamente.`;
   } else {
-    icon.style.background='#ef4444';
+    icon.style.background='#ff4560';
     badge.textContent=`· ${divs-fixed} divergência(s) pendente(s)`;
     badge.style.color='var(--red)';
     msg.textContent=`${divs} divergência(s): ${fixed} corrigida(s), ${divs-fixed} pendente(s).`;
@@ -2683,7 +2718,7 @@ function updateReconciler(report){
   const symEl = document.getElementById('recon-symbols');
   symEl.innerHTML = Object.entries(syms).map(([s,v])=>{
     const st=v.status||'ok';
-    const col=st==='ok'?'#10b981':st==='fixed'?'#f59e0b':'#ef4444';
+    const col=st==='ok'?'#00e676':st==='fixed'?'#ffd700':'#ff4560';
     const icon=st==='ok'?'✓':st==='fixed'?'⚡':'✗';
     const drift=v.drift!=null?(v.drift>=0?'+':'')+v.drift.toFixed(6):'–';
     return`<div style="display:flex;align-items:center;gap:4px;">
@@ -2762,7 +2797,7 @@ function renderGovernance(status, drift, live, schema){
         const label=waiting?`${f.n_live||0} obs`:psiLabel(psi);
         return`<div style="display:grid;grid-template-columns:120px 1fr 90px 64px;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="font-size:0.82rem;color:var(--text);font-weight:600">${FLABELS[k]||k}</span>
-          <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;">
+          <div style="height:15px;background:#060d1a;border-radius:7px;overflow:hidden;">
             <div style="height:15px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
           </div>
           <span style="font-size:0.75rem;color:var(--muted);text-align:center">${liveMean}</span>
@@ -2787,9 +2822,9 @@ function renderGovernance(status, drift, live, schema){
       const FLIVE={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)','m8_vol_state':'Vol.State (M8)','m9_sentiment':'Sentiment (M9)'};
       // Badge indicador de fonte
       const srcLabel = isBaseline
-        ? '<span style="font-size:0.75rem;color:#f59e0b;margin-left:6px">· referência baseline (aguardando obs. ao vivo)</span>'
+        ? '<span style="font-size:0.75rem;color:#ffd700;margin-left:6px">· referência baseline (aguardando obs. ao vivo)</span>'
         : '';
-      liveEl.innerHTML = (isBaseline ? `<div style="font-size:0.82rem;color:#f59e0b;margin-bottom:10px;padding:4px 8px;background:rgba(245,158,11,0.08);border-radius:4px;">Exibindo distribuição do baseline como referência — dados ao vivo acumulam com os sinais</div>` : '') +
+      liveEl.innerHTML = (isBaseline ? `<div style="font-size:0.82rem;color:#ffd700;margin-bottom:10px;padding:4px 8px;background:rgba(255,215,0,0.06);border-radius:4px;">Exibindo distribuição do baseline como referência — dados ao vivo acumulam com os sinais</div>` : '') +
       keys.filter(k=>!k.startsWith('_')).map(k=>{
         const s=live[k];
         const w=schemaFeats[k]?((schemaFeats[k].weight||0)*100).toFixed(0):'–';
@@ -2798,7 +2833,7 @@ function renderGovernance(status, drift, live, schema){
         const p50=s.p50!=null?s.p50.toFixed(3):'–';
         const n=isBaseline?'baseline':''+( s.n||0)+' obs';
         // grid: [nome+peso | μ σ p50 | n_obs]
-        return`<div style="display:grid;grid-template-columns:160px 1fr 90px;align-items:center;gap:12px;padding:5px 0;border-bottom:1px solid #1a2332;">
+        return`<div style="display:grid;grid-template-columns:160px 1fr 90px;align-items:center;gap:12px;padding:5px 0;border-bottom:1px solid #0a1628;">
           <div style="display:flex;align-items:baseline;gap:6px;min-width:0;">
             <span style="font-size:0.88rem;color:var(--text);font-weight:700;white-space:nowrap;">${FLIVE[k]||k}</span>
             <span style="font-size:0.75rem;color:var(--muted);white-space:nowrap;">w:${w}%</span>
@@ -2881,7 +2916,7 @@ function renderImportance(data){
     return`<div style="padding:2px 0;">
       <div class="fi-row-grid" style="display:grid;grid-template-columns:110px 1fr 44px 72px;align-items:center;gap:6px;margin-bottom:3px;">
         <span style="font-size:0.82rem;color:var(--text);font-weight:600">${label}</span>
-        <div style="position:relative;height:15px;background:#0d1520;border-radius:7px;overflow:visible;">
+        <div style="position:relative;height:15px;background:#060d1a;border-radius:7px;overflow:visible;">
           <div style="position:absolute;top:0;left:0;height:15px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
           <div style="position:absolute;top:-3px;bottom:-3px;left:${schBarW}%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;" title="Schema weight"></div>
         </div>
@@ -2988,9 +3023,9 @@ function buildMetaOverfitting(mo){
   const overall = mo.verdict?.overall||'GREY';
   const badgeEl = document.getElementById('mo-overall-badge');
   if(badgeEl){
-    const cfg={GREEN:{bg:'rgba(16,185,129,0.15)',c:'var(--green)',t:'✓ ROBUSTO'},
+    const cfg={GREEN:{bg:'rgba(0,230,118,0.10)',c:'var(--green)',t:'✓ ROBUSTO'},
                YELLOW:{bg:'rgba(234,179,8,0.15)',c:'var(--yellow)',t:'⚠ ATENÇÃO'},
-               RED:{bg:'rgba(239,68,68,0.15)',c:'var(--red)',t:'✗ OVERFIT / INSUF.'},
+               RED:{bg:'rgba(255,69,96,0.12)',c:'var(--red)',t:'✗ OVERFIT / INSUF.'},
                GREY:{bg:'rgba(100,100,100,0.1)',c:'var(--muted)',t:'– DADOS INSUF.'}};
     const s=cfg[overall]||cfg.GREY;
     badgeEl.textContent=s.t; badgeEl.style.background=s.bg; badgeEl.style.color=s.c;
@@ -3130,9 +3165,9 @@ function buildRealityCheck(rc){
   const overall = rc.verdict?.overall||'GREY';
   const badgeEl = document.getElementById('rc-overall-badge');
   if(badgeEl){
-    const cfg = {GREEN:{bg:'rgba(16,185,129,0.15)',c:'var(--green)',t:'✓ EDGE REAL'},
+    const cfg = {GREEN:{bg:'rgba(0,230,118,0.10)',c:'var(--green)',t:'✓ EDGE REAL'},
                  YELLOW:{bg:'rgba(234,179,8,0.15)',c:'var(--yellow)',t:'⚠ INCONCLUSIVO'},
-                 RED:{bg:'rgba(239,68,68,0.15)',c:'var(--red)',t:'✗ SEM EDGE'},
+                 RED:{bg:'rgba(255,69,96,0.12)',c:'var(--red)',t:'✗ SEM EDGE'},
                  GREY:{bg:'rgba(100,100,100,0.1)',c:'var(--muted)',t:'– DADOS INSUF.'}};
     const s = cfg[overall]||cfg.GREY;
     badgeEl.textContent=s.t; badgeEl.style.background=s.bg; badgeEl.style.color=s.c;
@@ -3159,8 +3194,8 @@ function buildRealityCheck(rc){
     const leftPct  = Math.round((lo+5)/10*100);
     const widthPct = Math.round((hi-lo)/10*100);
     barEl.style.left=leftPct+'%'; barEl.style.width=widthPct+'%';
-    barEl.style.background = sh.ci_low>0?'rgba(16,185,129,0.5)':
-                             sh.ci_high<0?'rgba(239,68,68,0.5)':'rgba(234,179,8,0.4)';
+    barEl.style.background = sh.ci_low>0?'rgba(0,230,118,0.40)':
+                             sh.ci_high<0?'rgba(255,69,96,0.40)':'rgba(234,179,8,0.4)';
   }
 
   // Win Rate
@@ -3175,7 +3210,7 @@ function buildRealityCheck(rc){
     const widthPct=Math.round((wr.ci_high-wr.ci_low)*100);
     const leftPct=Math.round(wr.ci_low*100);
     wrBarEl.style.left=leftPct+'%'; wrBarEl.style.width=widthPct+'%';
-    wrBarEl.style.background=wr.ci_low>0.5?'rgba(16,185,129,0.5)':'rgba(234,179,8,0.4)';
+    wrBarEl.style.background=wr.ci_low>0.5?'rgba(0,230,118,0.40)':'rgba(234,179,8,0.4)';
   }
 
   // Expectancy
@@ -3254,9 +3289,9 @@ function buildEquityCharts(eq){
       data:{
         labels,
         datasets:[
-          {label:'Capital',data:equity,borderColor:'#10b981',borderWidth:2,
-           pointRadius:0,tension:0.3,fill:{target:{value:82515.77},above:'rgba(16,185,129,0.08)',below:'rgba(239,68,68,0.08)'}},
-          {label:'HWM',data:hwm,borderColor:'rgba(59,130,246,0.5)',borderWidth:1,
+          {label:'Capital',data:equity,borderColor:'#00e676',borderWidth:2,
+           pointRadius:0,tension:0.3,fill:{target:{value:82515.77},above:'rgba(0,230,118,0.08)',below:'rgba(255,69,96,0.08)'}},
+          {label:'HWM',data:hwm,borderColor:'rgba(0,212,255,0.5)',borderWidth:1,
            borderDash:[4,4],pointRadius:0,tension:0.3},
         ]},
       options:{responsive:true,maintainAspectRatio:false,animation:false,
@@ -3271,8 +3306,8 @@ function buildEquityCharts(eq){
     if(_underwaterChart) _underwaterChart.destroy();
     _underwaterChart = new Chart(ctx2,{
       type:'line',
-      data:{labels,datasets:[{label:'DD%',data:uw,borderColor:'#ef4444',borderWidth:1.5,
-        pointRadius:0,tension:0.3,fill:{target:{value:0},above:'rgba(239,68,68,0.0)',below:'rgba(239,68,68,0.25)'}}]},
+      data:{labels,datasets:[{label:'DD%',data:uw,borderColor:'#ff4560',borderWidth:1.5,
+        pointRadius:0,tension:0.3,fill:{target:{value:0},above:'rgba(255,69,96,0.0)',below:'rgba(255,69,96,0.25)'}}]},
       options:{responsive:true,maintainAspectRatio:false,animation:false,
         plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.raw.toFixed(2)+'%'}}},
         scales:{x:{display:false},y:{display:true,ticks:{callback:v=>v.toFixed(1)+'%',font:{size:8}},grid:{color:'rgba(255,255,255,0.04)'}}}}
@@ -3336,8 +3371,8 @@ function buildRollingCharts(roll){
     if(_rollingWrChart) _rollingWrChart.destroy();
     _rollingWrChart=new Chart(ctx3,{type:'line',
       data:{labels,datasets:[
-        {label:'WR',data:roll.rolling_win_rate.map(v=>v*100),borderColor:'#10b981',borderWidth:1.5,pointRadius:0,tension:0.3},
-        {label:'40%',data:Array(labels.length).fill(40),borderColor:'rgba(239,68,68,0.5)',borderWidth:1,borderDash:[3,3],pointRadius:0},
+        {label:'WR',data:roll.rolling_win_rate.map(v=>v*100),borderColor:'#00e676',borderWidth:1.5,pointRadius:0,tension:0.3},
+        {label:'40%',data:Array(labels.length).fill(40),borderColor:'rgba(255,69,96,0.5)',borderWidth:1,borderDash:[3,3],pointRadius:0},
       ]},
       options:{responsive:true,maintainAspectRatio:false,animation:false,
         plugins:{legend:{display:false}},
@@ -3352,7 +3387,7 @@ function buildRollingCharts(roll){
     if(_rollingSharpeChart) _rollingSharpeChart.destroy();
     _rollingSharpeChart=new Chart(ctx4,{type:'line',
       data:{labels,datasets:[
-        {label:'Sharpe',data:roll.rolling_sharpe,borderColor:'#3b82f6',borderWidth:1.5,pointRadius:0,tension:0.3},
+        {label:'Sharpe',data:roll.rolling_sharpe,borderColor:'#00d4ff',borderWidth:1.5,pointRadius:0,tension:0.3},
         {label:'0',data:Array(labels.length).fill(0),borderColor:'rgba(255,255,255,0.2)',borderWidth:1,borderDash:[3,3],pointRadius:0},
       ]},
       options:{responsive:true,maintainAspectRatio:false,animation:false,
@@ -3388,7 +3423,7 @@ function buildDistributionPanel(dist){
   const ctx1 = document.getElementById('dist-return-chart');
   if(ctx1 && rd.labels){
     if(_distReturnChart) _distReturnChart.destroy();
-    const colors = rd.bins.map(b => b>=0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)');
+    const colors = rd.bins.map(b => b>=0 ? 'rgba(0,230,118,0.55)' : 'rgba(255,69,96,0.55)');
     _distReturnChart = new Chart(ctx1,{
       type:'bar',
       data:{labels:rd.labels, datasets:[{data:rd.counts, backgroundColor:colors, borderWidth:0}]},
@@ -3406,7 +3441,7 @@ function buildDistributionPanel(dist){
     if(_distHoldingChart) _distHoldingChart.destroy();
     _distHoldingChart = new Chart(ctx2,{
       type:'bar',
-      data:{labels:hd.labels, datasets:[{data:hd.counts, backgroundColor:'rgba(59,130,246,0.6)', borderWidth:0}]},
+      data:{labels:hd.labels, datasets:[{data:hd.counts, backgroundColor:'rgba(0,212,255,0.45)', borderWidth:0}]},
       options:{responsive:true,maintainAspectRatio:false,animation:false,
         plugins:{legend:{display:false},tooltip:{callbacks:{title:i=>'Hold: '+i[0].label+'h',label:i=>'Trades: '+i.raw}}},
         scales:{x:{display:true,ticks:{font:{size:8},maxRotation:45}},
@@ -3548,7 +3583,7 @@ function buildPortfolioAllocator(pa){
     return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
       <span style="font-size:0.82rem;font-weight:700;color:${rankCol};min-width:14px">#${rank}</span>
       <span style="font-weight:600;min-width:42px">${sym.replace('-USDT','')}</span>
-      ${inOpen?'<span style="font-size:0.75rem;background:rgba(16,185,129,0.15);color:var(--green);border-radius:3px;padding:0 4px">OPEN</span>':''}
+      ${inOpen?'<span style="font-size:0.75rem;background:rgba(0,230,118,0.10);color:var(--green);border-radius:3px;padding:0 4px">OPEN</span>':''}
       <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:3px;height:5px;overflow:hidden;">
         <div style="height:100%;width:${Math.min(parseFloat(score),100)}%;background:${rankCol};border-radius:3px;"></div>
       </div>
@@ -3627,7 +3662,7 @@ function buildAlphaOrthogonality(ao){
       kelly avg <b style="color:${boostCol}">×${avgBoost.toFixed(2)}</b>
     </span>
     ${Object.entries(syms).filter(([,s])=>s.active&&s.active.length).map(([sym,s])=>
-      `<span style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:4px;padding:2px 8px;font-size:0.75rem;color:var(--purple)">
+      `<span style="background:rgba(168,85,247,0.09);border:1px solid rgba(168,85,247,0.22);border-radius:4px;padding:2px 8px;font-size:0.75rem;color:var(--purple)">
         ${sym.replace('-USDT','')} ${s.active.join('+')} ×${(s.kelly_boost||1).toFixed(2)}
       </span>`
     ).join('')}
@@ -3724,7 +3759,7 @@ function updateVolatilityState(vs, sym){
   const stateEl = document.getElementById('m8-state');
   if(stateEl){
     stateEl.textContent = state;
-    const cols={EXPANDING:'var(--green)',TREND:'#3b82f6',COMPRESSED:'var(--yellow)',
+    const cols={EXPANDING:'var(--green)',TREND:'#00d4ff',COMPRESSED:'var(--yellow)',
                 MEAN_REVERTING:'var(--orange)',CHAOTIC:'var(--red)',UNKNOWN:'var(--muted)'};
     stateEl.style.color = cols[state]||'#ec4899';
   }
@@ -3757,7 +3792,7 @@ function buildStressBacktest(st){
   const volEl=document.getElementById('p16-vol-dist');
   const vol=st.volatility||{};
   if(volEl&&vol.distribution){
-    const ST_COL={EXPANDING:'var(--green)',TREND:'#3b82f6',COMPRESSED:'var(--yellow)',
+    const ST_COL={EXPANDING:'var(--green)',TREND:'#00d4ff',COMPRESSED:'var(--yellow)',
                   MEAN_REVERTING:'var(--orange)',CHAOTIC:'var(--red)',UNKNOWN:'var(--muted)'};
     const items=Object.entries(vol.distribution).sort((a,b)=>b[1].pct-a[1].pct);
     const maxPct=Math.max(...items.map(i=>i[1].pct),1);
@@ -3854,10 +3889,10 @@ function buildModelHealth(mh, ens){
   const score  = mh.health_score||0;
   const status = mh.status||'UNKNOWN';
   const SCFG   = {
-    SAUDAVEL:  {c:'var(--green)',  bg:'rgba(16,185,129,0.15)', label:'SAUDÁVEL'},
+    SAUDAVEL:  {c:'var(--green)',  bg:'rgba(0,230,118,0.10)', label:'SAUDÁVEL'},
     ATENCAO:   {c:'var(--yellow)', bg:'rgba(234,179,8,0.15)',  label:'ATENÇÃO'},
     DEGRADANDO:{c:'var(--orange)', bg:'rgba(249,115,22,0.15)', label:'DEGRADANDO'},
-    CRITICO:   {c:'var(--red)',    bg:'rgba(239,68,68,0.15)',  label:'CRÍTICO'},
+    CRITICO:   {c:'var(--red)',    bg:'rgba(255,69,96,0.12)',  label:'CRÍTICO'},
   };
   const sc = SCFG[status]||{c:'var(--muted)',bg:'rgba(100,100,100,0.1)',label:'–'};
 
@@ -3993,7 +4028,7 @@ function buildAdvancedRisk(ar){
   const badgeEl = document.getElementById('ar-cb-badge');
   if(badgeEl){
     badgeEl.textContent  = cbAny ? '⚠ ATIVO' : '✓ OK';
-    badgeEl.style.background = cbAny ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)';
+    badgeEl.style.background = cbAny ? 'rgba(255,69,96,0.12)' : 'rgba(0,230,118,0.10)';
     badgeEl.style.color  = cbAny ? 'var(--red)' : 'var(--green)';
   }
 
@@ -4152,8 +4187,8 @@ function buildWeightEngine(sw){
   </tr>`;
 
   const confStyle=(conf,n)=>{
-    if(conf==='real'||n>=30) return 'background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#10b981';
-    if(conf==='mixed'||n>0)  return 'background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b';
+    if(conf==='real'||n>=30) return 'background:rgba(0,230,118,0.10);border:1px solid rgba(0,230,118,0.22);color:#00e676';
+    if(conf==='mixed'||n>0)  return 'background:rgba(255,215,0,0.10);border:1px solid rgba(255,215,0,0.22);color:#ffd700';
     return 'background:rgba(148,163,184,0.06);border:1px solid rgba(148,163,184,0.12);color:var(--muted)';
   };
 
@@ -4177,7 +4212,7 @@ function buildWeightEngine(sw){
 
   loading.style.display='none';
   tbl.style.display='';
-  if(badge) { badge.textContent=sw.source||'file'; badge.style.background=sw.source==='live'?'rgba(16,185,129,0.15)':'rgba(148,163,184,0.08)'; badge.style.color=sw.source==='live'?'#10b981':'var(--muted)'; }
+  if(badge) { badge.textContent=sw.source||'file'; badge.style.background=sw.source==='live'?'rgba(0,230,118,0.10)':'rgba(148,163,184,0.08)'; badge.style.color=sw.source==='live'?'#00e676':'var(--muted)'; }
   if(dateEl&&sw.computed_at) { const d=new Date(sw.computed_at); dateEl.textContent=d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 }
 
@@ -4195,11 +4230,11 @@ function updateRegimeDistribution(latest){
 
   // Coleta probabilidades mr_* dos factors
   const REGIMES=[
-    {k:'mr_risk_on',   label:'RISK ON',  col:'#10b981'},
-    {k:'mr_altseason', label:'ALT',      col:'#3b82f6'},
-    {k:'mr_sideways',  label:'SIDE',     col:'#f59e0b'},
+    {k:'mr_risk_on',   label:'RISK ON',  col:'#00e676'},
+    {k:'mr_altseason', label:'ALT',      col:'#00d4ff'},
+    {k:'mr_sideways',  label:'SIDE',     col:'#ffd700'},
     {k:'mr_transition',label:'TRANS',    col:'#f97316'},
-    {k:'mr_risk_off',  label:'RISK OFF', col:'#ef4444'},
+    {k:'mr_risk_off',  label:'RISK OFF', col:'#ff4560'},
   ];
   const hasData=REGIMES.some(({k})=>f[k]!=null);
   distRow.style.display=hasData?'':'none';
@@ -4247,7 +4282,7 @@ function updateEdgeGatesAndKelly(latest){
     if(hasSz&&kellyChips){
       kellyChips.innerHTML=szFields.map(({k,label})=>{
         const v=f[k]; if(v==null) return'';
-        const col=v>1.05?'#10b981':v<0.85?'#ef4444':v<0.98?'#f59e0b':'#94a3b8';
+        const col=v>1.05?'#00e676':v<0.85?'#ff4560':v<0.98?'#ffd700':'#5a90b5';
         return`<span style="font-size:0.75rem;padding:1px 8px;border-radius:10px;border:1px solid ${col}44;color:${col};background:${col}10;white-space:nowrap" title="${k}">${label} ×${v.toFixed(2)}</span>`;
       }).join('');
     }
@@ -4279,7 +4314,7 @@ function updateEdgeGatesAndKelly(latest){
       const frag = document.createDocumentFragment();
       ecFields.forEach(({k,label})=>{
         const v=f[k]; if(v==null) return;
-        const col=v>1.05?'#10b981':v<0.90?'#ef4444':v<0.99?'#f59e0b':'#94a3b8';
+        const col=v>1.05?'#00e676':v<0.90?'#ff4560':v<0.99?'#ffd700':'#5a90b5';
         const sp=document.createElement('span');
         sp.className='ec-chip';
         sp.title=k;
@@ -4302,7 +4337,7 @@ function updateEdgeGatesAndKelly(latest){
   const ecBlocked = f.ec_blocked;
 
   if(ecSizing!=null && edgeSizingChip){
-    const sc=ecSizing>0.85?'#10b981':ecSizing>0.5?'#f59e0b':'#ef4444';
+    const sc=ecSizing>0.85?'#00e676':ecSizing>0.5?'#ffd700':'#ff4560';
     edgeSizingChip.textContent=`Sizing ×${ecSizing.toFixed(2)}`;
     edgeSizingChip.style.color=sc;
     edgeSizingChip.style.borderColor=sc+'44';
@@ -4310,7 +4345,7 @@ function updateEdgeGatesAndKelly(latest){
   } else if(edgeSizingChip){ edgeSizingChip.style.display='none'; }
 
   if(ecWrDiff!=null && edgeWrdiffChip){
-    const wc=ecWrDiff>0?'#10b981':ecWrDiff>-0.1?'#f59e0b':'#ef4444';
+    const wc=ecWrDiff>0?'#00e676':ecWrDiff>-0.1?'#ffd700':'#ff4560';
     edgeWrdiffChip.textContent=`WR diff ${ecWrDiff>=0?'+':''}${(ecWrDiff*100).toFixed(1)}%`;
     edgeWrdiffChip.style.color=wc;
     edgeWrdiffChip.style.borderColor=wc+'44';
@@ -4325,11 +4360,11 @@ function buildMetaRegime(mr){
   if(!mr) return;
 
   const COLORS={
-    RISK_ON:   {bg:'rgba(16,185,129,0.15)', c:'var(--green)',  badge:'RISK ON'},
-    ALTSEASON: {bg:'rgba(59,130,246,0.15)', c:'#3b82f6',       badge:'ALT SEASON'},
+    RISK_ON:   {bg:'rgba(0,230,118,0.10)', c:'var(--green)',  badge:'RISK ON'},
+    ALTSEASON: {bg:'rgba(0,212,255,0.10)', c:'#00d4ff',       badge:'ALT SEASON'},
     SIDEWAYS:  {bg:'rgba(234,179,8,0.15)',  c:'var(--yellow)',  badge:'SIDEWAYS'},
     TRANSITION:{bg:'rgba(249,115,22,0.15)', c:'var(--orange)',  badge:'TRANSITION'},
-    RISK_OFF:  {bg:'rgba(239,68,68,0.15)',  c:'var(--red)',     badge:'RISK OFF'},
+    RISK_OFF:  {bg:'rgba(255,69,96,0.12)',  c:'var(--red)',     badge:'RISK OFF'},
     UNKNOWN:   {bg:'rgba(100,100,100,0.1)', c:'var(--muted)',   badge:'–'},
   };
   const regime = mr.regime||'UNKNOWN';
@@ -4654,15 +4689,15 @@ async function updateAll(){
     const fngClass=f.m9_fng_class||'';
     const fngBadge=document.getElementById('m9-fng-badge');
     if(fngBadge&&fngClass){
-      const fngColors={'Extreme Fear':'#ef4444','Fear':'#f97316',
-        'Neutral':'#94a3b8','Greed':'#84cc16','Extreme Greed':'#22c55e'};
+      const fngColors={'Extreme Fear':'#ff4560','Fear':'#f97316',
+        'Neutral':'#5a90b5','Greed':'#84cc16','Extreme Greed':'#22c55e'};
       fngBadge.textContent='· '+fngClass;
       fngBadge.style.color=fngColors[fngClass]||'var(--muted)';
     }
     // M9: coloração da barra por nível de sentimento
     const m9Bar=document.getElementById('wb-m9');
     if(m9Bar){
-      const m9col=m9>=0.65?'#22c55e':m9>=0.45?'#84cc16':m9>=0.30?'#f59e0b':'#ef4444';
+      const m9col=m9>=0.65?'#22c55e':m9>=0.45?'#84cc16':m9>=0.30?'#ffd700':'#ff4560';
       m9Bar.style.background=m9col;
       const m9Lbl=document.getElementById('w-m9');
       if(m9Lbl) m9Lbl.style.color=m9col;
@@ -4719,14 +4754,14 @@ async function updateAll(){
     const atrChip  = document.getElementById('motor-atr-chip');
     if(metaChip){
       const metaSign = metaMult>1.005?'↑':metaMult<0.995?'↓':'=';
-      const metaCol  = metaMult>1.005?'#f59e0b':metaMult<0.995?'#10b981':'var(--muted)';
+      const metaCol  = metaMult>1.005?'#ffd700':metaMult<0.995?'#00e676':'var(--muted)';
       metaChip.textContent = `Meta ${metaSign}×${metaMult.toFixed(2)}`;
       metaChip.style.color = metaCol;
       metaChip.style.borderColor = metaCol+'44';
     }
     if(atrChip){
       const atrSign  = atrMult>1.005?'↑':atrMult<0.995?'↓':'=';
-      const atrCol   = atrMult>1.05?'#ef4444':atrMult>1.01?'#f59e0b':atrMult<0.96?'#10b981':'var(--muted)';
+      const atrCol   = atrMult>1.05?'#ff4560':atrMult>1.01?'#ffd700':atrMult<0.96?'#00e676':'var(--muted)';
       const atrPctLbl= (atrPct*100).toFixed(0);
       atrChip.textContent = `ATR p${atrPctLbl} ${atrSign}×${atrMult.toFixed(2)}`;
       atrChip.style.color = atrCol;
@@ -4802,18 +4837,18 @@ async function updateAll(){
       if(heroBadge){
         if(isSignal){
           heroBadge.textContent=dir==='LONG'?'▲ LONG':'▼ SHORT';
-          heroBadge.style.background=dir==='LONG'?'rgba(16,185,129,0.18)':'rgba(239,68,68,0.18)';
+          heroBadge.style.background=dir==='LONG'?'rgba(0,230,118,0.12)':'rgba(255,69,96,0.14)';
           heroBadge.style.color=dir==='LONG'?'var(--green)':'var(--red)';
-          heroBadge.style.borderColor=dir==='LONG'?'rgba(16,185,129,0.4)':'rgba(239,68,68,0.4)';
+          heroBadge.style.borderColor=dir==='LONG'?'rgba(0,230,118,0.30)':'rgba(255,69,96,0.32)';
         } else if(isBlocked){
           heroBadge.textContent='⛔ Bloqueado';
-          heroBadge.style.background='rgba(239,68,68,0.12)';
+          heroBadge.style.background='rgba(255,69,96,0.10)';
           heroBadge.style.color='var(--red)';
-          heroBadge.style.borderColor='rgba(239,68,68,0.3)';
+          heroBadge.style.borderColor='rgba(255,69,96,0.22)';
         } else {
           heroBadge.textContent='⏸ Aguardando';
           heroBadge.style.background='rgba(99,102,241,0.18)';
-          heroBadge.style.color='#a5b4fc';
+          heroBadge.style.color='#a855f7';
           heroBadge.style.borderColor='rgba(99,102,241,0.35)';
         }
       }
@@ -4918,7 +4953,7 @@ async function updateAll(){
     ];
     const ccBars=Object.keys(cc).length?`<div style="display:flex;flex-direction:column;gap:2px;min-width:130px;">${ccDef.map(({k,w,label})=>{
       const v=cc[k];if(v==null) return'';
-      const col=v>=0.65?'var(--green)':v>=0.4?'#f59e0b':'var(--red)';
+      const col=v>=0.65?'var(--green)':v>=0.4?'#ffd700':'var(--red)';
       return`<div style="display:flex;align-items:center;gap:4px;" title="${label} (w${w}%)">
         <span style="font-size:0.75rem;color:var(--muted);width:36px;text-align:right;white-space:nowrap">${label}</span>
         <div style="flex:1;height:4px;background:rgba(255,255,255,0.07);border-radius:2px;">
@@ -5004,7 +5039,7 @@ async function updateAll(){
         const rCls=r.includes('EXPANSION')?'var(--green)':r.includes('PANIC')?'var(--red)':r.includes('CHOP')?'var(--yellow)':r.includes('CORR')?'var(--orange)':'var(--blue)';
         return`<div style="display:grid;grid-template-columns:130px 1fr 40px 60px;align-items:center;gap:8px;padding:4px 0;">
           <span style="font-size:0.82rem;color:var(--muted)">${rShort}</span>
-          <div style="height:15px;background:#0d1520;border-radius:7px;overflow:hidden;"><div style="height:15px;width:${pct}%;background:${rCls};border-radius:10px;transition:width 0.5s"></div></div>
+          <div style="height:15px;background:#060d1a;border-radius:7px;overflow:hidden;"><div style="height:15px;width:${pct}%;background:${rCls};border-radius:10px;transition:width 0.5s"></div></div>
           <span style="font-size:0.82rem;color:var(--muted);text-align:right">${v.total}</span>
           <span style="font-size:0.82rem;font-weight:700;text-align:right;color:${rCls}">${(v.signal_rate*100).toFixed(0)}% sig</span>
         </div>`;

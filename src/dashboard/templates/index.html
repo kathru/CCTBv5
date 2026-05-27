@@ -145,24 +145,7 @@
     }
 
     /* Row 3 — market ticker */
-    .hdr-ticker {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      padding: 0 24px;
-      height: 32px;
-      background: rgba(0,0,0,0.2);
-      border-top: 1px solid rgba(0,212,255,0.06);
-      font-size: 0.72rem;
-      flex-shrink: 0;
-    }
-    .ticker-item { display: flex; align-items: center; gap: 6px; color: var(--slate); font-size: 0.72rem; }
-    .ticker-item .tk-price { color: var(--text); font-family: 'JetBrains Mono', monospace; }
-    .ticker-item .tk-chg { font-size: 0.68rem; font-family: 'JetBrains Mono', monospace; }
-    .ticker-sep { color: var(--border2); }
-    .ticker-live { margin-left: auto; font-size: 0.68rem; color: var(--cyan); letter-spacing: 0.1em; animation: pulse-text 2s ease-in-out infinite; }
-    @keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .hdr-ticker { display: none; }
 
     /* Legacy compat — keep logo-ver used in JS */
     .logo-ver {
@@ -671,14 +654,6 @@
   </div>
 
   <!-- Row 3: Market ticker -->
-  <div class="hdr-ticker" id="hdr-ticker">
-    <span class="ticker-item" id="tk-btc">BTC <span class="tk-price mono">–</span> <span class="tk-chg">–</span></span>
-    <span class="ticker-sep">·</span>
-    <span class="ticker-item" id="tk-eth">ETH <span class="tk-price mono">–</span> <span class="tk-chg">–</span></span>
-    <span class="ticker-sep">·</span>
-    <span class="ticker-item" id="tk-sol">SOL <span class="tk-price mono">–</span> <span class="tk-chg">–</span></span>
-    <span class="ticker-live" id="tk-live">● LIVE</span>
-  </div>
 
 </header>
 

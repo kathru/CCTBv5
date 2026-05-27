@@ -41,9 +41,9 @@ logger     = logging.getLogger(__name__)
 REGIME_THRESHOLDS: dict[str, float] = {
     # v2.4.0 — thresholds mais seletivos baseados em análise live (WR 10.7% em 28 trades)
     # Eleva barra de entrada para reduzir trades em regimes menos confiáveis
-    "TREND_EXPANSION":        0.56,   # era 0.50 → +0.06 (evita entradas em fakeouts)
-    "VOLATILITY_COMPRESSION": 0.58,   # era 0.52 → +0.06 (exige confirmação de breakout)
-    "MEAN_REVERTING_CHOP":    0.68,   # era 0.60 → +0.08 (só sinais muito fortes em lateral)
+    "TREND_EXPANSION":        0.62,   # era 0.56 → +0.06 (WR=33% exige seletividade maior)
+    "VOLATILITY_COMPRESSION": 0.64,   # era 0.58 → +0.06 (confirmação mais exigente)
+    "MEAN_REVERTING_CHOP":    0.72,   # era 0.68 → +0.04 (apenas sinais de alta confiança em lateral)
     "TREND_EXHAUSTION":       0.99,   # BLOQUEADO — comprar topo é errado
     "HIGH_CORRELATION_RISK":  0.99,   # BLOQUEADO — risco não justifica
     "BEAR_TREND":             0.99,   # bloqueado
@@ -444,16 +444,16 @@ class MomentumStrategy(BaseStrategy):
         Modelo de scoring com 6 fatores contínuos — ciclo 1H.
         Todos os fatores usam candles 1H (sem granularidade 30m).
 
-        Fatores (pesos v2.5.0 — M9 adicionado 2026-05-23):
-          M1 Adaptive Momentum  ( 2%): correlação Spearman=-0.048 → peso residual
-          M2 Trend Consistency  (11%): % candles bullish + higher-highs/lows (1H)
-          M3 Volume Confirmation(33%): único fator com edge claro (Spearman=+0.229)
-          M4 Regime Strength    ( 0%): correlação Spearman=-0.057 → removido
-          M5 Candle Structure   ( 6%): close no terço superior do range (1H)
-          M6 Futures Flow       (12%): funding rate + OI change (perp market signal)
-          M7 Relative Strength  (11%): RS vs BTC multi-horizonte + BTC leadership
-          M8 Volatility State   (19%): state machine 5-estados (EXPANDING/TREND/...)
-          M9 News Sentiment     ( 6%): Fear&Greed Index + CoinGecko social sentiment
+        Fatores (pesos v2.6.0 — recalibrado 2026-05-27 por permutation importance):
+          M1 Adaptive Momentum  ( 2%): perm_imp=-0.0013 → peso residual mantido
+          M2 Trend Consistency  ( 5%): perm_imp=-0.0033, DESALINHADO → reduzido de 11%
+          M3 Volume Confirmation(35%): único fator com edge real (perm_imp=0.006, rel=1.0)
+          M4 Regime Strength    ( 0%): perm_imp=0.0 → removido
+          M5 Candle Structure   (10%): perm_imp=-0.001 → aumentado (measurable, hedging)
+          M6 Futures Flow       (16%): Spearman=0.52 em live → aumentado de 12%
+          M7 Relative Strength  (14%): Spearman=0.52 em live → aumentado de 11%
+          M8 Volatility State   ( 6%): perm_imp=-0.0028, DESALINHADO → reduzido de 19%
+          M9 News Sentiment     (12%): Spearman=0.52 em live → aumentado de 6%
         """
         # Candles 1H — única granularidade em ciclo 1H
         closes  = [c.close  for c in ctx.candles_1h[:21]]
@@ -552,20 +552,20 @@ class MomentumStrategy(BaseStrategy):
         news_data = (ctx.extra or {}).get("news_sentiment") or {}
         m9 = float(news_data.get("m9_score", 0.5))
 
-        # ── Score final — pesos v2.5.0 (M9 adicionado 2026-05-23) ─────────────
-        # M1  2% (Spearman=-0.048, residual)
-        # M2 11% (era 12% → -1%: espaço para M9)
-        # M3 33% (era 35% → -2%: continua dominante, cede espaço para M9)
+        # ── Score final — pesos v2.6.0 (recalibrado 2026-05-27 por permutation importance) ──
+        # M1  2% (perm_imp=-0.0013, mantido residual)
+        # M2  5% (perm_imp=-0.0033, DESALINHADO: 11%→5%)
+        # M3 35% (perm_imp=+0.006, rel_imp=1.0 — único edge real: 33%→35%, cap 35%)
         # M4  0% (removido)
-        # M5  6% (mantido)
-        # M6 12% (era 13% → -1%: pequeno ajuste)
-        # M7 11% (era 12% → -1%: pequeno ajuste)
-        # M8 19% (era 20% → -1%: pequeno ajuste)
-        # M9  6% (NOVO: Fear&Greed + CoinGecko sentiment)
-        # Soma: 2+11+33+0+6+12+11+19+6 = 100% ✓
-        score = (m1 * 0.02 + m2 * 0.11 + m3 * 0.33 +
-                 m5 * 0.06 + m6 * 0.12 +
-                 m7 * 0.11 + m8 * 0.19 + m9 * 0.06)
+        # M5 10% (perm_imp=-0.001, measurable — aumentado para hedge: 6%→10%)
+        # M6 16% (Spearman=0.52 live, unmeasurable IS → 12%→16%)
+        # M7 14% (Spearman=0.52 live, unmeasurable IS → 11%→14%)
+        # M8  6% (perm_imp=-0.0028, DESALINHADO: 19%→6%)
+        # M9 12% (Spearman=0.52 live, unmeasurable IS → 6%→12%)
+        # Soma: 2+5+35+0+10+16+14+6+12 = 100% ✓
+        score = (m1 * 0.02 + m2 * 0.05 + m3 * 0.35 +
+                 m5 * 0.10 + m6 * 0.16 +
+                 m7 * 0.14 + m8 * 0.06 + m9 * 0.12)
         score = round(min(max(score, 0.0), 1.0), 4)
 
         factors = {

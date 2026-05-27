@@ -61,11 +61,11 @@ DEFAULT_MIN_SCORE   = 0.40
 LOOKBACK = 25   # candles de janela para score_signal (25 para M8 Bollinger 20 + buffer)
 
 REGIME_THRESHOLDS_DEFAULT: dict[str, float] = {
-    # v2.5.0 — sync com momentum_strategy.py REGIME_THRESHOLDS
-    "TREND_EXPANSION":        0.56,
-    "VOLATILITY_COMPRESSION": 0.58,
+    # v2.6.0 — sync com momentum_strategy.py REGIME_THRESHOLDS (apertado: WR=33%)
+    "TREND_EXPANSION":        0.62,
+    "VOLATILITY_COMPRESSION": 0.64,
     "TREND_EXHAUSTION":       0.99,   # bloqueado
-    "MEAN_REVERTING_CHOP":    0.68,
+    "MEAN_REVERTING_CHOP":    0.72,
     "HIGH_CORRELATION_RISK":  0.99,   # bloqueado
     "PANIC_LIQUIDATION":      0.99,
     "LIQUIDITY_VACUUM":       0.99,
@@ -511,7 +511,7 @@ def score_signal(closes: list[float], highs: list[float],
                  m9: float = 0.5) -> float:
     """
     Score M1-M9 espelho de MomentumStrategy._score_signal().
-    Pesos v2.5.0: M1=2% M2=11% M3=33% M4=0% M5=6% M6=12% M7=11% M8=19% M9=6%
+    Pesos v2.6.0: M1=2% M2=5% M3=35% M4=0% M5=10% M6=16% M7=14% M8=6% M9=12%
     M6, M7 e M9 são injetados externamente por build_samples.
     M9 usa neutro 0.5 na calibração histórica (dados históricos de sentimento
     não disponíveis — não impacta a calibração, mantém simetria).
@@ -564,10 +564,10 @@ def score_signal(closes: list[float], highs: list[float],
     # M8 Volatility State — calculado de candles
     m8 = _compute_m8_recal(closes, highs, lows)
 
-    # Pesos v2.5.0 — espelho exato de momentum_strategy.py
-    # M4=0 (removido), M9=0.5 neutro histórico, soma = 2+11+33+0+6+12+11+19+6 = 100%
-    return (m1*0.02 + m2*0.11 + m3*0.33 +
-            m5*0.06 + m6*0.12 + m7*0.11 + m8*0.19 + m9*0.06)
+    # Pesos v2.6.0 — espelho exato de momentum_strategy.py
+    # M4=0 (removido), M9=0.5 neutro histórico, soma = 2+5+35+0+10+16+14+6+12 = 100%
+    return (m1*0.02 + m2*0.05 + m3*0.35 +
+            m5*0.10 + m6*0.16 + m7*0.14 + m8*0.06 + m9*0.12)
 
 
 def platt_calibrate(score: float, A: float, B: float) -> float:

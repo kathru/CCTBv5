@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "created_at": "2026-05-24T15:36:49.535155+00:00",
-  "updated_at": "2026-05-24T15:59:00+00:00",
+  "updated_at": "2026-05-27T11:19:58.702949+00:00",
   "weights": {
     "TREND_EXPANSION": {
       "momentum_v2": {
@@ -13,10 +13,10 @@
         "real_expectancy": null,
         "confidence": "simulation",
         "last_updated": null,
-        "sim_win_rate": 0.2803738317757009,
-        "sim_expectancy": 0.9714018691588784,
-        "n_sim_trades": 107,
-        "sim_updated_at": "2026-05-24T15:38:04.898638+00:00"
+        "sim_win_rate": 0.25,
+        "sim_expectancy": -0.15842592592592586,
+        "n_sim_trades": 108,
+        "sim_updated_at": "2026-05-27T11:19:58.698899+00:00"
       },
       "trend_v1": {
         "sim_weight": 0.8,
@@ -37,26 +37,26 @@
         "real_expectancy": null,
         "confidence": "simulation",
         "last_updated": null,
-        "sim_win_rate": 0.14285714285714285,
-        "sim_expectancy": -3.755714285714286,
-        "n_sim_trades": 7,
-        "sim_updated_at": "2026-05-24T15:38:04.900590+00:00"
+        "sim_win_rate": 0.0,
+        "sim_expectancy": -5.0625,
+        "n_sim_trades": 8,
+        "sim_updated_at": "2026-05-27T11:19:58.701899+00:00"
       }
     },
     "VOLATILITY_COMPRESSION": {
       "momentum_v2": {
-        "sim_weight": 0.6,
+        "sim_weight": 0.1,
         "real_weight": null,
-        "blended_weight": 0.6,
+        "blended_weight": 0.1,
         "n_real": 0,
         "real_win_rate": null,
         "real_expectancy": null,
         "confidence": "simulation",
         "last_updated": null,
-        "sim_win_rate": 0.2571428571428571,
-        "sim_expectancy": -2.2474285714285713,
+        "sim_win_rate": 0.22857142857142856,
+        "sim_expectancy": -0.6177142857142857,
         "n_sim_trades": 35,
-        "sim_updated_at": "2026-05-24T15:38:04.897592+00:00",
+        "sim_updated_at": "2026-05-27T11:19:58.699939+00:00",
         "agent_updated_at": "2026-05-24T15:59:00+00:00"
       },
       "trend_v1": {
@@ -111,26 +111,26 @@
         "real_expectancy": null,
         "confidence": "simulation",
         "last_updated": null,
-        "sim_win_rate": 0.23809523809523808,
-        "sim_expectancy": 0.36761904761904773,
-        "n_sim_trades": 21,
-        "sim_updated_at": "2026-05-24T15:38:04.899590+00:00"
+        "sim_win_rate": 0.2608695652173913,
+        "sim_expectancy": -0.17043478260869566,
+        "n_sim_trades": 23,
+        "sim_updated_at": "2026-05-27T11:19:58.700921+00:00"
       }
     },
     "TREND_EXHAUSTION": {
       "momentum_v2": {
-        "sim_weight": 0.05,
+        "sim_weight": 0.1,
         "real_weight": null,
-        "blended_weight": 0.05,
+        "blended_weight": 0.1,
         "n_real": 0,
         "real_win_rate": null,
         "real_expectancy": null,
         "confidence": "simulation",
         "last_updated": null,
-        "sim_win_rate": 0.18518518518518517,
-        "sim_expectancy": -2.902592592592592,
-        "n_sim_trades": 27,
-        "sim_updated_at": "2026-05-24T15:38:04.899590+00:00",
+        "sim_win_rate": 0.14285714285714285,
+        "sim_expectancy": -2.5985714285714283,
+        "n_sim_trades": 35,
+        "sim_updated_at": "2026-05-27T11:19:58.699939+00:00",
         "agent_updated_at": "2026-05-24T15:59:00+00:00"
       },
       "trend_v1": {
@@ -144,18 +144,18 @@
         "last_updated": null
       },
       "reversal_v1": {
-        "sim_weight": 1.15,
+        "sim_weight": 0.1,
         "real_weight": null,
-        "blended_weight": 1.15,
+        "blended_weight": 0.1,
         "n_real": 0,
         "real_win_rate": null,
         "real_expectancy": null,
         "confidence": "simulation",
         "last_updated": null,
-        "sim_win_rate": 0.2,
-        "sim_expectancy": -1.61,
-        "n_sim_trades": 5,
-        "sim_updated_at": "2026-05-24T15:38:04.901638+00:00",
+        "sim_win_rate": 0.16666666666666666,
+        "sim_expectancy": 0.28833333333333333,
+        "n_sim_trades": 6,
+        "sim_updated_at": "2026-05-27T11:19:58.702949+00:00",
         "agent_updated_at": "2026-05-24T15:56:19.995232+00:00"
       }
     },

@@ -1,15 +1,15 @@
 {
-  "schema_version": "2.5.0",
+  "schema_version": "2.6.0",
   "symbol": "BTC-USDT",
   "n_samples": 20819,
   "win_rate": 0.3318,
-  "computed_at": "2026-05-27T06:27:31.310932+00:00",
+  "computed_at": "2026-05-27T11:26:54.396889+00:00",
   "features": {
     "m3_volume": {
       "spearman_corr": 0.0168,
-      "perm_importance": 0.006,
+      "perm_importance": 0.0061,
       "relative_importance": 1.0,
-      "schema_weight": 0.33,
+      "schema_weight": 0.35,
       "aligned": false
     },
     "m4_regime_str": {
@@ -23,7 +23,7 @@
       "spearman_corr": 0.5248,
       "perm_importance": 0.0,
       "relative_importance": 0.0,
-      "schema_weight": 0.12,
+      "schema_weight": 0.16,
       "aligned": null,
       "note": "n\u00e3o mensur\u00e1vel \u2014 dado externo ao backtest"
     },
@@ -31,7 +31,7 @@
       "spearman_corr": 0.5248,
       "perm_importance": 0.0,
       "relative_importance": 0.0,
-      "schema_weight": 0.11,
+      "schema_weight": 0.14,
       "aligned": null,
       "note": "n\u00e3o mensur\u00e1vel \u2014 dado externo ao backtest"
     },
@@ -39,36 +39,36 @@
       "spearman_corr": 0.5248,
       "perm_importance": 0.0,
       "relative_importance": 0.0,
-      "schema_weight": 0.06,
+      "schema_weight": 0.12,
       "aligned": null,
       "note": "n\u00e3o mensur\u00e1vel \u2014 dado externo ao backtest"
     },
-    "m5_candle": {
-      "spearman_corr": -0.0281,
-      "perm_importance": -0.001,
-      "relative_importance": 0.0,
-      "schema_weight": 0.06,
-      "aligned": true
-    },
     "m1_momentum": {
       "spearman_corr": -0.048,
-      "perm_importance": -0.0013,
+      "perm_importance": -0.0025,
       "relative_importance": 0.0,
       "schema_weight": 0.02,
       "aligned": true
     },
     "m8_vol_state": {
       "spearman_corr": 0.2291,
-      "perm_importance": -0.0028,
+      "perm_importance": -0.0027,
       "relative_importance": 0.0,
-      "schema_weight": 0.19,
-      "aligned": false
+      "schema_weight": 0.06,
+      "aligned": true
     },
     "m2_consistency": {
       "spearman_corr": 0.0012,
-      "perm_importance": -0.0033,
+      "perm_importance": -0.0031,
       "relative_importance": 0.0,
-      "schema_weight": 0.11,
+      "schema_weight": 0.05,
+      "aligned": true
+    },
+    "m5_candle": {
+      "spearman_corr": -0.0281,
+      "perm_importance": -0.0035,
+      "relative_importance": 0.0,
+      "schema_weight": 0.1,
       "aligned": false
     }
   }

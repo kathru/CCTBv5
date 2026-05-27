@@ -115,20 +115,24 @@ class FeatureSchema:
             return None
 
 
-# Schema atual (v2.5.0 — M9 News Sentiment adicionado 2026-05-23)
+# Schema atual (v2.6.0 — recalibrado 2026-05-27 por permutation importance)
 CURRENT_SCHEMA = FeatureSchema(
-    version="2.5.0",
+    version="2.6.0",
     model_id="momentum_scoring_v2",
-    created_at="2026-05-23",
+    created_at="2026-05-27",
     lookback_candles=25,
     notes=(
-        "9 fatores (M4 peso 0, M9 novo). v2.5.0 2026-05-23: M9 News Sentiment"
-        " adicionado (Fear&Greed + CoinGecko, peso 6%)."
-        " Pesos redistribuídos: M2=11% M3=33% M6=12% M7=11% M8=19%."
+        "9 fatores (M4 peso 0). v2.6.0 2026-05-27: recalibração por permutation importance."
+        " M8 19%→6% (perm_imp=-0.0028, DESALINHADO)."
+        " M2 11%→5% (perm_imp=-0.0033, DESALINHADO)."
+        " M3 33%→35% (perm_imp=+0.006, único edge real, cap 35%)."
+        " M5 6%→10%, M6 12%→16%, M7 11%→14%, M9 6%→12%."
+        " Thresholds: TREND_EXPANSION 0.56→0.62, VOL_COMPRESSION 0.58→0.64, CHOP 0.68→0.72."
     ),
     features={
-        # Pesos v2.5.0 — sync com momentum_strategy.py
-        # Spearman: M3=+0.017 M2=+0.001 M8=+0.229 | M1=-0.048 M4=-0.057
+        # Pesos v2.6.0 — sync com momentum_strategy.py
+        # perm_importance: M3=+0.006 (único edge) | M1=-0.0013 M5=-0.001 M2=-0.0033 M8=-0.0028
+        # M6/M7/M9: não mensurável no IS (dado externo) — Spearman=0.52 em live
         "m1_momentum": FeatureDef(
             weight=0.02,
             description=(
@@ -139,7 +143,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m2_consistency": FeatureDef(
-            weight=0.11,   # v2.5.0: 12%→11% (espaço para M9)
+            weight=0.05,   # v2.6.0: 11%→5% (perm_imp=-0.0033, DESALINHADO)
             description=(
                 "Consistência de tendência: % candles bullish"
                 " + higher-highs E higher-lows graduais"
@@ -148,7 +152,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m3_volume": FeatureDef(
-            weight=0.33,   # v2.5.0: 35%→33% (dominante, cede espaço para M9)
+            weight=0.35,   # v2.6.0: 33%→35% (perm_imp=+0.006, único edge real, cap 35%)
             description=(
                 "Confirmação por volume: ratio + tendência de volume + candle direcional"
             ),
@@ -165,7 +169,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m5_candle": FeatureDef(
-            weight=0.06,   # v2.5.0: mantido em 6%
+            weight=0.10,   # v2.6.0: 6%→10% (measurable, hedge de diversificação)
             description=(
                 "Estrutura do candle: posição do close no range dos últimos 3 candles"
                 " (Williams %R style)"
@@ -174,7 +178,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m6_futures": FeatureDef(
-            weight=0.12,   # v2.5.0: 13%→12%
+            weight=0.16,   # v2.6.0: 12%→16% (Spearman=0.52 em live, não mensurável IS)
             description=(
                 "Futures Flow: funding rate (perp) + variação de Open Interest."
                 " Lê sinal do mercado de derivativos sem operar futuros."
@@ -183,7 +187,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m7_rel_strength": FeatureDef(
-            weight=0.11,   # v2.5.0: 12%→11%
+            weight=0.14,   # v2.6.0: 11%→14% (Spearman=0.52 em live, não mensurável IS)
             description=(
                 "Relative Strength vs BTC: RS 1h/5h/24h ponderado"
                 " + BTC leadership score + tendência de RS"
@@ -192,7 +196,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m8_vol_state": FeatureDef(
-            weight=0.19,   # v2.5.0: 20%→19%
+            weight=0.06,   # v2.6.0: 19%→6% (perm_imp=-0.0028, DESALINHADO — noise IS)
             description=(
                 "Volatility State Machine: 5 estados"
                 " (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC)"
@@ -202,7 +206,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m9_sentiment": FeatureDef(
-            weight=0.06,   # NOVO v2.5.0: Fear&Greed Index + CoinGecko sentiment
+            weight=0.12,   # v2.6.0: 6%→12% (Spearman=0.52 em live, não mensurável IS)
             description=(
                 "News Sentiment: Fear & Greed Index (alternative.me)"
                 " + CoinGecko social sentiment + price momentum 24h"

@@ -928,61 +928,6 @@
 
 </div>
 
-<!-- ══ WEIGHT ENGINE ════════════════════════════════════════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--yellow)"></div>WeightEngine — Regime Dinâmico</div>
-<div class="card" id="weight-engine-card">
-  <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">
-    Pesos blendados por Estratégia × Regime
-    <span id="we-source-badge" style="margin-left:8px;font-size:0.75rem;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--muted)">–</span>
-    <span id="we-date" style="margin-left:6px;font-size:0.75rem;color:var(--muted)"></span>
-  </div>
-  <div id="we-table-wrap" style="overflow-x:auto;">
-    <div id="we-loading" style="text-align:center;padding:20px;font-size:0.92rem;color:var(--muted)">Carregando pesos…</div>
-    <table id="we-table" style="display:none;width:100%;border-collapse:collapse;font-size:0.82rem;">
-      <thead id="we-thead"></thead>
-      <tbody id="we-tbody"></tbody>
-    </table>
-  </div>
-  <div style="margin-top:8px;font-size:0.75rem;color:var(--muted)">
-    Confiança:
-    <span style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:4px;padding:0 5px;color:#10b981">real</span> ≥30 trades ·
-    <span style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:0 5px;color:#f59e0b">mixed</span> parcial ·
-    <span style="background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.15);border-radius:4px;padding:0 5px;color:var(--muted)">sim</span> apenas simulação
-  </div>
-</div>
-
-<!-- ══ PORTFOLIO INTELLIGENCE + EXECUTION INTELLIGENCE ══════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--blue)"></div>Portfolio Intelligence &amp; Execution Quality</div>
-<div class="grid g12">
-
-  <!-- Portfolio Allocator — Phase 15 -->
-  <div class="card">
-    <div class="clabel">Portfolio Allocator</div>
-    <div id="pa-rows" style="font-size:0.82rem;">
-      <div style="color:var(--muted);font-size:0.75rem;padding:10px 0">Aguardando sinais…</div>
-    </div>
-    <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;display:flex;gap:14px;font-size:0.75rem;color:var(--muted)">
-      <span>Budget: <b id="pa-budget">–</b></span>
-      <span>Sinais ativos: <b id="pa-signals">–</b></span>
-      <span>Open: <b id="pa-open">–</b></span>
-    </div>
-  </div>
-
-  <!-- Execution Intelligence — Phase 17 -->
-  <div class="card">
-    <div class="clabel">Execution Intelligence</div>
-    <div style="display:flex;gap:6px;margin-bottom:8px;font-size:0.75rem;">
-      <span style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:4px;padding:1px 6px;color:var(--blue)">maker thr: <b id="ei-maker-thr">–</b> bps</span>
-      <span style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:4px;padding:1px 6px;color:var(--red)">taker thr: <b id="ei-taker-thr">–</b> bps</span>
-      <span style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--muted)">timeout: <b id="ei-timeout">–</b>s</span>
-    </div>
-    <div id="ei-rows" style="font-size:0.82rem;">
-      <div style="color:var(--muted);font-size:0.75rem;padding:10px 0">Nenhum fill registrado ainda</div>
-    </div>
-  </div>
-
-</div>
-
 <!-- ══ GRÁFICOS ════════════════════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Evolução & Distribuição</div>
 <div class="grid g21">
@@ -1016,20 +961,82 @@
 
 </div>
 
-<!-- ══ ALPHA ORTHOGONALITY — Phase 18 ══════════════════════════════════════ -->
+<!-- ══ ALPHA ORTHOGONALITY + WEIGHT ENGINE — lado a lado ══════════════════ -->
 <div class="section-hdr">
   <div class="dot" style="background:var(--purple)"></div>
   Alpha Orthogonality
 </div>
-<div class="card" id="ao-card">
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" id="ao-badges">
-    <span style="font-size:0.75rem;color:var(--muted)">Aguardando dados…</span>
+<div class="grid g11">
+
+  <!-- Alpha Orthogonality — Phase 18 -->
+  <div class="card" id="ao-card">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" id="ao-badges">
+      <span style="font-size:0.75rem;color:var(--muted)">Aguardando dados…</span>
+    </div>
+    <div id="ao-symbols" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+    <div style="margin-top:8px;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);padding-top:6px">
+      <b>FD</b> Funding Dislocation · <b>LV</b> Liquidity Vacuum · <b>OD</b> Overnight Drift · <b>MRM</b> Mean Reversion Micro
+      · Kelly clamp [×0.65, ×1.30] · Threshold adj ±3%
+    </div>
   </div>
-  <div id="ao-symbols" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
-  <div style="margin-top:8px;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border);padding-top:6px">
-    <b>FD</b> Funding Dislocation · <b>LV</b> Liquidity Vacuum · <b>OD</b> Overnight Drift · <b>MRM</b> Mean Reversion Micro
-    · Kelly clamp [×0.65, ×1.30] · Threshold adj ±3%
+
+  <!-- WeightEngine — Regime Dinâmico -->
+  <div class="card" id="weight-engine-card">
+    <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;">
+      <div class="dot" style="background:var(--yellow);display:inline-block;vertical-align:middle;margin-right:6px;"></div>WeightEngine — Regime Dinâmico
+    </div>
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:10px;">
+      Pesos blendados por Estratégia × Regime
+      <span id="we-source-badge" style="margin-left:8px;font-size:0.75rem;padding:1px 6px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--muted)">–</span>
+      <span id="we-date" style="margin-left:6px;font-size:0.75rem;color:var(--muted)"></span>
+    </div>
+    <div id="we-table-wrap" style="overflow-x:auto;">
+      <div id="we-loading" style="text-align:center;padding:20px;font-size:0.92rem;color:var(--muted)">Carregando pesos…</div>
+      <table id="we-table" style="display:none;width:100%;border-collapse:collapse;font-size:0.82rem;">
+        <thead id="we-thead"></thead>
+        <tbody id="we-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:0.75rem;color:var(--muted)">
+      Confiança:
+      <span style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:4px;padding:0 5px;color:#10b981">real</span> ≥30 trades ·
+      <span style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:0 5px;color:#f59e0b">mixed</span> parcial ·
+      <span style="background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.15);border-radius:4px;padding:0 5px;color:var(--muted)">sim</span> apenas simulação
+    </div>
   </div>
+
+</div>
+
+<!-- ══ PORTFOLIO INTELLIGENCE + EXECUTION INTELLIGENCE ══════════ -->
+<div class="section-hdr"><div class="dot" style="background:var(--blue)"></div>Portfolio Intelligence &amp; Execution Quality</div>
+<div class="grid g12">
+
+  <!-- Portfolio Allocator — Phase 15 -->
+  <div class="card">
+    <div class="clabel">Portfolio Allocator</div>
+    <div id="pa-rows" style="font-size:0.82rem;">
+      <div style="color:var(--muted);font-size:0.75rem;padding:10px 0">Aguardando sinais…</div>
+    </div>
+    <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;display:flex;gap:14px;font-size:0.75rem;color:var(--muted)">
+      <span>Budget: <b id="pa-budget">–</b></span>
+      <span>Sinais ativos: <b id="pa-signals">–</b></span>
+      <span>Open: <b id="pa-open">–</b></span>
+    </div>
+  </div>
+
+  <!-- Execution Intelligence — Phase 17 -->
+  <div class="card">
+    <div class="clabel">Execution Intelligence</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;font-size:0.75rem;">
+      <span style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:4px;padding:1px 6px;color:var(--blue)">maker thr: <b id="ei-maker-thr">–</b> bps</span>
+      <span style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:4px;padding:1px 6px;color:var(--red)">taker thr: <b id="ei-taker-thr">–</b> bps</span>
+      <span style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--muted)">timeout: <b id="ei-timeout">–</b>s</span>
+    </div>
+    <div id="ei-rows" style="font-size:0.82rem;">
+      <div style="color:var(--muted);font-size:0.75rem;padding:10px 0">Nenhum fill registrado ainda</div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ══ POSIÇÕES + PLANOS ══════════════════════════════════════ -->

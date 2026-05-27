@@ -992,9 +992,12 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
       <div class="clabel" style="margin:0">Evolução do Portfolio</div>
       <div style="display:flex;gap:4px;">
-        <button class="chart-btn active" onclick="setChartWindow(60,'1h')"   id="btn-1h">1h</button>
-        <button class="chart-btn"        onclick="setChartWindow(360,'6h')"  id="btn-6h">6h</button>
-        <button class="chart-btn"        onclick="setChartWindow(1440,'1d')" id="btn-1d">1d</button>
+        <button class="chart-btn active" onclick="setChartWindow(60,'1h')"      id="btn-1h">1h</button>
+        <button class="chart-btn"        onclick="setChartWindow(360,'6h')"     id="btn-6h">6h</button>
+        <button class="chart-btn"        onclick="setChartWindow(1440,'1d')"    id="btn-1d">1d</button>
+        <button class="chart-btn"        onclick="setChartWindow(10080,'1s')"   id="btn-1s">1s</button>
+        <button class="chart-btn"        onclick="setChartWindow(43200,'1m')"   id="btn-1m">1m</button>
+        <button class="chart-btn"        onclick="setChartWindow(-1,'total')"   id="btn-total">Total</button>
       </div>
     </div>
     <div style="position:relative;height:160px;">
@@ -1876,7 +1879,7 @@ let _portfolioChart = null, _donutChart = null;
 function setChartWindow(pts,btnId){
   _chartWindow=pts;
   // Limpa apenas os botões do gráfico de evolução (não todos .chart-btn da página)
-  ['btn-1h','btn-6h','btn-1d'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
+  ['btn-1h','btn-6h','btn-1d','btn-1s','btn-1m','btn-total'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
   document.getElementById('btn-'+btnId)?.classList.add('active');
   updatePortfolioChart();
 }
@@ -1976,31 +1979,32 @@ function updatePortfolioChart(){
   let labels=[], values=[];
 
   if(eq && eq.equity && eq.equity.length>1){
-    const windowMs = _chartWindow===60?3600000 : _chartWindow===360?21600000 : 86400000;
-    const cutoff   = Date.now() - windowMs;
+    // windowMs por janela; -1 = Total (sem filtro)
+    const msMap = { 60:3_600_000, 360:21_600_000, 1440:86_400_000,
+                    10080:7*86_400_000, 43200:30*86_400_000 };
+    const windowMs = _chartWindow===-1 ? Infinity : (msMap[_chartWindow] || 3_600_000);
+    const cutoff   = _chartWindow===-1 ? 0 : Date.now() - windowMs;
     const ts       = eq.timestamps || [];
 
-    // Filtra por tempo usando os timestamps ISO
     const allPairs = eq.equity.map((v,i)=>({v, l:eq.labels[i]||'', iso:ts[i]||''}));
-    const filtered = allPairs.filter(p=>{
-      if(!p.iso) return false;
-      const t=new Date(p.iso).getTime();
-      return !isNaN(t) && t>=cutoff;
-    });
+    const filtered = _chartWindow===-1
+      ? allPairs.filter(p=>p.iso)          // Total: todos os pontos com timestamp
+      : allPairs.filter(p=>{
+          if(!p.iso) return false;
+          const t=new Date(p.iso).getTime();
+          return !isNaN(t) && t>=cutoff;
+        });
 
     if(filtered.length>=2){
-      // Trades dentro da janela → mostra normalmente
       labels = filtered.map(p=>p.l);
       values = filtered.map(p=>p.v);
     } else {
       // Sem trades na janela → linha flat no último valor conhecido
-      // Inclui o último ponto histórico como referência de entrada da janela
       const lastKnown = allPairs[allPairs.length-1];
-      const windowLbl = _chartWindow===60?'−1h' : _chartWindow===360?'−6h' : '−1d';
+      const windowLblMap = {60:'−1h',360:'−6h',1440:'−1d',10080:'−1s',43200:'−1m'};
+      const windowLbl = _chartWindow===-1?'Início':(windowLblMap[_chartWindow]||'−?');
       const nowLbl    = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      labels = filtered.length===1
-        ? [filtered[0].l, nowLbl]
-        : [windowLbl, nowLbl];
+      labels = filtered.length===1 ? [filtered[0].l, nowLbl] : [windowLbl, nowLbl];
       values = [lastKnown.v, lastKnown.v];
     }
   }

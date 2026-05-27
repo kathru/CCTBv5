@@ -56,73 +56,121 @@
 
     /* ══ HEADER ══════════════════════════════════════════════ */
     header {
-      background: linear-gradient(180deg, #071020 0%, #060d1a 100%);
-      border-bottom: 1px solid #1a3a5c;
-      padding: 0 24px;
-      height: 64px;
-      display: flex; align-items: center; justify-content: space-between;
-      position: sticky; top: 0; z-index: 100;
-      box-shadow: 0 1px 0 0 rgba(0,212,255,0.10);
+      background-image:
+        linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px),
+        radial-gradient(ellipse 80% 120% at 50% 20%, rgba(0,100,200,0.10) 0%, transparent 65%),
+        linear-gradient(180deg, #071525 0%, #060d1a 100%);
+      background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%;
+      border-bottom: 1px solid rgba(0,212,255,0.2);
+      box-shadow: 0 4px 40px rgba(0,212,255,0.06);
+      padding: 0;
+      height: auto;
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
-    header::after {
-      content: '';
-      position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, #00d4ff40, #2196f340, transparent);
-      pointer-events: none;
-    }
-    .hdr-left  { display: flex; align-items: center; gap: 18px; }
-    .hdr-right { display: flex; align-items: center; gap: 14px; }
-    .hdr-sep   { width:1px; height:22px; background:var(--border2); }
 
-    /* Logo */
-    .logo-wrap { display: flex; align-items: center; gap: 13px; }
-    .logo-icon {
-      width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
-      background: linear-gradient(135deg, #0a1f3d 0%, #0f2a50 100%);
-      border: 1px solid #1a3a5c;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 2px 12px rgba(0,212,255,0.2), 0 0 0 1px rgba(255,255,255,0.04);
+    /* Row 1 — operational strip */
+    .hdr-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 36px;
+      background: rgba(0,0,0,0.25);
+      border-bottom: 1px solid rgba(0,212,255,0.08);
+      flex-shrink: 0;
+      gap: 10px;
     }
-    .logo-title { font-size: 1rem; font-weight: 800; color: var(--text); letter-spacing: -0.2px; white-space: nowrap; }
-    .logo-title .brand-aether {
-      background: linear-gradient(90deg, #2196f3, #00d4ff);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text; font-weight: 900;
+    .hdr-top-left  { display: flex; align-items: center; gap: 10px; }
+    .hdr-top-right { display: flex; align-items: center; gap: 10px; }
+    .hdr-sep { width:1px; height:18px; background:var(--border2); }
+
+    /* Row 2 — brand center */
+    .hdr-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 18px 24px 14px;
+      flex: 1;
     }
-    .logo-title .brand-alpha-a {
-      background: linear-gradient(90deg, #2196f3, #00d4ff);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text; font-weight: 900; font-size: 1.1rem;
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
     }
-    .logo-title .brand-alpha-lpha {
-      color: #e8f4fd; font-weight: 800;
+    .brand-name {
+      font-size: 2.4rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.01em;
     }
-    .logo-tagline {
-      font-size: 9px; text-transform: uppercase; letter-spacing: 0.2em;
-      color: #4a7fa5; margin-top: 2px; white-space: nowrap; font-weight: 600;
+    .brand-aether {
+      background: linear-gradient(90deg, #2196f3 0%, #00d4ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 20px rgba(0,212,255,0.4));
     }
-    .hdr-short-title { display: none; }
-    @media (max-width: 700px) {
-      .hdr-full-title  { display: none; }
-      .hdr-short-title { display: inline; }
-      .logo-sub        { display: flex; }
-      .hdr-full-title  { display: none !important; }
-      .hdr-sub-sep     { display: none; }
-      .hdr-info        { display: none; }
-      .hdr-sep         { display: none; }
+    .brand-alpha-symbol {
+      background: linear-gradient(90deg, #2196f3 0%, #00d4ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
+    .brand-alpha-rest {
+      color: #f0f6ff;
+    }
+    .brand-tagline {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      color: #4a7fa5;
+      font-weight: 400;
+    }
+
+    /* Row 3 — market ticker */
+    .hdr-ticker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 0 24px;
+      height: 32px;
+      background: rgba(0,0,0,0.2);
+      border-top: 1px solid rgba(0,212,255,0.06);
+      font-size: 0.72rem;
+      flex-shrink: 0;
+    }
+    .ticker-item { display: flex; align-items: center; gap: 6px; color: var(--slate); font-size: 0.72rem; }
+    .ticker-item .tk-price { color: var(--text); font-family: 'JetBrains Mono', monospace; }
+    .ticker-item .tk-chg { font-size: 0.68rem; font-family: 'JetBrains Mono', monospace; }
+    .ticker-sep { color: var(--border2); }
+    .ticker-live { margin-left: auto; font-size: 0.68rem; color: var(--cyan); letter-spacing: 0.1em; animation: pulse-text 2s ease-in-out infinite; }
+    @keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    /* Legacy compat — keep logo-ver used in JS */
     .logo-ver {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem; font-weight: 600; color: var(--blue);
+      font-size: 0.72rem; font-weight: 600; color: var(--blue);
       background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.25);
       padding: 2px 8px; border-radius: 4px;
       vertical-align: middle; letter-spacing: 0.05em;
     }
-    .logo-sub {
-      display: flex; align-items: center; gap: 4px;
-      font-size: 0.75rem; color: var(--slate); margin-top: 3px; letter-spacing: 0.02em;
+    .hdr-sub-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem; color: var(--slate); letter-spacing: 0.02em;
     }
-    .hdr-sub-sep { color: var(--border2); }
+    @media (max-width: 700px) {
+      .hdr-brand { padding: 12px 16px 10px; }
+      .brand-name { font-size: 1.8rem; }
+      .brand-tagline { display: none; }
+    }
 
     /* Header badges */
     .hbadge {
@@ -586,52 +634,68 @@
 
 <!-- ══ HEADER ════════════════════════════════════════════════ -->
 <header>
-  <div class="hdr-left">
-    <div class="logo-wrap">
-      <div class="logo-icon">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <circle cx="11" cy="11" r="10" stroke="url(#lg1)" stroke-width="1.5"/>
-          <path d="M6 16 L11 6 L16 16" stroke="url(#lg2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M7.5 13h7" stroke="#00d4ff" stroke-width="1.2" stroke-linecap="round"/>
-          <defs>
-            <linearGradient id="lg1" x1="1" y1="1" x2="21" y2="21">
-              <stop offset="0%" stop-color="#2196f3"/>
-              <stop offset="100%" stop-color="#00d4ff"/>
-            </linearGradient>
-            <linearGradient id="lg2" x1="6" y1="6" x2="16" y2="16">
-              <stop offset="0%" stop-color="#a855f7"/>
-              <stop offset="100%" stop-color="#00d4ff"/>
-            </linearGradient>
-          </defs>
-        </svg>
+
+  <!-- Row 1: Operational strip -->
+  <div class="hdr-top">
+    <div class="hdr-top-left">
+      <span class="logo-ver" id="hdr-version">v–.–.–</span>
+      <div class="hdr-sep"></div>
+      <span class="hdr-sub-text" id="hdr-sub">USDT · OKX · Paper Mode</span>
+    </div>
+    <div class="hdr-top-right">
+      <div id="hdr-regime" class="regime-badge rb-other">
+        <span class="rb-arrow">⇄</span>
+        <span id="hdr-regime-txt">–</span>
       </div>
-      <div>
-        <div class="logo-title">
-          <span class="hdr-full-title" id="title-desktop"><span class="brand-aether">AETHER</span> <span class="brand-alpha-a">α</span><span class="brand-alpha-lpha">LPHA</span></span>
-          <span class="hdr-short-title">AETHER αLPHA</span>
-        </div>
-        <div class="logo-tagline hdr-full-title">QUANT HEDGE ALPHA SYSTEM · PRECISION · PERFORMANCE · INTELLIGENCE</div>
-        <div class="logo-sub">
-          <span class="logo-ver" id="hdr-version">v–.–.–</span>
-          <span class="hdr-sub-sep hdr-full-title"> · </span>
-          <span class="hdr-full-title" id="hdr-sub">USDT · OKX · Paper Mode</span>
-        </div>
+      <div class="hdr-sep"></div>
+      <div class="status-pill" id="status-pill">
+        <div id="status-dot" class="status-dot"></div>
+        <span id="status-text">Ativo</span>
       </div>
     </div>
-
   </div>
 
-  <div class="hdr-right">
-    <div id="hdr-regime" class="regime-badge rb-other">
-      <span class="rb-arrow">⇄</span>
-      <span id="hdr-regime-txt">–</span>
-    </div>
-    <div class="hdr-sep"></div>
-    <div class="status-pill" id="status-pill">
-      <div id="status-dot" class="status-dot"></div>
-      <span id="status-text">Ativo</span>
+  <!-- Row 2: Brand center -->
+  <div class="hdr-brand">
+    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="24" cy="24" r="22" stroke="url(#hg1)" stroke-width="1.5" fill="rgba(0,100,200,0.08)"/>
+      <circle cx="24" cy="24" r="16" stroke="rgba(0,212,255,0.2)" stroke-width="0.5" fill="none"/>
+      <path d="M14 36 L24 12 L34 36" stroke="url(#hg2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M17 30 h14" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M28 20 L34 14 M34 14 L28 14 M34 14 L34 20" stroke="#ffd700" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="24" cy="12" r="2" fill="#a855f7"/>
+      <circle cx="14" cy="36" r="1.5" fill="#00d4ff"/>
+      <circle cx="34" cy="36" r="1.5" fill="#00d4ff"/>
+      <defs>
+        <linearGradient id="hg1" x1="2" y1="2" x2="46" y2="46">
+          <stop offset="0%" stop-color="#2196f3"/>
+          <stop offset="100%" stop-color="#00d4ff"/>
+        </linearGradient>
+        <linearGradient id="hg2" x1="14" y1="12" x2="34" y2="36">
+          <stop offset="0%" stop-color="#a855f7"/>
+          <stop offset="50%" stop-color="#2196f3"/>
+          <stop offset="100%" stop-color="#00d4ff"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <div class="brand-text">
+      <div class="brand-name">
+        <span class="brand-aether">AETHER</span> <span class="brand-alpha-symbol">α</span><span class="brand-alpha-rest">LPHA</span>
+      </div>
+      <div class="brand-tagline">QUANT HEDGE ALPHA SYSTEM · PRECISION · PERFORMANCE · INTELLIGENCE</div>
     </div>
   </div>
+
+  <!-- Row 3: Market ticker -->
+  <div class="hdr-ticker" id="hdr-ticker">
+    <span class="ticker-item" id="tk-btc">BTC <span class="tk-price mono">–</span> <span class="tk-chg">–</span></span>
+    <span class="ticker-sep">·</span>
+    <span class="ticker-item" id="tk-eth">ETH <span class="tk-price mono">–</span> <span class="tk-chg">–</span></span>
+    <span class="ticker-sep">·</span>
+    <span class="ticker-item" id="tk-sol">SOL <span class="tk-price mono">–</span> <span class="tk-chg">–</span></span>
+    <span class="ticker-live" id="tk-live">● LIVE</span>
+  </div>
+
 </header>
 
 <main>
@@ -4629,6 +4693,30 @@ async function updateAll(){
   if(prices) Object.assign(_c.prices,prices);
   if(exits?.plans) Object.assign(_c.exits,exits.plans);
   buildCards(_c.prices,_c.sym,_c.exits,[...(oOpen||[]),...(oFilled?.orders||[])]);
+
+  // Header ticker (Row 3)
+  {
+    const tkMap = {'BTC-USDT':'tk-btc','ETH-USDT':'tk-eth','SOL-USDT':'tk-sol'};
+    const shortNames = {'BTC-USDT':'BTC','ETH-USDT':'ETH','SOL-USDT':'SOL'};
+    for(const [sym2, elId] of Object.entries(tkMap)){
+      const el = document.getElementById(elId);
+      if(!el) continue;
+      const p = _c.prices[sym2] || 0;
+      const d2 = _c.sym[sym2] || {};
+      const chg = d2.change_pct ?? null;
+      const priceEl = el.querySelector('.tk-price');
+      const chgEl   = el.querySelector('.tk-chg');
+      if(priceEl) priceEl.textContent = p > 0 ? '$'+p.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}) : '–';
+      if(chgEl && chg !== null){
+        const sign2 = chg >= 0 ? '+' : '';
+        chgEl.textContent = sign2+chg.toFixed(2)+'%';
+        chgEl.style.color = chg > 0 ? 'var(--green)' : chg < 0 ? 'var(--red)' : 'var(--slate)';
+      }
+    }
+    // Update live timestamp
+    const liveEl = document.getElementById('tk-live');
+    if(liveEl){ const now = new Date(); liveEl.textContent = '● LIVE  updated '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+  }
 
   // Motor Probabilístico
   if(sym&&Object.keys(sym).length){

@@ -184,9 +184,10 @@
     /* Header regime */
     .regime-badge {
       display: flex; align-items: center; gap: 7px;
-      padding: 4px 12px; border-radius: 6px;
+      height: 26px; padding: 0 12px; border-radius: 6px;
       font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
       border: 1px solid; transition: all 0.3s; cursor: default; text-transform: uppercase;
+      white-space: nowrap;
     }
     .regime-badge .rb-arrow { font-size: 0.65rem; opacity: 0.7; }
     .rb-chop   { background:rgba(255,215,0,0.06);    color:var(--yellow); border-color:rgba(255,215,0,0.25); }
@@ -201,9 +202,10 @@
 
     .status-pill {
       display: flex; align-items: center; gap: 6px;
-      padding: 4px 11px; border-radius: 6px;
+      height: 26px; padding: 0 11px; border-radius: 6px;
       background: rgba(0,230,118,0.06); border: 1px solid rgba(0,230,118,0.2);
       font-size: 0.72rem; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: 0.08em;
+      white-space: nowrap;
     }
     .status-pill.bad { background:rgba(255,69,96,0.08); border-color:rgba(255,69,96,0.2); color:var(--red); }
     .status-dot {
@@ -639,11 +641,11 @@
       <span class="hdr-sub-text" id="hdr-sub">USDT · OKX · Paper Mode</span>
     </div>
     <div class="hdr-top-right">
+      <div id="mr-regime-badge" style="display:flex;align-items:center;height:26px;padding:0 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(100,100,100,0.1);color:var(--muted);font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;transition:background 0.3s,color 0.3s,border-color 0.3s;">–</div>
       <div id="hdr-regime" class="regime-badge rb-other">
         <span class="rb-arrow">⇄</span>
         <span id="hdr-regime-txt">–</span>
       </div>
-      <div id="mr-regime-badge" style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;padding:2px 8px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:rgba(100,100,100,0.1);color:var(--muted);text-transform:uppercase;transition:background 0.3s,color 0.3s;">–</div>
       <div class="hdr-sep"></div>
       <div class="status-pill" id="status-pill">
         <div id="status-dot" class="status-dot"></div>

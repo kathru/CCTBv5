@@ -88,6 +88,9 @@ class NewsSentimentCollector:
         try:
             raw = await self._cache.get(CACHE_KEY_M9.format(symbol=symbol))
             if raw:
+                # cache.get() already parses JSON → raw may be a dict or str
+                if isinstance(raw, dict):
+                    return raw
                 import json
                 return json.loads(raw)
         except Exception:
@@ -162,6 +165,9 @@ class NewsSentimentCollector:
         cache_key = CACHE_KEY_COIN.format(symbol=symbol)
         cached = await self._cache.get(cache_key)
         if cached:
+            # cache.get() already parses JSON → cached may be a dict or str
+            if isinstance(cached, dict):
+                return cached
             import json
             try:
                 return json.loads(cached)

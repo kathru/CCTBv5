@@ -216,6 +216,9 @@ class FuturesFlowCollector:
         raw = await self._cache.get(f"futures_flow:{symbol}")
         if not raw:
             return None
+        # cache.get() already parses JSON → raw is a dict; handle both dict and str
+        if isinstance(raw, dict):
+            return raw
         try:
             return json.loads(raw)
         except Exception:

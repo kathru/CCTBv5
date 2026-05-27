@@ -90,6 +90,16 @@
     .hdr-sep { width:1px; height:18px; background:var(--border2); }
 
     /* Row 2 — brand center */
+    .brand-logo-img {
+      height: 90px;
+      width: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 0 18px rgba(0,212,255,0.35)) drop-shadow(0 0 6px rgba(33,150,243,0.25));
+      transition: filter 0.3s ease;
+    }
+    .brand-logo-img:hover {
+      filter: drop-shadow(0 0 26px rgba(0,212,255,0.55)) drop-shadow(0 0 10px rgba(33,150,243,0.35));
+    }
     .hdr-brand {
       display: flex;
       align-items: center;
@@ -657,33 +667,7 @@
 
   <!-- Row 2: Brand center -->
   <div class="hdr-brand">
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="24" cy="24" r="22" stroke="url(#hg1)" stroke-width="1.5" fill="rgba(0,100,200,0.08)"/>
-      <circle cx="24" cy="24" r="16" stroke="rgba(0,212,255,0.2)" stroke-width="0.5" fill="none"/>
-      <path d="M14 36 L24 12 L34 36" stroke="url(#hg2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-      <path d="M17 30 h14" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M28 20 L34 14 M34 14 L28 14 M34 14 L34 20" stroke="#ffd700" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="24" cy="12" r="2" fill="#a855f7"/>
-      <circle cx="14" cy="36" r="1.5" fill="#00d4ff"/>
-      <circle cx="34" cy="36" r="1.5" fill="#00d4ff"/>
-      <defs>
-        <linearGradient id="hg1" x1="2" y1="2" x2="46" y2="46">
-          <stop offset="0%" stop-color="#2196f3"/>
-          <stop offset="100%" stop-color="#00d4ff"/>
-        </linearGradient>
-        <linearGradient id="hg2" x1="14" y1="12" x2="34" y2="36">
-          <stop offset="0%" stop-color="#a855f7"/>
-          <stop offset="50%" stop-color="#2196f3"/>
-          <stop offset="100%" stop-color="#00d4ff"/>
-        </linearGradient>
-      </defs>
-    </svg>
-    <div class="brand-text">
-      <div class="brand-name">
-        <span class="brand-aether">AETHER</span> <span class="brand-alpha-symbol">α</span><span class="brand-alpha-rest">LPHA</span>
-      </div>
-      <div class="brand-tagline">QUANT HEDGE ALPHA SYSTEM · PRECISION · PERFORMANCE · INTELLIGENCE</div>
-    </div>
+    <img src="/static/AetherAlpha.png" alt="AETHER αLPHA" class="brand-logo-img">
   </div>
 
   <!-- Row 3: Market ticker -->

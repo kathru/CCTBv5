@@ -2898,7 +2898,12 @@ function buildMetaOverfitting(mo){
 
   const dsrV = document.getElementById('mo-dsr-verdict');
   if(dsrV){
-    if(dsrVal==null) dsrV.textContent='Dados insuficientes';
+    if(dsrVal==null||dsr.insufficient_data){
+      const minN=dsr.min_n_required||30;
+      const curN=dsr.n_obs||0;
+      dsrV.textContent=`Dados insuficientes: ${curN}/${minN} trades para DSR confiável`;
+      dsrV.style.color='var(--muted)';
+    }
     else if(dsrVal>=0.95){dsrV.textContent='✓ Edge confirmado (DSR ≥ 0.95)';dsrV.style.color='var(--green)';}
     else if(dsrVal>=0.5){dsrV.textContent=`⚠ Inconclusivo (DSR = ${dsrVal.toFixed(3)})`;dsrV.style.color='var(--yellow)';}
     else{dsrV.textContent=`✗ Sem edge após ajuste (DSR = ${dsrVal!=null?dsrVal.toFixed(3):'–'})`;dsrV.style.color='var(--red)';}
@@ -2936,11 +2941,9 @@ function buildMetaOverfitting(mo){
   const trlV=document.getElementById('mo-trl-verdict');
   if(trlV){
     if(trl.sufficient){trlV.textContent='✓ Track record suficiente';trlV.style.color='var(--green)';}
-    else if(minT!=null){
-      const gap=Math.ceil(minT-curT);
+    else {
+      const gap=Math.ceil((minT||30)-curT);
       trlV.textContent=`Faltam ~${gap} trades para 95% de confiança`;trlV.style.color='var(--yellow)';
-    } else {
-      trlV.textContent='✗ Sharpe negativo — MinTRL indefinido';trlV.style.color='var(--red)';
     }
   }
 
@@ -2961,7 +2964,8 @@ function buildMetaOverfitting(mo){
     setC('mo-deg-ratio', dr!=null?dr.toFixed(3):null, drCol);
     const ofSignal=io.overfit_signal||'–';
     const ofCol={LOW:'var(--green)',MODERATE:'var(--yellow)',HIGH:'var(--red)',INSUFFICIENT:'var(--muted)'}[ofSignal]||'var(--muted)';
-    setC('mo-overfit-signal', ofSignal, ofCol);
+    const ofLabel=ofSignal==='INSUFFICIENT'?(io.oos_note||`Dados insuficientes (${io.n_oos||0} trades OOS)`):ofSignal;
+    setC('mo-overfit-signal', ofLabel, ofCol);
   }
 
   // ── Verdict rows ─────────────────────────────────────────────────────
@@ -2994,7 +2998,10 @@ function buildMetaOverfitting(mo){
     const trl_=mo.min_trl||{};
     const io_=mo.is_oos||{};
     let recs=[];
-    if(o==='RED'){
+    if(o==='GREY'){
+      recs.push('⬜ Dados insuficientes para avaliação estatística — continue coletando trades.');
+      if(trl_.gap) recs.push(`📊 Faltam ~${Math.ceil(trl_.gap)} trades para MinTRL de 30.`);
+    } else if(o==='RED'){
       recs.push('🔴 Estratégia não tem edge estatístico demonstrável.');
       if(trl_.min_trl&&!trl_.sufficient) recs.push(`📊 Acumular ~${Math.ceil(trl_.min_trl)} trades antes de qualquer conclusão.`);
       if(io_.overfit_signal==='HIGH') recs.push('⚠ OOS muito pior que IS: rever parâmetros ou expandir dados.');

@@ -969,7 +969,8 @@ async def get_reality_check(request: Request) -> dict:
 #
 # Implementação 100% stdlib (sem scipy/numpy) usando math.erf para CDF normal.
 
-_EULER_MASCHERONI = 0.5772156649
+_EULER_MASCHERONI  = 0.5772156649
+_MIN_TRADES_STAT   = 30  # mínimo para significância estatística (track record e DSR)
 
 
 def _norm_cdf(x: float) -> float:
@@ -1030,9 +1031,17 @@ def _deflated_sharpe(
     Returns: dict com dsr, sr_star, significant (DSR > 0.95)
     """
     n = len(returns)
-    if n < MIN_TRADES or sr_hat is None:
+    if sr_hat is None:
         return {"dsr": None, "sr_star": None, "significant": None,
-                "adjustment": None, "n_obs": n}
+                "adjustment": None, "n_obs": n,
+                "insufficient_data": True, "min_n_required": _MIN_TRADES_STAT}
+    if n < MIN_TRADES:
+        return {"dsr": None, "sr_star": None, "significant": None,
+                "adjustment": None, "n_obs": n,
+                "insufficient_data": True, "min_n_required": _MIN_TRADES_STAT}
+    # DSR is statistically meaningful only with ≥ _MIN_TRADES_STAT trades.
+    # With fewer trades, flag it so the dashboard shows "Dados insuficientes" instead of failing.
+    insufficient_data = n < _MIN_TRADES_STAT
 
     _, _, skew, kurt = _moments(returns)
 
@@ -1057,15 +1066,17 @@ def _deflated_sharpe(
     significant = dsr >= (1 - ALPHA)  # DSR ≥ 0.95 → edge real
 
     return {
-        "dsr":          dsr,
-        "sr_star":      round(sr_star, 4),
-        "dsr_z":        round(dsr_z, 4),
-        "significant":  significant,
-        "skewness":     round(skew, 4),
-        "excess_kurtosis": round(kurt, 4),
-        "variance_adj": round(variance_adj, 4),
-        "n_obs":        n,
-        "n_trials":     n_trials,
+        "dsr":               dsr,
+        "sr_star":           round(sr_star, 4),
+        "dsr_z":             round(dsr_z, 4),
+        "significant":       significant,
+        "skewness":          round(skew, 4),
+        "excess_kurtosis":   round(kurt, 4),
+        "variance_adj":      round(variance_adj, 4),
+        "n_obs":             n,
+        "n_trials":          n_trials,
+        "insufficient_data": insufficient_data,
+        "min_n_required":    _MIN_TRADES_STAT,
     }
 
 
@@ -1076,28 +1087,39 @@ def _min_track_record(sr_hat: float, returns: list[float],
     rejeitar H0 (Sharpe ≤ 0) com confiança (1-α).
 
     MinTRL = 1 + (1 - γ₃*SR + (γ₄/4)*SR²) * (Φ⁻¹(1-α)/SR)²
+
+    Se SR ≤ 0 ou dados insuficientes: usa fallback de 30 trades mínimos.
     """
     n = len(returns)
     if sr_hat is None or sr_hat == 0 or n < MIN_TRADES:
-        return {"min_trl": None, "current_n": n, "sufficient": None}
+        # Fallback: sem Sharpe positivo, o mínimo absoluto é 30 trades
+        return {
+            "min_trl":    _MIN_TRADES_STAT,
+            "current_n":  n,
+            "sufficient": n >= _MIN_TRADES_STAT,
+            "gap":        max(0, _MIN_TRADES_STAT - n),
+        }
 
     _, _, skew, kurt = _moments(returns)
     variance_adj = max(1e-6, 1.0 - skew * sr_hat + (kurt / 4.0) * sr_hat ** 2)
     z_alpha      = _norm_ppf(1.0 - alpha)
 
     if sr_hat > 0:
-        min_trl = 1 + variance_adj * (z_alpha / sr_hat) ** 2
+        min_trl = max(_MIN_TRADES_STAT, 1 + variance_adj * (z_alpha / sr_hat) ** 2)
     else:
-        # Sharpe negativo: MinTRL "infinito" → sem track record suficiente
-        min_trl = float("inf")
+        # Sharpe negativo: usa mínimo estatístico absoluto
+        min_trl = _MIN_TRADES_STAT
 
-    sufficient = n >= min_trl if math.isfinite(min_trl) else False
+    sufficient = n >= min_trl
     return {
-        "min_trl":    round(min_trl, 1) if math.isfinite(min_trl) else None,
+        "min_trl":    round(min_trl, 1),
         "current_n":  n,
         "sufficient": sufficient,
-        "gap":        None if not math.isfinite(min_trl) else max(0, round(min_trl - n, 1)),
+        "gap":        max(0, round(min_trl - n, 1)),
     }
+
+
+_MIN_OOS_TRADES = 5   # mínimo de trades OOS para avaliação de overfit ser confiável
 
 
 def _is_oos_split(trades: list[dict], split: float = 0.7) -> dict:
@@ -1105,15 +1127,20 @@ def _is_oos_split(trades: list[dict], split: float = 0.7) -> dict:
     Divide trades em IS (primeiros split%) e OOS (restantes).
     Compara Sharpe, WR e Expectancy nos dois períodos.
     Ratio IS_Sharpe / OOS_Sharpe > 1 indica degradação (possível overfit).
+
+    NOTA: com menos de _MIN_OOS_TRADES trades OOS, o resultado não tem
+    significância estatística → retorna INSUFFICIENT em vez de HIGH/MODERATE.
     """
     n = len(trades)
     if n < MIN_TRADES * 2:
-        return {"sufficient": False, "n_is": 0, "n_oos": 0}
+        return {"sufficient": False, "n_is": 0, "n_oos": 0,
+                "note": f"Insuficiente: precisa ≥ {MIN_TRADES * 2} trades"}
 
     n_is  = max(MIN_TRADES, int(n * split))
     n_oos = n - n_is
     if n_oos < MIN_TRADES:
-        return {"sufficient": False, "n_is": n_is, "n_oos": n_oos}
+        return {"sufficient": False, "n_is": n_is, "n_oos": n_oos,
+                "note": f"OOS com apenas {n_oos} trades — insuficiente"}
 
     def _metrics(subset: list[dict]) -> dict:
         pcts  = [t["pnl_pct"] for t in subset]
@@ -1136,8 +1163,11 @@ def _is_oos_split(trades: list[dict], split: float = 0.7) -> dict:
     if is_m["sharpe"] and oos_m["sharpe"] and is_m["sharpe"] != 0:
         deg_ratio = round(oos_m["sharpe"] / is_m["sharpe"], 3)
 
-    # Classificação
+    # Classificação — com OOS insuficiente, não declarar HIGH (evita alarme falso)
     if deg_ratio is None:
+        overfit_signal = "INSUFFICIENT"
+    elif n_oos < _MIN_OOS_TRADES:
+        # Dados OOS insuficientes para diagnóstico confiável
         overfit_signal = "INSUFFICIENT"
     elif deg_ratio >= 0.5:
         overfit_signal = "LOW"       # OOS retém ≥ 50% do IS Sharpe
@@ -1146,6 +1176,10 @@ def _is_oos_split(trades: list[dict], split: float = 0.7) -> dict:
     else:
         overfit_signal = "HIGH"      # OOS inverte sinal → overfit severo
 
+    oos_note = (
+        f"Dados insuficientes: apenas {n_oos} trades OOS (mín. {_MIN_OOS_TRADES})"
+        if n_oos < _MIN_OOS_TRADES else None
+    )
     return {
         "sufficient":    True,
         "split_pct":     split,
@@ -1155,6 +1189,7 @@ def _is_oos_split(trades: list[dict], split: float = 0.7) -> dict:
         "oos_metrics":   oos_m,
         "degradation_ratio": deg_ratio,
         "overfit_signal":    overfit_signal,
+        "oos_note":          oos_note,
     }
 
 
@@ -1199,31 +1234,52 @@ async def get_meta_overfitting(
     is_oos_result = _is_oos_split(trades)
 
     # ── Verdict ─────────────────────────────────────────────────────────────
-    dsr_ok    = dsr_result.get("significant") is True
+    dsr_ok              = dsr_result.get("significant") is True
+    dsr_insufficient    = dsr_result.get("insufficient_data", False)
     trl_ok    = min_trl_result.get("sufficient") is True
     overfit   = is_oos_result.get("overfit_signal", "INSUFFICIENT")
     overfit_ok = overfit == "LOW"
+    overfit_insufficient = overfit == "INSUFFICIENT"
 
     def _v(ok): return "GREEN" if ok else ("GREY" if ok is None else "RED")
+    def _v_overfit(ok, insufficient):
+        # INSUFFICIENT = dados insuficientes → GREY (não é falha confirmada)
+        if insufficient:
+            return "GREY"
+        return "GREEN" if ok else "RED"
 
     n_green = sum([dsr_ok, trl_ok, overfit_ok])
-    overall = "GREEN" if n_green == 3 else ("YELLOW" if n_green >= 1 else "RED")
+    # Items with insufficient data are GREY (not failures) — exclude from RED determination
+    n_grey  = sum([dsr_insufficient, overfit_insufficient])
+    n_decidable = 3 - n_grey
+    overall = (
+        "GREEN"  if n_green == n_decidable and n_decidable > 0 else
+        "YELLOW" if n_green >= 1 else
+        ("GREY"  if n_grey == 3 else "RED")
+    )
 
     verdict = {
         "dsr_significant": {
-            "status": _v(dsr_ok),
+            "status": "GREY" if dsr_insufficient else _v(dsr_ok),
             "value":  dsr_result.get("dsr"),
-            "note":   "DSR ≥ 0.95 → edge real após ajuste de seleção",
+            "note":   (
+                f"Dados insuficientes: {dsr_result.get('n_obs',0)}/{_MIN_TRADES_STAT} trades"
+                if dsr_insufficient else "DSR ≥ 0.95 → edge real após ajuste de seleção"
+            ),
         },
         "track_record_sufficient": {
             "status": _v(trl_ok),
             "value":  min_trl_result.get("current_n"),
-            "note":   f"Precisa ≥ {min_trl_result.get('min_trl')} trades",
+            "note":   f"Precisa ≥ {min_trl_result.get('min_trl') or _MIN_TRADES_STAT} trades",
         },
         "low_overfit": {
-            "status": _v(overfit_ok),
+            "status": _v_overfit(overfit_ok, overfit_insufficient),
             "value":  is_oos_result.get("degradation_ratio"),
-            "note":   f"Overfit: {overfit}",
+            "note":   (
+                is_oos_result.get("oos_note") or f"Overfit: {overfit}"
+                if overfit == "INSUFFICIENT"
+                else f"Overfit: {overfit}"
+            ),
         },
         "overall": overall,
     }

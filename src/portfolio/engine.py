@@ -99,6 +99,7 @@ class PortfolioEngine:
                 "notional": notional,
                 "unrealized_pnl": pos.unrealized_pnl,
                 "realized_pnl": pos.realized_pnl,
+                "strategy_id": pos.strategy_id,
             }
 
         total_realized = sum(p.realized_pnl for p in positions)
@@ -113,7 +114,7 @@ class PortfolioEngine:
             open_position_count=len(open_positions),
             realized_pnl=total_realized,
             unrealized_pnl=total_unrealized,
-            daily_pnl=total_unrealized,
+            daily_pnl=total_unrealized + total_realized,
             total_return_pct=(
                 (total_value - self._state.initial_capital) / self._state.initial_capital
                 if self._state.initial_capital > 0 else 0.0

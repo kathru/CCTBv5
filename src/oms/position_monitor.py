@@ -743,7 +743,10 @@ class PositionMonitor:
                 # Permite que o Portfolio Allocator converja da simulação para
                 # a realidade à medida que trades reais se acumulam.
                 try:
-                    pnl_usd = (price - plan.entry_price) * plan.quantity
+                    # Usa `quantity` (quantidade efetivamente vendida neste exit),
+                    # não plan.quantity (total original) — evita superestimar PnL
+                    # em casos de saída parcial prévia.
+                    pnl_usd = (price - plan.entry_price) * quantity
                     _weight_engine.record_trade(
                         strategy_id=plan.strategy_id,
                         regime=plan.entry_regime,

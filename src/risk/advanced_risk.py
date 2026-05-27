@@ -233,7 +233,7 @@ class AdvancedRiskManager:
             return {"available": False, "reason": "DB não conectado"}
 
         try:
-            from src.persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
+            from ..persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
             rows = await self._db.fetch(
                 """
                 SELECT avg_fill_price, filled_quantity, fees_paid, side, filled_at, symbol
@@ -350,7 +350,7 @@ class AdvancedRiskManager:
             for sym in SYMBOLS:
                 cb_key = f"circuit_breaker:consec_loss:{sym}"
                 try:
-                    from src.persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
+                    from ..persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
                     rows = await self._db.fetch(
                         """
                         SELECT side, avg_fill_price, filled_quantity, filled_at

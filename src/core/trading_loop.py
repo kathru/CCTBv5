@@ -151,7 +151,7 @@ class TradingLoop:
         # Rastreia posições abertas em memória (atualizado a cada fill)
         self._positions: dict = {}   # symbol → Position (importado localmente nos métodos)
         self._exec_expected_price: dict[str, float] = {}  # Phase 17: expected price at signal time
-        self._cash: float = 10000.0
+        self._cash: float = 82_515.77  # atualizado pelo ExchangeSync no boot
 
         # ── ML Inference ──────────────────────────────────────
         self._ml = MLInferenceEngine(models_dir=MODELS_DIR)
@@ -538,6 +538,8 @@ class TradingLoop:
 
             price_raw = await self._cache.get_price(signal.symbol)
             price = float(price_raw) if price_raw else pos.avg_entry_price
+            if price <= 0:
+                price = pos.avg_entry_price
             logger.info(
                 "SELL %s qty=%.6f @ ~%.2f (entrada=%.2f strat=%s)",
                 signal.symbol, quantity, price, pos.avg_entry_price, pos.strategy_id,
@@ -566,7 +568,7 @@ class TradingLoop:
             return
 
         # 1b. Avaliação de risco (RiskEngine padrão)
-        portfolio_value = self._portfolio.state.total_value or 85_000.0
+        portfolio_value = self._portfolio.state.total_value or 82_515.77
         risk_ctx = RiskContext(
             portfolio_value=portfolio_value,
             open_positions=[],
@@ -596,7 +598,7 @@ class TradingLoop:
         # Kelly já vem ajustado pelo regime_mult da estratégia
         # Phase 14: aplica multiplicador dos circuit breakers (corr/liquidez/weeklyDD)
         adv_kelly_mult = cb_result.get("kelly_mult", 1.0)
-        kelly    = (signal.kelly_fraction or 0.05) * adv_kelly_mult
+        kelly    = (signal.kelly_fraction if signal.kelly_fraction is not None else 0.05) * adv_kelly_mult
         regime   = getattr(signal, "regime", "MEAN_REVERTING_CHOP")
 
         # Phase 15 — Portfolio Intelligence Layer
@@ -719,7 +721,8 @@ class TradingLoop:
 
             # Drawdown diário
             p = self._portfolio.state
-            daily_dd  = abs(getattr(p, "daily_pnl", 0.0) or 0.0)
+            daily_pnl = getattr(p, "daily_pnl", 0.0) or 0.0
+            daily_dd  = abs(min(daily_pnl, 0.0))  # drawdown só quando negativo
             total_val = getattr(p, "total_value", 0.0) or 1.0
             dd_pct    = daily_dd / total_val if total_val > 0 else 0.0
             await self._trading_alerts.on_drawdown_check(dd_pct, total_val)
@@ -1060,10 +1063,23 @@ class TradingLoop:
             price    = order.avg_fill_price or 0.0
             fees     = order.fees_paid or 0.0
 
+            if price <= 0 or qty <= 0:
+                logger.warning(
+                    "_on_fill_update_portfolio: fill inválido %s price=%.4f qty=%.6f — ignorado",
+                    symbol, price, qty,
+                )
+                return
+
             if is_buy:
                 # Abre ou amplia posição
                 cost = qty * price + fees
                 self._cash -= cost
+                if self._cash < 0:
+                    logger.warning(
+                        "Cash negativo após compra %s: cash=%.2f cost=%.2f "
+                        "(possível desync com exchange — aguardando sync periódico)",
+                        symbol, self._cash, cost,
+                    )
                 if symbol in self._positions:
                     pos = self._positions[symbol]
                     # Recalcula preço médio
@@ -1217,7 +1233,11 @@ class TradingLoop:
             total = await sync.sync_balances()
             if total > 0:
                 self._runner.update_portfolio_value(total)
-                logger.debug("Sync periódico OKX: portfolio=%.2f USD", total)
+                # Sincroniza cash interno com saldo USDT real da OKX
+                usdt_cash = self._portfolio.state.cash_available
+                if usdt_cash > 0:
+                    self._cash = usdt_cash
+                logger.debug("Sync periódico OKX: portfolio=%.2f USD cash=%.2f", total, self._cash)
         except Exception as exc:
             logger.debug("Sync periódico falhou: %s", exc)
 

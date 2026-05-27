@@ -143,7 +143,7 @@ class OrderManager:
             symbol=signal.symbol,
             side=side,
             order_type=OrderType.LIMIT,
-            quantity=0.0,          # sized by SizingEngine before reaching OMS
+            quantity=0.0,          # NOTE: sized externally — on_signal() path is unused in prod; use create_order_from_signal()
             strategy_id=signal.strategy_id,
             signal_id=event.event_id,   # ID do SignalEvent, não do Signal
             mode=OrderMode.PASSIVE_LIMIT,

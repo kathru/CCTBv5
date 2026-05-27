@@ -1268,7 +1268,7 @@
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
       <div class="clabel" style="margin:0">Rolling Metrics</div>
-      <span id="rolling-window-lbl" style="font-size:0.75rem;color:var(--muted)">janela 10 trades</span>
+      <span id="rolling-window-lbl" style="font-size:0.75rem;color:var(--muted)">janela 5 trades</span>
     </div>
     <!-- 4 mini-barras de tendência -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
@@ -1867,7 +1867,7 @@ const API='';
 const FAST_MS  = 30000;   // preços, sinais, posições, ordens — a cada 30s
 const SLOW_MS  = 600000;  // analytics, governance — a cada 10min
 const RETRY_MS = 4000;    // retry quando cards voltam vazios
-let _fastTimer=null, _slowTimer=null, _retryTimer=null;
+let _fastTimer=null, _slowTimer=null, _retryTimer=null, _sampleTimer=null;
 
 // ── Portfolio chart data (in-session memory) ───────────────
 // Sampling: 1 ponto por minuto → maxPoints=1440 (24h)
@@ -1890,7 +1890,7 @@ async function samplePortfolio(){
   if(d){
     // Gráfico de evolução: Saldo Disponível contábil (initial_capital + net_pnl)
     // Só muda quando trades são registrados no DB — elimina ruído de preço/sync OKX
-    const perf=await fetchJSON('/api/analytics/performance');
+    const perf=await fetchJSON('/api/metrics/performance');
     const grossPnl = d.realized_pnl || 0;
     const fees     = perf?.total_fees || 0;
     const netPnl   = grossPnl - fees;
@@ -1902,8 +1902,9 @@ async function samplePortfolio(){
 }
 
 function startPortfolioSampling(){
+  if(_sampleTimer) return; // evita múltiplos intervalos
   samplePortfolio(); // amostra imediata
-  setInterval(samplePortfolio, 60000); // depois a cada 1 minuto
+  _sampleTimer = setInterval(samplePortfolio, 60000); // depois a cada 1 minuto
 }
 
 // ── Portfolio line chart ───────────────────────────────────
@@ -2181,8 +2182,8 @@ function buildTradeHistory(orders, totalFilled){
     return`<div class="trade-item">
       <div class="trade-pill ${isSell?'tp-sell':'tp-buy'}">${side.toUpperCase()}</div>
       <div>
-        <div class="trade-sym">${o.symbol||'–'}</div>
-        <div class="trade-meta"><span class="strat">${(o.strategy_id||'momentum_v2').replace('momentum_','m').toUpperCase()}</span> · ${qty.toFixed(4)} un · ${feeStr}</div>
+        <div class="trade-sym">${esc(o.symbol)||'–'}</div>
+        <div class="trade-meta"><span class="strat">${esc((o.strategy_id||'momentum_v2').replace('momentum_','m').toUpperCase())}</span> · ${qty.toFixed(4)} un · ${feeStr}</div>
       </div>
       <div class="trade-right">
         <div class="trade-pnl ${cashCls}">${cashFlow>=0?'+':'-'}${usd(Math.abs(cashFlow))}</div>
@@ -2195,6 +2196,7 @@ const SYMBOLS=['BTC-USDT','ETH-USDT','SOL-USDT'];
 const _c={prices:{},sym:{},exits:{}};
 
 async function fetchJSON(url){try{const r=await fetch(API+url);if(!r.ok)throw r.status;return r.json();}catch{return null;}}
+function esc(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function usd(v,d=2){const n=parseFloat(v);if(isNaN(n))return'–';return'$'+n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});}
 function pct(v,d=2){const n=parseFloat(v);if(isNaN(n))return'–';return(n*100).toFixed(d)+'%';}
 function sign(v,isUsd=true){const n=parseFloat(v);if(isNaN(n))return'–';const s=n>=0?'+':'';return isUsd?s+usd(n):s+(n*100).toFixed(2)+'%';}
@@ -2431,9 +2433,17 @@ function buildCards(prices,sym,exits,recentOrders=[]){
 }
 
 function wdItem(idS,idD,alive,detail){
-  const dot=`<div class="wd-dot ${alive!==false?'ok':'bad'}"></div>`;
-  document.getElementById(idS).innerHTML=dot+(alive!==false?'<span class="g">OK</span>':'<span class="r">FALHOU</span>');
-  document.getElementById(idD).textContent=detail||'–';
+  const sEl=document.getElementById(idS);
+  const dEl=document.getElementById(idD);
+  if(sEl){
+    const dot=document.createElement('div');
+    dot.className='wd-dot '+(alive!==false?'ok':'bad');
+    const lbl=document.createElement('span');
+    lbl.className=alive!==false?'g':'r';
+    lbl.textContent=alive!==false?'OK':'FALHOU';
+    sEl.innerHTML=''; sEl.appendChild(dot); sEl.appendChild(lbl);
+  }
+  if(dEl) dEl.textContent=detail||'–';
 }
 
 // ── Signal Funnel ─────────────────────────────────────────────
@@ -3132,7 +3142,7 @@ function buildEquityCharts(eq){
         labels,
         datasets:[
           {label:'Capital',data:equity,borderColor:'#10b981',borderWidth:2,
-           pointRadius:0,tension:0.3,fill:{target:'origin',above:'rgba(16,185,129,0.08)',below:'rgba(239,68,68,0.08)'}},
+           pointRadius:0,tension:0.3,fill:{target:{value:82515.77},above:'rgba(16,185,129,0.08)',below:'rgba(239,68,68,0.08)'}},
           {label:'HWM',data:hwm,borderColor:'rgba(59,130,246,0.5)',borderWidth:1,
            borderDash:[4,4],pointRadius:0,tension:0.3},
         ]},
@@ -4761,7 +4771,7 @@ async function updateAll(){
   document.getElementById('positions-body').innerHTML=posList.length?posList.map(p=>{
     const q=parseFloat(p.quantity||0),e=parseFloat(p.avg_entry_price||0),c=parseFloat(p.current_price||0),pnl=parseFloat(p.unrealized_pnl||0);
     const pp=e>0?(c-e)/e:0;
-    return`<tr><td class="b">${p.symbol}</td><td>${pill((p.side||'').toUpperCase(),(p.side||'buy').toLowerCase())}</td><td>${q.toFixed(4)}</td><td>${usd(e)}</td><td>${usd(c)}</td><td>${colored(pnl)}</td><td>${colored(pp,false)}</td></tr>`;
+    return`<tr><td class="b">${esc(p.symbol)}</td><td>${pill((p.side||'').toUpperCase(),(p.side||'buy').toLowerCase())}</td><td>${q.toFixed(4)}</td><td>${usd(e)}</td><td>${usd(c)}</td><td>${colored(pnl)}</td><td>${colored(pp,false)}</td></tr>`;
   }).join(''):'<tr class="empty-row"><td colspan="7">Nenhuma posição aberta</td></tr>';
 
   // Exit plans
@@ -4823,7 +4833,7 @@ async function updateAll(){
   document.getElementById('orders-body').innerHTML=all.length?all.map(o=>{
     const q=parseFloat(o.quantity||0),f=parseFloat(o.filled_quantity||0),px=parseFloat(o.avg_fill_price||0),n=f>0&&px>0?f*px:0;
     const si=(o.side||'').toLowerCase(),st=(o.status||'').toLowerCase();
-    return`<tr><td class="b">${o.symbol||'–'}</td><td>${pill(si.toUpperCase(),si)}</td><td>${pill(st.toUpperCase(),st)}</td><td>${q.toFixed(4)}</td><td>${f.toFixed(4)}</td><td>${px>0?usd(px):'–'}</td><td>${n>0?usd(n,0):'–'}</td><td class="m" style="font-size:0.82rem">${o.strategy_id||'–'}</td><td class="m" style="font-size:0.82rem">${dt(o.created_at)}</td></tr>`;
+    return`<tr><td class="b">${esc(o.symbol)||'–'}</td><td>${pill(si.toUpperCase(),si)}</td><td>${pill(st.toUpperCase(),st)}</td><td>${q.toFixed(4)}</td><td>${f.toFixed(4)}</td><td>${px>0?usd(px):'–'}</td><td>${n>0?usd(n,0):'–'}</td><td class="m" style="font-size:0.82rem">${esc(o.strategy_id)||'–'}</td><td class="m" style="font-size:0.82rem">${dt(o.created_at)}</td></tr>`;
   }).join(''):'<tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr>';
 
   const luEl=document.getElementById('last-update');

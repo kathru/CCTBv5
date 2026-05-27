@@ -159,6 +159,15 @@ class TradeReconciler:
             return result
 
         try:
+            from ..persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
+            # Use NOT IN (excluded) instead of IN (whitelist) so new strategies are
+            # automatically included without requiring a code change here.
+            # 'reconciler' is included here (NOT excluded) because synthetic orders
+            # inserted by TradeReconciler represent real balance adjustments and must
+            # be counted to prevent the same divergence from being re-reported.
+            excluded_without_reconciler = [
+                sid for sid in EXCLUDED_STRATEGY_IDS if sid != "reconciler"
+            ]
             rows = await self._db.fetch(
                 """
                 SELECT symbol, side,
@@ -166,11 +175,10 @@ class TradeReconciler:
                        SUM(filled_quantity * avg_fill_price) AS notional
                 FROM orders
                 WHERE status = 'filled'
-                  AND strategy_id IN ('momentum_v2', 'reconciler',
-                                      'reversal_v1', 'trend_v1',
-                                      'breakout_v1', 'mean_reversion_v1')
+                  AND strategy_id != ALL($1)
                 GROUP BY symbol, side
-                """
+                """,
+                excluded_without_reconciler,
             )
 
             by_sym: dict[str, dict] = {}

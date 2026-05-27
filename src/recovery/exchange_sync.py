@@ -250,7 +250,8 @@ class ExchangeSync:
                 "usdValue":   d["usdValue"],
                 "updated_at": now,
             }
-            await self._cache.set(key, str(payload), ttl=BALANCE_TTL)
+            import json as _json
+            await self._cache.set(key, _json.dumps(payload), ttl=BALANCE_TTL)
 
         # Total operacional (USDT + BTC/ETH/SOL) — base para saldo disponível e P&L
         total_usd = sum(d["usdValue"] for d in details if d["ccy"] in VALID_CCYS)

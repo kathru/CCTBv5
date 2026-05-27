@@ -40,6 +40,9 @@ class Database:
 
     async def connect(self) -> None:
         """Initialize the connection pool."""
+        if self._pool is not None:
+            logger.debug("PostgreSQL pool already connected — skipping")
+            return
         # asyncpg uses 'postgresql://' not 'postgresql+asyncpg://'
         dsn = self._dsn.replace("postgresql+asyncpg://", "postgresql://")
         self._pool = await asyncpg.create_pool(

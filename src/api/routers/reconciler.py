@@ -21,7 +21,7 @@ async def get_reconciler_status(request: Request) -> dict:
         }
 
     try:
-        report = json.loads(raw)
+        report = raw if isinstance(raw, dict) else json.loads(raw)
         report["available"] = True
         return report
     except Exception:

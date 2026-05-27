@@ -42,7 +42,7 @@ async def get_performance(request: Request) -> dict:
     db = request.app.state.db
 
     # Lê apenas ordens filled do bot (exclui okx_import e exchange_sync)
-    from src.persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
+    from ...persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
     rows = await db.fetch(
         "SELECT symbol, side, filled_quantity, avg_fill_price, fees_paid, filled_at "
         "FROM orders WHERE status='filled' AND strategy_id != ALL($1) "
@@ -84,19 +84,17 @@ async def get_performance(request: Request) -> dict:
 
     # P&L realizado: apenas a proporção vendida do custo de compra (FIFO simples)
     # Evita contar posições abertas como perdas (compras sem venda correspondente)
+    # buys_by_sym / sells_by_sym já foram preenchidos no loop anterior — só acumula qty aqui
     qty_bought: dict[str, float] = {}
     qty_sold:   dict[str, float] = {}
     for r in rows:
         sym  = r["symbol"]
         qty  = float(r["filled_quantity"] or 0)
-        px   = float(r["avg_fill_price"] or 0)
         side = str(r["side"]).upper()
         if side in ("BUY", "LONG"):
             qty_bought[sym] = qty_bought.get(sym, 0) + qty
-            buys_by_sym[sym] = buys_by_sym.get(sym, 0) + qty * px
         elif side in ("SELL", "SHORT"):
             qty_sold[sym] = qty_sold.get(sym, 0) + qty
-            sells_by_sym[sym] = sells_by_sym.get(sym, 0) + qty * px
 
     for sym in set(list(buys_by_sym) + list(sells_by_sym)):
         b_qty  = qty_bought.get(sym, 0)

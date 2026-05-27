@@ -40,6 +40,9 @@ class Cache:
         self._client: aioredis.Redis | None = None
 
     async def connect(self) -> None:
+        if self._client is not None:
+            logger.debug("Redis already connected — skipping")
+            return
         self._client = aioredis.from_url(
             self._url,
             encoding="utf-8",
@@ -121,8 +124,13 @@ class Cache:
     # ── Generic ───────────────────────────────────────────────
 
     async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
+        """Set a Redis key.
+
+        ttl=None or ttl=0  → persistent (no expiry)
+        ttl=N (N > 0)      → expires in N seconds
+        """
         v = json.dumps(value) if not isinstance(value, str) else value
-        if ttl:
+        if ttl and ttl > 0:
             await self._r().setex(key, ttl, v)
         else:
             await self._r().set(key, v)

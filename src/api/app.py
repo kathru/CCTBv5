@@ -1,10 +1,13 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+
+_app_logger = logging.getLogger(__name__)
 
 from ..core.config import settings
 from ..core.version import get_version, get_version_info
@@ -64,6 +67,14 @@ def create_app() -> FastAPI:
         await cache.disconnect()
 
     app = FastAPI(title="CCTBv5", version="5.0.0", lifespan=lifespan)
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        _app_logger.error("Unhandled exception on %s: %s", request.url.path, exc, exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error", "path": str(request.url.path)},
+        )
 
     app.state.db = db
     app.state.cache = cache

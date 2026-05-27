@@ -88,8 +88,8 @@ async def portfolio_summary(request: Request) -> dict:
             raw = await cache.get(f"okx:balance:{ccy}")
             if raw:
                 try:
-                    import ast
-                    okx_balances[ccy] = ast.literal_eval(raw)
+                    import json as _json
+                    okx_balances[ccy] = raw if isinstance(raw, dict) else _json.loads(raw)
                 except Exception:
                     pass
 
@@ -112,7 +112,7 @@ async def portfolio_summary(request: Request) -> dict:
     order_stats: dict[str, dict] = {}  # symbol → {buy_qty, buy_notional, sell_qty, sell_notional}
     if db:
         try:
-            from src.persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
+            from ...persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
             rows = await db.fetch(
                 """
                 SELECT symbol, side,
@@ -186,7 +186,8 @@ async def portfolio_summary(request: Request) -> dict:
             bot_open_qty = st["buy_qty"] - st["sell_qty"]
             if bot_open_qty > 1e-8 and st["buy_qty"] > 0:
                 avg_entry = st["buy_notional"] / st["buy_qty"]
-                unreal = (price - avg_entry) * qty
+                # Use bot_open_qty (not total OKX qty) to compute bot-owned unrealized P&L
+                unreal = (price - avg_entry) * bot_open_qty
                 strategy = "momentum_v2"
                 notional_bot += usd
                 unrealized_bot += unreal

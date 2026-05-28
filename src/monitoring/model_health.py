@@ -111,7 +111,7 @@ def _canonical_psi(live_values: list[float], bl: dict) -> float | None:
             counts[5] += 1
 
     psi = 0.0
-    for count, expected_pct in zip(counts, PSI_BASELINE_PROPORTIONS):
+    for count, expected_pct in zip(counts, PSI_BASELINE_PROPORTIONS, strict=False):
         actual_pct = max(count / n, PSI_EPSILON)
         expected   = max(expected_pct, PSI_EPSILON)
         psi += (actual_pct - expected) * math.log(actual_pct / expected)
@@ -140,7 +140,7 @@ def _compute_closed_wr(closed_orders: list) -> dict | None:
     wins = 0
     losses = 0
 
-    for sym, orders in by_symbol.items():
+    for _sym, orders in by_symbol.items():
         buy_queue: list[tuple[float, float, float]] = []  # (price, qty, fees)
         for o in orders:
             if o.side == OrderSide.BUY:

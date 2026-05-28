@@ -55,7 +55,7 @@ from ..watchdog.heartbeat import HeartbeatWatchdog
 from ..watchdog.resource_watchdog import ResourceWatchdog
 from ..watchdog.websocket_watchdog import WebSocketWatchdog
 from .bus import EventBus
-from .config import OKX_MAKER_FEE, OKX_TAKER_FEE, settings
+from .config import OKX_TAKER_FEE, settings
 from .events import SignalEvent, Topic
 from .events.risk_events import RiskAction
 
@@ -584,7 +584,6 @@ class TradingLoop:
         if (signal.direction == SignalDirection.SHORT
                 and (signal.factors or {}).get("short_via_swap")
                 and hasattr(self, "_cross_asset")):
-            import json as _json
             swap_sym = signal.symbol.replace("-USDT", "-USDT-SWAP")
             pv = self._portfolio.state.total_value or 82_515.77
             price_raw = await self._cache.get_price(signal.symbol)

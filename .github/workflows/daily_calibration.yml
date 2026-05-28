@@ -13,11 +13,11 @@ jobs:
       contents: write       # necessário para push do calibration_coef.json
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -29,7 +29,7 @@ jobs:
       # Chave inclui "1h" para forçar cache limpo após migração de 30m → 1H.
       - name: Restore calibration DB
         id: cache-db
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: data/calibration.db
           key: calibration-db-1h-v3.1.0-${{ runner.os }}-${{ github.run_id }}
@@ -99,7 +99,7 @@ jobs:
 
       # Persiste banco atualizado no cache para o próximo run.
       - name: Save calibration DB
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         if: always()
         with:
           path: data/calibration.db

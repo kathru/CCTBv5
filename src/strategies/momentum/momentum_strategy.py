@@ -868,7 +868,7 @@ class MomentumStrategy(BaseStrategy):
 
         # Condição A: ≥2 de 3 velas 1H bearish (relaxado de 3/3 → 2/3)
         # 3/3 era muito raro mesmo em BEAR_TREND — 2/3 mantém confirmação sem over-filter
-        bearish_candles = sum(1 for c, o in zip(closes_1h[:3], opens_1h[:3]) if c < o)
+        bearish_candles = sum(1 for c, o in zip(closes_1h[:3], opens_1h[:3], strict=True) if c < o)
         if bearish_candles < 2:
             return None
 
@@ -896,7 +896,6 @@ class MomentumStrategy(BaseStrategy):
             ctx.symbol, di_minus, di_plus, bear_score,
         )
 
-        from dataclasses import replace
         from ..base import StrategyContext as _SC  # noqa
         from ...core.models import Signal as _Signal
 

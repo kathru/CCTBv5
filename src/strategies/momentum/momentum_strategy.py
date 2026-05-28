@@ -29,6 +29,7 @@ import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
+from ...core.config import OKX_ROUND_TRIP_FEE
 from ...core.models import Signal, SignalDirection
 from ...market.alpha_orthogonality import alpha_orthogonality
 from ...monitoring.feature_governance import governance
@@ -120,13 +121,17 @@ REGIME_DIRECTION_THRESH: dict[str, float] = {
 class MomentumStrategy(BaseStrategy):
 
     REGIME_THRESHOLDS = REGIME_THRESHOLDS
-    ROUND_TRIP_FEE    = 0.005
+    ROUND_TRIP_FEE    = OKX_ROUND_TRIP_FEE   # 0.25% — entrada taker + saída maker
 
     def __init__(self, symbols: list[str], strategy_id: str = "momentum_v2") -> None:
         super().__init__(strategy_id=strategy_id, symbols=symbols)
         self._platt     = PlattCalibrator(coef_path=MODELS_DIR / "calibration_coef.json")
         self._sizing    = SizingEngine()
         self._edge_cond = EdgeConditioner()
+
+    @property
+    def is_platt_using_defaults(self) -> bool:
+        return self._platt.is_using_defaults
 
     # ── Evaluation ────────────────────────────────────────────────────────────
 
@@ -230,6 +235,14 @@ class MomentumStrategy(BaseStrategy):
         threshold = round(min(max(threshold + alpha_result.threshold_adj, 0.44), 0.99), 4)
 
         if regime in BLOCKED_REGIMES:
+            # BEAR_TREND: avalia oportunidade de short via swap perp
+            if regime == "BEAR_TREND":
+                short_signal = self._evaluate_short_opportunity(
+                    ctx=ctx, regime=regime, score=score,
+                    calibrated=calibrated, factors=factors, ts=ts,
+                )
+                if short_signal is not None:
+                    return short_signal
             _log("REGIME_BLOCKED",
                  f"Regime bloqueado: {regime} | meta={meta_regime_name}",
                  regime=regime, score=score, calibrated=calibrated,
@@ -643,18 +656,32 @@ class MomentumStrategy(BaseStrategy):
         news_data = (ctx.extra or {}).get("news_sentiment") or {}
         m9 = float(news_data.get("m9_score", 0.5))
 
-        # ── Score final — pesos v3.0.0 (reforma quant 2026-05-27) ─────────────
-        # M1  0% (RSI momentum — diagnóstico apenas: perm_imp=-0.0013)
-        # M2  0% (Trend Consistency — diagnóstico: perm_imp=-0.0033)
-        # M3 40% (Directional Volume — único edge real, reformulado)
-        # M4  0% (removido)
-        # M5  0% (Candle Structure — diagnóstico: perm_imp=-0.001)
-        # M6 22% (Futures Flow — Spearman=0.52 live, elevado de 16%)
-        # M7 18% (Relative Strength — Spearman=0.52 live, elevado de 14%)
-        # M8  6% (Vol State — estrutural: mantido baixo)
-        # M9 14% (News Sentiment — Spearman=0.52 live, elevado de 12%)
-        # Soma: 0+0+40+0+0+22+18+6+14 = 100% ✓
-        score = (m3 * 0.40 + m6 * 0.22 + m7 * 0.18 + m8 * 0.06 + m9 * 0.14)
+        # ── Features compostas (interações ortogonais) ───────────────────────
+        # Permutation importance individual negativa não exclui interações.
+        # mc1 = M1 × M2: RSI × consistência — captura "RSI alto em tendência firme"
+        # mc2 = M4 × M3: regime_strength × volume — "volume confirma força do regime"
+        # Normaliza ao range [0,1]: produto de dois [0,1] já está em [0,1]
+        mc1 = round(m1 * m2, 4)           # RSI × consistency
+        mc2 = round(m4 * m3, 4)           # regime_strength × volume
+
+        # ── Score final — pesos v3.1.0 (composites adicionados 2026-05-28) ────
+        # M1  0% individual (RSI momentum — perm_imp=-0.0013)
+        # M2  0% individual (Trend Consistency — perm_imp=-0.0033)
+        # M3 37% (Directional Volume — principal fonte de edge)
+        # M4  0% individual (Regime Strength — perm_imp=0.0)
+        # M5  0% (Candle Structure — perm_imp=-0.001)
+        # M6 20% (Futures Flow — Spearman=0.52 live)
+        # M7 17% (Relative Strength — Spearman=0.52 live)
+        # M8  5% (Vol State — estrutural)
+        # M9 13% (News Sentiment — Spearman=0.52 live)
+        # mc1 4% (M1×M2 — interação RSI×consistency)
+        # mc2 4% (M4×M3 — interação regime_strength×volume)
+        # Soma: 37+20+17+5+13+4+4 = 100% ✓
+        score = (
+            m3 * 0.37 + m6 * 0.20 + m7 * 0.17
+            + m8 * 0.05 + m9 * 0.13
+            + mc1 * 0.04 + mc2 * 0.04
+        )
         score = round(min(max(score, 0.0), 1.0), 4)
 
         factors = {
@@ -663,6 +690,8 @@ class MomentumStrategy(BaseStrategy):
             "m3_volume":      round(m3, 3),
             "m4_regime_str":  round(m4, 3),
             "m5_candle":      round(m5, 3),
+            "mc1_rsi_cons":   round(mc1, 3),   # M1×M2 composta
+            "mc2_reg_vol":    round(mc2, 3),   # M4×M3 composta
             "m6_futures":     round(m6, 3),
             "m7_rel_strength":round(m7, 3),
             "m8_vol_state":   round(m8, 3),
@@ -806,3 +835,94 @@ class MomentumStrategy(BaseStrategy):
 
         # ── Todas as condições OK → DIP + RECUPERAÇÃO ───────
         return SignalDirection.LONG
+
+    # ── Short opportunity em BEAR_TREND ──────────────────────────────────────
+
+    def _evaluate_short_opportunity(
+        self,
+        ctx:        "StrategyContext",
+        regime:     str,
+        score:      float,
+        calibrated: float,
+        factors:    dict,
+        ts:         "datetime",
+    ) -> "Signal | None":
+        """
+        Avalia se há oportunidade de short via swap perp em BEAR_TREND.
+
+        Condições (mais exigentes que LONG — sem recuperação, sem dip):
+          a) Downtrend forte: 3 candles 1H consecutivos com close < open
+          b) 6H também bearish: close_6h[0] < SMA5_6H
+          c) Score ≥ 0.45 (sinal presente mesmo em bear)
+          d) DI- > DI+ confirmado (ADX bear direcional)
+
+        Retorna Signal com direction=SHORT e strategy_id="momentum_v2" para
+        roteamento pelo TradingLoop ao CrossAssetEngine (via swap perp).
+        """
+        if len(ctx.candles_1h) < 10 or len(ctx.candles_6h) < 6:
+            return None
+
+        closes_1h = [c.close for c in ctx.candles_1h[:6]]
+        opens_1h  = [c.open  for c in ctx.candles_1h[:6]]
+        closes_6h = [c.close for c in ctx.candles_6h[:6]]
+
+        # Condição A: 3 velas 1H consecutivas bearish
+        bearish_candles = sum(1 for c, o in zip(closes_1h[:3], opens_1h[:3]) if c < o)
+        if bearish_candles < 3:
+            return None
+
+        # Condição B: 6H bearish (close abaixo da SMA5 dos últimos 5 candles 6H)
+        sma5_6h = sum(closes_6h[1:6]) / 5 if len(closes_6h) >= 6 else closes_6h[-1]
+        if closes_6h[0] >= sma5_6h * 0.999:
+            return None
+
+        # Condição C: score mínimo presente (indica tendência detectada)
+        if score < 0.45:
+            return None
+
+        # Condição D: ADX bear direcional
+        highs  = [c.high for c in ctx.candles_1h[:21]]
+        lows   = [c.low  for c in ctx.candles_1h[:21]]
+        _, di_plus, di_minus = self._calc_adx(highs, lows, closes_1h + [c.close for c in ctx.candles_1h[6:21]], period=10)
+        if di_minus <= di_plus:
+            return None
+
+        bear_score = round(min(di_minus / (di_plus + di_minus + 1e-6), 1.0), 3)
+        logger.info(
+            "SHORT opportunity %s: BEAR_TREND confirmado 3×1H + 6H bearish | "
+            "DI-=%.1f DI+=%.1f bear_strength=%.3f",
+            ctx.symbol, di_minus, di_plus, bear_score,
+        )
+
+        from dataclasses import replace
+        from ..base import StrategyContext as _SC  # noqa
+        from ...core.models import Signal as _Signal
+
+        kelly_short = 0.03   # tamanho conservador para shorts (3% do portfolio)
+        short_factors = dict(factors)
+        short_factors["bear_strength"]  = bear_score
+        short_factors["di_minus"]       = round(di_minus, 2)
+        short_factors["di_plus"]        = round(di_plus, 2)
+        short_factors["short_via_swap"] = 1.0   # flag para roteamento no TradingLoop
+
+        return _Signal(
+            symbol=ctx.symbol,
+            direction=SignalDirection.SHORT,
+            strategy_id=self._strategy_id,
+            score=score,
+            calibrated_score=calibrated,
+            kelly_fraction=kelly_short,
+            regime=regime,
+            factors=short_factors,
+        )
+
+    def _detect_bear_strength(self, ctx: "StrategyContext") -> float:
+        """Força do sinal bear: proporção DI- vs DI+ em ADX(10)."""
+        if len(ctx.candles_1h) < 21:
+            return 0.0
+        highs  = [c.high  for c in ctx.candles_1h[:21]]
+        lows   = [c.low   for c in ctx.candles_1h[:21]]
+        closes = [c.close for c in ctx.candles_1h[:21]]
+        _, di_plus, di_minus = self._calc_adx(highs, lows, closes, period=10)
+        denom = di_plus + di_minus
+        return round(di_minus / denom, 3) if denom > 0 else 0.0

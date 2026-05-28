@@ -34,7 +34,7 @@ ORACLE_API_BASE     = os.environ.get("ORACLE_API_BASE", "http://137.131.220.216:
 CLAUDE_MODEL = "claude-opus-4-7"   # modelo mais capaz para analise quantitativa
 MAX_TOKENS   = 8192
 
-M_FACTORS = ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9"]
+M_FACTORS = ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "mc1", "mc2"]
 
 
 # -- Coleta de dados ----------------------------------------------------------
@@ -75,6 +75,8 @@ async def fetch_all(base: str) -> dict:
         "governance_importance": "/api/governance/importance",
         # Watchdog
         "watchdog":            "/api/watchdog/status",
+        # CrossAsset market-neutral
+        "cross_asset":         "/api/cross_asset/status",
     }
 
     results: dict = {}
@@ -126,6 +128,7 @@ def build_prompt(data: dict, week_start: str, week_end: str) -> str:
     importance  = data.get("governance_importance", {})
     quant       = data.get("quantitative", {})
     positions   = data.get("positions_open", [])
+    cross_asset = data.get("cross_asset", {})
     wd          = data.get("watchdog", {})
 
     orders = data.get("orders_filled", {})
@@ -209,8 +212,11 @@ VERSAO DO SISTEMA: {version.get("version", "?")} | Fase: {version.get("minor", "
 === ANALYTICS QUANTITATIVOS ===
 {_safe_json(quant, 800)}
 
-=== POSICOES ABERTAS ===
+=== POSICOES ABERTAS (LONG spot) ===
 {_safe_json(positions, 600)}
+
+=== CROSS-ASSET ENGINE (market-neutral long/short) ===
+{_safe_json(cross_asset, 400)}
 
 === WATCHDOGS ===
 {_safe_json(wd, 400)}
@@ -219,13 +225,24 @@ VERSAO DO SISTEMA: {version.get("version", "?")} | Fase: {version.get("minor", "
 
 SYSTEM_PROMPT = """Voce e o Analista Quantitativo Senior do CCTBv5, sistema de trading algoritmico de criptomoedas.
 
-ARQUITETURA ATUAL (Fase 18 -- Alpha Orthogonality):
-- Motor Probabilistico: Platt v12, WR baseline=37.5%, modelo FROZEN ate Day 90
-- Estrategias: momentum_v2 (principal), reversal_v1, trend_v1
+ARQUITETURA ATUAL (v3.1.0 -- Composites + CrossAsset + SHORT):
+- Motor Probabilistico: Platt sigmoid, WR baseline=37.5%, modelo FROZEN ate Day 90
+- Score v3.1.0: M3=37% M6=20% M7=17% M8=5% M9=13% mc1=4% mc2=4%
+  mc1=M1xM2 (RSI x Consistencia), mc2=M4xM3 (RegimeStrength x Volume)
+- Fee correto: round-trip 0.25% (0.10% maker + 0.15% taker)
+- Estrategias:
+  * momentum_v2 (LONG) — principal, spot OKX
+  * CrossAssetEngine (market-neutral) — long strongest RS / short weakest via SWAP perp
+  * Bear SHORT: BEAR_TREND gera sinal SHORT via OKX swap, kelly fixo=3%
 - Regimes: TREND_EXPANSION, VOLATILITY_COMPRESSION, MEAN_REVERTING_CHOP, TREND_EXHAUSTION,
-           HIGH_CORRELATION_RISK, BEAR_TREND, PANIC_LIQUIDATION, TRANSITION
-- Hold Engine: Conviction Score 0-100 (HOLD>=70, WATCH 50-69, ALERT 30-49, EXIT<30)
-- SizingEngine: kelly = base x regime x drift x vol_state x calibration x score x exceptional
+           HIGH_CORRELATION_RISK, BEAR_TREND (→SHORT), PANIC_LIQUIDATION, TRANSITION
+- SizingEngine: kelly = base x regime x vol_state x score x exceptional
+  (drift_mult e calibration_mult REMOVIDOS — ja tratados pelo EdgeConditioner)
+- EdgeConditioner: 4 gates (PSI canonico 6-bin, health, liquidity, WR PnL-based)
+- DrawdownEngine: slope linear regressao sobre janela 30d de equity diario
+  (aceleracao = slope < -0.5%/dia, nao mais 10 amostras a 15s)
+- PSI canonico: 6 bins por percentil p10/p25/p50/p75/p90 (nao mais z-score)
+- WR live: calculado via PnL real de ordens fechadas FIFO (nao taxa de execucao)
 - WeightEngine: online learning sim->real, convergencia em 30 trades
 - EdgeConditioner: PSI mult, Health mult, Liq mult, WR mult, Thr mult
 - Portfolio Intelligence (Fase 15): edge ranking cross-asset, kelly proporcional
@@ -234,19 +251,21 @@ ARQUITETURA ATUAL (Fase 18 -- Alpha Orthogonality):
 - Alpha Orthogonality (Fase 18): FD (Funding Dislocation), LV (Liquidity Vacuum),
   OD (Overnight Drift), MRM (Mean Reversion Micro) -- kelly x[0.65-1.30], thr adj +-3%
 
-FATORES M:
-- M1: Momentum (RSI, MACD, EMA cross)
-- M2: Estrutura de mercado (suporte/resistencia, padroes de candle)
-- M3: Volume/OBV (confirmacao de movimento)
-- M4: Sentimento (neutro, weight=0%)
-- M5: Score composto Platt
-- M6: Fluxo de futuros (open interest, funding rate) -- Fase 10
-- M7: Forca relativa vs BTC/mercado -- Fase 11
-- M8: Estado de volatilidade (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC) -- Fase 12
-- M9: Sentimento de noticias (FinNLP) -- Fase 4
+FATORES M (v3.1.0):
+- M1: RSI(14) — entra via mc1=M1xM2 (peso individual 0%)
+- M2: Trend Consistency — entra via mc1=M1xM2 (peso individual 0%)
+- M3: Directional Volume (buy vs sell pressure, 12 candles) — 37% do score
+- M4: Regime Strength (SMA5 vs SMA20 + regime enum) — entra via mc2=M4xM3 (peso individual 0%)
+- M5: Candle Structure — desativado (perm_imp=-0.001, peso=0%)
+- M6: Futures Flow (funding rate + OI) — 20%
+- M7: Relative Strength vs BTC/alts — 17%
+- M8: Vol State (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC) — 5%
+- M9: News Sentiment (Fear&Greed + CoinGecko) — 13%
+- mc1: M1 x M2 (RSI x Consistencia) — 4% (interacao RSI em tendencia firme)
+- mc2: M4 x M3 (RegimeStrength x Volume) — 4% (volume confirma forca do regime)
 
 REGRAS DO MODELO FROZEN:
-- NAO sugerir mudancas nos pesos de features M1-M9 (frozen ate Day 90)
+- NAO sugerir mudancas nos pesos de features M1-M9/mc1/mc2 (frozen ate Day 90)
 - Mudancas auto-aplicaveis: regime_weights (delta < 20%), feature_baseline
 - Mudancas que requerem aprovacao humana: Platt, thresholds criticos, nova logica
 
@@ -284,15 +303,17 @@ Analise todos os dados acima e responda em JSON com EXATAMENTE esta estrutura:
   }},
 
   "m_factors": {{
-    "M1": {{"status": "OK|ATENCAO|DEGRADADO", "observations": "...", "deviation": "...", "recommendation": "..."}},
-    "M2": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
-    "M3": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
-    "M4": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
-    "M5": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
-    "M6": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
-    "M7": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
-    "M8": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}},
-    "M9": {{"status": "...", "observations": "...", "deviation": "...", "recommendation": "..."}}
+    "M3":  {{"status": "OK|ATENCAO|DEGRADADO", "weight": "37%", "observations": "...", "psi": null, "recommendation": "..."}},
+    "M6":  {{"status": "...", "weight": "20%", "observations": "...", "psi": null, "recommendation": "..."}},
+    "M7":  {{"status": "...", "weight": "17%", "observations": "...", "psi": null, "recommendation": "..."}},
+    "M9":  {{"status": "...", "weight": "13%", "observations": "...", "psi": null, "recommendation": "..."}},
+    "M8":  {{"status": "...", "weight": "5%",  "observations": "...", "psi": null, "recommendation": "..."}},
+    "mc1": {{"status": "...", "weight": "4%",  "observations": "M1xM2 RSI x Consistency", "recommendation": "..."}},
+    "mc2": {{"status": "...", "weight": "4%",  "observations": "M4xM3 RegimeStrength x Volume", "recommendation": "..."}},
+    "M1":  {{"status": "...", "weight": "0% individual", "observations": "contribui via mc1", "recommendation": "..."}},
+    "M2":  {{"status": "...", "weight": "0% individual", "observations": "contribui via mc1", "recommendation": "..."}},
+    "M4":  {{"status": "...", "weight": "0% individual", "observations": "contribui via mc2", "recommendation": "..."}},
+    "M5":  {{"status": "DESATIVADO", "weight": "0%", "observations": "perm_imp=-0.001", "recommendation": "manter desativado"}}
   }},
 
   "regime_analysis": {{
@@ -307,6 +328,17 @@ Analise todos os dados acima e responda em JSON com EXATAMENTE esta estrutura:
     "active_signals": [],
     "boost_impact": "impacto estimado dos sinais ortogonais",
     "assessment": "eficacia dos sinais FD/LV/OD/MRM esta semana"
+  }},
+
+  "cross_asset": {{
+    "engine_active": false,
+    "current_position": null,
+    "long_symbol": null,
+    "short_symbol": null,
+    "notional_usdt": null,
+    "age_hours": null,
+    "pnl_assessment": "avaliacao do PnL do par market-neutral",
+    "spread_status": "status do spread RS (entry/exit threshold)"
   }},
 
   "execution_quality": {{

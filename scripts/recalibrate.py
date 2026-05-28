@@ -55,7 +55,7 @@ DEFAULT_SYMBOLS     = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
 DEFAULT_START       = "2024-01-01"
 DEFAULT_GRANULARITY = "1H"
 DEFAULT_FORWARD     = 10   # 10 × 1H = 10h (janela de avaliação)
-DEFAULT_FEE         = 0.005
+DEFAULT_FEE         = 0.0025   # OKX round-trip: 0.10% maker + 0.15% taker
 DEFAULT_MIN_SCORE   = 0.40
 
 LOOKBACK = 25   # candles de janela para score_signal (25 para M8 Bollinger 20 + buffer)
@@ -68,7 +68,7 @@ REGIME_THRESHOLDS_DEFAULT: dict[str, float] = {
     "MEAN_REVERTING_CHOP":    0.72,
     "HIGH_CORRELATION_RISK":  0.99,   # bloqueado
     "PANIC_LIQUIDATION":      0.99,
-    "BEAR_TREND":             0.99,   # bloqueado
+    "BEAR_TREND":             0.99,   # bloqueado para LONG (gera SHORT via swap)
 }
 
 PLATT_A_PRIOR = 0.3567
@@ -570,10 +570,11 @@ def score_signal(closes: list[float], highs: list[float],
                  m6: float = 0.5, m7: float = 0.5,
                  m9: float = 0.5) -> float:
     """
-    Score M1-M9 espelho de MomentumStrategy._score_signal() v3.0.0.
+    Score M1-M9 + composites espelho de MomentumStrategy._score_signal() v3.1.0.
 
-    Pesos v3.0.0: M3=40% M6=22% M7=18% M9=14% M8=6%
-    M1/M2/M5 DESATIVADOS (peso=0%). M1 calculado como RSI(14) apenas para diagnóstico.
+    Pesos v3.1.0: M3=37% M6=20% M7=17% M8=5% M9=13% mc1=4% mc2=4%
+    M1/M2/M4 contribuem via compostos mc1=M1×M2 e mc2=M4×M3.
+    M5 desativado (perm_imp=-0.001).
     M6, M7 e M9 são injetados externamente por build_samples.
     M9 usa neutro 0.5 na calibração histórica (dados históricos de sentimento
     não disponíveis — mantém simetria).
@@ -581,70 +582,86 @@ def score_signal(closes: list[float], highs: list[float],
     """
     n = len(closes)
 
-    # M1 RSI(14) — DIAGNÓSTICO APENAS, peso=0% no score
-    # Zona ótima BUY: 40-65. Penaliza overbought (>70).
+    # ── M1: RSI(14) — entra via mc1 composite ────────────────────────────────
     rsi_period = 14
     if n >= rsi_period + 1:
         gains, losses = [], []
         for i in range(rsi_period):
             diff = closes[i] - closes[i + 1]  # closes[0]=mais recente
             if diff > 0:
-                gains.append(diff)
-                losses.append(0.0)
+                gains.append(diff); losses.append(0.0)
             else:
-                gains.append(0.0)
-                losses.append(abs(diff))
+                gains.append(0.0); losses.append(abs(diff))
         avg_gain = sum(gains) / rsi_period
         avg_loss = sum(losses) / rsi_period
         if avg_loss == 0:
             rsi = 100.0
         else:
-            rs  = avg_gain / avg_loss
-            rsi = 100.0 - 100.0 / (1.0 + rs)
+            rsi = 100.0 - 100.0 / (1.0 + avg_gain / avg_loss)
         if 40 <= rsi <= 65:
-            m1_rsi = 0.75
+            m1 = 0.75 + (rsi - 40) / 25 * 0.25   # 0.75-1.00 zona ótima
         elif 65 < rsi <= 70:
-            m1_rsi = 0.60
+            m1 = 0.80 - (rsi - 65) / 5  * 0.30   # aquecendo
         elif rsi > 70:
-            m1_rsi = max(0.3, 0.60 - (rsi - 70) * 0.03)
+            m1 = max(0.10, 0.50 - (rsi - 70) / 30 * 0.40)  # overbought
         elif 30 <= rsi < 40:
-            m1_rsi = 0.45
+            m1 = 0.45
         else:
-            m1_rsi = 0.30
+            m1 = 0.30
     else:
-        m1_rsi = 0.5
-    # M1 não entra no score final (peso=0%), apenas diagnóstico
+        m1 = 0.5
 
-    # M3 Directional Volume v3.0.0 — pressão direcional compradores vs vendedores
-    # directional_ratio = buy_vol / (buy_vol + sell_vol) nos últimos 12 candles
+    # ── M2: Trend Consistency — entra via mc1 composite ──────────────────────
+    n_m2 = min(6, n - 1)
+    bullish_count = sum(1 for i in range(n_m2) if i < len(opens) and closes[i] > opens[i])
+    pct_bullish   = bullish_count / n_m2 if n_m2 > 0 else 0.5
+    hh_count = sum(1 for i in range(min(4, len(highs) - 1)) if highs[i] > highs[i + 1])
+    hl_count = sum(1 for i in range(min(4, len(lows)  - 1)) if lows[i]  > lows[i + 1])
+    m2 = pct_bullish * 0.5 + (hh_count + hl_count) / 8 * 0.5
+
+    # ── M3: Directional Volume — PRINCIPAL EDGE (37%) ────────────────────────
     n_dir = min(12, n)
-    buy_vol  = sum(volumes[i] for i in range(n_dir) if closes[i] >= opens[i])
-    sell_vol = sum(volumes[i] for i in range(n_dir) if closes[i] < opens[i])
+    buy_vol   = sum(volumes[i] for i in range(n_dir) if closes[i] >= opens[i])
+    sell_vol  = sum(volumes[i] for i in range(n_dir) if closes[i] < opens[i])
     total_vol = buy_vol + sell_vol
     directional_ratio = buy_vol / total_vol if total_vol > 0 else 0.5
-
-    # vol_ratio: volume atual vs média 20 candles (normalizado 0-1)
     avg20 = sum(volumes[:20]) / 20 if len(volumes) >= 20 else (sum(volumes) / len(volumes) if volumes else 1.0)
     vol_ratio = min(volumes[0] / avg20, 3.0) / 3.0 if avg20 > 0 else 0.5
-
-    # vol_trend_score: momentum de volume (últimos 3 vs 3 anteriores)
     if len(volumes) >= 6 and sum(volumes[3:6]) > 0:
         vt_raw = sum(volumes[:3]) / sum(volumes[3:6])
         vol_trend_score = min(max((vt_raw - 0.5) / 1.5, 0.0), 1.0)
     else:
         vol_trend_score = 0.5
-
     m3 = directional_ratio * 0.50 + vol_ratio * 0.30 + vol_trend_score * 0.20
 
-    # M8 Volatility State — calculado de candles
+    # ── M4: Regime Strength — entra via mc2 composite ────────────────────────
+    REGIME_M4 = {
+        "TREND_EXPANSION": 0.85, "VOLATILITY_COMPRESSION": 0.65,
+        "MEAN_REVERTING_CHOP": 0.35, "TREND_EXHAUSTION": 0.25,
+        "HIGH_CORRELATION_RISK": 0.20, "PANIC_LIQUIDATION": 0.10,
+        "BEAR_TREND": 0.15,
+    }
+    sma5  = sum(closes[:5]) / 5
+    sma20 = sum(closes[:20]) / 20 if len(closes) >= 20 else sma5
+    sma_distance = (sma5 - sma20) / sma20 if sma20 > 0 else 0
+    m4_raw    = min(max((sma_distance + 0.02) / 0.04, 0.0), 1.0)
+    m4_regime = REGIME_M4.get(regime, 0.45)
+    m4        = m4_raw * 0.6 + m4_regime * 0.4
+
+    # ── M8: Volatility State — calculado de candles ───────────────────────────
     m8 = _compute_m8_recal(closes, highs, lows)
+
+    # ── Composites ────────────────────────────────────────────────────────────
+    mc1 = m1 * m2   # RSI × consistency
+    mc2 = m4 * m3   # regime_strength × volume
 
     # M6, M7 e M9 injetados externamente (calculados em build_samples)
 
-    # Pesos v3.0.0 — espelho exato de momentum_strategy.py
-    # M1/M2/M5 DESATIVADOS. soma = 40+22+18+14+6 = 100%
-    _ = m1_rsi  # referência para evitar "unused variable" — diagnóstico sem peso
-    return (m3 * 0.40 + m6 * 0.22 + m7 * 0.18 + m9 * 0.14 + m8 * 0.06)
+    # Pesos v3.1.0 — espelho exato de momentum_strategy.py
+    # M3=37% M6=20% M7=17% M8=5% M9=13% mc1=4% mc2=4% | soma=100%
+    return (m3 * 0.37 + m6 * 0.20 + m7 * 0.17
+            + m8 * 0.05 + m9 * 0.13
+            + mc1 * 0.04 + mc2 * 0.04)
 
 
 def platt_calibrate(score: float, A: float, B: float) -> float:

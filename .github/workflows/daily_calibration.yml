@@ -32,9 +32,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/calibration.db
-          key: calibration-db-1h-v2.5.0-${{ runner.os }}-${{ github.run_id }}
+          key: calibration-db-1h-v3.1.0-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
-            calibration-db-1h-v2.5.0-${{ runner.os }}-
+            calibration-db-1h-v3.1.0-${{ runner.os }}-
 
       # Bootstrap: só roda se o banco não existe ou está corrompido.
       # Usa o cache JSON dos candles 1H já baixados no repo.
@@ -66,14 +66,14 @@ jobs:
 
       # Calibração: rebuild completo se DB é novo (cache miss = pesos mudaram),
       # incremental se DB já existe com amostras v2.5.0.
-      # v2.5.0: M9 adicionado — rebuild obrigatório na primeira run após cache miss.
+      # v3.1.0: composites mc1/mc2 adicionados + fee corrigido — rebuild obrigatório após cache miss.
       - name: Calibration (rebuild se DB novo, incremental se já existir)
         run: |
           if [ "${{ steps.cache-db.outputs.cache-hit }}" == "true" ]; then
-            echo "Cache hit — calibração incremental (pesos já corretos)"
+            echo "Cache hit — calibração incremental (pesos v3.1.0 já corretos)"
             python scripts/recalibrate.py --incremental --gran 1H
           else
-            echo "Cache miss — rebuild completo com pesos v2.5.0"
+            echo "Cache miss — rebuild completo com pesos v3.1.0 (mc1=M1xM2, mc2=M4xM3)"
             python scripts/recalibrate.py --rebuild --gran 1H
           fi
         env:
@@ -103,7 +103,7 @@ jobs:
         if: always()
         with:
           path: data/calibration.db
-          key: calibration-db-1h-v2.5.0-${{ runner.os }}-${{ github.run_id }}
+          key: calibration-db-1h-v3.1.0-${{ runner.os }}-${{ github.run_id }}
 
       # Verifica se houve mudança nos modelos ou WFO.
       - name: Check for model changes
@@ -143,8 +143,9 @@ jobs:
             # Descarta qualquer mudanca local no modelo (gerada por calibracao direta)
             git checkout -- data/models/ 2>/dev/null || true
             git pull --ff-only || true
-            # Copia calibration_coef.json atualizado para o container
+            # Copia modelos atualizados para o container
             docker cp data/models/calibration_coef.json cctb_app:/app/data/models/calibration_coef.json || true
+            docker cp data/models/regime_weights.json   cctb_app:/app/data/models/regime_weights.json   || true
             # Reinicia o container para recarregar os modelos
             docker restart cctb_app
             echo "Deploy concluido: $(date -u)"

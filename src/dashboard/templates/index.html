@@ -718,7 +718,7 @@
     <div class="motor-hero-pulse">⚡</div>
     <div class="motor-hero-title-wrap" style="flex:1;min-width:0">
       <div class="motor-hero-title">Motor Probabilístico</div>
-      <div class="motor-hero-sub">v3.0.0 · ADX(10) regime · Dir.Volume M3=40% · M1/M2/M5 off</div>
+      <div class="motor-hero-sub">v3.1.0 · ADX(10) regime · Dir.Volume M3=37% · mc1=M1×M2 · mc2=M4×M3 · SHORT bearish</div>
     </div>
     <!-- Métricas centrais -->
     <div class="motor-hero-metrics" style="display:flex;gap:14px;align-items:center;margin-right:14px;flex-shrink:0">
@@ -843,10 +843,10 @@
         <span style="font-size:0.65rem;color:var(--muted)">·</span>
         <span style="font-size:0.72rem;color:var(--slate)">M3: <span style="color:var(--yellow);font-weight:600">Dir.Volume</span></span>
         <span style="font-size:0.65rem;color:var(--muted)">·</span>
-        <span style="font-size:0.72rem;color:var(--slate)">M1/M2/M5: <span style="color:rgba(255,69,96,0.7);font-weight:600">Desativados</span></span>
+        <span style="font-size:0.72rem;color:var(--slate)">M5: <span style="color:rgba(255,69,96,0.7);font-weight:600">off</span> &nbsp;|&nbsp; M1/M2/M4: <span style="color:rgba(245,158,11,0.85);font-weight:600">via compostas</span></span>
       </div>
-      <!-- M factors — v3.0.0 pesos: M3=40% M6=22% M7=18% M9=14% M8=6% | M1/M2/M5=0% (desativados) -->
-      <div style="display:grid;grid-template-columns:130px 1fr 40px 44px;align-items:center;gap:5px 8px;margin-bottom:8px;">
+      <!-- M factors — v3.1.0 pesos: M3=37% M6=20% M7=17% M9=13% M8=5% mc1=4% mc2=4% -->
+      <div style="display:grid;grid-template-columns:145px 1fr 40px 44px;align-items:center;gap:4px 8px;margin-bottom:8px;">
 
         <!-- ── ACTIVE FACTORS ── -->
         <span style="font-size:0.75rem;color:var(--text);font-weight:600">Dir.Volume (M3)
@@ -854,47 +854,60 @@
         </span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:13px;border-radius:7px;background:#ffd700;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#ffd700;text-align:right" id="w-m3">–</span>
-        <span style="font-size:0.75rem;color:var(--yellow);text-align:right;white-space:nowrap;font-weight:700">40%</span>
+        <span style="font-size:0.75rem;color:var(--yellow);text-align:right;white-space:nowrap;font-weight:700">37%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Futures (M6)</span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m6" style="height:13px;border-radius:7px;background:#06b6d4;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#06b6d4;text-align:right" id="w-m6">–</span>
-        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">22%</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">20%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Rel. Strength (M7)</span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m7" style="height:13px;border-radius:7px;background:#a78bfa;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#a78bfa;text-align:right" id="w-m7">–</span>
-        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">18%</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">17%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Sentiment (M9) <span id="m9-fng-badge" style="font-size:0.75rem;color:var(--muted)"></span></span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m9" style="height:13px;border-radius:7px;background:#84cc16;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#84cc16;text-align:right" id="w-m9">–</span>
-        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">14%</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">13%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Vol. State (M8)</span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m8" style="height:13px;border-radius:7px;background:#ec4899;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#ec4899;text-align:right" id="w-m8">–</span>
-        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">6%</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">5%</span>
 
-        <!-- ── DISABLED FACTORS (diagnóstico) ── -->
-        <span style="font-size:0.72rem;color:#2a4a5e;opacity:0.7">RSI(14) (M1) <span style="font-size:0.6rem;color:rgba(255,69,96,0.5)">[diag]</span></span>
-        <div style="height:7px;background:rgba(255,255,255,0.03);border-radius:7px;overflow:hidden;opacity:0.4;"><div id="wb-m1" style="height:7px;border-radius:7px;background:#2a4a5e;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.75rem;font-weight:600;color:#2a4a5e;text-align:right;opacity:0.6" id="w-m1">–</span>
-        <span style="font-size:0.68rem;color:rgba(255,69,96,0.45);text-align:right;white-space:nowrap">0%</span>
+        <!-- ── COMPOSITE FACTORS (mc1 = M1xM2, mc2 = M4xM3) ── -->
+        <span style="font-size:0.73rem;color:#f59e0b;font-weight:600">mc1 = RSI x Cons.</span>
+        <div style="height:10px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-mc1" style="height:10px;border-radius:7px;background:#f59e0b;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.78rem;font-weight:700;color:#f59e0b;text-align:right" id="w-mc1">–</span>
+        <span style="font-size:0.72rem;color:#f59e0b;text-align:right;white-space:nowrap;font-weight:700">4%</span>
 
-        <span style="font-size:0.72rem;color:#2a4a5e;opacity:0.7">Consistência (M2) <span style="font-size:0.6rem;color:rgba(255,69,96,0.5)">[off]</span></span>
-        <div style="height:7px;background:rgba(255,255,255,0.03);border-radius:7px;overflow:hidden;opacity:0.4;"><div id="wb-m2" style="height:7px;border-radius:7px;background:#2a4a5e;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.75rem;font-weight:600;color:#2a4a5e;text-align:right;opacity:0.6" id="w-m2">–</span>
-        <span style="font-size:0.68rem;color:rgba(255,69,96,0.45);text-align:right;white-space:nowrap">0%</span>
+        <span style="font-size:0.73rem;color:#fb923c;font-weight:600">mc2 = Reg. x Vol.</span>
+        <div style="height:10px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-mc2" style="height:10px;border-radius:7px;background:#fb923c;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.78rem;font-weight:700;color:#fb923c;text-align:right" id="w-mc2">–</span>
+        <span style="font-size:0.72rem;color:#fb923c;text-align:right;white-space:nowrap;font-weight:700">4%</span>
 
-        <span style="font-size:0.72rem;color:#2a4a5e;opacity:0.7">Candle (M5) <span style="font-size:0.6rem;color:rgba(255,69,96,0.5)">[off]</span></span>
-        <div style="height:7px;background:rgba(255,255,255,0.03);border-radius:7px;overflow:hidden;opacity:0.4;"><div id="wb-m5" style="height:7px;border-radius:7px;background:#2a4a5e;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.75rem;font-weight:600;color:#2a4a5e;text-align:right;opacity:0.6" id="w-m5">–</span>
-        <span style="font-size:0.68rem;color:rgba(255,69,96,0.45);text-align:right;white-space:nowrap">0%</span>
+        <!-- ── COMPONENT FACTORS (individuais entram via compostas) ── -->
+        <span style="font-size:0.70rem;color:#3a5a6e;opacity:0.8">M1 RSI(14) <span style="font-size:0.58rem;color:rgba(245,158,11,0.6)">[mc1]</span></span>
+        <div style="height:6px;background:rgba(255,255,255,0.03);border-radius:7px;overflow:hidden;opacity:0.45;"><div id="wb-m1" style="height:6px;border-radius:7px;background:#3a5a6e;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.72rem;font-weight:600;color:#3a5a6e;text-align:right;opacity:0.7" id="w-m1">–</span>
+        <span style="font-size:0.65rem;color:rgba(245,158,11,0.5);text-align:right;white-space:nowrap">mc1</span>
 
-        <!-- M4 removido (peso 0%) — IDs mantidos para JS -->
-        <span id="w-m4"  style="display:none"></span>
-        <span id="wb-m4" style="display:none"></span>
+        <span style="font-size:0.70rem;color:#3a5a6e;opacity:0.8">M2 Consist. <span style="font-size:0.58rem;color:rgba(245,158,11,0.6)">[mc1]</span></span>
+        <div style="height:6px;background:rgba(255,255,255,0.03);border-radius:7px;overflow:hidden;opacity:0.45;"><div id="wb-m2" style="height:6px;border-radius:7px;background:#3a5a6e;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.72rem;font-weight:600;color:#3a5a6e;text-align:right;opacity:0.7" id="w-m2">–</span>
+        <span style="font-size:0.65rem;color:rgba(245,158,11,0.5);text-align:right;white-space:nowrap">mc1</span>
+
+        <span style="font-size:0.70rem;color:#3a5a6e;opacity:0.8">M4 Reg.Str. <span style="font-size:0.58rem;color:rgba(251,146,60,0.6)">[mc2]</span></span>
+        <div style="height:6px;background:rgba(255,255,255,0.03);border-radius:7px;overflow:hidden;opacity:0.45;"><div id="wb-m4" style="height:6px;border-radius:7px;background:#3a5a6e;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.72rem;font-weight:600;color:#3a5a6e;text-align:right;opacity:0.7" id="w-m4">–</span>
+        <span style="font-size:0.65rem;color:rgba(251,146,60,0.5);text-align:right;white-space:nowrap">mc2</span>
+
+        <!-- M5 desativado -->
+        <span style="font-size:0.70rem;color:#2a4a5e;opacity:0.45">M5 Candle <span style="font-size:0.58rem;color:rgba(255,69,96,0.4)">[off]</span></span>
+        <div style="height:6px;background:rgba(255,255,255,0.02);border-radius:7px;overflow:hidden;opacity:0.25;"><div id="wb-m5" style="height:6px;border-radius:7px;background:#2a4a5e;width:0%"></div></div>
+        <span style="font-size:0.72rem;font-weight:600;color:#2a4a5e;text-align:right;opacity:0.35" id="w-m5">–</span>
+        <span style="font-size:0.65rem;color:rgba(255,69,96,0.3);text-align:right;white-space:nowrap">0%</span>
       </div>
       <!-- M6 / M7 / M8 sub-scores -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:8px;">
@@ -1226,6 +1239,47 @@
         <thead><tr><th>Par</th><th>Stop Loss</th><th>Take Profit</th><th>Trailing</th><th>Conviction</th><th>Componentes</th></tr></thead>
         <tbody id="exits-body"><tr class="empty-row"><td colspan="6">Nenhum plano ativo</td></tr></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CROSS-ASSET ENGINE ════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:#a78bfa"></div>Cross-Asset Engine <span style="font-size:0.72rem;color:var(--muted);font-weight:400">market-neutral long/short</span></div>
+<div class="card" id="cross-asset-card">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <!-- Status badge -->
+    <div id="ca-status-badge" style="padding:5px 14px;border-radius:20px;font-size:0.8rem;font-weight:700;background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.2);color:var(--muted)">INATIVO</div>
+    <!-- Par ativo -->
+    <div style="display:flex;align-items:center;gap:18px;flex:1;flex-wrap:wrap;" id="ca-pair-row">
+      <div style="text-align:center;min-width:90px;">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:2px">Long (Spot)</div>
+        <div style="font-size:1.05rem;font-weight:800;color:var(--green)" id="ca-long-sym">–</div>
+        <div style="font-size:0.72rem;color:rgba(0,230,118,0.6)" id="ca-long-price">–</div>
+      </div>
+      <div style="font-size:1.4rem;color:var(--muted);font-weight:300">⇄</div>
+      <div style="text-align:center;min-width:90px;">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:2px">Short (SWAP Perp)</div>
+        <div style="font-size:1.05rem;font-weight:800;color:var(--red)" id="ca-short-sym">–</div>
+        <div style="font-size:0.72rem;color:rgba(255,69,96,0.6)" id="ca-short-price">–</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:130px;">
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+          <span style="font-size:0.72rem;color:var(--muted)">Notional</span>
+          <span style="font-size:0.78rem;font-weight:700;color:var(--text)" id="ca-notional">–</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+          <span style="font-size:0.72rem;color:var(--muted)">Spread RS</span>
+          <span style="font-size:0.78rem;font-weight:700;color:#a78bfa" id="ca-spread">–</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+          <span style="font-size:0.72rem;color:var(--muted)">Tempo aberto</span>
+          <span style="font-size:0.78rem;font-weight:700;color:var(--text)" id="ca-age">–</span>
+        </div>
+      </div>
+    </div>
+    <!-- Info sem posicao -->
+    <div id="ca-idle-msg" style="flex:1;font-size:0.82rem;color:var(--muted);font-style:italic">
+      Aguardando spread &gt; 12% entre BTC/ETH/SOL-USDT. Threshold entrada: 0.12 · Saída: 0.05
     </div>
   </div>
 </div>
@@ -2937,7 +2991,7 @@ function renderGovernance(status, drift, live, schema){
       schemaEl.innerHTML='<div class="m" style="font-size:0.92rem">Schema vazio</div>';
     } else {
       const SLABELS={'m1_momentum':'M1','m2_consistency':'M2','m3_volume':'M3','m4_regime_str':'M4','m5_candle':'M5','m6_futures':'M6','m7_rel_strength':'M7','m8_vol_state':'M8','m9_sentiment':'M9'};
-      const SDESC={'m1_momentum':'RSI(14)\ndiag.','m2_consistency':'Consist.\noff','m3_volume':'Dir.Vol\n40%','m4_regime_str':'ADX\noff','m5_candle':'Candle\noff','m6_futures':'Funding\n22%','m7_rel_strength':'RS vs BTC\n18%','m8_vol_state':'Vol.State\n6%','m9_sentiment':'Sentiment\n14%'};
+      const SDESC={'m1_momentum':'RSI(14)\n→mc1','m2_consistency':'Consist.\n→mc1','m3_volume':'Dir.Vol\n37%','m4_regime_str':'Reg.Str.\n→mc2','m5_candle':'Candle\noff','m6_futures':'Funding\n20%','m7_rel_strength':'RS vs BTC\n17%','m8_vol_state':'Vol.State\n5%','m9_sentiment':'Sentiment\n13%','mc1_rsi_cons':'RSI x Cons.\n4%','mc2_reg_vol':'Reg. x Vol.\n4%'};
       // Sort: active first
       const sortedKeys=[...keys].sort((a,b)=>((feats[b].weight||0)-(feats[a].weight||0)));
       schemaEl.innerHTML=`<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;">`+
@@ -3657,11 +3711,11 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null,sw:null,pa:null,ei:null,ao:null,eg:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null,sw:null,pa:null,ei:null,ao:null,eg:null,ca:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st,sw,pa,ei,ao,eg]=await Promise.all([
-    fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
+  const [ca,calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st,sw,pa,ei,ao,eg]=await Promise.all([
+    fetchJSON('/api/cross_asset/status'),fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
     fetchJSON('/api/governance/importance'),fetchJSON('/api/governance/wfo'),
@@ -3686,6 +3740,7 @@ async function updateSlow(){
     fetchJSON('/api/analytics/edge_gate'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
+  if(ca)        { _slowData.ca=ca; buildCrossAsset(ca); }
   if(calib)     _slowData.calib=calib;
   if(quant)     _slowData.quant=quant;
   if(govStatus) _slowData.govStatus=govStatus;
@@ -3713,6 +3768,42 @@ async function updateSlow(){
   if(ei)        { _slowData.ei=ei; buildExecutionIntelligence(ei); }
   if(ao)        { _slowData.ao=ao; buildAlphaOrthogonality(ao); }
   if(eg)        { _slowData.eg=eg; buildEdgeGate(eg); }
+}
+
+// ── Cross-Asset Engine ────────────────────────────────────────────────────────
+
+function buildCrossAsset(ca){
+  if(!ca) return;
+  const active = !!ca.active;
+  const badge  = document.getElementById('ca-status-badge');
+  const pairRow= document.getElementById('ca-pair-row');
+  const idleMsg= document.getElementById('ca-idle-msg');
+
+  if(badge){
+    if(active){
+      badge.textContent='ATIVO';
+      badge.style.background='rgba(167,139,250,0.15)';
+      badge.style.borderColor='rgba(167,139,250,0.4)';
+      badge.style.color='#a78bfa';
+    } else {
+      badge.textContent='INATIVO';
+      badge.style.background='rgba(148,163,184,0.1)';
+      badge.style.borderColor='rgba(148,163,184,0.2)';
+      badge.style.color='var(--muted)';
+    }
+  }
+  if(pairRow) pairRow.style.display = active ? 'flex' : 'none';
+  if(idleMsg) idleMsg.style.display = active ? 'none' : 'block';
+
+  if(active){
+    setEl('ca-long-sym',  ca.long_symbol  || '–');
+    setEl('ca-short-sym', ca.short_symbol || '–');
+    setEl('ca-long-price',  ca.long_symbol  ? 'LONG spot'  : '–');
+    setEl('ca-short-price', ca.short_symbol ? 'SHORT swap' : '–');
+    setEl('ca-notional', ca.notional ? '$'+usd(ca.notional) : '–');
+    setEl('ca-spread',   ca.entry_spread != null ? (ca.entry_spread*100).toFixed(1)+'%' : '–');
+    setEl('ca-age',      ca.age_hours  != null ? ca.age_hours.toFixed(1)+'h' : '–');
+  }
 }
 
 // ── Phase 19 — Edge Gate ──────────────────────────────────────────────────────
@@ -4924,8 +5015,10 @@ async function updateAll(){
     const m7=f.m7_rel_strength||0;
     const m8=f.m8_vol_state   ||0;
     const m9=f.m9_sentiment   ||0;
-    const factors={m1,m2,m3,m4,m5,m6,m7,m8,m9};
-    ['m1','m2','m3','m4','m5','m6','m7','m8','m9'].forEach(k=>{
+    const mc1=f.mc1_rsi_cons||0;
+    const mc2=f.mc2_reg_vol ||0;
+    const factors={m1,m2,m3,m4,m5,m6,m7,m8,m9,mc1,mc2};
+    ['m1','m2','m3','m4','m5','m6','m7','m8','m9','mc1','mc2'].forEach(k=>{
       const v=factors[k],pct=(v*100).toFixed(1)+'%';
       const wEl=document.getElementById('w-'+k);
       const bEl=document.getElementById('wb-'+k);
@@ -5067,9 +5160,11 @@ async function updateAll(){
 
     // ── Hero do Motor — decisão + métricas ───────────────────
     {
-      const isSignal =(latest.result==='SIGNAL');
-      const isBlocked=rg.includes('BEAR')||rg.includes('PANIC');
-      const dir      =(latest.direction||'LONG').toUpperCase();
+      const isSignal  =(latest.result==='SIGNAL');
+      const isBear    =rg.includes('BEAR');
+      const isPanic   =rg.includes('PANIC');
+      const isBlocked = isPanic;
+      const dir       =(latest.direction||'LONG').toUpperCase();
 
       // Métricas no hero
       const dscore=document.getElementById('motor-decision-score');
@@ -5087,6 +5182,11 @@ async function updateAll(){
           heroBadge.style.background=dir==='LONG'?'rgba(0,230,118,0.12)':'rgba(255,69,96,0.14)';
           heroBadge.style.color=dir==='LONG'?'var(--green)':'var(--red)';
           heroBadge.style.borderColor=dir==='LONG'?'rgba(0,230,118,0.30)':'rgba(255,69,96,0.32)';
+        } else if(isBear){
+          heroBadge.textContent='▼ BEAR — SHORT via Swap';
+          heroBadge.style.background='rgba(255,69,96,0.10)';
+          heroBadge.style.color='var(--red)';
+          heroBadge.style.borderColor='rgba(255,69,96,0.28)';
         } else if(isBlocked){
           heroBadge.textContent='⛔ Bloqueado';
           heroBadge.style.background='rgba(255,69,96,0.10)';
@@ -5132,6 +5232,22 @@ async function updateAll(){
   }
   // Motor risk bars (from portfolio)
   // rb-beta, rb-dd, rb-wr, rb-exp already set above in portfolio section
+
+  // Aviso crítico: PlattCalibrator usando defaults (A=2.5 diverge 5× do real A≈0.476)
+  if(calib){
+    const usingDefaults = calib.using_defaults || (!calib.available) ||
+      (calib.platt_a != null && Math.abs(calib.platt_a - 2.5) < 0.01);
+    let warnEl = document.getElementById('platt-defaults-warn');
+    if(!warnEl){
+      warnEl = document.createElement('div');
+      warnEl.id = 'platt-defaults-warn';
+      warnEl.style.cssText='display:none;background:rgba(255,69,96,0.12);border:1px solid rgba(255,69,96,0.4);border-radius:7px;padding:7px 12px;margin-bottom:10px;font-size:0.8rem;color:var(--red);font-weight:600;';
+      warnEl.innerHTML='⚠️ PlattCalibrator usando COEFICIENTES PADRÃO (A=2.5, B=-1.2). Scoring de sinais impactado — execute calibrate.py para regenerar calibration_coef.json.';
+      const calibSection = document.getElementById('calib-section') || document.querySelector('[id^="calib-"]')?.parentElement;
+      if(calibSection) calibSection.prepend(warnEl);
+    }
+    warnEl.style.display = usingDefaults ? 'block' : 'none';
+  }
 
   if(calib?.available){
     const wr=calib.win_rate!=null?(calib.win_rate*100).toFixed(1)+'%':'–';

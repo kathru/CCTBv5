@@ -1,9 +1,9 @@
 {
-  "platt_a": 0.476154,
-  "platt_b": -0.826624,
-  "n": 40331,
-  "win_rate": 0.3566,
-  "calibrated_at": "2026-05-28T10:43:45.897733+00:00",
+  "platt_a": 0.526519,
+  "platt_b": -0.556373,
+  "n": 38462,
+  "win_rate": 0.4258,
+  "calibrated_at": "2026-05-28T11:49:12.820121+00:00",
   "period_end": "2026-05-28",
   "symbols": [
     "BTC-USDT",
@@ -14,7 +14,7 @@
   "forward_candles": 10,
   "regime_thresholds": {
     "HIGH_CORRELATION_RISK": 0.99,
-    "MEAN_REVERTING_CHOP": 0.72,
+    "MEAN_REVERTING_CHOP": 0.45,
     "TREND_EXHAUSTION": 0.99,
     "TREND_EXPANSION": 0.62,
     "VOLATILITY_COMPRESSION": 0.64

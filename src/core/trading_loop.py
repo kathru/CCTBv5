@@ -55,7 +55,7 @@ from ..watchdog.heartbeat import HeartbeatWatchdog
 from ..watchdog.resource_watchdog import ResourceWatchdog
 from ..watchdog.websocket_watchdog import WebSocketWatchdog
 from .bus import EventBus
-from .config import settings
+from .config import OKX_MAKER_FEE, OKX_TAKER_FEE, settings
 from .events import SignalEvent, Topic
 from .events.risk_events import RiskAction
 
@@ -76,6 +76,22 @@ QTY_PRECISION = {
     "ETH-USDT": 4,
     "SOL-USDT": 2,
 }
+
+
+# ── P2-1 REFACTOR ROADMAP ────────────────────────────────────────────────────
+# TradingLoop é uma god-class de ~1300 linhas. Limites identificados para split:
+#
+#  BootService        (~lines 87-470):  __init__, start(), stop(), boot sequence
+#  SignalConsumer     (~lines 495-710): _process_signal, _on_fill_update_portfolio
+#  PaperFillService   (~lines 940-1060): _simulate_paper_fills, paper fill logic
+#  DailyDigestService (~lines 778-940):  _maybe_send_daily_summary, daily stats
+#
+# Bloqueio atual: todas as partes acessam self._positions, self._cache,
+# self._oms, self._portfolio, self._bus — necessário criar TradingState
+# como objeto de estado compartilhado antes do split.
+#
+# Próximo passo: extrair PaperFillService (mais isolado) em src/core/paper_fill.py
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 class TradingLoop:
@@ -186,6 +202,7 @@ class TradingLoop:
         # ── Model Health Monitor (Phase 15.2) ────────────────────────────────
         from ..monitoring.signal_log import signal_audit_log as _sal
         self._model_health = ModelHealthMonitor(cache=self._cache, signal_log=_sal)
+        self._model_health.set_db(self._db)   # WR real via trades fechados
 
         # ── Advanced Risk Manager (Phase 14) ─────────────────────────────────
         self._adv_risk = AdvancedRiskManager(
@@ -212,6 +229,7 @@ class TradingLoop:
             news_sentiment=self._news_sentiment,
         )
         v4 = MomentumStrategy(symbols=SYMBOLS)
+        self._momentum_strategy = v4
         self._runner.register(v4)
         self._meta.register(v4.strategy_id)
 
@@ -323,9 +341,25 @@ class TradingLoop:
         )
         await self._adv_risk.start()        # Phase 14: advanced risk
         await self._model_health.start()    # Phase 15.2: model health monitor
+
+        # CrossAssetEngine — estratégia market-neutral
+        from ..strategies.cross_asset.cross_asset_strategy import CrossAssetEngine
+        self._cross_asset = CrossAssetEngine(cache=self._cache, okx_client=self._okx)
+        await self._cross_asset.start()
+        logger.info("CrossAssetEngine: market-neutral strategy started")
+
         await self._runner.start()
         await self._position_monitor.start()
         await self._reconciler.start()
+
+        # P2-4: Alerta crítico se PlattCalibrator não carregou coeficientes reais
+        if self._momentum_strategy.is_platt_using_defaults:
+            await self._alert_channel.critical(
+                "PLATT CALIBRATOR — COEFICIENTES PADRÃO",
+                "PlattCalibrator usando DEFAULTS (A=2.5, B=-1.2). "
+                "Coeficientes reais (A≈0.476, B≈-0.826) não foram carregados. "
+                "Scoring de sinais fortemente impactado — execute calibrate.py.",
+            )
 
         # Restaura histórico de live features do Redis (janela deslizante do DriftMonitor)
         try:
@@ -338,6 +372,22 @@ class TradingLoop:
                 )
         except Exception as exc:
             logger.warning("DriftMonitor: falha ao restaurar histórico: %s", exc)
+
+        # Restaura histórico de equity diário para o DrawdownEngine (janela 30d)
+        try:
+            import json as _json
+            raw_equity = await self._cache.get("drawdown:daily_equity")
+            if raw_equity:
+                snapshots = _json.loads(raw_equity) if isinstance(raw_equity, str) else raw_equity
+                self._risk._drawdown.restore_daily_equity(
+                    [(s["date"], float(s["value"])) for s in snapshots]
+                )
+                logger.info(
+                    "DrawdownEngine: %d snapshots de equity restaurados",
+                    len(snapshots),
+                )
+        except Exception as exc:
+            logger.debug("DrawdownEngine: falha ao restaurar equity histórico: %s", exc)
 
         # Sincronização completa com OKX: saldo, posições e histórico de ordens
         try:
@@ -448,6 +498,8 @@ class TradingLoop:
         self._news_sentiment.stop()
         await self._adv_risk.stop()
         await self._model_health.stop()
+        if hasattr(self, "_cross_asset"):
+            await self._cross_asset.stop()
         await self._runner.stop()
         await self._position_monitor.stop()
         await self._reconciler.stop()
@@ -502,6 +554,34 @@ class TradingLoop:
         from ..core.models.signal import SignalDirection
 
         signal  = event.signal
+
+        # ── SHORT via swap perp (BEAR_TREND com flag short_via_swap) ─────────
+        # Sinais SHORT gerados pelo MomentumStrategy em BEAR_TREND são roteados
+        # para o CrossAssetEngine que os executa via OKX perpetual swap.
+        if (signal.direction == SignalDirection.SHORT
+                and (signal.factors or {}).get("short_via_swap")
+                and hasattr(self, "_cross_asset")):
+            import json as _json
+            swap_sym = signal.symbol.replace("-USDT", "-USDT-SWAP")
+            pv = self._portfolio.state.total_value or 82_515.77
+            price_raw = await self._cache.get_price(signal.symbol)
+            price = float(price_raw) if price_raw else 0
+            if price > 0 and pv > 0:
+                notional   = pv * 0.05   # 5% do portfolio para shorts direcionais
+                from ..strategies.cross_asset.cross_asset_strategy import SWAP_CONTRACT_SIZE
+                cs = SWAP_CONTRACT_SIZE.get(swap_sym, 1.0)
+                contracts  = max(1, int(notional / (price * cs)))
+                logger.info(
+                    "BEAR SHORT %s: %d contratos via swap | notional=%.2f",
+                    swap_sym, contracts, notional,
+                )
+                import asyncio as _asyncio
+                _asyncio.create_task(
+                    self._cross_asset._place_swap_short(signal.symbol, contracts),
+                    name=f"bear_short_{signal.symbol}",
+                )
+            return
+
         is_exit = signal.direction in (SignalDirection.SHORT, SignalDirection.FLAT)
 
         open_orders    = self._oms.get_open_orders()
@@ -673,7 +753,7 @@ class TradingLoop:
             spread_pct = 0.005
             mid_price  = price
 
-        _exec_intel.decide_order_type(
+        order_decision = _exec_intel.decide_order_type(
             symbol=signal.symbol,
             side=signal.direction,
             mid_price=mid_price,
@@ -684,8 +764,13 @@ class TradingLoop:
         # Armazena preço esperado para slippage tracking no fill
         self._exec_expected_price[signal.symbol] = mid_price
 
-        # 4. Criar e submeter ordem via OMS
-        await self._oms.create_order_from_signal(event, quantity)
+        # 4. Criar e submeter ordem via OMS com tipo decidido pelo SmartRouter
+        await self._oms.create_order_from_signal(
+            event,
+            quantity,
+            order_type_str=order_decision.order_type,
+            limit_price=order_decision.limit_price,
+        )
 
         # Alerta Discord — trade executado (paper + live)
         regime = getattr(signal, "regime", "")
@@ -696,7 +781,7 @@ class TradingLoop:
                 quantity=float(quantity),
                 price=float(price),
                 notional=float(notional),
-                fees=float(notional * 0.001),  # estimativa 0.1% taker
+                fees=float(notional * OKX_TAKER_FEE),
                 strategy_id="momentum_v2",
                 regime=regime,
                 score=float(signal.calibrated_score or 0),
@@ -884,6 +969,24 @@ class TradingLoop:
             fields=fields,
         ))
 
+        # Persiste snapshot diário de equity para DrawdownEngine (janela 30d)
+        try:
+            import json as _json
+            equity = self._portfolio.state.total_value or 0.0
+            if equity > 0:
+                dd_state = self._risk._drawdown._state
+                # Adiciona o dia que está terminando
+                dd_state.daily_equity.append((now.strftime("%Y-%m-%d"), equity))
+                if len(dd_state.daily_equity) > 30:
+                    dd_state.daily_equity = dd_state.daily_equity[-30:]
+                await self._cache.set(
+                    "drawdown:daily_equity",
+                    _json.dumps([{"date": d, "value": v} for d, v in dd_state.daily_equity]),
+                    ttl=30 * 86400,
+                )
+        except Exception as exc:
+            logger.debug("DrawdownEngine: falha ao persistir equity snapshot: %s", exc)
+
         # Reseta contadores diários
         self._trading_alerts.reset_daily_stats()
         # Reseta contadores de sinais no Redis
@@ -921,7 +1024,7 @@ class TradingLoop:
                 order.filled_quantity = order.quantity
                 order.avg_fill_price  = price
                 order.filled_at       = _dt.datetime.now(_dt.UTC)
-                order.fees_paid       = round(price * order.quantity * 0.001, 6)
+                order.fees_paid       = round(price * order.quantity * OKX_TAKER_FEE, 6)
                 logger.info(
                     "[PAPER-FILL] order=%s symbol=%s qty=%s price=%s",
                     order.client_order_id, order.symbol, order.quantity, price,
@@ -947,7 +1050,7 @@ class TradingLoop:
                         order.avg_fill_price  = float(remote.get("avg_px") or 0)
                         order.filled_at       = _dt.datetime.now(_dt.UTC)
                         order.fees_paid       = round(
-                            order.avg_fill_price * order.filled_quantity * 0.001, 6
+                            order.avg_fill_price * order.filled_quantity * OKX_TAKER_FEE, 6
                         )
                         logger.info(
                             "[DEMO-FILL] order=%s symbol=%s side=%s qty=%s price=%s",
@@ -1016,7 +1119,7 @@ class TradingLoop:
                         order.avg_fill_price  = float(rec.get("avgPx", 0) or 0)
                         order.filled_at       = _dt.datetime.now(_dt.UTC)
                         order.fees_paid       = round(
-                            order.avg_fill_price * order.filled_quantity * 0.001, 6
+                            order.avg_fill_price * order.filled_quantity * OKX_TAKER_FEE, 6
                         )
                         logger.info(
                             "[STALE-FILL-RECOVERED] order=%s symbol=%s side=%s qty=%s price=%s",
@@ -1233,6 +1336,8 @@ class TradingLoop:
             total = await sync.sync_balances()
             if total > 0:
                 self._runner.update_portfolio_value(total)
+                if hasattr(self, "_cross_asset"):
+                    self._cross_asset.set_portfolio_value(total)
                 # Sincroniza cash interno com saldo USDT real da OKX
                 usdt_cash = self._portfolio.state.cash_available
                 if usdt_cash > 0:

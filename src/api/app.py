@@ -12,6 +12,7 @@ from ..core.version import get_version, get_version_info
 from ..persistence import Cache, Database
 from .routers import (
     analytics,
+    cross_asset,
     governance,
     metrics,
     orders,
@@ -97,6 +98,7 @@ def create_app() -> FastAPI:
     app.include_router(governance.router)
     app.include_router(watchdog.router)
     app.include_router(reconciler.router)
+    app.include_router(cross_asset.router)
 
     # Initialize watchdog placeholders (populated by trading engine)
     app.state.ws_watchdog = None

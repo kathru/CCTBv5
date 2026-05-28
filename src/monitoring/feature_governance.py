@@ -349,18 +349,6 @@ def _psi(expected_stats: FeatureStats, actual_stats: FeatureStats) -> float:
     if expected_stats.std == 0.0 or expected_stats.p10 == expected_stats.p90:
         return 0.0
 
-    # Bin edges from baseline (6 bins, each ~16.7% of expected distribution)
-    edges = [
-        float("-inf"),
-        expected_stats.p10,
-        expected_stats.p25,
-        expected_stats.p50,
-        expected_stats.p75,
-        expected_stats.p90,
-        float("inf"),
-    ]
-    n_bins = len(edges) - 1  # 6
-
     def _cdf_at(x: float, stats: FeatureStats) -> float:
         """
         Estimate the CDF P(X <= x) for a distribution described by percentile stats.
@@ -417,7 +405,7 @@ def _psi(expected_stats: FeatureStats, actual_stats: FeatureStats) -> float:
     # PSI = Σ (actual - expected) × ln(actual / expected)
     psi_total = 0.0
     eps = 1e-4  # avoid log(0)
-    for exp_p, act_p in zip(exp_props, act_props):
+    for exp_p, act_p in zip(exp_props, act_props, strict=False):
         act_p = max(act_p, eps)
         exp_p = max(exp_p, eps)
         psi_total += (act_p - exp_p) * math.log(act_p / exp_p)

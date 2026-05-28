@@ -7,8 +7,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-_app_logger = logging.getLogger(__name__)
-
 from ..core.config import settings
 from ..core.version import get_version, get_version_info
 from ..persistence import Cache, Database
@@ -23,6 +21,8 @@ from .routers import (
     signals,
     watchdog,
 )
+
+_app_logger = logging.getLogger(__name__)
 
 DASHBOARD_DIR = Path(__file__).parent.parent / "dashboard"
 

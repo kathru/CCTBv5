@@ -1143,6 +1143,47 @@
 
 </div>
 
+<!-- ══ CROSS-ASSET ENGINE ════════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:#a78bfa"></div>Cross-Asset Engine <span style="font-size:0.72rem;color:var(--muted);font-weight:400">market-neutral long/short</span></div>
+<div class="card" id="cross-asset-card">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <!-- Status badge -->
+    <div id="ca-status-badge" style="padding:5px 14px;border-radius:20px;font-size:0.8rem;font-weight:700;background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.2);color:var(--muted)">INATIVO</div>
+    <!-- Par ativo -->
+    <div style="display:flex;align-items:center;gap:18px;flex:1;flex-wrap:wrap;" id="ca-pair-row">
+      <div style="text-align:center;min-width:90px;">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:2px">Long (Spot)</div>
+        <div style="font-size:1.05rem;font-weight:800;color:var(--green)" id="ca-long-sym">–</div>
+        <div style="font-size:0.72rem;color:rgba(0,230,118,0.6)" id="ca-long-price">–</div>
+      </div>
+      <div style="font-size:1.4rem;color:var(--muted);font-weight:300">⇄</div>
+      <div style="text-align:center;min-width:90px;">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:2px">Short (SWAP Perp)</div>
+        <div style="font-size:1.05rem;font-weight:800;color:var(--red)" id="ca-short-sym">–</div>
+        <div style="font-size:0.72rem;color:rgba(255,69,96,0.6)" id="ca-short-price">–</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:130px;">
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+          <span style="font-size:0.72rem;color:var(--muted)">Notional</span>
+          <span style="font-size:0.78rem;font-weight:700;color:var(--text)" id="ca-notional">–</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+          <span style="font-size:0.72rem;color:var(--muted)">Spread RS</span>
+          <span style="font-size:0.78rem;font-weight:700;color:#a78bfa" id="ca-spread">–</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+          <span style="font-size:0.72rem;color:var(--muted)">Tempo aberto</span>
+          <span style="font-size:0.78rem;font-weight:700;color:var(--text)" id="ca-age">–</span>
+        </div>
+      </div>
+    </div>
+    <!-- Info sem posicao -->
+    <div id="ca-idle-msg" style="flex:1;font-size:0.82rem;color:var(--muted);font-style:italic">
+      Aguardando spread &gt; 12% entre BTC/ETH/SOL-USDT. Threshold entrada: 0.12 · Saída: 0.05
+    </div>
+  </div>
+</div>
+
 <!-- ══ ALPHA ORTHOGONALITY + WEIGHT ENGINE — lado a lado ══════════════════ -->
 <div class="section-hdr">
   <div class="dot" style="background:var(--purple)"></div>
@@ -1240,47 +1281,6 @@
         <thead><tr><th>Par</th><th>Stop Loss</th><th>Take Profit</th><th>Trailing</th><th>Conviction</th><th>Componentes</th></tr></thead>
         <tbody id="exits-body"><tr class="empty-row"><td colspan="6">Nenhum plano ativo</td></tr></tbody>
       </table>
-    </div>
-  </div>
-</div>
-
-<!-- ══ CROSS-ASSET ENGINE ════════════════════════════════════ -->
-<div class="section-hdr"><div class="dot" style="background:#a78bfa"></div>Cross-Asset Engine <span style="font-size:0.72rem;color:var(--muted);font-weight:400">market-neutral long/short</span></div>
-<div class="card" id="cross-asset-card">
-  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-    <!-- Status badge -->
-    <div id="ca-status-badge" style="padding:5px 14px;border-radius:20px;font-size:0.8rem;font-weight:700;background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.2);color:var(--muted)">INATIVO</div>
-    <!-- Par ativo -->
-    <div style="display:flex;align-items:center;gap:18px;flex:1;flex-wrap:wrap;" id="ca-pair-row">
-      <div style="text-align:center;min-width:90px;">
-        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:2px">Long (Spot)</div>
-        <div style="font-size:1.05rem;font-weight:800;color:var(--green)" id="ca-long-sym">–</div>
-        <div style="font-size:0.72rem;color:rgba(0,230,118,0.6)" id="ca-long-price">–</div>
-      </div>
-      <div style="font-size:1.4rem;color:var(--muted);font-weight:300">⇄</div>
-      <div style="text-align:center;min-width:90px;">
-        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:2px">Short (SWAP Perp)</div>
-        <div style="font-size:1.05rem;font-weight:800;color:var(--red)" id="ca-short-sym">–</div>
-        <div style="font-size:0.72rem;color:rgba(255,69,96,0.6)" id="ca-short-price">–</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px;min-width:130px;">
-        <div style="display:flex;justify-content:space-between;gap:8px;">
-          <span style="font-size:0.72rem;color:var(--muted)">Notional</span>
-          <span style="font-size:0.78rem;font-weight:700;color:var(--text)" id="ca-notional">–</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;gap:8px;">
-          <span style="font-size:0.72rem;color:var(--muted)">Spread RS</span>
-          <span style="font-size:0.78rem;font-weight:700;color:#a78bfa" id="ca-spread">–</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;gap:8px;">
-          <span style="font-size:0.72rem;color:var(--muted)">Tempo aberto</span>
-          <span style="font-size:0.78rem;font-weight:700;color:var(--text)" id="ca-age">–</span>
-        </div>
-      </div>
-    </div>
-    <!-- Info sem posicao -->
-    <div id="ca-idle-msg" style="flex:1;font-size:0.82rem;color:var(--muted);font-style:italic">
-      Aguardando spread &gt; 12% entre BTC/ETH/SOL-USDT. Threshold entrada: 0.12 · Saída: 0.05
     </div>
   </div>
 </div>

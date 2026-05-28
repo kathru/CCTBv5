@@ -3,7 +3,7 @@
   "symbol": "BTC-USDT",
   "n_samples": 20819,
   "win_rate": 0.3318,
-  "computed_at": "2026-05-28T10:53:56.785618+00:00",
+  "computed_at": "2026-05-28T12:41:11.330710+00:00",
   "notes": {
     "m6_futures": "neutro (0.5) \u2014 requer API OKX de futuros em tempo real",
     "m7_rel_strength": "neutro (0.5) \u2014 requer dados multi-s\u00edmbolo simult\u00e2neos",

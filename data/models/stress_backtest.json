@@ -4,20 +4,20 @@
     "start": "2024-01-01T00:00:00+00:00",
     "end": "2026-05-18T21:00:00+00:00"
   },
-  "computed_at": "2026-05-23T21:10:33.108300+00:00",
+  "computed_at": "2026-05-28T10:52:18.369030+00:00",
   "lateral": [],
   "bear": [
     {
       "label": "Bear 2026-01-07 (-32.14%)",
       "n_candles": 1200,
-      "n_trades": 632,
-      "win_rate": 0.2896,
-      "expectancy": -0.006692,
-      "profit_factor": 0.312,
-      "total_return_pct": -423.03,
+      "n_trades": 705,
+      "win_rate": 0.3078,
+      "expectancy": -0.006116,
+      "profit_factor": 0.333,
+      "total_return_pct": -431.14,
       "max_drawdown_pct": 0.0,
-      "avg_win_pct": 1.0493,
-      "avg_loss_pct": -1.3698,
+      "avg_win_pct": 0.9917,
+      "avg_loss_pct": -1.3245,
       "bear_regime_pct": 4.6,
       "regime_switches": [
         {
@@ -375,7 +375,7 @@
         "MEAN_REVERTING": 191,
         "TREND": 65
       },
-      "verdict": "FRÁGIL — WR=29% ret=-423.0% dd=0.0%",
+      "verdict": "FRÁGIL — WR=31% ret=-431.1% dd=0.0%",
       "bear_ret_pct": -32.14,
       "regime_lag_hours": 295.0,
       "bear_activated": true
@@ -407,14 +407,14 @@
   "full_period": {
     "label": "Full period 2024-01-01 → 2026-05-18",
     "n_candles": 20854,
-    "n_trades": 12127,
-    "win_rate": 0.3304,
-    "expectancy": -0.004603,
-    "profit_factor": 0.453,
-    "total_return_pct": -5581.62,
-    "max_drawdown_pct": 727916.143,
-    "avg_win_pct": 1.1538,
-    "avg_loss_pct": -1.2567,
+    "n_trades": 13965,
+    "win_rate": 0.3211,
+    "expectancy": -0.00479,
+    "profit_factor": 0.418,
+    "total_return_pct": -6689.03,
+    "max_drawdown_pct": 872317.16,
+    "avg_win_pct": 1.0706,
+    "avg_loss_pct": -1.2119,
     "bear_regime_pct": 2.4,
     "regime_switches": [
       {
@@ -4036,6 +4036,6 @@
       "TREND": 941,
       "COMPRESSED": 12046
     },
-    "verdict": "FRÁGIL — WR=33% ret=-5581.6% dd=727916.1%"
+    "verdict": "FRÁGIL — WR=32% ret=-6689.0% dd=872317.2%"
   }
 }

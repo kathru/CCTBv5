@@ -115,70 +115,70 @@ class FeatureSchema:
             return None
 
 
-# Schema atual (v2.6.0 — recalibrado 2026-05-27 por permutation importance)
+# Schema atual (v3.0.0 — reforma quant 2026-05-28)
 CURRENT_SCHEMA = FeatureSchema(
-    version="2.6.0",
-    model_id="momentum_scoring_v2",
-    created_at="2026-05-27",
+    version="3.0.0",
+    model_id="momentum_scoring_v3",
+    created_at="2026-05-28",
     lookback_candles=25,
     notes=(
-        "9 fatores (M4 peso 0). v2.6.0 2026-05-27: recalibração por permutation importance."
-        " M8 19%→6% (perm_imp=-0.0028, DESALINHADO)."
-        " M2 11%→5% (perm_imp=-0.0033, DESALINHADO)."
-        " M3 33%→35% (perm_imp=+0.006, único edge real, cap 35%)."
-        " M5 6%→10%, M6 12%→16%, M7 11%→14%, M9 6%→12%."
-        " Thresholds: TREND_EXPANSION 0.56→0.62, VOL_COMPRESSION 0.58→0.64, CHOP 0.68→0.72."
+        "v3.0.0 2026-05-28: Reforma quant — M1/M2/M5 desativados (perm_imp negativa)."
+        " M3 reformulado para directional volume (buy_vol/total_vol 12 candles)."
+        " ADX(10)+DI+/DI- substituiu SMA crossover para regime detection."
+        " Novos pesos: M3=40%, M6=22%, M7=18%, M9=14%, M8=6%."
+        " M1 mantido como RSI(14) diagnóstico (peso=0%)."
     ),
     features={
-        # Pesos v2.6.0 — sync com momentum_strategy.py
-        # perm_importance: M3=+0.006 (único edge) | M1=-0.0013 M5=-0.001 M2=-0.0033 M8=-0.0028
+        # Pesos v3.0.0 — sync com momentum_strategy.py
+        # M1/M2/M5: DESATIVADOS (perm_imp negativa). M1 = diagnóstico RSI(14).
         # M6/M7/M9: não mensurável no IS (dado externo) — Spearman=0.52 em live
         "m1_momentum": FeatureDef(
-            weight=0.02,
+            weight=0.00,   # v3.0.0: DESATIVADO. RSI(14) diagnóstico apenas (perm_imp=-0.0013)
             description=(
-                "Momentum adaptativo: média ponderada de retornos 1/5/10/20 candles 1H,"
-                " normalizado por ATR"
+                "RSI(14) 1H — zona ótima BUY: 40-65. Penaliza overbought >70."
+                " Peso=0%: diagnóstico sem impacto no score."
             ),
-            lookback=21,
+            lookback=16,
             leakage_safe=True,
         ),
         "m2_consistency": FeatureDef(
-            weight=0.05,   # v2.6.0: 11%→5% (perm_imp=-0.0033, DESALINHADO)
+            weight=0.00,   # v3.0.0: DESATIVADO (perm_imp=-0.0033 negativa)
             description=(
                 "Consistência de tendência: % candles bullish"
-                " + higher-highs E higher-lows graduais"
+                " + higher-highs E higher-lows graduais. Monitorado no dashboard."
             ),
             lookback=10,
             leakage_safe=True,
         ),
         "m3_volume": FeatureDef(
-            weight=0.35,   # v2.6.0: 33%→35% (perm_imp=+0.006, único edge real, cap 35%)
+            weight=0.40,   # v3.0.0: 35%→40% — Directional Volume, único edge real
             description=(
-                "Confirmação por volume: ratio + tendência de volume + candle direcional"
+                "Directional Volume v3.0: buy_vol/(buy_vol+sell_vol) 12 candles"
+                " + volume relativo + momentum de volume."
+                " Formula: directional_ratio*0.50 + vol_ratio*0.30 + vol_trend_score*0.20"
             ),
             lookback=20,
             leakage_safe=True,
         ),
         "m4_regime_str": FeatureDef(
-            weight=0.00,   # REMOVIDO: Spearman=-0.057 (o mais prejudicial)
+            weight=0.00,   # DESATIVADO: regime detection migrou para ADX(10)+DI+/DI-
             description=(
-                "Força do regime: distância SMA5-SMA20 normalizada,"
-                " blend com regime fixo"
+                "Força do regime SMA: substituído por ADX(10) no detect_regime()."
             ),
             lookback=20,
             leakage_safe=True,
         ),
         "m5_candle": FeatureDef(
-            weight=0.10,   # v2.6.0: 6%→10% (measurable, hedge de diversificação)
+            weight=0.00,   # v3.0.0: DESATIVADO (perm_imp=-0.001 negativa)
             description=(
                 "Estrutura do candle: posição do close no range dos últimos 3 candles"
-                " (Williams %R style)"
+                " (Williams %R style). Monitorado no dashboard."
             ),
             lookback=3,
             leakage_safe=True,
         ),
         "m6_futures": FeatureDef(
-            weight=0.16,   # v2.6.0: 12%→16% (Spearman=0.52 em live, não mensurável IS)
+            weight=0.22,   # v3.0.0: 16%→22% (Spearman=0.52 em live, não mensurável IS)
             description=(
                 "Futures Flow: funding rate (perp) + variação de Open Interest."
                 " Lê sinal do mercado de derivativos sem operar futuros."
@@ -187,7 +187,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m7_rel_strength": FeatureDef(
-            weight=0.14,   # v2.6.0: 11%→14% (Spearman=0.52 em live, não mensurável IS)
+            weight=0.18,   # v3.0.0: 14%→18% (Spearman=0.52 em live, não mensurável IS)
             description=(
                 "Relative Strength vs BTC: RS 1h/5h/24h ponderado"
                 " + BTC leadership score + tendência de RS"
@@ -196,7 +196,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m8_vol_state": FeatureDef(
-            weight=0.06,   # v2.6.0: 19%→6% (perm_imp=-0.0028, DESALINHADO — noise IS)
+            weight=0.06,   # v3.0.0: mantido 6% (estrutural, perm_imp=-0.0028)
             description=(
                 "Volatility State Machine: 5 estados"
                 " (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC)"
@@ -206,7 +206,7 @@ CURRENT_SCHEMA = FeatureSchema(
             leakage_safe=True,
         ),
         "m9_sentiment": FeatureDef(
-            weight=0.12,   # v2.6.0: 6%→12% (Spearman=0.52 em live, não mensurável IS)
+            weight=0.14,   # v3.0.0: 12%→14% (Spearman=0.52 em live, não mensurável IS)
             description=(
                 "News Sentiment: Fear & Greed Index (alternative.me)"
                 " + CoinGecko social sentiment + price momentum 24h"

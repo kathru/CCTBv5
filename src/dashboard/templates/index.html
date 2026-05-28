@@ -376,6 +376,7 @@
     .action-pill { padding:4px 12px; border-radius:6px; font-size:0.68rem; font-weight:700; letter-spacing:0.08em; text-align:center; text-transform:uppercase; flex-shrink:0; }
     .ap-buy   { background:rgba(0,230,118,0.10);  color:#00e676; border:1px solid rgba(0,230,118,0.28); }
     .ap-sell  { background:rgba(255,69,96,0.12);   color:#ff7090; border:1px solid rgba(255,69,96,0.28); }
+    .ap-short { background:rgba(255,69,96,0.14);   color:#ff4560; border:1px solid rgba(255,69,96,0.38); font-weight:800; }
     .ap-hold  { background:rgba(255,255,255,0.05); color:#3d6a8a; border:1px solid rgba(255,255,255,0.10); }
     .ap-wait  { background:rgba(255,215,0,0.09);  color:#ffd700; border:1px solid rgba(255,215,0,0.22); }
     .ap-panic { background:rgba(255,69,96,0.14);   color:#ff7090; border:1px solid rgba(255,69,96,0.36); animation:pulse-red 1.2s infinite; }
@@ -2485,7 +2486,10 @@ function bar(id,v,max,warn=0.7,danger=0.9){
 }
 function action(result,cal,thr,regime){
   if(regime==='PANIC_LIQUIDATION')return{l:'PROTECT',c:'ap-panic'};
-  if(result==='SIGNAL')return{l:'BUY',c:'ap-buy'};
+  if(result==='SIGNAL'){
+    const isBearSig=(regime||'').includes('BEAR');
+    return isBearSig?{l:'SHORT',c:'ap-short'}:{l:'BUY',c:'ap-buy'};
+  }
   if(!cal||!thr)return{l:'WAIT',c:'ap-hold'};
   const r=cal/thr;
   if(r>=0.90)return{l:'WAIT',c:'ap-wait'};
@@ -4978,7 +4982,8 @@ async function updateAll(){
       'TREND EXHAUSTION':       'Operação Defensiva — Trend fraquejando',
       'MEAN REVERTING CHOP':    'Operação Conservadora — Mercado lateral',
       'HIGH CORRELATION RISK':  'Reduzir Exposição — Alta correlação',
-      'BEAR TREND':             'Entradas bloqueadas — Downtrend ativo',
+      'BEAR TREND':             'SHORT via Swap Perp — Downtrend ativo',
+      'BEAR_TREND':             'SHORT via Swap Perp — Downtrend ativo',
       'PANIC LIQUIDATION':      'Proteger Capital — Pânico detectado',
     };
     const subTxt=subMap[rg]||'Analisando condições...';
@@ -5047,7 +5052,8 @@ async function updateAll(){
     const KELLY_CAP={
       'TREND EXPANSION':0.12,'VOLATILITY COMPRESSION':0.08,
       'MEAN REVERTING CHOP':0.06,'HIGH CORRELATION RISK':0.04,
-      'TREND EXHAUSTION':0.06,'BEAR TREND':0,'PANIC LIQUIDATION':0,
+      'TREND EXHAUSTION':0.06,
+      'BEAR TREND':0,'BEAR_TREND':0,'PANIC LIQUIDATION':0,'PANIC':0,
     };
     const rawKelly=(latest.calibrated||0)*0.25;
     const cap=KELLY_CAP[rg]??0.08;
@@ -5061,7 +5067,7 @@ async function updateAll(){
     const kCapLbl=document.getElementById('motor-kelly-cap-lbl');
     // Barra com escala fixa 0–12% (máximo absoluto do sistema = TREND EXPANSION)
     const BAR_MAX=0.12;
-    const fillPct=Math.min(rawKelly/BAR_MAX*100,100);
+    const fillPct=Math.min(effKelly/BAR_MAX*100,100);
     const capPct =Math.min(cap/BAR_MAX*100,100);
     if(kFill) kFill.style.width=fillPct.toFixed(1)+'%';
     if(kCap)  kCap.style.left=capPct.toFixed(1)+'%';

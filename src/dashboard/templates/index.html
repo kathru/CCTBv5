@@ -2945,18 +2945,28 @@ function renderImportance(data){
     const deltaSign=Number(delta)>=0?'+':'';
     const schPct=(schW*100).toFixed(0);
     const relPct=(relImp*100).toFixed(0);
+    // Barra Spearman secundária — mostra correlação com o label
+    const corrAbs=Math.abs(corr);
+    const corrBarW=(corrAbs*100).toFixed(0); // Spearman [-1,1] → barra 0-100%
+    const corrCol=corr>0.1?'var(--green)':corr<-0.1?'var(--red)':'rgba(255,255,255,0.2)';
+    const corrLabel=corr>=0?`+${corr.toFixed(3)}`:`${corr.toFixed(3)}`;
     return`
-    <div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-      <!-- Linha principal: label | barra | info direita -->
+    <div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <!-- Linha principal: label | barra PermImp | info direita -->
       <div class="fi-row-main" style="display:flex;align-items:center;gap:8px;">
-        <!-- Label -->
         <span style="font-size:0.82rem;color:var(--text);font-weight:700;min-width:28px;flex-shrink:0;">${label}</span>
-        <!-- Barra (flex:1) -->
-        <div style="position:relative;height:6px;background:rgba(255,255,255,0.06);border-radius:4px;flex:1;min-width:0;">
-          <div style="position:absolute;top:0;left:0;height:6px;width:${barW}%;background:${col};border-radius:4px;transition:width 0.6s ease;"></div>
-          <div style="position:absolute;top:-4px;bottom:-4px;left:${schBarW}%;width:2px;background:rgba(255,255,255,0.35);border-radius:2px;" title="Peso schema: ${schPct}%"></div>
+        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;">
+          <!-- Barra 1: Importância por permutação -->
+          <div style="position:relative;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;">
+            <div style="position:absolute;top:0;left:0;height:5px;width:${barW}%;background:${col};border-radius:3px;transition:width 0.6s ease;"></div>
+            <div style="position:absolute;top:-3px;bottom:-3px;left:${schBarW}%;width:2px;background:rgba(255,255,255,0.3);border-radius:2px;" title="Peso schema: ${schPct}%"></div>
+          </div>
+          <!-- Barra 2: Spearman -->
+          <div style="position:relative;height:3px;background:rgba(255,255,255,0.04);border-radius:2px;" title="Spearman: ${corrLabel}">
+            <div style="position:absolute;top:0;left:0;height:3px;width:${corrBarW}%;background:${corrCol};border-radius:2px;opacity:0.7;transition:width 0.6s ease;"></div>
+          </div>
         </div>
-        <!-- Info direita: % importância + delta (sch) -->
+        <!-- Info direita -->
         <div class="fi-right-col" style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;">
           <span style="font-size:0.88rem;font-weight:800;color:${col};min-width:36px;text-align:right;">${relPct}%</span>
           <span style="font-size:0.70rem;color:${alignCol};text-align:right;min-width:90px;">
@@ -2964,10 +2974,10 @@ function renderImportance(data){
           </span>
         </div>
       </div>
-      <!-- Linha secundária: Spearman + PermImp -->
-      <div style="font-size:0.68rem;color:var(--muted);margin-top:3px;padding-left:36px;">
-        Spearman <span style="color:${corr>=0?'var(--green)':'var(--red)'}">${corrSign}${corr.toFixed(3)}</span>
-        &nbsp;·&nbsp; PermImp <span style="color:var(--slate)">${(f.perm_importance||0).toFixed(4)}</span>
+      <!-- Linha de métricas -->
+      <div style="font-size:0.68rem;color:var(--muted);margin-top:3px;padding-left:36px;display:flex;gap:12px;flex-wrap:wrap;">
+        <span>Spearman <span style="color:${corrCol}">${corrLabel}</span></span>
+        <span>PermImp <span style="color:var(--slate)">${(f.perm_importance||0).toFixed(4)}</span></span>
       </div>
     </div>`;
   }).join('');
@@ -3007,8 +3017,8 @@ function renderWfo(data){
     const stabCls=s.stability_score>0.5?'g':s.stability_score>0.3?'y':'r';
     const name=sym.replace('-USDT','');
 
-    // Tabela de folds — scroll vertical, 3 linhas visíveis (~99px)
-    const foldsHtml=folds.map(f=>{
+    // Tabela de folds — mais recente primeiro (ordem reversa)
+    const foldsHtml=[...folds].reverse().map(f=>{
       const vMark=f.valid?'✓':'✗';
       const vCol=f.valid?'var(--green)':'var(--red)';
       const oor=f.oos_return!=null?((f.oos_return>=0?'+':'')+(f.oos_return*100).toFixed(1)+'%'):'–';

@@ -718,7 +718,7 @@
     <div class="motor-hero-pulse">⚡</div>
     <div class="motor-hero-title-wrap" style="flex:1;min-width:0">
       <div class="motor-hero-title">Motor Probabilístico</div>
-      <div class="motor-hero-sub">Coração do sistema · Score · Gates · EV · Sizing</div>
+      <div class="motor-hero-sub">v3.0.0 · ADX(10) regime · Dir.Volume M3=40% · M1/M2/M5 off</div>
     </div>
     <!-- Métricas centrais -->
     <div class="motor-hero-metrics" style="display:flex;gap:14px;align-items:center;margin-right:14px;flex-shrink:0">
@@ -782,7 +782,10 @@
 
     <!-- ③ REGIME -->
     <div id="motor-regime-box" class="motor-section motor-regime-box" style="margin-bottom:10px;padding:14px 16px;">
-      <div class="motor-section-lbl">③ Regime</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="motor-section-lbl" style="margin:0">③ Regime</div>
+        <span style="font-size:0.6rem;padding:2px 7px;border-radius:4px;background:rgba(0,212,255,0.08);color:var(--cyan);border:1px solid rgba(0,212,255,0.2);letter-spacing:0.05em;font-weight:700;">ADX(10)+DI±</span>
+      </div>
 
       <!-- Nome do regime — linha própria, sem sobreposição -->
       <div class="motor-regime-txt" id="motor-regime"
@@ -832,51 +835,66 @@
         </div>
         <div style="font-size:0.75rem;color:rgba(255,255,255,0.3);margin-top:2px;">threshold: <span id="motor-score-thr">56%</span></div>
       </div>
-      <!-- M factors -->
-      <div style="display:grid;grid-template-columns:120px 1fr 40px 44px;align-items:center;gap:5px 8px;margin-bottom:8px;">
-        <span style="font-size:0.75rem;color:var(--text)">Momentum (M1)</span>
-        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m1" style="height:13px;border-radius:7px;background:#00d4ff;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.82rem;font-weight:700;color:#00d4ff;text-align:right" id="w-m1">–</span>
-        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">2%</span>
+      <!-- Schema v3.0.0 info strip -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:6px 10px;background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.12);border-radius:6px;">
+        <span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--blue);font-weight:700;">v3.0.0</span>
+        <span style="font-size:0.65rem;color:var(--muted)">·</span>
+        <span style="font-size:0.72rem;color:var(--slate)">Regime: <span style="color:var(--cyan);font-weight:600">ADX(10)+DI+/DI−</span></span>
+        <span style="font-size:0.65rem;color:var(--muted)">·</span>
+        <span style="font-size:0.72rem;color:var(--slate)">M3: <span style="color:var(--yellow);font-weight:600">Dir.Volume</span></span>
+        <span style="font-size:0.65rem;color:var(--muted)">·</span>
+        <span style="font-size:0.72rem;color:var(--slate)">M1/M2/M5: <span style="color:rgba(255,69,96,0.7);font-weight:600">Desativados</span></span>
+      </div>
+      <!-- M factors — v3.0.0 pesos: M3=40% M6=22% M7=18% M9=14% M8=6% | M1/M2/M5=0% (desativados) -->
+      <div style="display:grid;grid-template-columns:130px 1fr 40px 44px;align-items:center;gap:5px 8px;margin-bottom:8px;">
 
-        <span style="font-size:0.75rem;color:var(--text)">Estrutura (M2)</span>
-        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m2" style="height:13px;border-radius:7px;background:#00e676;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.82rem;font-weight:700;color:#00e676;text-align:right" id="w-m2">–</span>
-        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">11%</span>
-
-        <span style="font-size:0.75rem;color:var(--text)">Volume (M3) ★</span>
+        <!-- ── ACTIVE FACTORS ── -->
+        <span style="font-size:0.75rem;color:var(--text);font-weight:600">Dir.Volume (M3)
+          <span style="font-size:0.6rem;color:var(--yellow);font-weight:700;vertical-align:middle;margin-left:2px">★</span>
+        </span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:13px;border-radius:7px;background:#ffd700;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#ffd700;text-align:right" id="w-m3">–</span>
-        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">33%</span>
-
-        <!-- M4 removido (peso 0%) — IDs mantidos para JS -->
-        <span id="w-m4"  style="display:none"></span>
-        <span id="wb-m4" style="display:none"></span>
-
-        <span style="font-size:0.75rem;color:var(--text)">Candle (M5)</span>
-        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m5" style="height:13px;border-radius:7px;background:#f97316;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.82rem;font-weight:700;color:#f97316;text-align:right" id="w-m5">–</span>
-        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">6%</span>
+        <span style="font-size:0.75rem;color:var(--yellow);text-align:right;white-space:nowrap;font-weight:700">40%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Futures (M6)</span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m6" style="height:13px;border-radius:7px;background:#06b6d4;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#06b6d4;text-align:right" id="w-m6">–</span>
-        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">12%</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">22%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Rel. Strength (M7)</span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m7" style="height:13px;border-radius:7px;background:#a78bfa;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#a78bfa;text-align:right" id="w-m7">–</span>
-        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">11%</span>
-
-        <span style="font-size:0.75rem;color:var(--text)">Vol. State (M8) ★</span>
-        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m8" style="height:13px;border-radius:7px;background:#ec4899;transition:width 0.5s;width:0%"></div></div>
-        <span style="font-size:0.82rem;font-weight:700;color:#ec4899;text-align:right" id="w-m8">–</span>
-        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">19%</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">18%</span>
 
         <span style="font-size:0.75rem;color:var(--text)">Sentiment (M9) <span id="m9-fng-badge" style="font-size:0.75rem;color:var(--muted)"></span></span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m9" style="height:13px;border-radius:7px;background:#84cc16;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#84cc16;text-align:right" id="w-m9">–</span>
+        <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">14%</span>
+
+        <span style="font-size:0.75rem;color:var(--text)">Vol. State (M8)</span>
+        <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m8" style="height:13px;border-radius:7px;background:#ec4899;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.82rem;font-weight:700;color:#ec4899;text-align:right" id="w-m8">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">6%</span>
+
+        <!-- ── DISABLED FACTORS (diagnóstico) ── -->
+        <span style="font-size:0.72rem;color:#2a4a5e;opacity:0.7">RSI(14) (M1) <span style="font-size:0.6rem;color:rgba(255,69,96,0.5)">[diag]</span></span>
+        <div style="height:7px;background:rgba(255,255,255,0.03);border-radius:7px;overflow:hidden;opacity:0.4;"><div id="wb-m1" style="height:7px;border-radius:7px;background:#2a4a5e;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.75rem;font-weight:600;color:#2a4a5e;text-align:right;opacity:0.6" id="w-m1">–</span>
+        <span style="font-size:0.68rem;color:rgba(255,69,96,0.45);text-align:right;white-space:nowrap">0%</span>
+
+        <span style="font-size:0.72rem;color:#2a4a5e;opacity:0.7">Consistência (M2) <span style="font-size:0.6rem;color:rgba(255,69,96,0.5)">[off]</span></span>
+        <div style="height:7px;background:rgba(255,255,255,0.03);border-radius:7px;overflow:hidden;opacity:0.4;"><div id="wb-m2" style="height:7px;border-radius:7px;background:#2a4a5e;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.75rem;font-weight:600;color:#2a4a5e;text-align:right;opacity:0.6" id="w-m2">–</span>
+        <span style="font-size:0.68rem;color:rgba(255,69,96,0.45);text-align:right;white-space:nowrap">0%</span>
+
+        <span style="font-size:0.72rem;color:#2a4a5e;opacity:0.7">Candle (M5) <span style="font-size:0.6rem;color:rgba(255,69,96,0.5)">[off]</span></span>
+        <div style="height:7px;background:rgba(255,255,255,0.03);border-radius:7px;overflow:hidden;opacity:0.4;"><div id="wb-m5" style="height:7px;border-radius:7px;background:#2a4a5e;transition:width 0.5s;width:0%"></div></div>
+        <span style="font-size:0.75rem;font-weight:600;color:#2a4a5e;text-align:right;opacity:0.6" id="w-m5">–</span>
+        <span style="font-size:0.68rem;color:rgba(255,69,96,0.45);text-align:right;white-space:nowrap">0%</span>
+
+        <!-- M4 removido (peso 0%) — IDs mantidos para JS -->
+        <span id="w-m4"  style="display:none"></span>
+        <span id="wb-m4" style="display:none"></span>
       </div>
       <!-- M6 / M7 / M8 sub-scores -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:8px;">
@@ -2029,9 +2047,9 @@
     <div id="imp-list" style="display:flex;flex-direction:column;gap:10px;">
       <div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Rode: python scripts/feature_analysis.py</div>
     </div>
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted);">
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted);flex-wrap:wrap;gap:4px;">
       <span id="imp-meta"></span>
-      <span>verde = alinhado · vermelho = desalinhado</span>
+      <span>★ edge real · <span style="color:var(--blue)">DIAG</span>=RSI monitorado · <span style="color:rgba(255,69,96,0.6)">OFF</span>=desativado · barra branca=peso schema</span>
     </div>
   </div>
 
@@ -2827,7 +2845,7 @@ function renderGovernance(status, drift, live, schema){
   if(drift&&driftEl){
     const features=drift.features||{};
     const keys=Object.keys(features);
-    const FLABELS={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)','m8_vol_state':'Vol.State (M8)','m9_sentiment':'Sentiment (M9)'};
+    const FLABELS={'m1_momentum':'RSI(14) M1 [diag]','m2_consistency':'Consist. M2 [off]','m3_volume':'Dir.Volume M3 ★','m4_regime_str':'Regime M4 [off]','m5_candle':'Candle M5 [off]','m6_futures':'Futures M6','m7_rel_strength':'Rel.Strength M7','m8_vol_state':'Vol.State M8','m9_sentiment':'Sentiment M9'};
     if(!keys.length && drift.overall_status==='no_baseline'){
       driftEl.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Baseline não encontrado — rode feature_analysis.py</div>';
       if(driftBadge){ driftBadge.textContent='sem baseline'; driftBadge.className='hbadge hbadge-gray hbadge-ts'; }
@@ -2880,7 +2898,7 @@ function renderGovernance(status, drift, live, schema){
       liveEl.innerHTML='<div class="m" style="font-size:0.92rem;padding:8px;text-align:center">Sem dados ao vivo ainda</div>';
     } else {
       const schemaFeats=schema?.features||{};
-      const FLIVE={'m1_momentum':'Momentum (M1)','m2_consistency':'Estrutura (M2)','m3_volume':'Volume (M3)','m4_regime_str':'Regime (M4)','m5_candle':'Candle (M5)','m6_futures':'Futures (M6)','m7_rel_strength':'Rel.Strength (M7)','m8_vol_state':'Vol.State (M8)','m9_sentiment':'Sentiment (M9)'};
+      const FLIVE={'m1_momentum':'RSI(14) M1 [diag]','m2_consistency':'Consist. M2 [off]','m3_volume':'Dir.Volume M3 ★','m4_regime_str':'Regime M4 [off]','m5_candle':'Candle M5 [off]','m6_futures':'Futures M6','m7_rel_strength':'Rel.Strength M7','m8_vol_state':'Vol.State M8','m9_sentiment':'Sentiment M9'};
       // Badge indicador de fonte
       const srcLabel = isBaseline
         ? '<span style="font-size:0.75rem;color:#ffd700;margin-left:6px">· referência baseline (aguardando obs. ao vivo)</span>'
@@ -2910,7 +2928,7 @@ function renderGovernance(status, drift, live, schema){
     }
   }
 
-  // Schema features list
+  // Schema features list — v3.0.0 com status ACTIVE/DISABLED
   const schemaEl=document.getElementById('gov-schema-list');
   if(schema&&schemaEl){
     const feats=schema.features||{};
@@ -2918,16 +2936,28 @@ function renderGovernance(status, drift, live, schema){
     if(!keys.length){
       schemaEl.innerHTML='<div class="m" style="font-size:0.92rem">Schema vazio</div>';
     } else {
-      schemaEl.innerHTML=`<div style="display:grid;grid-template-columns:repeat(${Math.min(keys.length,5)},1fr);gap:5px;">`+
-        keys.map(k=>{
+      const SLABELS={'m1_momentum':'M1','m2_consistency':'M2','m3_volume':'M3','m4_regime_str':'M4','m5_candle':'M5','m6_futures':'M6','m7_rel_strength':'M7','m8_vol_state':'M8','m9_sentiment':'M9'};
+      const SDESC={'m1_momentum':'RSI(14)\ndiag.','m2_consistency':'Consist.\noff','m3_volume':'Dir.Vol\n40%','m4_regime_str':'ADX\noff','m5_candle':'Candle\noff','m6_futures':'Funding\n22%','m7_rel_strength':'RS vs BTC\n18%','m8_vol_state':'Vol.State\n6%','m9_sentiment':'Sentiment\n14%'};
+      // Sort: active first
+      const sortedKeys=[...keys].sort((a,b)=>((feats[b].weight||0)-(feats[a].weight||0)));
+      schemaEl.innerHTML=`<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;">`+
+        sortedKeys.map(k=>{
           const f=feats[k];
           const w=((f.weight||0)*100).toFixed(0);
           const lb=f.lookback||0;
           const safe=f.leakage_safe;
-          return`<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:7px 9px;text-align:center;">
-            <div style="font-size:0.82rem;font-weight:700;color:var(--text);margin-bottom:3px">${{'m1_momentum':'M1','m2_consistency':'M2','m3_volume':'M3','m4_regime_str':'M4','m5_candle':'M5','m6_futures':'M6','m7_rel_strength':'M7','m8_vol_state':'M8','m9_sentiment':'M9'}[k]||k.replace('_',' ')}</div>
-            <div style="font-size:1rem;font-weight:900;color:var(--blue)">${w}%</div>
-            <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">lb:${lb} · ${safe?'<span style="color:var(--green)">safe</span>':'<span style="color:var(--red)">⚠</span>'}</div>
+          const disabled=(f.weight||0)===0;
+          const isDiag=k==='m1_momentum';
+          const statusColor=disabled?(isDiag?'rgba(0,212,255,0.5)':'rgba(255,69,96,0.5)'):'var(--blue)';
+          const bg=disabled?'rgba(255,255,255,0.01)':'rgba(255,255,255,0.03)';
+          const border=disabled?'rgba(60,80,100,0.3)':'var(--border)';
+          const wCol=disabled?'var(--muted)':'var(--cyan)';
+          const statusText=disabled?(isDiag?'DIAG':'OFF'):'✓';
+          return`<div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:7px 9px;text-align:center;opacity:${disabled?0.55:1};">
+            <div style="font-size:0.82rem;font-weight:700;color:var(--text);margin-bottom:1px">${SLABELS[k]||k}</div>
+            <div style="font-size:1rem;font-weight:900;color:${wCol}">${w}%</div>
+            <div style="font-size:0.6rem;font-weight:700;color:${statusColor};margin-top:1px;letter-spacing:0.05em">${statusText}</div>
+            <div style="font-size:0.62rem;color:var(--muted);margin-top:2px">lb:${lb}</div>
           </div>`;
         }).join('')+'</div>';
     }
@@ -2955,60 +2985,110 @@ function renderImportance(data){
   }
   if(metaEl) metaEl.textContent=`${(data.n_samples||0).toLocaleString('pt-BR')} amostras · Win Rate ${((data.win_rate||0)*100).toFixed(1)}%`;
 
-  // Ordenar por relative_importance desc
-  const sorted=keys.sort((a,b)=>(feats[b].relative_importance||0)-(feats[a].relative_importance||0));
-  const maxImp=Math.max(...sorted.map(k=>Math.max(feats[k].relative_importance||0,0)),0.01);
+  // Separar ACTIVE e DISABLED — disabled vão ao fundo
+  const DISABLED_KEYS=new Set(['m1_momentum','m2_consistency','m5_candle','m4_regime_str']);
+  const activeKeys  = keys.filter(k=>!DISABLED_KEYS.has(k) && (feats[k].schema_weight||0)>0);
+  const diagKeys    = keys.filter(k=>k==='m1_momentum'); // M1: diagnóstico RSI, mostrar separado
+  const disabledKeys= keys.filter(k=>DISABLED_KEYS.has(k) && k!=='m1_momentum');
 
-  const FEAT_LABELS={'m1_momentum':'M1','m2_consistency':'M2','m3_volume':'M3','m4_regime_str':'M4','m5_candle':'M5','m6_futures':'M6','m7_rel_strength':'M7','m8_vol_state':'M8','m9_sentiment':'M9'};
-  el.innerHTML=sorted.map(k=>{
+  // Sort ativos por relative_importance desc; inativos por spearman_corr desc
+  activeKeys.sort((a,b)=>(feats[b].relative_importance||0)-(feats[a].relative_importance||0));
+
+  const sorted=[...activeKeys,...diagKeys,...disabledKeys];
+  const maxImp=Math.max(...activeKeys.map(k=>feats[k].relative_importance||0),0.01);
+
+  const FEAT_LABELS={
+    'm1_momentum':  'RSI(14) M1',
+    'm2_consistency':'Consistência M2',
+    'm3_volume':    'Dir.Volume M3',
+    'm4_regime_str':'Regime M4',
+    'm5_candle':    'Candle M5',
+    'm6_futures':   'Futures M6',
+    'm7_rel_strength':'Rel.Strength M7',
+    'm8_vol_state': 'Vol.State M8',
+    'm9_sentiment': 'Sentiment M9',
+  };
+
+  el.innerHTML=sorted.map((k,idx)=>{
     const f=feats[k];
-    const label=FEAT_LABELS[k]||k;
-    const relImp=f.relative_importance||0;
-    const schW=f.schema_weight||0;
-    const aligned=f.aligned;
-    const barW=(relImp/maxImp*100).toFixed(0);
-    const schBarW=(schW/maxImp*100).toFixed(0);
-    const corr=f.spearman_corr||0;
-    const corrSign=corr>=0?'+':'';
-    const col=relImp>0.01?'var(--cyan)':'var(--muted)';
-    const alignCol=aligned?'var(--green)':'var(--red)';
-    const delta=((relImp-schW)*100).toFixed(0);
-    const deltaSign=Number(delta)>=0?'+':'';
-    const schPct=(schW*100).toFixed(0);
-    const relPct=(relImp*100).toFixed(0);
-    // Barra Spearman secundária — mostra correlação com o label
-    const corrAbs=Math.abs(corr);
-    const corrBarW=(corrAbs*100).toFixed(0); // Spearman [-1,1] → barra 0-100%
-    const corrCol=corr>0.1?'var(--green)':corr<-0.1?'var(--red)':'rgba(255,255,255,0.2)';
-    const corrLabel=corr>=0?`+${corr.toFixed(3)}`:`${corr.toFixed(3)}`;
-    return`
+    const isDisabled = DISABLED_KEYS.has(k);
+    const isDiag     = k==='m1_momentum';
+    const label      = FEAT_LABELS[k]||k;
+    const relImp     = f.relative_importance||0;
+    const schW       = f.schema_weight||0;
+    const aligned    = f.aligned;
+    const corr       = f.spearman_corr||0;
+    const corrAbs    = Math.abs(corr);
+    const corrBarW   = (corrAbs*100).toFixed(0);
+    const corrLabel  = corr>=0?`+${corr.toFixed(3)}`:`${corr.toFixed(3)}`;
+    const corrCol    = corr>0.1?'var(--green)':corr<-0.1?'var(--red)':'rgba(255,255,255,0.2)';
+
+    // Separador entre seções
+    const sepBefore = (idx===activeKeys.length && diagKeys.length>0)
+      ? `<div style="margin:8px 0 4px;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);border-top:1px solid rgba(255,255,255,0.05);padding-top:8px;">Diagnóstico (peso 0%)</div>`
+      : (idx===activeKeys.length+diagKeys.length && disabledKeys.length>0)
+        ? `<div style="margin:8px 0 4px;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.12em;color:rgba(255,69,96,0.5);border-top:1px solid rgba(255,69,96,0.08);padding-top:8px;">Desativados — perm_imp negativa</div>`
+        : '';
+
+    if(isDisabled || isDiag){
+      // Render simplificado para features desativadas / diagnóstico
+      const dimColor = isDiag ? 'rgba(90,144,181,0.6)' : 'rgba(60,80,100,0.5)';
+      const statusTag = isDiag
+        ? `<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(0,212,255,0.08);color:var(--blue);border:1px solid rgba(0,212,255,0.15);margin-left:4px">DIAG</span>`
+        : `<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(255,69,96,0.08);color:rgba(255,69,96,0.6);border:1px solid rgba(255,69,96,0.15);margin-left:4px">OFF</span>`;
+      return`${sepBefore}<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);opacity:${isDiag?0.75:0.45};">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:0.78rem;color:${dimColor};font-weight:600;min-width:28px;flex-shrink:0;">${label}${statusTag}</span>
+          <div style="flex:1;height:3px;background:rgba(255,255,255,0.04);border-radius:2px;position:relative;">
+            <div style="position:absolute;top:0;left:0;height:3px;width:${corrBarW}%;background:${corrCol};border-radius:2px;opacity:0.5;"></div>
+          </div>
+          <span style="font-size:0.72rem;color:${corrCol};flex-shrink:0;">Spearman ${corrLabel}</span>
+          <span style="font-size:0.72rem;color:${dimColor};text-align:right;min-width:26px;flex-shrink:0;">0%</span>
+        </div>
+        <div style="font-size:0.65rem;color:rgba(255,255,255,0.25);margin-top:2px;padding-left:4px;">
+          PermImp ${(f.perm_importance||0).toFixed(4)} · ${isDiag?'RSI(14) zona ótima 40-65, diagnóstico sem impacto no score':'perm_imp negativa — excluído do score'}
+        </div>
+      </div>`;
+    }
+
+    // ACTIVE feature render
+    const barW   = (relImp/maxImp*100).toFixed(0);
+    const schBarW= (schW/maxImp*100).toFixed(0);
+    const col    = relImp>0.01?'var(--cyan)':'var(--muted)';
+    const alignCol = aligned===null?'var(--blue)':aligned?'var(--green)':'var(--yellow)';
+    const alignTxt = aligned===null?'externo':'alinhado';
+    const schPct = (schW*100).toFixed(0);
+    const relPct = (relImp*100).toFixed(0);
+    const delta  = ((relImp-schW)*100).toFixed(0);
+    const deltaSign = Number(delta)>=0?'+':'';
+    // Badge extra para M3
+    const extra = k==='m3_volume'
+      ? `<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(255,215,0,0.12);color:var(--yellow);border:1px solid rgba(255,215,0,0.25);margin-left:4px">★ EDGE</span>`
+      : '';
+    return`${sepBefore}
     <div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-      <!-- Linha principal: label | barra PermImp | info direita -->
       <div class="fi-row-main" style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:0.82rem;color:var(--text);font-weight:700;min-width:28px;flex-shrink:0;">${label}</span>
+        <span style="font-size:0.82rem;color:var(--text);font-weight:700;min-width:28px;flex-shrink:0;">${label}${extra}</span>
         <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;">
-          <!-- Barra 1: Importância por permutação -->
           <div style="position:relative;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;">
             <div style="position:absolute;top:0;left:0;height:5px;width:${barW}%;background:${col};border-radius:3px;transition:width 0.6s ease;"></div>
             <div style="position:absolute;top:-3px;bottom:-3px;left:${schBarW}%;width:2px;background:rgba(255,255,255,0.3);border-radius:2px;" title="Peso schema: ${schPct}%"></div>
           </div>
-          <!-- Barra 2: Spearman -->
           <div style="position:relative;height:3px;background:rgba(255,255,255,0.04);border-radius:2px;" title="Spearman: ${corrLabel}">
             <div style="position:absolute;top:0;left:0;height:3px;width:${corrBarW}%;background:${corrCol};border-radius:2px;opacity:0.7;transition:width 0.6s ease;"></div>
           </div>
         </div>
-        <!-- Info direita -->
         <div class="fi-right-col" style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;">
           <span style="font-size:0.88rem;font-weight:800;color:${col};min-width:36px;text-align:right;">${relPct}%</span>
-          <span style="font-size:0.70rem;color:${alignCol};text-align:right;min-width:90px;">
+          <span style="font-size:0.70rem;color:${alignCol};text-align:right;min-width:72px;">
             ${deltaSign}${delta}%<span style="opacity:0.55;"> (sch ${schPct}%)</span>
           </span>
         </div>
       </div>
-      <!-- Linha de métricas -->
-      <div style="font-size:0.68rem;color:var(--muted);margin-top:3px;padding-left:36px;display:flex;gap:12px;flex-wrap:wrap;">
+      <div style="font-size:0.68rem;color:var(--muted);margin-top:3px;padding-left:4px;display:flex;gap:12px;flex-wrap:wrap;">
         <span>Spearman <span style="color:${corrCol}">${corrLabel}</span></span>
         <span>PermImp <span style="color:var(--slate)">${(f.perm_importance||0).toFixed(4)}</span></span>
+        <span style="color:${alignCol}">${alignTxt}${aligned===null?' (live)':''}</span>
       </div>
     </div>`;
   }).join('');

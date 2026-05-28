@@ -61,14 +61,14 @@ DEFAULT_MIN_SCORE   = 0.40
 LOOKBACK = 25   # candles de janela para score_signal (25 para M8 Bollinger 20 + buffer)
 
 REGIME_THRESHOLDS_DEFAULT: dict[str, float] = {
-    # v2.6.0 — sync com momentum_strategy.py REGIME_THRESHOLDS (apertado: WR=33%)
+    # v3.0.0 — sync com momentum_strategy.py REGIME_THRESHOLDS
     "TREND_EXPANSION":        0.62,
     "VOLATILITY_COMPRESSION": 0.64,
     "TREND_EXHAUSTION":       0.99,   # bloqueado
     "MEAN_REVERTING_CHOP":    0.72,
     "HIGH_CORRELATION_RISK":  0.99,   # bloqueado
     "PANIC_LIQUIDATION":      0.99,
-    "LIQUIDITY_VACUUM":       0.99,
+    "BEAR_TREND":             0.99,   # bloqueado
 }
 
 PLATT_A_PRIOR = 0.3567
@@ -330,34 +330,94 @@ def fetch_funding_rates(symbol: str, since_ts: int | None = None) -> list[tuple[
 
 # ── Signal logic (espelho de momentum_strategy.py) ────────────────────────────
 
-def detect_regime(closes: list[float], volumes: list[float]) -> str:
-    if len(closes) < 20:
+def _calc_adx_recal(highs: list[float], lows: list[float], closes: list[float],
+                    period: int = 10) -> tuple[float, float, float]:
+    """
+    Wilder's ADX — espelho de MomentumStrategy._calc_adx().
+    Inputs em ordem reversa (candles[0]=mais recente).
+    Retorna (adx, di_plus, di_minus). Default (20, 0.5, 0.5) se dados insuficientes.
+    """
+    n = min(len(highs), len(lows), len(closes))
+    if n < period + 2:
+        return 20.0, 0.5, 0.5
+    h  = list(reversed(highs[:n]))
+    lo = list(reversed(lows[:n]))
+    c  = list(reversed(closes[:n]))
+    trs, dmp, dmm = [], [], []
+    for i in range(1, n):
+        tr   = max(h[i] - lo[i], abs(h[i] - c[i-1]), abs(lo[i] - c[i-1]))
+        up   = h[i] - h[i-1]
+        down = lo[i-1] - lo[i]
+        dp   = up   if (up > down   and up   > 0) else 0.0
+        dm   = down if (down > up   and down > 0) else 0.0
+        trs.append(tr)
+        dmp.append(dp)
+        dmm.append(dm)
+    if len(trs) < period:
+        return 20.0, 0.5, 0.5
+
+    def _ws(data: list[float]) -> float:
+        s = sum(data[:period]) / period
+        for v in data[period:]:
+            s = (s * (period - 1) + v) / period
+        return s
+
+    atr_w = _ws(trs)
+    dp_w  = _ws(dmp)
+    dm_w  = _ws(dmm)
+    if atr_w <= 0:
+        return 20.0, 0.5, 0.5
+    di_p = 100.0 * dp_w / atr_w
+    di_m = 100.0 * dm_w / atr_w
+    dx   = 100.0 * abs(di_p - di_m) / (di_p + di_m) if (di_p + di_m) > 0 else 0.0
+    return round(dx, 2), round(di_p, 2), round(di_m, 2)
+
+
+def detect_regime(closes: list[float], volumes: list[float],
+                  highs: list[float] | None = None,
+                  lows: list[float] | None = None) -> str:
+    """
+    Regime detection v3.0.0 — ADX(10)+DI+/DI-.
+    Espelho de MomentumStrategy._detect_regime_1h().
+    highs/lows opcionais para compatibilidade com chamadas antigas.
+    """
+    if len(closes) < 12:
         return "MEAN_REVERTING_CHOP"
 
-    sma_fast = float(np.mean(closes[:5]))
-    sma_slow = float(np.mean(closes[:20]))
-    avg_vol  = float(np.mean(volumes[:20]))
-    last_vol = volumes[0]
-
-    drop = (closes[0] - closes[1]) / closes[1] if closes[1] > 0 else 0
-    if drop < -0.05:
+    # Panic override
+    if closes[1] > 0 and (closes[0] - closes[1]) / closes[1] < -0.05:
         return "PANIC_LIQUIDATION"
 
-    if sma_fast > sma_slow:
-        if last_vol > avg_vol * 1.2:
-            return "TREND_EXPANSION"
-        if last_vol < avg_vol * 0.8:
-            return "TREND_EXHAUSTION"
-        return "VOLATILITY_COMPRESSION"
+    # ADX precisa de highs/lows — fallback simplificado se não fornecidos
+    if highs is None or lows is None:
+        # Estimativa usando apenas closes (menos preciso, mas mantém compatibilidade)
+        highs  = [c * 1.001 for c in closes]
+        lows   = [c * 0.999 for c in closes]
 
-    atr_5 = float(np.mean([
-        abs(closes[i] - closes[i + 1]) for i in range(min(5, len(closes) - 1))
-    ]))
+    adx, di_plus, di_minus = _calc_adx_recal(highs, lows, closes, period=10)
+
+    # BEAR: declínio + DI- dominante
+    if len(closes) >= 11 and closes[10] > 0:
+        decline = (closes[0] - closes[10]) / closes[10]
+        if decline < -0.02 and di_minus > di_plus:
+            return "BEAR_TREND"
+
+    avg_vol  = sum(volumes) / len(volumes) if volumes else 1.0
+    last_vol = volumes[0] if volumes else avg_vol
+
+    if adx >= 25:
+        if di_plus >= di_minus:
+            if last_vol > avg_vol * 1.15:
+                return "TREND_EXPANSION"
+            if last_vol < avg_vol * 0.65:
+                return "TREND_EXHAUSTION"
+            return "VOLATILITY_COMPRESSION"
+        else:
+            return "BEAR_TREND"
+
+    atr_5   = sum(hi - lo for hi, lo in zip(highs[:5], lows[:5])) / 5
     rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
-
-    if rel_atr < 0.005:
-        return "LIQUIDITY_VACUUM"
-    if rel_atr > 0.025:
+    if rel_atr > 0.030:
         return "HIGH_CORRELATION_RISK"
 
     return "MEAN_REVERTING_CHOP"
@@ -510,64 +570,81 @@ def score_signal(closes: list[float], highs: list[float],
                  m6: float = 0.5, m7: float = 0.5,
                  m9: float = 0.5) -> float:
     """
-    Score M1-M9 espelho de MomentumStrategy._score_signal().
-    Pesos v2.6.0: M1=2% M2=5% M3=35% M4=0% M5=10% M6=16% M7=14% M8=6% M9=12%
+    Score M1-M9 espelho de MomentumStrategy._score_signal() v3.0.0.
+
+    Pesos v3.0.0: M3=40% M6=22% M7=18% M9=14% M8=6%
+    M1/M2/M5 DESATIVADOS (peso=0%). M1 calculado como RSI(14) apenas para diagnóstico.
     M6, M7 e M9 são injetados externamente por build_samples.
     M9 usa neutro 0.5 na calibração histórica (dados históricos de sentimento
-    não disponíveis — não impacta a calibração, mantém simetria).
+    não disponíveis — mantém simetria).
     IMPORTANTE: manter em sync com momentum_strategy.py.
     """
     n = len(closes)
 
-    # M1 Adaptive Momentum
-    atr  = sum(highs[i]-lows[i] for i in range(min(10,len(highs))))/min(10,len(highs))
-    norm = max(atr*2, closes[0]*0.005)
-    r1   = (closes[0]-closes[1])/closes[1]   if n>1  and closes[1]>0  else 0
-    r5   = (closes[0]-closes[5])/closes[5]   if n>5  and closes[5]>0  else 0
-    r10  = (closes[0]-closes[10])/closes[10] if n>10 and closes[10]>0 else 0
-    r20  = (closes[0]-closes[20])/closes[20] if n>20 and closes[20]>0 else 0
-    mw   = r1*0.30 + r5*0.30 + r10*0.25 + r20*0.15
-    m1   = min(max((mw/(norm/closes[0]))*0.5+0.5, 0.0), 1.0)
+    # M1 RSI(14) — DIAGNÓSTICO APENAS, peso=0% no score
+    # Zona ótima BUY: 40-65. Penaliza overbought (>70).
+    rsi_period = 14
+    if n >= rsi_period + 1:
+        gains, losses = [], []
+        for i in range(rsi_period):
+            diff = closes[i] - closes[i + 1]  # closes[0]=mais recente
+            if diff > 0:
+                gains.append(diff)
+                losses.append(0.0)
+            else:
+                gains.append(0.0)
+                losses.append(abs(diff))
+        avg_gain = sum(gains) / rsi_period
+        avg_loss = sum(losses) / rsi_period
+        if avg_loss == 0:
+            rsi = 100.0
+        else:
+            rs  = avg_gain / avg_loss
+            rsi = 100.0 - 100.0 / (1.0 + rs)
+        if 40 <= rsi <= 65:
+            m1_rsi = 0.75
+        elif 65 < rsi <= 70:
+            m1_rsi = 0.60
+        elif rsi > 70:
+            m1_rsi = max(0.3, 0.60 - (rsi - 70) * 0.03)
+        elif 30 <= rsi < 40:
+            m1_rsi = 0.45
+        else:
+            m1_rsi = 0.30
+    else:
+        m1_rsi = 0.5
+    # M1 não entra no score final (peso=0%), apenas diagnóstico
 
-    # M2 Trend Consistency
-    nb   = min(6, n-1)
-    bull = sum(1 for i in range(nb) if closes[i]>opens[i])/nb if nb>0 else 0.5
-    hh   = sum(1 for i in range(min(4,len(highs)-1)) if highs[i]>highs[i+1])/4
-    hl   = sum(1 for i in range(min(4,len(lows)-1))  if lows[i]>lows[i+1])/4
-    m2   = bull*0.5 + (hh+hl)/2*0.5
+    # M3 Directional Volume v3.0.0 — pressão direcional compradores vs vendedores
+    # directional_ratio = buy_vol / (buy_vol + sell_vol) nos últimos 12 candles
+    n_dir = min(12, n)
+    buy_vol  = sum(volumes[i] for i in range(n_dir) if closes[i] >= opens[i])
+    sell_vol = sum(volumes[i] for i in range(n_dir) if closes[i] < opens[i])
+    total_vol = buy_vol + sell_vol
+    directional_ratio = buy_vol / total_vol if total_vol > 0 else 0.5
 
-    # M3 Volume Confirmation
-    avg5  = sum(volumes[:5])/5   if len(volumes)>=5  else volumes[0] if volumes else 1
-    avg20 = sum(volumes[:20])/20 if len(volumes)>=20 else avg5
-    vr    = min(volumes[0]/avg5, 3.0)/3.0 if avg5>0 else 0.5
-    vt    = (
-        min(max(sum(volumes[:3])/sum(volumes[3:6]), 0.3), 2.0)
-        if len(volumes) >= 6 and sum(volumes[3:6]) > 0 else 1.0
-    )
-    cc    = 1.0 if closes[0]>opens[0] and volumes[0]>avg20 else 0.4
-    m3    = vr*0.4 + (vt-0.3)/1.7*0.3 + cc*0.3
+    # vol_ratio: volume atual vs média 20 candles (normalizado 0-1)
+    avg20 = sum(volumes[:20]) / 20 if len(volumes) >= 20 else (sum(volumes) / len(volumes) if volumes else 1.0)
+    vol_ratio = min(volumes[0] / avg20, 3.0) / 3.0 if avg20 > 0 else 0.5
 
-    # M4 Regime Strength — PESO=0% desde v2.5.0 (removido do score)
-    # O resultado é descartado intencionalmente (`_`). Manter o cálculo apenas
-    # para referência/comparação histórica se necessário reativar no futuro.
-    sma5  = sum(closes[:5])/5
-    sma20 = sum(closes[:20])/20 if n>=20 else sma5
-    dist  = (sma5-sma20)/sma20 if sma20>0 else 0
-    _ = min(max((dist+0.02)/0.04, 0.0), 1.0) * 0.6 + (0.85 if sma5 > sma20 else 0.45) * 0.4
+    # vol_trend_score: momentum de volume (últimos 3 vs 3 anteriores)
+    if len(volumes) >= 6 and sum(volumes[3:6]) > 0:
+        vt_raw = sum(volumes[:3]) / sum(volumes[3:6])
+        vol_trend_score = min(max((vt_raw - 0.5) / 1.5, 0.0), 1.0)
+    else:
+        vol_trend_score = 0.5
 
-    # M5 Candle Structure
-    cs = [(closes[i]-lows[i])/(highs[i]-lows[i]) if highs[i]>lows[i] else 0.5
-          for i in range(min(3, n))]
-    m5 = sum(cs)/len(cs) if cs else 0.5
+    m3 = directional_ratio * 0.50 + vol_ratio * 0.30 + vol_trend_score * 0.20
 
-    # M6, M7 e M9 injetados externamente (calculados em build_samples)
     # M8 Volatility State — calculado de candles
     m8 = _compute_m8_recal(closes, highs, lows)
 
-    # Pesos v2.6.0 — espelho exato de momentum_strategy.py
-    # M4=0 (removido), M9=0.5 neutro histórico, soma = 2+5+35+0+10+16+14+6+12 = 100%
-    return (m1*0.02 + m2*0.05 + m3*0.35 +
-            m5*0.10 + m6*0.16 + m7*0.14 + m8*0.06 + m9*0.12)
+    # M6, M7 e M9 injetados externamente (calculados em build_samples)
+
+    # Pesos v3.0.0 — espelho exato de momentum_strategy.py
+    # M1/M2/M5 DESATIVADOS. soma = 40+22+18+14+6 = 100%
+    _ = m1_rsi  # referência para evitar "unused variable" — diagnóstico sem peso
+    return (m3 * 0.40 + m6 * 0.22 + m7 * 0.18 + m9 * 0.14 + m8 * 0.06)
 
 
 def platt_calibrate(score: float, A: float, B: float) -> float:
@@ -624,8 +701,8 @@ def build_samples(candles: list[dict], symbol: str, gran: str,
         w_open  = list(reversed(opens[max(0, i - LOOKBACK):i + 1]))
         w_vol   = list(reversed(volumes[max(0, i - LOOKBACK):i + 1]))
 
-        regime = detect_regime(w_close, w_vol)
-        if regime in {"PANIC_LIQUIDATION", "LIQUIDITY_VACUUM"}:
+        regime = detect_regime(w_close, w_vol, w_high, w_low)
+        if regime in {"PANIC_LIQUIDATION", "BEAR_TREND"}:
             continue
 
         ts_now = candles[i]["ts"]
@@ -818,7 +895,7 @@ def main() -> None:
     end_dt = datetime.now(UTC)
 
     log.info("═" * 60)
-    log.info("  CCTBv5 — Recalibração %s", "INCREMENTAL" if args.incremental else "REBUILD")
+    log.info("  CCTBv5 — Recalibração %s  [schema v3.0.0]", "INCREMENTAL" if args.incremental else "REBUILD")
     log.info("  Símbolos : %s", ", ".join(args.symbols))
     log.info("  Janela   : %d candles %s à frente | fee %.2f%%",
              args.forward, args.gran, args.fee * 100)

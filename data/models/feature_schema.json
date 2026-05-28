@@ -1,108 +1,110 @@
 {
-  "version": "2.5.0",
-  "model_id": "momentum_scoring_v2",
-  "created_at": "2026-05-23",
+  "version": "3.0.0",
+  "model_id": "momentum_scoring_v3",
+  "created_at": "2026-05-27",
   "lookback_candles": 25,
-  "notes": "9 fatores (M4 peso 0, M9 novo). v2.5.0 2026-05-23: M9 News Sentiment adicionado (Fear&Greed + CoinGecko, peso 6%). Pesos redistribu\u00eddos: M2=11% M3=33% M6=12% M7=11% M8=19%.",
+  "notes": "v3.0.0 2026-05-27: Reforma quant — M1/M2/M5 desativados (perm_imp negativa). M3 reformulado para volume direcional. ADX(10) substituiu SMA para regime detection. Novos pesos: M3=40%, M6=22%, M7=18%, M9=14%, M8=6%.",
+  "disabled_features": ["m1_momentum", "m2_consistency", "m4_regime_str", "m5_candle"],
   "features": {
     "m1_momentum": {
-      "weight": 0.02,
-      "description": "Momentum adaptativo: m\u00e9dia ponderada de retornos 1/5/10/20 candles 1H, normalizado por ATR",
-      "lookback": 21,
-      "range": [
-        0.0,
-        1.0
-      ],
+      "weight": 0.0,
+      "status": "DISABLED",
+      "reason": "perm_imp=-0.0013 negativa. Reformulado para RSI(14) — diagnóstico apenas (peso=0%).",
+      "description": "RSI(14) 1H — zona ótima 40-65 para BUY. Diagnóstico sem impacto no score.",
+      "lookback": 16,
+      "range": [0.0, 1.0],
       "normalized": true,
       "leakage_safe": true
     },
     "m2_consistency": {
-      "weight": 0.11,
-      "description": "Consist\u00eancia de tend\u00eancia: % candles bullish + higher-highs E higher-lows graduais",
+      "weight": 0.0,
+      "status": "DISABLED",
+      "reason": "perm_imp=-0.0033 negativa. Monitorado no dashboard mas excluído do score.",
+      "description": "Consistência de tendência: % candles bullish + higher-highs/lows graduais",
       "lookback": 10,
-      "range": [
-        0.0,
-        1.0
-      ],
+      "range": [0.0, 1.0],
       "normalized": true,
       "leakage_safe": true
     },
     "m3_volume": {
-      "weight": 0.33,
-      "description": "Confirma\u00e7\u00e3o por volume: ratio + tend\u00eancia de volume + candle direcional",
+      "weight": 0.40,
+      "status": "ACTIVE",
+      "description": "Directional Volume v3.0: buy_vol/(buy_vol+sell_vol) 12 candles + volume relativo + momentum de volume. Único fator com edge real (perm_imp=+0.006). Reformulado de volume simples para pressão direcional.",
+      "formula": "directional_ratio*0.50 + vol_ratio*0.30 + vol_trend_score*0.20",
       "lookback": 20,
-      "range": [
-        0.0,
-        1.0
-      ],
+      "range": [0.0, 1.0],
       "normalized": true,
       "leakage_safe": true
     },
     "m4_regime_str": {
       "weight": 0.0,
-      "description": "For\u00e7a do regime: dist\u00e2ncia SMA5-SMA20 normalizada, blend com regime fixo",
+      "status": "DISABLED",
+      "reason": "perm_imp=0.0. Regime detection migrou para ADX(10)+DI+/DI-.",
+      "description": "Força do regime SMA: substituído por ADX(10) no detect_regime()",
       "lookback": 20,
-      "range": [
-        0.0,
-        1.0
-      ],
+      "range": [0.0, 1.0],
       "normalized": true,
       "leakage_safe": true
     },
     "m5_candle": {
-      "weight": 0.06,
-      "description": "Estrutura do candle: posi\u00e7\u00e3o do close no range dos \u00faltimos 3 candles (Williams %R style)",
+      "weight": 0.0,
+      "status": "DISABLED",
+      "reason": "perm_imp=-0.001 negativa. Monitorado no dashboard mas excluído do score.",
+      "description": "Estrutura do candle: posição do close no range dos últimos 3 candles (Williams %R style)",
       "lookback": 3,
-      "range": [
-        0.0,
-        1.0
-      ],
+      "range": [0.0, 1.0],
       "normalized": true,
       "leakage_safe": true
     },
     "m6_futures": {
-      "weight": 0.12,
-      "description": "Futures Flow: funding rate (perp) + varia\u00e7\u00e3o de Open Interest. L\u00ea sinal do mercado de derivativos sem operar futuros.",
+      "weight": 0.22,
+      "status": "ACTIVE",
+      "description": "Futures Flow: funding rate (perp) + variação de Open Interest. Spearman=0.52 em live. Elevado de 16%→22%.",
       "lookback": 1,
-      "range": [
-        0.0,
-        1.0
-      ],
+      "range": [0.0, 1.0],
       "normalized": true,
       "leakage_safe": true
     },
     "m7_rel_strength": {
-      "weight": 0.11,
-      "description": "Relative Strength vs BTC: RS 1h/5h/24h ponderado + BTC leadership score + tend\u00eancia de RS",
+      "weight": 0.18,
+      "status": "ACTIVE",
+      "description": "Relative Strength vs BTC: RS 1h/5h/24h ponderado + BTC leadership + tendência RS. Spearman=0.52 em live. Elevado de 14%→18%.",
       "lookback": 25,
-      "range": [
-        0.0,
-        1.0
-      ],
+      "range": [0.0, 1.0],
       "normalized": true,
       "leakage_safe": true
     },
     "m8_vol_state": {
-      "weight": 0.19,
-      "description": "Volatility State Machine: 5 estados (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC) via ATR + BB + dir_consistency",
+      "weight": 0.06,
+      "status": "ACTIVE",
+      "description": "Volatility State Machine: 5 estados (EXPANDING/TREND/COMPRESSED/MEAN_REVERTING/CHAOTIC) via ATR+BB+dir_consistency. Mantido baixo (perm_imp=-0.0028 mas estrutural para vol regime).",
       "lookback": 20,
-      "range": [
-        0.0,
-        1.0
-      ],
+      "range": [0.0, 1.0],
       "normalized": true,
       "leakage_safe": true
     },
     "m9_sentiment": {
-      "weight": 0.06,
-      "description": "News Sentiment: Fear & Greed Index (alternative.me) + CoinGecko social sentiment + price momentum 24h",
+      "weight": 0.14,
+      "status": "ACTIVE",
+      "description": "News Sentiment: Fear & Greed Index (alternative.me) + CoinGecko social sentiment. Spearman=0.52 em live. Elevado de 12%→14%.",
       "lookback": 1,
-      "range": [
-        0.0,
-        1.0
-      ],
+      "range": [0.0, 1.0],
       "normalized": true,
       "leakage_safe": true
     }
+  },
+  "regime_detection": {
+    "method": "ADX(10)+DI+/DI-",
+    "version": "v3.0.0",
+    "note": "Substituiu SMA crossover em 2026-05-27. ADX>=25=tendência, DI+>DI-=alta, DI->DI+=baixa, ADX<25=lateral.",
+    "period": 10,
+    "trend_threshold": 25
+  },
+  "sl_tp": {
+    "TREND_EXPANSION":        {"sl": 1.5, "tp": 5.0},
+    "VOLATILITY_COMPRESSION": {"sl": 1.2, "tp": 4.0},
+    "MEAN_REVERTING_CHOP":    {"sl": 1.0, "tp": 2.5},
+    "TREND_EXHAUSTION":       {"sl": 0.8, "tp": 2.5},
+    "HIGH_CORRELATION_RISK":  {"sl": 0.8, "tp": 2.0}
   }
 }

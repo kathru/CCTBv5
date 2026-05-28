@@ -303,11 +303,13 @@ class OrderManager:
         self,
         event: SignalEvent,
         quantity: float,
+        order_type_str: str = "market",
+        limit_price: float | None = None,
     ) -> None:
         """
-        Cria e submete ordem de mercado a partir de um sinal aprovado.
+        Cria e submete ordem a partir de um sinal aprovado.
         Quantidade já calculada pelo TradingLoop (kelly sizing).
-        Ordem MARKET — execução imediata ao preço atual.
+        order_type_str: "market" | "limit" | "post_only" — do SmartOrderRouter.
         """
         if not self._accepting_orders:
             logger.info(
@@ -327,14 +329,26 @@ class OrderManager:
             else OrderSide.SELL
         )
 
+        if order_type_str == "post_only":
+            otype = OrderType.LIMIT_MAKER
+            mode  = OrderMode.PASSIVE_LIMIT
+        elif order_type_str == "limit":
+            otype = OrderType.LIMIT
+            mode  = OrderMode.PASSIVE_LIMIT
+        else:
+            otype = OrderType.MARKET
+            mode  = OrderMode.MARKET
+            limit_price = None
+
         order = Order(
             symbol=signal.symbol,
             side=side,
-            order_type=OrderType.MARKET,
+            order_type=otype,
             quantity=quantity,
             strategy_id=signal.strategy_id,
             signal_id=event.event_id,
-            mode=OrderMode.MARKET,
+            mode=mode,
+            limit_price=limit_price,
         )
 
         await self._register(order)

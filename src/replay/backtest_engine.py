@@ -29,14 +29,15 @@ import random
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from ..core.config import OKX_MAKER_FEE, OKX_TAKER_FEE
 from ..core.models import Candle, Signal, SignalDirection
 from ..strategies.base import BaseStrategy, StrategyContext
 
 logger = logging.getLogger(__name__)
 
-# ── OKX Spot Fee Schedule (Tier 1 — conta padrão) ────────────────────────────
-MAKER_FEE = 0.0010   # 0.10%
-TAKER_FEE = 0.0015   # 0.15%
+# ── OKX Spot Fee Schedule (Tier 1) — usa constantes centralizadas ────────────
+MAKER_FEE = OKX_MAKER_FEE
+TAKER_FEE = OKX_TAKER_FEE
 PAPER_FEE = TAKER_FEE
 
 # ── Exit logic — espelha position_monitor.py ─────────────────────────────────

@@ -77,3 +77,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ── OKX Spot Fee Schedule (Tier 1) ───────────────────────────────────────────
+# Fonte única de verdade para todos os módulos (estratégia, backtest, live).
+OKX_MAKER_FEE      = 0.0010   # 0.10% — limit post-only
+OKX_TAKER_FEE      = 0.0015   # 0.15% — market / limit agressivo
+OKX_ROUND_TRIP_FEE = OKX_TAKER_FEE + OKX_MAKER_FEE   # 0.25% — entrada taker + saída maker

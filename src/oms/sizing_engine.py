@@ -97,9 +97,7 @@ class SizingResult:
             f"kelly={self.final_kelly:.3f} "
             f"(base={self.base_kelly:.3f} × "
             f"regime={self.regime_mult:.2f} × "
-            f"drift={self.drift_mult:.2f} × "
             f"vol={self.vol_state_mult:.2f} × "
-            f"calib={self.calibration_mult:.2f} × "
             f"score={self.score_mult:.2f}{exc})"
         )
 
@@ -129,33 +127,31 @@ class SizingEngine:
             calibrated_score:  Score calibrado pelo Platt (0–1)
             vol_state_data:    Dado do M8 (ctx.extra["vol_state"])
             model_health_data: Dado do ModelHealthMonitor (ctx.extra["model_health"])
+
+        Nota: drift_mult (PSI) e calibration_mult (WR drift) foram removidos deste
+        cálculo. Ambos já são tratados pelo EdgeConditioner via threshold_mult e
+        sizing_mult. Aplicar aqui também resultava em penalidade dupla.
         """
-        drift_mult        = self._drift_mult(model_health_data)
+        # PSI e WR diff mantidos para logging/breakdown mas não compõem o Kelly
+        drift_mult       = 1.0   # removido: EdgeConditioner._psi_gate já trata PSI
+        calibration_mult = 1.0   # removido: EdgeConditioner._wr_gate já trata WR drift
         vol_state_mult, vol_state = self._vol_state_mult(vol_state_data)
-        calibration_mult  = self._calibration_mult(model_health_data)
         score_mult        = self._score_mult(calibrated_score)
 
-        # PSI e WR diff para logging e breakdown
         max_psi = _extract_max_psi(model_health_data)
         wr_diff = _extract_wr_diff(model_health_data)
 
-        # ── Exceptional Edge Multiplier (Melhoria A) ─────────────────────────
-        # Quando TODAS as condições se alinham excepcionalmente, o sistema
-        # expressa maior convicção com posição maior — até +25% do base.
-        # Condições: PSI estável + WR alinhado/acima + vol favorável + score alto
-        # + regime favorável → exceptional_mult = 1.25
-        # Cria assimetria real: size máximo apenas quando edge é genuíno.
+        # ── Exceptional Edge Multiplier ──────────────────────────────────────
+        # Bônus +25% quando vol, regime e score se alinham excepcionalmente.
+        # PSI/WR removidos das condições (já penalizados no EdgeConditioner).
         exceptional_mult = self._exceptional_mult(
-            drift_mult=drift_mult,
-            calibration_mult=calibration_mult,
             vol_state_mult=vol_state_mult,
             regime_mult=regime_mult,
             calibrated_score=calibrated_score,
+            model_health_score=_extract_health_score(model_health_data),
         )
 
-        raw = (base_kelly * regime_mult * drift_mult
-               * vol_state_mult * calibration_mult
-               * score_mult * exceptional_mult)
+        raw = base_kelly * regime_mult * vol_state_mult * score_mult * exceptional_mult
         final_kelly = round(max(MIN_KELLY, min(MAX_KELLY, raw)), 4)
 
         result = SizingResult(
@@ -192,25 +188,7 @@ class SizingEngine:
 
         return result
 
-    # ── Dimensão 1: Drift (PSI) ───────────────────────────────────────────────
-
-    def _drift_mult(self, model_health: dict | None) -> float:
-        """
-        Reduz sizing quando features drifam do baseline.
-        PSI alto = distribuição das features mudou = modelo menos confiável.
-        """
-        max_psi = _extract_max_psi(model_health)
-        if max_psi is None:
-            return 1.0   # sem dados = neutro
-        if max_psi < 0.10:
-            return 1.00  # estável
-        if max_psi < 0.15:
-            return 0.80  # drift leve
-        if max_psi < 0.20:
-            return 0.60  # drift moderado — atenção
-        return 0.40      # drift crítico — reduz agressivamente
-
-    # ── Dimensão 2: Volatility State (M8) ────────────────────────────────────
+    # ── Dimensão 1: Volatility State (M8) ────────────────────────────────────
 
     def _vol_state_mult(self, vol_state_data: dict | None) -> tuple[float, str]:
         """
@@ -223,27 +201,7 @@ class SizingEngine:
         state = vol_state_data.get("state", "UNKNOWN")
         return VOL_STATE_MULT.get(state, 0.70), state
 
-    # ── Dimensão 3: Calibration drift (WR live vs calibrado) ─────────────────
-
-    def _calibration_mult(self, model_health: dict | None) -> float:
-        """
-        Se o WR live está acima do calibrado → modelo subestima o edge → size up leve.
-        Se o WR live está muito abaixo → modelo superestimou → size down agressivo.
-        """
-        wr_diff = _extract_wr_diff(model_health)
-        if wr_diff is None:
-            return 1.0   # sem dados = neutro
-        if wr_diff > 0.10:
-            return 1.10  # live bem melhor: modelo subestimou — aumenta levemente
-        if wr_diff > 0.05:
-            return 1.05
-        if wr_diff >= -0.05:
-            return 1.00  # alinhado — mantém
-        if wr_diff >= -0.10:
-            return 0.75  # live pior: modelo superestimou — reduz
-        return 0.50      # divergência grande — reduz agressivamente
-
-    # ── Dimensão 4: Score mult (força do sinal) ───────────────────────────────
+    # ── Dimensão 2: Score mult (força do sinal) ──────────────────────────────
 
     def _score_mult(self, calibrated: float) -> float:
         """
@@ -263,50 +221,41 @@ class SizingEngine:
 
     def _exceptional_mult(
         self,
-        drift_mult:       float,
-        calibration_mult: float,
-        vol_state_mult:   float,
-        regime_mult:      float,
-        calibrated_score: float,
+        vol_state_mult:      float,
+        regime_mult:         float,
+        calibrated_score:    float,
+        model_health_score:  float | None,
     ) -> float:
         """
-        Bônus de até +25% quando TODAS as condições se alinham excepcionalmente.
+        Bônus de até +25% quando todas as dimensões restantes se alinham.
 
-        Requisitos cumulativos (todos devem ser verdadeiros):
-          1. Features estáveis:   drift_mult = 1.00  (PSI < 0.10)
-          2. WR alinhado/acima:   calibration_mult ≥ 1.00
-          3. Vol favorável:       vol_state_mult ≥ 0.90 (EXPANDING ou TREND)
-          4. Regime favorável:    regime_mult ≥ 0.80
-          5. Score forte:         calibrated_score ≥ 0.65
+        Condições (após remoção das dimensões duplicadas PSI/WR do EdgeConditioner):
+          1. Vol favorável:       vol_state_mult ≥ 0.90 (EXPANDING ou TREND)
+          2. Regime favorável:    regime_mult ≥ 0.80
+          3. Score forte:         calibrated_score ≥ 0.65
+          4. Model health saudável: health_score ≥ 70
 
-        Escala gradual (não binária):
-          4 de 5 condições → ×1.10
-          5 de 5 condições → ×1.25
-
-        Lógica: quando o edge é genuíno e múltiplos sinais confirmam,
-        o sistema deve expressar maior convicção com posição maior.
-        Assimetria real: small loss quando errado, bigger win quando certo.
+        3 de 4 → ×1.10 | 4 de 4 → ×1.25
         """
         conditions = [
-            drift_mult >= 1.00,           # features estáveis
-            calibration_mult >= 1.00,     # WR live ≥ calibrado
-            vol_state_mult >= 0.90,       # vol EXPANDING ou TREND
-            regime_mult >= 0.80,          # regime favorável
-            calibrated_score >= 0.65,     # sinal forte
+            vol_state_mult >= 0.90,                                 # vol EXPANDING ou TREND
+            regime_mult >= 0.80,                                    # regime favorável
+            calibrated_score >= 0.65,                               # sinal forte
+            (model_health_score or 0) >= 70,                        # modelo saudável
         ]
         n = sum(conditions)
 
-        if n == 5:
+        if n == 4:
             logger.info(
-                "SizingEngine: EXCEPTIONAL EDGE — todas as 5 condições alinhadas "
-                "→ kelly ×1.25 (drift=%.2f calib=%.2f vol=%.2f reg=%.2f score=%.2f)",
-                drift_mult, calibration_mult, vol_state_mult,
-                regime_mult, calibrated_score,
+                "SizingEngine: EXCEPTIONAL EDGE — 4/4 condições → kelly ×1.25 "
+                "(vol=%.2f regime=%.2f score=%.2f health=%s)",
+                vol_state_mult, regime_mult, calibrated_score,
+                f"{model_health_score:.0f}" if model_health_score else "N/A",
             )
             return 1.25
-        if n == 4:
+        if n == 3:
             return 1.10
-        return 1.00   # condições normais — sem bônus
+        return 1.00
 
 
 # ── Helpers internos ──────────────────────────────────────────────────────────
@@ -334,5 +283,16 @@ def _extract_wr_diff(model_health: dict | None) -> float | None:
         if live is None or calib is None:
             return None
         return round(float(live) - float(calib), 4)
+    except Exception:
+        return None
+
+
+def _extract_health_score(model_health: dict | None) -> float | None:
+    """Extrai health_score geral do model_health."""
+    if not model_health:
+        return None
+    try:
+        v = model_health.get("health_score")
+        return float(v) if v is not None else None
     except Exception:
         return None

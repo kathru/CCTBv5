@@ -48,8 +48,9 @@ SYMBOLS          = ["BTC-USDT", "ETH-USDT", "SOL-USDT"]
 MONTHS_HISTORY   = 6
 INITIAL_CAPITAL  = 10_000.0
 IS_SPLIT         = 0.70    # 70% calibração / 30% validação
-MIN_TRADES_VALID = 5       # mínimo de trades por regime para ser válido
+MIN_TRADES_VALID = 30      # mínimo de trades por regime para ser válido (significância estatística)
 MIN_IS_SHARPE    = 0.20    # mínimo para considerar o regime calibrável
+MIN_OOS_TRADES   = 10      # mínimo de trades OOS para validação de degradação
 
 # Estratégias a simular — apenas as que operam em granularidade 1H.
 # trend_v1 (TrendStrategy) usa candles diários agregados + EMA50D e lógica
@@ -171,17 +172,45 @@ def compute_sharpe(pnls: list[float]) -> float:
     return (avg / std) * (len(pnls) ** 0.5)
 
 
-def pnl_to_weight(expectancy: float, win_rate: float, n: int) -> float:
+def wilson_ci95_lower(wins: int, n: int) -> float:
+    """
+    Limite inferior do intervalo de confiança de Wilson a 95% para proporções.
+    Retorna a estimativa conservadora do win rate real.
+    Se o CI inferior cruzar 0.5 (break-even para RR=1), o regime é duvidoso.
+    """
+    if n == 0:
+        return 0.0
+    import math
+    z = 1.96  # 95% CI
+    p = wins / n
+    denom = 1 + z * z / n
+    center = p + z * z / (2 * n)
+    spread = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+    return (center - spread) / denom
+
+
+def pnl_to_weight(expectancy: float, win_rate: float, n: int, wins: int | None = None) -> float:
     """
     Converte métricas de performance em peso [0.05, 1.20].
     Estratégias com expectancy positiva e WR > 40% recebem peso maior.
+    Usa CI95% de Wilson para penalizar estimativas com alta incerteza.
     """
     wr_score  = min(max(win_rate * 2, 0.0), 1.2)           # 0.5 WR → 1.0
     exp_score = min(max(expectancy * 20 + 0.5, 0.0), 1.2)  # exp > 0 → > 0.5
     base = (wr_score + exp_score) / 2
-    # Penaliza poucos trades (alta incerteza)
-    confidence = min(n / MIN_TRADES_VALID, 1.0)
-    return max(round(base * confidence, 4), 0.05)
+
+    # Penaliza incerteza: usa CI95% de Wilson como estimativa conservadora
+    if wins is not None and n >= 5:
+        ci_lower = wilson_ci95_lower(wins, n)
+        # Se CI inferior < 0.35 (abaixo do WR calibrado mínimo esperado), reduz peso
+        if ci_lower < 0.35:
+            base *= 0.5
+    else:
+        # Sem CI (n < 5): penaliza pela falta de dados
+        confidence = min(n / MIN_TRADES_VALID, 1.0)
+        base *= confidence
+
+    return max(round(base, 4), 0.05)
 
 
 async def run_simulation(
@@ -322,18 +351,22 @@ async def main() -> None:
             exp_is = is_data.get("pnl_total", 0) / max(n_is, 1)
             shr_is = compute_sharpe([is_data.get("pnl_total", 0) / max(n_is, 1)] * n_is)
 
+            wins_is = is_data.get("wins", 0)
+            ci_lower = wilson_ci95_lower(wins_is, n_is)
+
             if shr_is < MIN_IS_SHARPE:
                 # Sem edge suficiente no IS → peso baixo (não bloqueia, apenas reduz)
                 weight = 0.10
                 reason = f"IS Sharpe={shr_is:.2f} < {MIN_IS_SHARPE}"
             else:
-                weight = pnl_to_weight(exp_is, wr_is, n_is)
-                reason = f"IS Sharpe={shr_is:.2f} wr={wr_is:.1%} exp={exp_is:.2f}"
+                weight = pnl_to_weight(exp_is, wr_is, n_is, wins=wins_is)
+                reason = (f"IS Sharpe={shr_is:.2f} wr={wr_is:.1%} "
+                          f"exp={exp_is:.2f} CI95_lower={ci_lower:.1%}")
 
             # Validação OOS
             oos_verdict = "N/A"
             n_oos = oos_data.get("n", 0)
-            if n_oos >= 3:
+            if n_oos >= MIN_OOS_TRADES:
                 exp_oos = oos_data.get("pnl_total", 0) / max(n_oos, 1)
                 degradation = (exp_is - exp_oos) / abs(exp_is) if exp_is != 0 else 0
                 if degradation > 0.70:

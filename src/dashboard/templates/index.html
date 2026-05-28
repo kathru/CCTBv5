@@ -424,9 +424,9 @@
       /* Drawdown 5 boxes: 3 + 2 */
       .dd-grid-5 { grid-template-columns: repeat(3,1fr) !important; }
 
-      /* Feature importance */
-      .fi-row-grid { grid-template-columns: 80px 1fr 38px !important; }
-      .fi-sch-col { display: none !important; }
+      /* Feature importance — mobile */
+      .fi-row-main { gap: 6px !important; }
+      .fi-right-col { flex-direction: column !important; align-items: flex-end !important; gap: 1px !important; min-width: 64px !important; }
       .fi-badge-wrap { flex-wrap: wrap; gap: 4px; }
       .fi-badge-wrap .hbadge { font-size: 0.68rem !important; white-space: nowrap; }
     }
@@ -2939,22 +2939,35 @@ function renderImportance(data){
     const schBarW=(schW/maxImp*100).toFixed(0);
     const corr=f.spearman_corr||0;
     const corrSign=corr>=0?'+':'';
-    const col=relImp>0.01?'var(--blue)':'var(--muted)';
+    const col=relImp>0.01?'var(--cyan)':'var(--muted)';
     const alignCol=aligned?'var(--green)':'var(--red)';
     const delta=((relImp-schW)*100).toFixed(0);
-    const deltaSign=delta>=0?'+':'';
-    return`<div style="padding:2px 0;">
-      <div class="fi-row-grid" style="display:grid;grid-template-columns:110px 1fr 44px 72px;align-items:center;gap:6px;margin-bottom:3px;">
-        <span style="font-size:0.82rem;color:var(--text);font-weight:600">${label}</span>
-        <div style="position:relative;height:15px;background:#060d1a;border-radius:7px;overflow:visible;">
-          <div style="position:absolute;top:0;left:0;height:15px;width:${barW}%;background:${col};border-radius:10px;transition:width 0.5s"></div>
-          <div style="position:absolute;top:-3px;bottom:-3px;left:${schBarW}%;width:2px;background:rgba(255,255,255,0.5);border-radius:2px;" title="Schema weight"></div>
+    const deltaSign=Number(delta)>=0?'+':'';
+    const schPct=(schW*100).toFixed(0);
+    const relPct=(relImp*100).toFixed(0);
+    return`
+    <div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <!-- Linha principal: label | barra | info direita -->
+      <div class="fi-row-main" style="display:flex;align-items:center;gap:8px;">
+        <!-- Label -->
+        <span style="font-size:0.82rem;color:var(--text);font-weight:700;min-width:28px;flex-shrink:0;">${label}</span>
+        <!-- Barra (flex:1) -->
+        <div style="position:relative;height:6px;background:rgba(255,255,255,0.06);border-radius:4px;flex:1;min-width:0;">
+          <div style="position:absolute;top:0;left:0;height:6px;width:${barW}%;background:${col};border-radius:4px;transition:width 0.6s ease;"></div>
+          <div style="position:absolute;top:-4px;bottom:-4px;left:${schBarW}%;width:2px;background:rgba(255,255,255,0.35);border-radius:2px;" title="Peso schema: ${schPct}%"></div>
         </div>
-        <span style="font-size:0.88rem;font-weight:800;color:${col};text-align:right">${(relImp*100).toFixed(0)}%</span>
-        <span class="fi-sch-col" style="font-size:0.72rem;color:${alignCol};text-align:right;white-space:nowrap">${deltaSign}${delta}%<span style="opacity:0.6"> (sch ${(schW*100).toFixed(0)}%)</span></span>
+        <!-- Info direita: % importância + delta (sch) -->
+        <div class="fi-right-col" style="display:flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;">
+          <span style="font-size:0.88rem;font-weight:800;color:${col};min-width:36px;text-align:right;">${relPct}%</span>
+          <span style="font-size:0.70rem;color:${alignCol};text-align:right;min-width:90px;">
+            ${deltaSign}${delta}%<span style="opacity:0.55;"> (sch ${schPct}%)</span>
+          </span>
+        </div>
       </div>
-      <div style="font-size:0.72rem;color:var(--muted);padding-left:116px;">
-        Spearman ${corrSign}${corr.toFixed(3)} · PermImp ${(f.perm_importance||0).toFixed(4)}
+      <!-- Linha secundária: Spearman + PermImp -->
+      <div style="font-size:0.68rem;color:var(--muted);margin-top:3px;padding-left:36px;">
+        Spearman <span style="color:${corr>=0?'var(--green)':'var(--red)'}">${corrSign}${corr.toFixed(3)}</span>
+        &nbsp;·&nbsp; PermImp <span style="color:var(--slate)">${(f.perm_importance||0).toFixed(4)}</span>
       </div>
     </div>`;
   }).join('');

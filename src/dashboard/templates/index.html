@@ -1866,7 +1866,7 @@
 <div class="section-hdr">
   <div class="dot" style="background:var(--yellow)"></div>
   Robustness &amp; Macro
-  <span id="mr-regime-badge" style="margin-left:auto;font-size:0.82rem;font-weight:800;padding:3px 12px;border-radius:5px;letter-spacing:0.5px;">–</span>
+  <span id="mr-regime-badge-body" style="margin-left:auto;font-size:0.82rem;font-weight:800;padding:3px 12px;border-radius:5px;letter-spacing:0.5px;">–</span>
 </div>
 <div class="grid g31">
 
@@ -4400,9 +4400,11 @@ function buildMetaRegime(mr){
   const regime = mr.regime||'UNKNOWN';
   const cfg = COLORS[regime]||COLORS.UNKNOWN;
 
-  // Badge no header
+  // Badge no header + badge no body (ambos sincronizados)
   const badgeEl = document.getElementById('mr-regime-badge');
-  if(badgeEl){ badgeEl.textContent=cfg.badge; badgeEl.style.background=cfg.bg; badgeEl.style.color=cfg.c; }
+  if(badgeEl){ badgeEl.textContent=cfg.badge; badgeEl.style.background=cfg.bg; badgeEl.style.color=cfg.c; badgeEl.style.borderColor=cfg.c+'44'; }
+  const badgeBody = document.getElementById('mr-regime-badge-body');
+  if(badgeBody){ badgeBody.textContent=cfg.badge; badgeBody.style.background=cfg.bg; badgeBody.style.color=cfg.c; }
 
   // Nome + descrição
   const regEl=document.getElementById('mr-regime');

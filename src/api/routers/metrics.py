@@ -44,15 +44,24 @@ async def get_performance(request: Request) -> dict:
     # Lê apenas ordens filled do bot (exclui okx_import e exchange_sync)
     from ...persistence.repositories.orders import EXCLUDED_STRATEGY_IDS
     rows = await db.fetch(
-        "SELECT symbol, side, filled_quantity, avg_fill_price, fees_paid, filled_at "
+        "SELECT symbol, side, strategy_id, filled_quantity, avg_fill_price, fees_paid, filled_at "
         "FROM orders WHERE status='filled' AND strategy_id != ALL($1) "
         "ORDER BY filled_at ASC",
         list(EXCLUDED_STRATEGY_IDS),
     )
 
     total_trades = len(rows)
-    total_buys   = sum(1 for r in rows if str(r["side"]).upper() in ("BUY", "LONG"))
-    total_sells  = sum(1 for r in rows if str(r["side"]).upper() in ("SELL", "SHORT"))
+    # B5 fix: para momentum_short, contabiliza sell como "buy" e buy como "sell"
+    total_buys = sum(
+        1 for r in rows
+        if (str(r.get("strategy_id") or "") == "momentum_short" and str(r["side"]).upper() in ("SELL", "SHORT"))
+        or (str(r.get("strategy_id") or "") != "momentum_short" and str(r["side"]).upper() in ("BUY", "LONG"))
+    )
+    total_sells = sum(
+        1 for r in rows
+        if (str(r.get("strategy_id") or "") == "momentum_short" and str(r["side"]).upper() in ("BUY", "LONG"))
+        or (str(r.get("strategy_id") or "") != "momentum_short" and str(r["side"]).upper() in ("SELL", "SHORT"))
+    )
     total_fees   = 0.0
     total_volume = 0.0
     pnl_by_symbol: dict[str, float] = {}
@@ -66,15 +75,26 @@ async def get_performance(request: Request) -> dict:
         price    = float(r["avg_fill_price"] or 0)
         fees     = float(r["fees_paid"] or 0)
         side     = str(r["side"]).upper()
+        strat    = str(r.get("strategy_id") or "")
         notional = qty * price
 
         fees_from_db += fees
         total_volume += notional
 
-        if side in ("BUY", "LONG"):
-            buys_by_sym[sym]  = buys_by_sym.get(sym, 0) + notional
-        elif side in ("SELL", "SHORT"):
-            sells_by_sym[sym] = sells_by_sym.get(sym, 0) + notional
+        # B5 fix: momentum_short inverte a lógica BUY/SELL do PnL.
+        # Na abertura do SHORT: side='sell' (entrada) → contabiliza como "compra short"
+        # Na cobertura do SHORT: side='buy' (saída)  → contabiliza como "venda short"
+        # Isso garante que pnl = (entrada_short − cobertura) × qty (positivo se cair)
+        if strat == "momentum_short":
+            if side in ("SELL", "SHORT"):
+                buys_by_sym[sym]  = buys_by_sym.get(sym, 0) + notional   # entrada short
+            elif side in ("BUY", "LONG"):
+                sells_by_sym[sym] = sells_by_sym.get(sym, 0) + notional  # cobertura short
+        else:
+            if side in ("BUY", "LONG"):
+                buys_by_sym[sym]  = buys_by_sym.get(sym, 0) + notional
+            elif side in ("SELL", "SHORT"):
+                sells_by_sym[sym] = sells_by_sym.get(sym, 0) + notional
 
     # OKX demo pode retornar fees=0 — estima 0.1% (taker rate padrão) nesse caso
     if fees_from_db == 0.0 and total_volume > 0:
@@ -88,13 +108,21 @@ async def get_performance(request: Request) -> dict:
     qty_bought: dict[str, float] = {}
     qty_sold:   dict[str, float] = {}
     for r in rows:
-        sym  = r["symbol"]
-        qty  = float(r["filled_quantity"] or 0)
-        side = str(r["side"]).upper()
-        if side in ("BUY", "LONG"):
-            qty_bought[sym] = qty_bought.get(sym, 0) + qty
-        elif side in ("SELL", "SHORT"):
-            qty_sold[sym] = qty_sold.get(sym, 0) + qty
+        sym   = r["symbol"]
+        qty   = float(r["filled_quantity"] or 0)
+        side  = str(r["side"]).upper()
+        strat = str(r.get("strategy_id") or "")
+        # B5 fix: momentum_short — entrada é sell, saída é buy (lógica invertida)
+        if strat == "momentum_short":
+            if side in ("SELL", "SHORT"):
+                qty_bought[sym] = qty_bought.get(sym, 0) + qty
+            elif side in ("BUY", "LONG"):
+                qty_sold[sym] = qty_sold.get(sym, 0) + qty
+        else:
+            if side in ("BUY", "LONG"):
+                qty_bought[sym] = qty_bought.get(sym, 0) + qty
+            elif side in ("SELL", "SHORT"):
+                qty_sold[sym] = qty_sold.get(sym, 0) + qty
 
     for sym in set(list(buys_by_sym) + list(sells_by_sym)):
         b_qty  = qty_bought.get(sym, 0)

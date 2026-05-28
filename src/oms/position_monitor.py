@@ -125,6 +125,36 @@ REGIMES_CONVERT_TP = {"TREND_EXPANSION"}
 TRAIL_ATR_RUNNING  = 2.5   # trailing inicial ao converter TP (running mode)
 
 
+# ── ShortSwapPlan — plano de saída para SHORTs direcionais via SWAP perp ─────
+
+@dataclass
+class ShortSwapPlan:
+    """
+    Plano de saída para SHORT direcional via OKX perpetual swap (BEAR_TREND).
+    Criado pelo TradingLoop após _place_swap_short() ser confirmado.
+    Destruído quando o PositionMonitor fecha a posição via _close_swap_short().
+
+    Lógica (invertida em relação ao LONG):
+      - Stop Loss  : preço ACIMA da entrada (perda se o ativo subir)
+      - Take Profit: preço ABAIXO da entrada (ganho se o ativo cair)
+    """
+    symbol:       str        # spot symbol, ex: "BTC-USDT"
+    swap_sym:     str        # swap symbol, ex: "BTC-USDT-SWAP"
+    contracts:    int        # número de contratos OKX
+    entry_price:  float      # preço spot no momento da entrada
+    stop_loss:    float      # preço ACIMA da entrada (shortSL = entry + atr×sl_mult)
+    take_profit:  float      # preço ABAIXO da entrada (shortTP = entry − atr×tp_mult)
+    backstop_at:  datetime   # expiração máxima (7 dias)
+    strategy_id:  str
+    created_at:   datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    def summary(self) -> str:
+        return (
+            f"SHORT {self.symbol} contracts={self.contracts} "
+            f"entry={self.entry_price:.2f} sl={self.stop_loss:.2f} tp={self.take_profit:.2f}"
+        )
+
+
 # ── ExitPlan ──────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -267,6 +297,12 @@ class PositionMonitor:
 
         self._pending_factors: dict[str, dict] = {}
 
+        # ── SHORT direcional via swap perp ────────────────────────────────────
+        # ShortSwapPlans ativos: symbol → ShortSwapPlan
+        self._short_plans: dict[str, ShortSwapPlan] = {}
+        # CrossAssetEngine injetado via set_cross_asset() após startup
+        self._cross_asset = None
+
         # ── Ghost Fill Detection ──────────────────────────────────────────────
         # Detecta ExitPlans sem posição real no OKX (fills fantasma do paper trading).
         # _ghost_streak: quantas verificações consecutivas sem posição no Redis.
@@ -363,7 +399,9 @@ class PositionMonitor:
         candles_1h = self._market.get_candles(symbol, "1H", limit=ATR_PERIOD + 5)
         atr    = _calc_atr(candles_1h, ATR_PERIOD) if len(candles_1h) >= ATR_PERIOD else 0.0
         atr    = atr or entry_price * 0.015
-        regime = _detect_regime(candles_1h)
+        # B4 fix: usa regime do sinal original (ADX-based) se disponível,
+        # evitando discrepância com a detecção SMA-based do monitor.
+        regime = (signal_factors or {}).get("regime") or _detect_regime(candles_1h)
 
         plan = ExitPlan(
             symbol=symbol,
@@ -417,6 +455,9 @@ class PositionMonitor:
             await asyncio.sleep(self._interval)
 
     async def _check_positions(self) -> None:
+        # Verifica SHORTs direcionais via swap (sempre, independente de long plans)
+        await self._check_short_plans()
+
         if not self._plans:
             self._check_cycle = 0
             return
@@ -760,13 +801,122 @@ class PositionMonitor:
                 except Exception as we_exc:
                     logger.debug("WeightEngine.record_trade falhou: %s", we_exc)
 
+    # ── SHORT direcional via swap perp ───────────────────────────────────────
+
+    def set_cross_asset(self, engine) -> None:
+        """Injeta o CrossAssetEngine para poder fechar SHORTs via swap."""
+        self._cross_asset = engine
+
+    def register_short_plan(
+        self,
+        symbol: str,
+        swap_sym: str,
+        contracts: int,
+        entry_price: float,
+        atr: float,
+        strategy_id: str,
+    ) -> None:
+        """
+        Registra um ShortSwapPlan após abertura confirmada de SHORT direcional.
+        Chamado pelo TradingLoop após _place_swap_short() retornar.
+
+        SL/TP invertidos (SHORT):
+          - SL = entry + atr × 0.5   (fecha com perda se mercado SUBIR)
+          - TP = entry − atr × 1.0   (fecha com lucro se mercado CAIR)
+          - Backstop: 7 dias (shorts direcionais não devem durar mais)
+        """
+        sl_mult = REGIME_MULT.get("BEAR_TREND", {}).get("sl", 0.5)
+        tp_mult = REGIME_MULT.get("BEAR_TREND", {}).get("tp", 1.0)
+        plan = ShortSwapPlan(
+            symbol=symbol,
+            swap_sym=swap_sym,
+            contracts=contracts,
+            entry_price=entry_price,
+            stop_loss=round(entry_price + atr * sl_mult, 2),
+            take_profit=round(entry_price - atr * tp_mult, 2),
+            backstop_at=datetime.now(UTC) + timedelta(days=7),
+            strategy_id=strategy_id,
+        )
+        self._short_plans[symbol] = plan
+        logger.info("ShortSwapPlan criado: %s", plan.summary())
+
+    async def _check_short_plans(self) -> None:
+        """Verifica SL/TP/backstop para todos os SHORTs direcionais ativos."""
+        if not self._short_plans:
+            return
+        now = datetime.now(UTC)
+        for symbol, plan in list(self._short_plans.items()):
+            try:
+                price_raw = await self._cache.get_price(symbol)
+                if not price_raw or float(price_raw) <= 0:
+                    continue
+                price = float(price_raw)
+
+                reason: str | None = None
+                if price >= plan.stop_loss:
+                    reason = "short_stop_loss"
+                elif price <= plan.take_profit:
+                    reason = "short_take_profit"
+                elif now >= plan.backstop_at:
+                    reason = "short_backstop_7d"
+
+                if reason:
+                    await self._close_short_plan(plan, price, reason)
+            except Exception as exc:
+                logger.error("ShortSwapPlan check %s: %s", symbol, exc, exc_info=True)
+
+    async def _close_short_plan(
+        self, plan: ShortSwapPlan, price: float, reason: str
+    ) -> None:
+        """Fecha SHORT via BUY_COVER no swap perp e remove o plano."""
+        symbol = plan.symbol
+        # PnL SHORT = (entrada − saída) × qty_base (positivo quando mercado cai)
+        cs_map = {"BTC-USDT-SWAP": 0.01, "ETH-USDT-SWAP": 0.1, "SOL-USDT-SWAP": 1.0}
+        cs     = cs_map.get(plan.swap_sym, 1.0)
+        pnl    = (plan.entry_price - price) * plan.contracts * cs
+
+        logger.info(
+            "SHORT EXIT %s contracts=%d entry=%.2f exit=%.2f pnl≈%.2f USDT reason=%s",
+            symbol, plan.contracts, plan.entry_price, price, pnl, reason,
+        )
+
+        if self._cross_asset is None:
+            logger.error(
+                "ShortSwapPlan: CrossAssetEngine não injetado — não é possível "
+                "fechar %s automaticamente. Intervenção manual necessária.", symbol,
+            )
+            return
+
+        try:
+            await self._cross_asset._close_swap_short(plan.swap_sym, plan.contracts)
+            self._short_plans.pop(symbol, None)
+            self._exits_today += 1
+            logger.info("SHORT EXIT %s executado com sucesso (reason=%s)", symbol, reason)
+        except Exception as exc:
+            logger.error("SHORT EXIT falha %s: %s", symbol, exc, exc_info=True)
+
     # ── Status (para dashboard e API) ────────────────────────────────────────
 
     def status(self) -> dict:
         return {
-            "running":      self._running,
-            "active_plans": len(self._plans),
-            "exits_today":  self._exits_today,
+            "running":        self._running,
+            "active_plans":   len(self._plans),
+            "active_shorts":  len(self._short_plans),
+            "exits_today":    self._exits_today,
+            "short_plans": {
+                sym: {
+                    "swap_sym":    p.swap_sym,
+                    "contracts":   p.contracts,
+                    "entry_price": p.entry_price,
+                    "stop_loss":   p.stop_loss,
+                    "take_profit": p.take_profit,
+                    "backstop_at": p.backstop_at.isoformat(),
+                    "age_hours":   round(
+                        (datetime.now(UTC) - p.created_at).total_seconds() / 3600, 2
+                    ),
+                }
+                for sym, p in self._short_plans.items()
+            },
             "ghost_suspects": dict(self._ghost_streak),   # symbols sob suspeita
             "plans": {
                 sym: {

@@ -347,6 +347,8 @@ class TradingLoop:
         self._cross_asset = CrossAssetEngine(cache=self._cache, okx_client=self._okx)
         await self._cross_asset.start()
         logger.info("CrossAssetEngine: market-neutral strategy started")
+        # B1 fix: injeta no PositionMonitor para fechar SHORTs direcionais via swap
+        self._position_monitor.set_cross_asset(self._cross_asset)
 
         await self._runner.start()
         await self._position_monitor.start()
@@ -581,30 +583,109 @@ class TradingLoop:
         # ── SHORT via swap perp (BEAR_TREND com flag short_via_swap) ─────────
         # Sinais SHORT gerados pelo MomentumStrategy em BEAR_TREND são roteados
         # para o CrossAssetEngine que os executa via OKX perpetual swap.
+        # Pipeline completo: sizing por kelly → swap order → DB persist → ShortSwapPlan
         if (signal.direction == SignalDirection.SHORT
                 and (signal.factors or {}).get("short_via_swap")
                 and hasattr(self, "_cross_asset")):
-            swap_sym = signal.symbol.replace("-USDT", "-USDT-SWAP")
-            pv = self._portfolio.state.total_value or 82_515.77
+            import uuid as _uuid
+
+            from ..oms.position_monitor import _calc_atr as _pm_calc_atr
+            from ..strategies.cross_asset.cross_asset_strategy import SWAP_CONTRACT_SIZE
+
+            swap_sym  = signal.symbol.replace("-USDT", "-USDT-SWAP")
+            pv        = self._portfolio.state.total_value or 82_515.77
             price_raw = await self._cache.get_price(signal.symbol)
-            price = float(price_raw) if price_raw else 0
+            price     = float(price_raw) if price_raw else 0.0
+
             if price > 0 and pv > 0:
-                notional   = pv * 0.05   # 5% do portfolio para shorts direcionais
-                from ..strategies.cross_asset.cross_asset_strategy import SWAP_CONTRACT_SIZE
-                cs = SWAP_CONTRACT_SIZE.get(swap_sym, 1.0)
-                contracts  = max(1, int(notional / (price * cs)))
+                # B2 fix: usa kelly_fraction do sinal (calculado pelo SizingEngine)
+                # em vez de 5% hardcoded — respeita o sizing da estratégia.
+                kelly    = max(float(signal.kelly_fraction or 0.03), 0.01)
+                notional = pv * kelly
+                cs       = SWAP_CONTRACT_SIZE.get(swap_sym, 1.0)
+                contracts = max(1, int(notional / (price * cs)))
                 logger.info(
-                    "BEAR SHORT %s: %d contratos via swap | notional=%.2f",
-                    swap_sym, contracts, notional,
+                    "BEAR SHORT %s: %d contratos via swap | kelly=%.1f%% notional=%.2f",
+                    swap_sym, contracts, kelly * 100, notional,
                 )
-                import asyncio as _asyncio
-                _asyncio.create_task(
-                    self._cross_asset._place_swap_short(signal.symbol, contracts),
-                    name=f"bear_short_{signal.symbol}",
+
+                # B3 fix: usa await para obter exchange_order_id antes de persistir
+                try:
+                    eid = await self._cross_asset._place_swap_short(
+                        signal.symbol, contracts
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "BEAR SHORT %s: falha ao colocar ordem swap: %s", swap_sym, exc
+                    )
+                    return
+
+                # B3 fix: persiste ordem no banco via INSERT direto
+                # (OMS não gerencia swaps; inserimos como strategy_id='momentum_short')
+                if self._db:
+                    try:
+                        coid = f"bear_short_{_uuid.uuid4().hex[:16]}"
+                        qty_base = float(contracts) * cs
+                        await self._db.execute(
+                            """
+                            INSERT INTO orders (
+                                client_order_id, exchange_order_id,
+                                symbol, side, order_type, mode, status,
+                                quantity, filled_quantity, avg_fill_price,
+                                fees_paid, strategy_id, signal_id,
+                                created_at, filled_at
+                            ) VALUES (
+                                $1, $2,
+                                $3, 'sell', 'market', 'paper', 'filled',
+                                $4, $4, $5,
+                                0, 'momentum_short', 'bear_short_signal',
+                                NOW(), NOW()
+                            ) ON CONFLICT (client_order_id) DO NOTHING
+                            """,
+                            coid,
+                            eid or f"swap_{signal.symbol}_{coid}",
+                            signal.symbol,
+                            qty_base,
+                            price,
+                        )
+                        logger.info(
+                            "BEAR SHORT %s: ordem persistida no DB (coid=%s qty=%.4f)",
+                            signal.symbol, coid, qty_base,
+                        )
+                    except Exception as db_exc:
+                        logger.warning(
+                            "BEAR SHORT: falha ao persistir ordem no DB: %s", db_exc
+                        )
+
+                # B1 fix: cria ShortSwapPlan no PositionMonitor para SL/TP automático
+                candles_1h = self._market.get_candles(signal.symbol, "1H", limit=20)
+                atr = (
+                    _pm_calc_atr(candles_1h, 14)
+                    if len(candles_1h) >= 15
+                    else price * 0.015
                 )
+                self._position_monitor.register_short_plan(
+                    symbol=signal.symbol,
+                    swap_sym=swap_sym,
+                    contracts=contracts,
+                    entry_price=price,
+                    atr=atr,
+                    strategy_id="momentum_short",
+                )
+
             return
 
-        is_exit = signal.direction in (SignalDirection.SHORT, SignalDirection.FLAT)
+        # B7 fix: SHORT sem short_via_swap não deve cair no path de venda de long.
+        # Rejeita explicitamente para evitar venda acidental de posição comprada.
+        if signal.direction == SignalDirection.SHORT:
+            logger.warning(
+                "Sinal SHORT sem flag short_via_swap rejeitado para %s "
+                "(sem rota de execução definida)",
+                signal.symbol,
+            )
+            return
+
+        is_exit = signal.direction in (SignalDirection.FLAT,)
 
         open_orders    = self._oms.get_open_orders()
         existing_plans = getattr(self._position_monitor, '_plans', {})

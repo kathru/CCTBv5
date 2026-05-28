@@ -74,7 +74,7 @@ class PairPosition:
     """Estado de uma posição market-neutral ativa."""
     long_symbol:      str
     short_symbol:     str
-    long_swap_symbol: str
+    short_swap_symbol: str
     entry_long_price: float
     entry_short_price:float
     long_qty:         float        # unidades (BTC, ETH, SOL)
@@ -224,7 +224,7 @@ class CrossAssetEngine:
         self._position = PairPosition(
             long_symbol=leader,
             short_symbol=laggard,
-            long_swap_symbol=swap_sym,
+            short_swap_symbol=swap_sym,
             entry_long_price=long_price,
             entry_short_price=short_price,
             long_qty=long_qty,
@@ -286,7 +286,7 @@ class CrossAssetEngine:
         try:
             await asyncio.gather(
                 self._close_spot_long(pos.long_symbol, pos.long_qty),
-                self._close_swap_short(pos.long_swap_symbol, pos.short_contracts),
+                self._close_swap_short(pos.short_swap_symbol, pos.short_contracts),
             )
         except Exception as exc:
             logger.error("CrossAsset: falha ao fechar par: %s", exc)

@@ -866,9 +866,10 @@ class MomentumStrategy(BaseStrategy):
         opens_1h  = [c.open  for c in ctx.candles_1h[:6]]
         closes_6h = [c.close for c in ctx.candles_6h[:6]]
 
-        # Condição A: 3 velas 1H consecutivas bearish
+        # Condição A: ≥2 de 3 velas 1H bearish (relaxado de 3/3 → 2/3)
+        # 3/3 era muito raro mesmo em BEAR_TREND — 2/3 mantém confirmação sem over-filter
         bearish_candles = sum(1 for c, o in zip(closes_1h[:3], opens_1h[:3]) if c < o)
-        if bearish_candles < 3:
+        if bearish_candles < 2:
             return None
 
         # Condição B: 6H bearish (close abaixo da SMA5 dos últimos 5 candles 6H)
@@ -877,7 +878,8 @@ class MomentumStrategy(BaseStrategy):
             return None
 
         # Condição C: score mínimo presente (indica tendência detectada)
-        if score < 0.45:
+        # Lowered 0.45 → 0.38: BEAR_TREND avg_score≈0.406, 0.45 nunca disparava
+        if score < 0.38:
             return None
 
         # Condição D: ADX bear direcional

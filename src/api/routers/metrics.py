@@ -102,10 +102,13 @@ async def get_performance(request: Request) -> dict:
         b_not  = buys_by_sym.get(sym, 0)
         s_not  = sells_by_sym.get(sym, 0)
         if b_qty > 0 and s_qty > 0 and s_not > 0:
-            # Custo proporcional ao que foi vendido (FIFO avg)
-            avg_buy_px = b_not / b_qty
-            cost_sold  = min(s_qty, b_qty) * avg_buy_px
-            pnl_by_symbol[sym] = round(s_not - cost_sold, 2)
+            # PnL = matched_qty × (avg_sell_px − avg_buy_px)
+            # Caps pelo lado menor (buy ou sell) para evitar inflação de PnL
+            # quando exchange_sync cria ordens de venda maiores que as compras do bot.
+            avg_buy_px  = b_not / b_qty
+            avg_sell_px = s_not / s_qty
+            matched_qty = min(s_qty, b_qty)
+            pnl_by_symbol[sym] = round(matched_qty * (avg_sell_px - avg_buy_px), 2)
 
     total_pnl = sum(pnl_by_symbol.values())
 

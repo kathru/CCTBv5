@@ -415,39 +415,62 @@ class TradingLoop:
 
             # Carrega posições exchange_sync em self._positions para permitir vendas
             # Sem isso, o bot não sabe que tem BTC/ETH/SOL e ignora sinais de saída.
+            # IMPORTANTE: usa net_bot_qty (comprado - vendido pelo bot) quando disponível,
+            # para evitar criar ExitPlans para balances pré-existentes na exchange
+            # que não foram comprados por esta instância do bot.
             from ..core.models import Position, PositionSide
             for symbol, qty in sync_result.get("crypto_positions", {}).items():
                 try:
                     price_raw = await self._cache.get_price(symbol)
                     price = float(price_raw) if price_raw else 0.0
                     if qty > 0:
+                        # Calcula net do que o bot comprou/vendeu neste símbolo
+                        bot_bought = await self._db.fetchval(
+                            "SELECT COALESCE(SUM(filled_quantity),0) FROM orders "
+                            "WHERE symbol=$1 AND side='buy' AND status='filled' "
+                            "AND strategy_id NOT IN ('exchange_sync','okx_import')",
+                            symbol,
+                        ) if self._db else 0.0
+                        bot_sold = await self._db.fetchval(
+                            "SELECT COALESCE(SUM(filled_quantity),0) FROM orders "
+                            "WHERE symbol=$1 AND side='sell' AND status='filled' "
+                            "AND strategy_id NOT IN ('exchange_sync','okx_import')",
+                            symbol,
+                        ) if self._db else 0.0
+                        net_bot_qty = max(float(bot_bought or 0) - float(bot_sold or 0), 0.0)
+                        # Se o bot tem posição própria rastreada, usa ela; senão usa exchange qty
+                        effective_qty = net_bot_qty if net_bot_qty > 0.001 else qty
                         self._positions[symbol] = Position(
                             symbol=symbol,
                             side=PositionSide.LONG,
                             strategy_id="exchange_sync",
-                            quantity=qty,
+                            quantity=effective_qty,
                             avg_entry_price=price,
                             total_fees=0.0,
                         )
                         logger.info(
-                            "Posição carregada: %s qty=%.6f @ %.2f (disponível para venda)",
-                            symbol, qty, price,
+                            "Posição carregada: %s exchange=%.6f bot_net=%.6f effective=%.6f @ %.2f",
+                            symbol, qty, net_bot_qty, effective_qty, price,
                         )
                 except Exception as pos_exc:
                     logger.debug("Erro ao carregar posição %s: %s", symbol, pos_exc)
 
             # Cria ExitPlans para posições sincronizadas da exchange
+            # Usa a mesma lógica de effective_qty para não criar planos inflados
             for symbol, qty in sync_result.get("crypto_positions", {}).items():
                 try:
                     price_raw = await self._cache.get_price(symbol)
                     price = float(price_raw) if price_raw else 0.0
                     if price > 0 and qty > 0:
+                        # Reutiliza effective_qty já calculado acima (está em self._positions)
+                        pos = self._positions.get(symbol)
+                        effective_qty = pos.quantity if pos else qty
                         await self._position_monitor._create_plan(
-                            symbol, qty, price, "exchange_sync"
+                            symbol, effective_qty, price, "exchange_sync"
                         )
                         logger.info(
                             "ExitPlan criado para posição sync: %s qty=%.4f entry=%.2f",
-                            symbol, qty, price,
+                            symbol, effective_qty, price,
                         )
                 except Exception as ep_exc:
                     logger.debug("ExitPlan sync falhou para %s: %s", symbol, ep_exc)

@@ -1737,6 +1737,37 @@
 
 </div>
 
+<!-- ══ EDGE GATE — Phase 19 ════════════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="dot" style="background:var(--purple)"></div>
+  Edge Gate — Maturidade do Sistema
+  <span id="eg-status-badge" style="margin-left:auto;font-size:0.75rem;padding:2px 10px;border-radius:4px;font-weight:700;background:rgba(100,100,100,0.2);color:#999">–</span>
+</div>
+<div class="grid g22" style="margin-bottom:24px">
+
+  <!-- Semáforo principal -->
+  <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:28px">
+    <div id="eg-light" style="width:64px;height:64px;border-radius:50%;background:#333;box-shadow:0 0 0 4px rgba(255,255,255,0.06);transition:all 0.4s ease;"></div>
+    <div id="eg-status-text" style="font-size:1.05rem;font-weight:700;color:var(--text)">–</div>
+    <div style="width:100%;background:rgba(255,255,255,0.06);border-radius:6px;height:8px;overflow:hidden;">
+      <div id="eg-progress-bar" style="height:100%;background:var(--blue);border-radius:6px;transition:width 0.5s ease;width:0%"></div>
+    </div>
+    <div style="font-size:0.75rem;color:var(--muted)">Progresso para trading real: <span id="eg-progress-pct" style="color:var(--text);font-weight:600">0%</span></div>
+    <div style="font-size:0.78rem;color:var(--slate);text-align:center;max-width:280px" id="eg-n-info">–</div>
+  </div>
+
+  <!-- Critérios + Recomendação -->
+  <div class="card">
+    <div class="clabel" style="margin-bottom:10px">Critérios Institucionais</div>
+    <div id="eg-criteria-rows" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;"></div>
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px">Recomendação do sistema</div>
+      <div id="eg-recommendation" style="font-size:0.82rem;line-height:1.6;color:var(--slate)">–</div>
+    </div>
+  </div>
+
+</div>
+
 <!-- ══ ADVANCED RISK — Phase 14 ═══════════════════════════════════════════ -->
 <div class="section-hdr">
   <div class="dot" style="background:var(--red)"></div>
@@ -3546,10 +3577,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null,sw:null,pa:null,ei:null,ao:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null,sw:null,pa:null,ei:null,ao:null,eg:null};
 
 async function updateSlow(){
-  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st,sw,pa,ei,ao]=await Promise.all([
+  const [calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st,sw,pa,ei,ao,eg]=await Promise.all([
     fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -3572,6 +3603,7 @@ async function updateSlow(){
     fetchJSON('/api/portfolio/allocator'),
     fetchJSON('/api/portfolio/execution_quality'),
     fetchJSON('/api/analytics/alpha_orthogonality'),
+    fetchJSON('/api/analytics/edge_gate'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(calib)     _slowData.calib=calib;
@@ -3600,6 +3632,61 @@ async function updateSlow(){
   if(pa)        { _slowData.pa=pa; buildPortfolioAllocator(pa); }
   if(ei)        { _slowData.ei=ei; buildExecutionIntelligence(ei); }
   if(ao)        { _slowData.ao=ao; buildAlphaOrthogonality(ao); }
+  if(eg)        { _slowData.eg=eg; buildEdgeGate(eg); }
+}
+
+// ── Phase 19 — Edge Gate ──────────────────────────────────────────────────────
+
+function buildEdgeGate(eg){
+  if(!eg) return;
+  const status   = eg.status || 'GREY';
+  const COLORS   = {GREEN:'#00e676', YELLOW:'#ffd700', RED:'#ff4560', GREY:'#555'};
+  const GLOWS    = {GREEN:'0 0 24px rgba(0,230,118,0.6)', YELLOW:'0 0 24px rgba(255,215,0,0.6)', RED:'0 0 24px rgba(255,69,96,0.6)', GREY:'none'};
+  const color    = COLORS[status] || COLORS.GREY;
+
+  // Semáforo
+  const light = document.getElementById('eg-light');
+  if(light){ light.style.background=color; light.style.boxShadow=GLOWS[status]||'none'; }
+
+  // Badge cabeçalho
+  const badge = document.getElementById('eg-status-badge');
+  if(badge){
+    badge.textContent = eg.status_pt || status;
+    badge.style.background = color+'22';
+    badge.style.color = color;
+  }
+  setEl('eg-status-text', eg.status_pt || status);
+
+  // Barra de progresso
+  const pct = eg.progress_pct || 0;
+  const bar  = document.getElementById('eg-progress-bar');
+  if(bar){ bar.style.width=Math.min(pct,100)+'%'; bar.style.background=color; }
+  setEl('eg-progress-pct', pct.toFixed(1)+'%');
+  setEl('eg-n-info', `${eg.n_trades||0} / ${eg.n_required_full||105} trades necessários para validação completa`);
+
+  // Critérios
+  const rows = document.getElementById('eg-criteria-rows');
+  if(rows && eg.criteria){
+    const criteria = [
+      ['n_sufficient',   `Trades suficientes (≥${eg.n_required_full||105})`, (eg.criteria.n_sufficient?.value||0)+' trades'],
+      ['sharpe_positive','Sharpe > 0',                                         eg.criteria.sharpe_positive?.value!=null?(eg.criteria.sharpe_positive.value).toFixed(3):'–'],
+      ['wr_minimum',     'Win Rate ≥ 30%',                                     eg.criteria.wr_minimum?.value!=null?(eg.criteria.wr_minimum.value*100).toFixed(1)+'%':'–'],
+      ['dsr_validated',  'DSR ≥ 0.95',                                         eg.criteria.dsr_validated?.value!=null?(eg.criteria.dsr_validated.value).toFixed(3):'–'],
+    ];
+    rows.innerHTML = criteria.map(([key,label,val])=>{
+      const c   = eg.criteria[key];
+      const ok  = c?.ok;
+      const col = ok ? 'var(--green)' : (ok===false ? 'var(--red)' : 'var(--muted)');
+      const ico = ok ? '✓' : (ok===false ? '✗' : '○');
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+        <span style="font-size:0.95rem;color:${col};width:16px;text-align:center">${ico}</span>
+        <span style="flex:1;font-size:0.82rem;color:var(--text)">${label}</span>
+        <span style="font-family:monospace;font-size:0.82rem;color:${col};font-weight:600">${val}</span>
+      </div>`;
+    }).join('');
+  }
+
+  setEl('eg-recommendation', eg.recommendation || '–');
 }
 
 // ── Phase 15new — Portfolio Allocator ────────────────────────────────────────
@@ -4557,6 +4644,7 @@ async function updateAll(){
   if(mh||ens)    buildModelHealth(mh, ens);
   if(ar)         buildAdvancedRisk(ar);
   if(mr)         buildMetaRegime(mr);
+  const {eg}=_slowData; if(eg) buildEdgeGate(eg);
 
   // Retry automático: se preços/sinais voltaram vazios, reagenda em RETRY_MS
   const hasPrices = prices && Object.keys(prices).length > 0;

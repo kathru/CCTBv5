@@ -58,10 +58,14 @@ logger = logging.getLogger(__name__)
 ATR_PERIOD = 14
 
 # Phase A — Multiplicadores de ATR por regime (SL + TP)
+# v3.0.0 (2026-05-27): SL alargado em CHOP/EXHAUSTION para evitar stop prematuro.
+# Análise: CHOP com SL=0.7×ATR era eliminado por ruído normal do mercado (< 0.7% move).
+# Novo CHOP: SL=1.0×ATR, TP=2.5×ATR → RR=2.5:1 (antes 2.86:1, mas mais sobrevivível).
+# EXPANSION: TP elevado 4.5→5.0×ATR para capturar movimentos maiores.
 REGIME_MULT: dict[str, dict[str, float]] = {
-    "TREND_EXPANSION":        {"sl": 1.5, "tp": 4.5},
-    "VOLATILITY_COMPRESSION": {"sl": 1.0, "tp": 3.5},
-    "MEAN_REVERTING_CHOP":    {"sl": 0.7, "tp": 2.0},
+    "TREND_EXPANSION":        {"sl": 1.5, "tp": 5.0},  # TP 4.5→5.0 (captura mais)
+    "VOLATILITY_COMPRESSION": {"sl": 1.2, "tp": 4.0},  # SL 1.0→1.2, TP 3.5→4.0
+    "MEAN_REVERTING_CHOP":    {"sl": 1.0, "tp": 2.5},  # SL 0.7→1.0 (anti-stop prematuro)
     "TREND_EXHAUSTION":       {"sl": 0.8, "tp": 2.5},
     "HIGH_CORRELATION_RISK":  {"sl": 0.8, "tp": 2.0},
     "BEAR_TREND":             {"sl": 0.5, "tp": 1.0},

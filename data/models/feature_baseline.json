@@ -1,10 +1,31 @@
 {
-  "schema_version": "2.6.0",
+  "schema_version": "3.0.0",
   "symbol": "BTC-USDT",
   "n_samples": 20819,
   "win_rate": 0.3318,
   "computed_at": "2026-05-27T21:27:58.251819+00:00",
+  "reform_v3": {
+    "date": "2026-05-27",
+    "changes": [
+      "M1 reformulado: retornos brutos -> RSI(14). Peso=0% (perm_imp negativa). Diagn\u00f3stico apenas.",
+      "M2 desativado: peso=0% (perm_imp=-0.0033). Mantido para monitoramento.",
+      "M3 reformulado: volume simples -> directional volume (buy/sell pressure). Peso=40%.",
+      "M4 j\u00e1 era 0%: mantido removido.",
+      "M5 desativado: peso=0% (perm_imp=-0.001). Mantido para monitoramento.",
+      "M6 elevado: 16% -> 22% (Spearman=0.52 live)",
+      "M7 elevado: 14% -> 18% (Spearman=0.52 live)",
+      "M8 mantido: 6% (estrutural vol regime)",
+      "M9 elevado: 12% -> 14% (Spearman=0.52 live)",
+      "Regime detection: SMA cruzada -> ADX(10)+DI+/DI- (menor lag)",
+      "SL CHOP: 0.7xATR -> 1.0xATR (anti-stop prematuro por ru\u00eddo)",
+      "TP EXPANSION: 4.5xATR -> 5.0xATR (captura movimentos maiores)"
+    ]
+  },
   "notes": {
+    "m1_momentum": "RSI(14) 1H a partir de v3.0.0. Peso=0% (diagn\u00f3stico apenas). Baseline historico calculado com formula de retornos \u2014 PSI pode divergir durante transi\u00e7\u00e3o.",
+    "m2_consistency": "Desativado em v3.0.0 (perm_imp=-0.0033). Peso=0% \u2014 monitorado mas fora do score.",
+    "m3_volume": "REFORMULADO v3.0.0: directional volume (buy/sell pressure ratio). Baseline historico usando formula antiga \u2014 PSI nao aplicavel ate acumular amostras novas.",
+    "m5_candle": "Desativado em v3.0.0 (perm_imp=-0.001). Peso=0% \u2014 monitorado mas fora do score.",
     "m6_futures": "placeholder (std=0.12) \u2014 FuturesFlowCollector ativo; distribui\u00e7\u00e3o ser\u00e1 atualizada com dados live",
     "m7_rel_strength": "neutro (0.5) \u2014 requer dados multi-s\u00edmbolo simult\u00e2neos",
     "m8_vol_state": "calculado de candles hist\u00f3ricos via ATR+Bollinger+dir_consistency",

@@ -1,16 +1,25 @@
 """
-V4 Momentum Strategy — BULL / CHOP / BEAR aware.
+V5 Momentum Strategy — BULL / CHOP / BEAR aware.
+
+Changelog:
+  v3.0.0 (2026-05-27) — Reforma Quant: Edge First
+    • Desativados M1, M2, M5 (permutation importance negativa no IS)
+    • M1 reformulado para RSI-based (diagnóstico, peso=0%)
+    • M3 reformulado para volume direcional (buyer vs seller pressure)
+    • Regime detection: SMA substituído por ADX(10) + DI± (menos lag)
+    • Novos pesos: M3=40%, M6=22%, M7=18%, M9=14%, M8=6% = 100%
 
 Camadas de proteção:
-  1. Detecção explícita de BEAR (downtrend gradual)
-  2. Sizing adaptativo por regime (Kelly multiplier)
-  3. Confirmação multi-timeframe 1H + 6H
+  1. ADX(10) para detecção de tendência (ADX≥25=trend, <25=range)
+  2. DI+/DI- para direcionalidade dentro de tendência
+  3. Sizing adaptativo por regime (Kelly multiplier)
+  4. Confirmação multi-timeframe 1H + 6H
 
-Regimes e comportamento (v2.5.0 — 2026-05-23):
-  TREND_EXPANSION      → BULL  : threshold 0.56, Kelly 100%, SL 1.5×ATR, TP 4.5×ATR, timeout 48h
-  VOLATILITY_COMPRESSION       : threshold 0.58, Kelly 80%,  SL 1.0×ATR, TP 3.5×ATR, timeout 24h
-  MEAN_REVERTING_CHOP  → CHOP  : threshold 0.68, Kelly 50%,  SL 0.7×ATR, TP 2.0×ATR, timeout 8h
-  TREND_EXHAUSTION             : BLOQUEADO (threshold 0.99) — comprar topo é errado
+Regimes e comportamento (v3.0.0 — 2026-05-27):
+  TREND_EXPANSION      → BULL  : threshold 0.62, Kelly 100%, SL 1.5×ATR, TP 4.5×ATR
+  VOLATILITY_COMPRESSION       : threshold 0.64, Kelly 80%,  SL 1.0×ATR, TP 3.5×ATR
+  MEAN_REVERTING_CHOP  → CHOP  : threshold 0.72, Kelly 50%,  SL 1.0×ATR, TP 2.5×ATR
+  TREND_EXHAUSTION             : BLOQUEADO (threshold 0.99)
   HIGH_CORRELATION_RISK        : BLOQUEADO (threshold 0.99)
   BEAR_TREND           → BEAR  : BLOQUEADO para novas entradas
   PANIC_LIQUIDATION            : BLOQUEADO + saída imediata
@@ -337,41 +346,116 @@ class MomentumStrategy(BaseStrategy):
             factors=factors,
         )
 
-    # ── Camada 1: Detecção de regime 1H ──────────────────────────────────────
+    # ── Camada 1: Detecção de regime 1H — ADX-based (v3.0.0) ────────────────
+
+    @staticmethod
+    def _calc_adx(
+        highs: list[float], lows: list[float], closes: list[float], period: int = 10
+    ) -> tuple[float, float, float]:
+        """
+        Wilder's ADX simplificado.
+
+        Inputs em ordem reversa (candles[0]=mais recente) — inverte internamente.
+        Retorna (adx, di_plus, di_minus).
+        ADX ≥ 25 → mercado em tendência.
+        DI+ > DI- → tendência de alta; DI- > DI+ → tendência de baixa.
+
+        Com dados insuficientes retorna (20.0, 0.5, 0.5):
+          ADX=20 = zona cinza (neutro / range).
+        """
+        n = min(len(highs), len(lows), len(closes))
+        if n < period + 2:
+            return 20.0, 0.5, 0.5
+
+        # Cronológico (mais antigo primeiro)
+        h = list(reversed(highs[:n]))
+        lo = list(reversed(lows[:n]))
+        c = list(reversed(closes[:n]))
+
+        trs, dmp, dmm = [], [], []
+        for i in range(1, n):
+            tr   = max(h[i] - lo[i], abs(h[i] - c[i - 1]), abs(lo[i] - c[i - 1]))
+            up   = h[i] - h[i - 1]
+            down = lo[i - 1] - lo[i]
+            dp   = up   if (up > down   and up   > 0) else 0.0
+            dm   = down if (down > up   and down > 0) else 0.0
+            trs.append(tr)
+            dmp.append(dp)
+            dmm.append(dm)
+
+        if len(trs) < period:
+            return 20.0, 0.5, 0.5
+
+        # Wilder smoothing: seed = média dos primeiros `period` valores
+        def _ws(data: list[float]) -> float:
+            s = sum(data[:period]) / period
+            for v in data[period:]:
+                s = (s * (period - 1) + v) / period
+            return s
+
+        atr_w = _ws(trs)
+        dp_w  = _ws(dmp)
+        dm_w  = _ws(dmm)
+
+        if atr_w <= 0:
+            return 20.0, 0.5, 0.5
+
+        di_p = 100.0 * dp_w / atr_w
+        di_m = 100.0 * dm_w / atr_w
+        dx   = 100.0 * abs(di_p - di_m) / (di_p + di_m) if (di_p + di_m) > 0 else 0.0
+
+        return round(dx, 2), round(di_p, 2), round(di_m, 2)
 
     def _detect_regime_1h(self, ctx: StrategyContext) -> str:
-        closes  = [c.close  for c in ctx.candles_1h[:20]]
-        volumes = [c.volume for c in ctx.candles_1h[:20]]
+        """
+        Detecção de regime baseada em ADX(10) em vez de SMA cruzada.
 
-        sma_fast = sum(closes[:5])  / 5
-        sma_slow = sum(closes[:20]) / 20
-        avg_vol  = sum(volumes)     / len(volumes)
-        last_vol = volumes[0]
+        ADX mede FORÇA da tendência sem lag de média móvel:
+          ADX ≥ 25 + DI+ > DI- → tendência de alta  → EXPANSION / COMPRESSION
+          ADX ≥ 25 + DI- > DI+ → tendência de baixa → BEAR_TREND
+          ADX < 25              → mercado lateral    → CHOP / HIGH_CORR
 
-        # Panic: queda brusca > 5%
-        if len(closes) >= 2 and closes[1] > 0:
-            if (closes[0] - closes[1]) / closes[1] < -0.05:
-                return "PANIC_LIQUIDATION"
+        Panic override: queda > 5% em 1 candle ignora ADX.
+        """
+        closes  = [c.close  for c in ctx.candles_1h[:21]]
+        volumes = [c.volume for c in ctx.candles_1h[:21]]
+        highs   = [c.high   for c in ctx.candles_1h[:21]]
+        lows    = [c.low    for c in ctx.candles_1h[:21]]
 
-        # BULL: preço acima da SMA lenta
-        if sma_fast > sma_slow:
-            if last_vol > avg_vol * 1.2:
-                return "TREND_EXPANSION"
-            if last_vol < avg_vol * 0.8:
-                return "TREND_EXHAUSTION"
-            return "VOLATILITY_COMPRESSION"
+        if len(closes) < 12:
+            return "MEAN_REVERTING_CHOP"
 
-        # Abaixo da SMA lenta — diferencia BEAR de CHOP
-        # BEAR: preço atual abaixo de 10 candles atrás em > 2%
+        # ── Panic: queda brusca > 5% num único candle ────────────────────────
+        if closes[1] > 0 and (closes[0] - closes[1]) / closes[1] < -0.05:
+            return "PANIC_LIQUIDATION"
+
+        # ── ADX(10) ──────────────────────────────────────────────────────────
+        adx, di_plus, di_minus = self._calc_adx(highs, lows, closes, period=10)
+
+        # ── BEAR: declínio confirmado por ADX + DI- dominante ────────────────
         if len(closes) >= 11 and closes[10] > 0:
             decline = (closes[0] - closes[10]) / closes[10]
-            if decline < -0.02:
+            if decline < -0.02 and di_minus > di_plus:
                 return "BEAR_TREND"
 
-        # ATR alto → correlação / volatilidade extrema
-        highs  = [c.high for c in ctx.candles_1h[:5]]
-        lows   = [c.low  for c in ctx.candles_1h[:5]]
-        atr_5  = sum(hi - lo for hi, lo in zip(highs, lows, strict=True)) / 5
+        # ── Tendência forte (ADX ≥ 25) ───────────────────────────────────────
+        if adx >= 25:
+            if di_plus >= di_minus:
+                # Tendência de alta — volume confirma intensidade
+                avg_vol  = sum(volumes) / len(volumes)
+                last_vol = volumes[0]
+                if last_vol > avg_vol * 1.15:
+                    return "TREND_EXPANSION"
+                if last_vol < avg_vol * 0.65:
+                    return "TREND_EXHAUSTION"
+                return "VOLATILITY_COMPRESSION"
+            else:
+                # DI- dominante em tendência forte → BEAR
+                return "BEAR_TREND"
+
+        # ── Mercado lateral (ADX < 25) ───────────────────────────────────────
+        # Volatilidade extrema → risco alto
+        atr_5   = sum(hi - lo for hi, lo in zip(highs[:5], lows[:5], strict=True)) / 5
         rel_atr = atr_5 / closes[0] if closes[0] > 0 else 0
         if rel_atr > 0.030:
             return "HIGH_CORRELATION_RISK"
@@ -437,135 +521,140 @@ class MomentumStrategy(BaseStrategy):
 
         return regime_1h
 
-    # ── Scoring v2 (5 fatores, scoring contínuo) ─────────────────────────────
+    # ── Scoring v3 (reforma quant 2026-05-27) ────────────────────────────────
 
     def _score_signal(self, ctx: StrategyContext, regime: str) -> tuple[float, dict]:
         """
-        Modelo de scoring com 6 fatores contínuos — ciclo 1H.
-        Todos os fatores usam candles 1H (sem granularidade 30m).
+        Modelo de scoring com M1-M9 — ciclo 1H.
 
-        Fatores (pesos v2.6.0 — recalibrado 2026-05-27 por permutation importance):
-          M1 Adaptive Momentum  ( 2%): perm_imp=-0.0013 → peso residual mantido
-          M2 Trend Consistency  ( 5%): perm_imp=-0.0033, DESALINHADO → reduzido de 11%
-          M3 Volume Confirmation(35%): único fator com edge real (perm_imp=0.006, rel=1.0)
-          M4 Regime Strength    ( 0%): perm_imp=0.0 → removido
-          M5 Candle Structure   (10%): perm_imp=-0.001 → aumentado (measurable, hedging)
-          M6 Futures Flow       (16%): Spearman=0.52 em live → aumentado de 12%
-          M7 Relative Strength  (14%): Spearman=0.52 em live → aumentado de 11%
-          M8 Volatility State   ( 6%): perm_imp=-0.0028, DESALINHADO → reduzido de 19%
-          M9 News Sentiment     (12%): Spearman=0.52 em live → aumentado de 6%
+        Reforma v3.0.0 (quant specialist 2026-05-27):
+          DESATIVADOS (peso=0%): M1 perm_imp=-0.0013 | M2 perm_imp=-0.0033
+                                  M4 perm_imp=0.0 | M5 perm_imp=-0.001
+          MANTIDOS:  M8=6% (estrutural, vol regime)
+          ELEVADOS:  M3=40% (directional vol, único edge real)
+                     M6=22% (Spearman=0.52 live) | M7=18% | M9=14%
+
+        M1 reformulado para RSI(14) — mais robusto que retornos brutos.
+        M3 reformulado para pressão de compra direcional (buy/sell vol ratio).
         """
         # Candles 1H — única granularidade em ciclo 1H
         closes  = [c.close  for c in ctx.candles_1h[:21]]
         highs   = [c.high   for c in ctx.candles_1h[:10]]
         lows    = [c.low    for c in ctx.candles_1h[:10]]
-        opens   = [c.open   for c in ctx.candles_1h[:10]]
+        opens   = [c.open   for c in ctx.candles_1h[:21]]
         vols_1h = [c.volume for c in ctx.candles_1h[:20]]
 
-        # ── M1: Adaptive Momentum (25%) — retornos 1H multi-horizonte ─
-        atr_20 = (
-            sum(highs[i] - lows[i] for i in range(min(10, len(highs)))) / min(10, len(highs))
-            if highs else closes[0] * 0.01
-        )
-        norm   = max(atr_20 * 2, closes[0] * 0.005)
+        # ── M1: RSI Momentum — diagnóstico (peso=0%) ──────────────────────────
+        # RSI(14) 1H — substitui retornos brutos (menos ruído, escala consistente).
+        # Zona ótima de compra: RSI 40-65 (momentum sem excesso).
+        # NOTA: peso=0% → não entra no score mas aparece no dashboard para diagnóstico.
+        n_rsi = min(16, len(closes))
+        if n_rsi >= 15:
+            gains  = [max(closes[i] - closes[i + 1], 0.0) for i in range(n_rsi - 1)]
+            losses = [max(closes[i + 1] - closes[i], 0.0) for i in range(n_rsi - 1)]
+            avg_g  = sum(gains[:14])  / 14
+            avg_l  = sum(losses[:14]) / 14
+            if avg_l > 0:
+                rsi = 100.0 - 100.0 / (1.0 + avg_g / avg_l)
+            else:
+                rsi = 100.0 if avg_g > 0 else 50.0
+            # Mapeia RSI → [0,1]: zona ótima 40-65, penaliza >70
+            if rsi < 20:
+                m1 = 0.50   # oversold profundo — risco de queda livre
+            elif rsi < 40:
+                m1 = 0.50 + (rsi - 20) / 20 * 0.30   # 0.50-0.80
+            elif rsi < 65:
+                m1 = 0.80 + (rsi - 40) / 25 * 0.20   # 0.80-1.00 (zona ótima)
+            elif rsi < 70:
+                m1 = 0.80 - (rsi - 65) / 5  * 0.30   # 0.80-0.50 (aquecendo)
+            else:
+                m1 = max(0.10, 0.50 - (rsi - 70) / 30 * 0.40)  # overbought
+        else:
+            rsi = 50.0
+            m1  = 0.50
 
-        # Horizonte curto (1h, 5h) — captura momentum recente
-        r1  = (closes[0] - closes[1])  / closes[1]  if len(closes) > 1  and closes[1]  > 0 else 0
-        r5  = (closes[0] - closes[5])  / closes[5]  if len(closes) > 5  and closes[5]  > 0 else 0
-        # Horizonte médio (10h, 20h) — tendência estabelecida
-        r10 = (closes[0] - closes[10]) / closes[10] if len(closes) > 10 and closes[10] > 0 else 0
-        r20 = (closes[0] - closes[20]) / closes[20] if len(closes) > 20 and closes[20] > 0 else 0
+        # ── M2: Trend Consistency — diagnóstico (peso=0%) ─────────────────────
+        # Mantido para monitoramento, removido do score por perm_imp=-0.0033.
+        n_m2 = min(6, len(closes) - 1)
+        bullish_count = sum(1 for i in range(n_m2) if i < len(opens) and closes[i] > opens[i])
+        pct_bullish   = bullish_count / n_m2 if n_m2 > 0 else 0.5
+        hh_count      = sum(1 for i in range(min(4, len(highs) - 1)) if highs[i] > highs[i + 1])
+        hl_count      = sum(1 for i in range(min(4, len(lows)  - 1)) if lows[i]  > lows[i + 1])
+        m2            = pct_bullish * 0.5 + (hh_count + hl_count) / 8 * 0.5
 
-        # Blend: peso maior no curto prazo (mais reativo) sem ignorar médio prazo
-        momentum_weighted = r1 * 0.30 + r5 * 0.30 + r10 * 0.25 + r20 * 0.15
-        m1 = min(max((momentum_weighted / (norm / closes[0])) * 0.5 + 0.5, 0.0), 1.0)
+        # ── M3: Directional Volume — PRINCIPAL EDGE (40%) ─────────────────────
+        # Reformulado v3.0: volume direcional (buy vs sell pressure)
+        # buyer_vol  = soma de vol em candles de alta (close > open)
+        # seller_vol = soma de vol em candles de baixa (close < open)
+        # directional_ratio: 0.0=tudo venda → 1.0=tudo compra
+        n_dir = min(12, len(vols_1h), len(closes), len(opens))
+        buy_vol  = sum(vols_1h[i] for i in range(n_dir) if closes[i] > opens[i])
+        sell_vol = sum(vols_1h[i] for i in range(n_dir) if closes[i] < opens[i])
+        total_dir = buy_vol + sell_vol
+        directional_ratio = buy_vol / total_dir if total_dir > 0 else 0.5
 
-        # ── M2: Trend Consistency (25%) — candles 1H ──────────
-        # Bullish count nos últimos 6 candles 1H (= 6h de histórico)
-        n = min(6, len(closes) - 1)
-        bullish_count = sum(1 for i in range(n) if closes[i] > opens[i])
-        pct_bullish   = bullish_count / n if n > 0 else 0.5
+        # Relative volume (vs média 20h) — confirma participação
+        avg_vol_20 = sum(vols_1h[:20]) / 20 if len(vols_1h) >= 20 else (vols_1h[0] if vols_1h else 1)
+        vol_ratio  = min(vols_1h[0] / avg_vol_20, 3.0) / 3.0 if avg_vol_20 > 0 else 0.5
 
-        hh_count  = sum(1 for i in range(min(4, len(highs)-1)) if highs[i] > highs[i+1])
-        hl_count  = sum(1 for i in range(min(4, len(lows)-1))  if lows[i]  > lows[i+1])
-        structure = (hh_count + hl_count) / 8
-
-        m2 = pct_bullish * 0.5 + structure * 0.5
-
-        # ── M3: Volume Confirmation (20%) — volumes 1H ────────
-        vols = vols_1h
-        avg_vol_5  = sum(vols[:5])  / 5  if len(vols) >= 5  else vols[0] if vols else 1
-        avg_vol_20 = sum(vols[:20]) / 20 if len(vols) >= 20 else avg_vol_5
-
-        vol_ratio = min(vols[0] / avg_vol_5, 3.0) / 3.0 if avg_vol_5 > 0 else 0.5
+        # Volume momentum (recente vs passado) — confirma aceleração
         vol_trend = (
-            (sum(vols[:3]) / sum(vols[3:6])) if len(vols) >= 6 and sum(vols[3:6]) > 0 else 1.0
+            sum(vols_1h[:3]) / sum(vols_1h[3:6])
+            if len(vols_1h) >= 6 and sum(vols_1h[3:6]) > 0 else 1.0
         )
         vol_trend = min(max(vol_trend, 0.3), 2.0)
         vol_trend_score = (vol_trend - 0.3) / 1.7
 
-        # Confirmação direcional com candle 1H mais recente
-        candle_confirm = 1.0 if (closes[0] > opens[0] and vols[0] > avg_vol_20) else 0.4
+        # M3: 50% direcional + 30% volume relativo + 20% momentum de volume
+        m3 = directional_ratio * 0.50 + vol_ratio * 0.30 + vol_trend_score * 0.20
 
-        m3 = vol_ratio * 0.4 + vol_trend_score * 0.3 + candle_confirm * 0.3
-
-        # ── M4: Regime Strength (20%) — SMA macro 1H ──────────
+        # ── M4: Regime Strength — diagnóstico (peso=0%) ───────────────────────
         sma5  = sum(closes[:5])  / 5
         sma20 = sum(closes[:20]) / 20 if len(closes) >= 20 else sma5
         sma_distance = (sma5 - sma20) / sma20 if sma20 > 0 else 0
         m4_raw    = min(max((sma_distance + 0.02) / 0.04, 0.0), 1.0)
         m4_regime = REGIME_M4.get(regime, 0.45)
-        m4 = m4_raw * 0.6 + m4_regime * 0.4
+        m4        = m4_raw * 0.6 + m4_regime * 0.4
 
-        # ── M5: Candle Structure (10%) — 3 candles 1H recentes ─
-        # Close no terço superior do range dos 3 candles 1H mais recentes
-        m5_highs  = highs[:3]
-        m5_lows   = lows[:3]
-        m5_closes = closes[:3]
+        # ── M5: Candle Structure — diagnóstico (peso=0%) ──────────────────────
+        # Mantido para monitoramento, removido do score por perm_imp=-0.001.
         candle_scores = []
-        for i in range(min(3, len(m5_closes))):
-            rng = m5_highs[i] - m5_lows[i] if i < len(m5_highs) else 0
+        for i in range(min(3, len(closes))):
+            rng = highs[i] - lows[i] if i < len(highs) else 0
             if rng > 0:
-                pos = (m5_closes[i] - m5_lows[i]) / rng
-                candle_scores.append(pos)
+                candle_scores.append((closes[i] - lows[i]) / rng)
         m5 = sum(candle_scores) / len(candle_scores) if candle_scores else 0.5
 
-        # ── M6: Futures Flow (10%) — funding rate + OI (Phase 10) ────────────
+        # ── M6: Futures Flow (22%) — funding rate + OI (Phase 10) ────────────
         ff_data   = (ctx.extra or {}).get("futures_flow") or {}
         ff_scores = ff_data.get("scores", {})
         m6 = float(ff_scores.get("m6", 0.5))
 
-        # ── M7: Relative Strength (9%) — RS vs BTC + leadership (Phase 11) ──
+        # ── M7: Relative Strength (18%) — RS vs BTC + leadership (Phase 11) ─
         rs_data   = (ctx.extra or {}).get("relative_strength") or {}
         rs_scores = rs_data.get("scores", {})
         m7 = float(rs_scores.get("m7", 0.5))
 
-        # ── M8: Volatility State (13%) — state machine (Phase 12) ────────────
-        # Lê do ctx.extra injetado pelo StrategyRunner (VolatilityStateCollector).
-        # Fallback neutro (0.5) se dados indisponíveis — não bloqueia o trading.
+        # ── M8: Volatility State (6%) — state machine (Phase 12) ─────────────
         vol_data = (ctx.extra or {}).get("vol_state") or {}
         m8 = float(vol_data.get("m8_score", 0.5))
 
-        # ── M9: News Sentiment (Phase 4) — Fear&Greed + CoinGecko ────────────
-        # Combina Fear & Greed Index global + sentimento CoinGecko por moeda.
-        # Fallback neutro (0.5) se API indisponível — não bloqueia o trading.
+        # ── M9: News Sentiment (14%) — Fear&Greed + CoinGecko (Phase 4) ──────
         news_data = (ctx.extra or {}).get("news_sentiment") or {}
         m9 = float(news_data.get("m9_score", 0.5))
 
-        # ── Score final — pesos v2.6.0 (recalibrado 2026-05-27 por permutation importance) ──
-        # M1  2% (perm_imp=-0.0013, mantido residual)
-        # M2  5% (perm_imp=-0.0033, DESALINHADO: 11%→5%)
-        # M3 35% (perm_imp=+0.006, rel_imp=1.0 — único edge real: 33%→35%, cap 35%)
+        # ── Score final — pesos v3.0.0 (reforma quant 2026-05-27) ─────────────
+        # M1  0% (RSI momentum — diagnóstico apenas: perm_imp=-0.0013)
+        # M2  0% (Trend Consistency — diagnóstico: perm_imp=-0.0033)
+        # M3 40% (Directional Volume — único edge real, reformulado)
         # M4  0% (removido)
-        # M5 10% (perm_imp=-0.001, measurable — aumentado para hedge: 6%→10%)
-        # M6 16% (Spearman=0.52 live, unmeasurable IS → 12%→16%)
-        # M7 14% (Spearman=0.52 live, unmeasurable IS → 11%→14%)
-        # M8  6% (perm_imp=-0.0028, DESALINHADO: 19%→6%)
-        # M9 12% (Spearman=0.52 live, unmeasurable IS → 6%→12%)
-        # Soma: 2+5+35+0+10+16+14+6+12 = 100% ✓
-        score = (m1 * 0.02 + m2 * 0.05 + m3 * 0.35 +
-                 m5 * 0.10 + m6 * 0.16 +
-                 m7 * 0.14 + m8 * 0.06 + m9 * 0.12)
+        # M5  0% (Candle Structure — diagnóstico: perm_imp=-0.001)
+        # M6 22% (Futures Flow — Spearman=0.52 live, elevado de 16%)
+        # M7 18% (Relative Strength — Spearman=0.52 live, elevado de 14%)
+        # M8  6% (Vol State — estrutural: mantido baixo)
+        # M9 14% (News Sentiment — Spearman=0.52 live, elevado de 12%)
+        # Soma: 0+0+40+0+0+22+18+6+14 = 100% ✓
+        score = (m3 * 0.40 + m6 * 0.22 + m7 * 0.18 + m8 * 0.06 + m9 * 0.14)
         score = round(min(max(score, 0.0), 1.0), 4)
 
         factors = {
@@ -578,6 +667,8 @@ class MomentumStrategy(BaseStrategy):
             "m7_rel_strength":round(m7, 3),
             "m8_vol_state":   round(m8, 3),
             "m9_sentiment":   round(m9, 3),
+            # Sub-scores M1 — RSI diagnóstico
+            "m1_rsi":         round(rsi, 1),
             # Sub-scores M9
             "m9_fng":         round(float(news_data.get("fng",           50.0)) / 100, 3),
             "m9_coin_sent":   round(float(news_data.get("coin_sentiment", 0.5)), 3),
@@ -590,7 +681,7 @@ class MomentumStrategy(BaseStrategy):
             "m7_rs_1h":       round(float(rs_scores.get("rs_1h",      0.5)), 3),
             "m7_leadership":  round(float(rs_scores.get("leadership",  0.5)), 3),
             "m7_rs_trend":    round(float(rs_scores.get("rs_trend",    0.5)), 3),
-            # Sub-scores M8 — apenas numéricos (strings não são aceitas em factors)
+            # Sub-scores M8 — apenas numéricos
             "m8_atr_pct":     round(float(vol_data.get("metrics", {}).get("atr_pct",        0)), 3),
             "m8_dir_consist": round(
                 float(vol_data.get("metrics", {}).get("dir_consistency", 0.5)), 3

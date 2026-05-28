@@ -1624,6 +1624,94 @@ async def get_meta_regime(request: Request) -> dict:
     return data
 
 
+@router.get("/edge_gate")
+async def get_edge_gate(request: Request) -> dict:
+    """
+    Edge Gate — semáforo de maturidade do sistema para trading real.
+
+    Critérios institucionais (López de Prado framework):
+      VERDE: n ≥ 105 AND Sharpe > 0 AND DSR ≥ 0.95 AND WR > 30%
+      AMARELO: n ≥ 30 AND Sharpe > 0 (dados parciais — cautela)
+      CINZA: n < 30 (insuficiente — paper trade apenas)
+      VERMELHO: Sharpe < 0 (edge negativo demonstrado)
+
+    105 trades = mínimo teórico para DSR com 95% de confiança
+    dado Sharpe esperado de 0.5 e distribuição levemente assimétrica.
+
+    Este endpoint orienta a decisão de migrar de paper → live mode.
+    NÃO bloqueia automaticamente o sistema — apenas informa o operador.
+    """
+    db     = request.app.state.db
+    orders = await _get_filled_orders(db)
+    trades = _pair_trades(orders)
+
+    n        = len(trades)
+    pnl_pcts = [t["pnl_pct"] for t in trades]
+    pnls     = [t["pnl"]     for t in trades]
+    wins     = [p for p in pnls if p > 0]
+
+    # Thresholds institucionais
+    N_PAPER_MIN  = 30    # mínimo para qualquer avaliação
+    N_LIVE_MIN   = 105   # mínimo para edge estatisticamente validado
+    MIN_WR       = 0.30  # win rate mínimo
+
+    sharpe  = _sharpe(pnl_pcts) if n >= MIN_TRADES else None
+    wr      = len(wins) / n if n > 0 else None
+
+    # DSR rápido (sem n_trials ajuste — indicativo)
+    dsr_val = None
+    if sharpe is not None and n >= MIN_TRADES:
+        dsr_r   = _deflated_sharpe(sharpe, pnl_pcts, n_trials=10)
+        dsr_val = dsr_r.get("dsr")
+
+    # Semáforo
+    if n < N_PAPER_MIN:
+        status = "GREY"
+        status_pt = "INSUFICIENTE"
+        recommendation = f"Continue em paper mode. Precisa ≥ {N_PAPER_MIN} trades para avaliação inicial."
+    elif sharpe is not None and sharpe < 0:
+        status = "RED"
+        status_pt = "EDGE NEGATIVO"
+        recommendation = "Edge negativo demonstrado. Revisar estratégia antes de qualquer live trade."
+    elif n >= N_LIVE_MIN and sharpe is not None and sharpe > 0 and wr is not None and wr >= MIN_WR:
+        if dsr_val is not None and dsr_val >= 0.95:
+            status = "GREEN"
+            status_pt = "EDGE VALIDADO"
+            recommendation = "Todos os critérios atendidos. Sistema apto para live trading conservador."
+        else:
+            status = "YELLOW"
+            status_pt = "QUASE PRONTO"
+            recommendation = f"n={n} e Sharpe>0 mas DSR={dsr_val:.3f if dsr_val else 'N/A'}<0.95. Acumule mais trades."
+    elif n >= N_PAPER_MIN and sharpe is not None and sharpe > 0:
+        status = "YELLOW"
+        status_pt = "DADOS PARCIAIS"
+        recommendation = f"Sharpe positivo mas apenas {n}/{N_LIVE_MIN} trades. Continue em paper mode."
+    else:
+        status = "GREY"
+        status_pt = "AVALIAÇÃO PENDENTE"
+        recommendation = f"Dados insuficientes para conclusão. Acumule mais {max(0, N_PAPER_MIN - n)} trades."
+
+    # Progresso para o critério mais restritivo
+    progress_pct = round(min(n / N_LIVE_MIN * 100, 100), 1)
+
+    return {
+        "status":         status,
+        "status_pt":      status_pt,
+        "recommendation": recommendation,
+        "n_trades":       n,
+        "n_required_min":  N_PAPER_MIN,
+        "n_required_full": N_LIVE_MIN,
+        "progress_pct":    progress_pct,
+        "criteria": {
+            "n_sufficient":    {"ok": n >= N_LIVE_MIN,          "value": n,          "target": N_LIVE_MIN},
+            "sharpe_positive": {"ok": sharpe is not None and sharpe > 0, "value": sharpe, "target": "> 0"},
+            "wr_minimum":      {"ok": wr is not None and wr >= MIN_WR,   "value": wr,     "target": f"≥ {MIN_WR:.0%}"},
+            "dsr_validated":   {"ok": dsr_val is not None and dsr_val >= 0.95, "value": dsr_val, "target": "≥ 0.95"},
+        },
+        "computed_at": datetime.now(UTC).isoformat(),
+    }
+
+
 @router.get("/alpha_orthogonality")
 async def get_alpha_orthogonality(request: Request) -> dict:
     """

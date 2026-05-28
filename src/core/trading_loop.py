@@ -868,6 +868,12 @@ class TradingLoop:
         self._exec_expected_price[signal.symbol] = mid_price
 
         # 4. Criar e submeter ordem via OMS com tipo decidido pelo SmartRouter
+        # B4 fix: repassa o regime ADX do sinal para o PositionMonitor ANTES do submit,
+        # para que _create_plan use regime correto (ADX-based) em vez de SMA-based.
+        self._position_monitor.set_pending_signal_factors(
+            signal.symbol,
+            {**(signal.factors or {}), "regime": signal.regime},
+        )
         await self._oms.create_order_from_signal(
             event,
             quantity,

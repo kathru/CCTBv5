@@ -712,7 +712,7 @@
 
 
 <!-- ══ MOTOR ═══════════════════════════════════════════════ -->
-<div style="margin-bottom:12px;border:1px solid rgba(0,212,255,0.20);border-radius:10px;overflow:hidden">
+<div id="motor-outer-container" style="margin-bottom:12px;border:1px solid rgba(0,212,255,0.20);border-radius:10px;overflow:hidden;transition:border-color 0.4s,background 0.4s">
 
   <!-- Hero do Motor -->
   <div class="motor-hero" style="border:none;border-radius:0;margin-bottom:0">
@@ -740,6 +740,19 @@
     </div>
     <!-- Badge de decisão -->
     <div class="motor-hero-badge" id="motor-hero-decision">–</div>
+  </div>
+
+  <!-- Banner SHORT — oculto em LONG, proeminente em BEAR_TREND -->
+  <div id="motor-short-banner" style="display:none;padding:10px 18px;background:rgba(255,69,96,0.12);border-bottom:1px solid rgba(255,69,96,0.30);">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="font-size:0.85rem;font-weight:800;color:#ff4560;letter-spacing:0.5px;">🔻 MODO SHORT — BEAR_TREND ATIVO</span>
+      <span style="font-size:0.75rem;color:rgba(255,69,96,0.75)">Barras exibem edge invertido (1−Mn) · Entrada via SWAP Perp</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:0.72rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.7px">Bear Score</span>
+        <span id="motor-bear-composite-val" style="font-size:1rem;font-weight:800;color:#ff4560">–</span>
+        <span style="font-size:0.72rem;color:rgba(255,69,96,0.6)">/ gate 50%</span>
+      </span>
+    </div>
   </div>
 
   <!-- Card do Motor — sem borda própria, container externo gerencia -->
@@ -836,8 +849,8 @@
         </div>
         <div style="font-size:0.75rem;color:rgba(255,255,255,0.3);margin-top:2px;">threshold: <span id="motor-score-thr">56%</span></div>
       </div>
-      <!-- Schema v3.0.0 info strip -->
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:6px 10px;background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.12);border-radius:6px;">
+      <!-- Schema strip — adapta para LONG/SHORT -->
+      <div id="motor-schema-strip" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:6px 10px;background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.12);border-radius:6px;">
         <span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--blue);font-weight:700;">v3.0.0</span>
         <span style="font-size:0.65rem;color:var(--muted)">·</span>
         <span style="font-size:0.72rem;color:var(--slate)">Regime: <span style="color:var(--cyan);font-weight:600">ADX(10)+DI+/DI−</span></span>
@@ -850,24 +863,24 @@
       <div style="display:grid;grid-template-columns:145px 1fr 40px 44px;align-items:center;gap:4px 8px;margin-bottom:8px;">
 
         <!-- ── ACTIVE FACTORS ── -->
-        <span style="font-size:0.75rem;color:var(--text);font-weight:600">Dir.Volume (M3)
+        <span id="lbl-m3" style="font-size:0.75rem;color:var(--text);font-weight:600">Dir.Volume (M3)
           <span style="font-size:0.6rem;color:var(--yellow);font-weight:700;vertical-align:middle;margin-left:2px">★</span>
         </span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m3" style="height:13px;border-radius:7px;background:#ffd700;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#ffd700;text-align:right" id="w-m3">–</span>
         <span style="font-size:0.75rem;color:var(--yellow);text-align:right;white-space:nowrap;font-weight:700">37%</span>
 
-        <span style="font-size:0.75rem;color:var(--text)">Futures (M6)</span>
+        <span id="lbl-m6" style="font-size:0.75rem;color:var(--text)">Futures (M6)</span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m6" style="height:13px;border-radius:7px;background:#06b6d4;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#06b6d4;text-align:right" id="w-m6">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">20%</span>
 
-        <span style="font-size:0.75rem;color:var(--text)">Rel. Strength (M7)</span>
+        <span id="lbl-m7" style="font-size:0.75rem;color:var(--text)">Rel. Strength (M7)</span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m7" style="height:13px;border-radius:7px;background:#a78bfa;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#a78bfa;text-align:right" id="w-m7">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">17%</span>
 
-        <span style="font-size:0.75rem;color:var(--text)">Sentiment (M9) <span id="m9-fng-badge" style="font-size:0.75rem;color:var(--muted)"></span></span>
+        <span id="lbl-m9" style="font-size:0.75rem;color:var(--text)">Sentiment (M9) <span id="m9-fng-badge" style="font-size:0.75rem;color:var(--muted)"></span></span>
         <div style="height:13px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-m9" style="height:13px;border-radius:7px;background:#84cc16;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.82rem;font-weight:700;color:#84cc16;text-align:right" id="w-m9">–</span>
         <span style="font-size:0.75rem;color:var(--muted);text-align:right;white-space:nowrap">13%</span>
@@ -5009,6 +5022,22 @@ async function updateAll(){
       mb.textContent='normal'; mb.className='hbadge hbadge-green';  // verde = sem alertas
     }
 
+    // ── Modo SHORT vs LONG — adaptação visual completa ───────────────────────
+    const isBear = rg.includes('BEAR');
+    const motorOuter = document.getElementById('motor-outer-container');
+    const shortBanner = document.getElementById('motor-short-banner');
+
+    if(motorOuter){
+      if(isBear){
+        motorOuter.style.borderColor='rgba(255,69,96,0.45)';
+        motorOuter.style.background='rgba(255,69,96,0.02)';
+      } else {
+        motorOuter.style.borderColor='rgba(0,212,255,0.20)';
+        motorOuter.style.background='';
+      }
+    }
+    if(shortBanner) shortBanner.style.display=isBear?'block':'none';
+
     // Fatores do score (barras)
     const f=latest.factors||{};
     const m1=f.m1_momentum   ||f.momentum  ||0;
@@ -5022,14 +5051,88 @@ async function updateAll(){
     const m9=f.m9_sentiment   ||0;
     const mc1=f.mc1_rsi_cons||0;
     const mc2=f.mc2_reg_vol ||0;
-    const factors={m1,m2,m3,m4,m5,m6,m7,m8,m9,mc1,mc2};
+
+    // Em SHORT: invertemos M3/M6/M7/M9/mc1/mc2 para mostrar o bear edge real
+    // M8 não é invertido (volatilidade expansiva é boa para ambas as direções)
+    // M1/M2/M4/M5 não são invertidos (diagnóstico apenas)
+    const displayFactors = isBear ? {
+      m1, m2,
+      m3:  parseFloat((1-m3).toFixed(3)),
+      m4,  m5,
+      m6:  parseFloat((1-m6).toFixed(3)),
+      m7:  parseFloat((1-m7).toFixed(3)),
+      m8,
+      m9:  parseFloat((1-m9).toFixed(3)),
+      mc1: parseFloat((1-mc1).toFixed(3)),
+      mc2: parseFloat((1-mc2).toFixed(3)),
+    } : {m1,m2,m3,m4,m5,m6,m7,m8,m9,mc1,mc2};
+
+    // Atualiza barras com valores display (invertidos em SHORT)
     ['m1','m2','m3','m4','m5','m6','m7','m8','m9','mc1','mc2'].forEach(k=>{
-      const v=factors[k],pct=(v*100).toFixed(1)+'%';
+      const v=displayFactors[k], pct=(v*100).toFixed(1)+'%';
       const wEl=document.getElementById('w-'+k);
       const bEl=document.getElementById('wb-'+k);
       if(wEl) wEl.textContent=pct;
       if(bEl) bEl.style.width=(v*100).toFixed(1)+'%';
     });
+
+    // Labels das barras: SHORT = inv. annotations + cores vermelhas
+    const LONG_LABELS={
+      m3:'Dir.Volume (M3) <span style="font-size:0.6rem;color:var(--yellow);font-weight:700">★</span>',
+      m6:'Futures (M6)', m7:'Rel. Strength (M7)', m9:'Sentiment (M9)',
+    };
+    const SHORT_LABELS={
+      m3:'<span style="color:#ff4560">↙ Pressão Vendedora (M3 inv.)</span><span style="font-size:0.6rem;color:#ff4560;font-weight:700;margin-left:3px">★</span>',
+      m6:'<span style="color:#ff4560">↙ Funding Negativo (M6 inv.)</span>',
+      m7:'<span style="color:#ff4560">↙ RS Fraca vs BTC (M7 inv.)</span>',
+      m9:'<span style="color:#ff4560">↙ Fear/Medo (M9 inv.)</span>',
+    };
+    ['m3','m6','m7','m9'].forEach(k=>{
+      const lbl=document.getElementById('lbl-'+k);
+      if(!lbl) return;
+      // preserva o badge fng dentro de lbl-m9
+      if(k==='m9'){
+        const badge=document.getElementById('m9-fng-badge');
+        const badgeHtml=badge?badge.outerHTML:'';
+        if(isBear){
+          lbl.innerHTML=SHORT_LABELS[k]+' '+badgeHtml;
+        } else {
+          lbl.innerHTML=LONG_LABELS[k]+' '+badgeHtml;
+        }
+      } else {
+        lbl.innerHTML=isBear?SHORT_LABELS[k]:LONG_LABELS[k];
+      }
+    });
+
+    // Cor das barras: SHORT usa gradiente vermelho para features invertidas
+    if(isBear){
+      ['m3','m6','m7','m9','mc1','mc2'].forEach(k=>{
+        const bEl=document.getElementById('wb-'+k);
+        const wEl=document.getElementById('w-'+k);
+        if(bEl) bEl.style.background='rgba(255,69,96,0.85)';
+        if(wEl) wEl.style.color='#ff4560';
+      });
+    } else {
+      // Restaura cores originais em LONG
+      const ORIG_COLORS={m3:'#ffd700',m6:'#06b6d4',m7:'#a78bfa',
+                         m9:'#84cc16',mc1:'#f59e0b',mc2:'#fb923c'};
+      Object.entries(ORIG_COLORS).forEach(([k,c])=>{
+        const bEl=document.getElementById('wb-'+k);
+        const wEl=document.getElementById('w-'+k);
+        if(bEl) bEl.style.background=c;
+        if(wEl) wEl.style.color=c;
+      });
+    }
+
+    // Bear composite no banner
+    const bearComp=parseFloat(f.bear_composite||0);
+    const bcEl=document.getElementById('motor-bear-composite-val');
+    if(bcEl && isBear){
+      bcEl.textContent=bearComp>0?(bearComp*100).toFixed(1)+'%':'–';
+      bcEl.style.color=bearComp>=0.50?'#ff4560':'rgba(255,69,96,0.5)';
+    }
+
+    const factors={m1,m2,m3,m4,m5,m6,m7,m8,m9,mc1,mc2}; // raw para uso posterior
     // M9: badge F&G class + coloração dinâmica
     const fngClass=f.m9_fng_class||'';
     const fngBadge=document.getElementById('m9-fng-badge');
@@ -5077,20 +5180,38 @@ async function updateAll(){
     if(notEl) notEl.textContent=notional>0?'~'+usd(notional,0):'–';
 
     // Score atual + SL/TP reference
+    // Em SHORT: mostra bear_composite (score invertido) em vez do score LONG
     const rawScore=(latest.score||0)*100;
     const thr=(latest.threshold||0.56)*100;
+
+    // SHORT: bear_composite é o score relevante (gate=50%); LONG: score normal
+    const displayScore = isBear && bearComp>0 ? bearComp*100 : rawScore;
+    const displayThr   = isBear ? 50.0 : thr;
+
     const sFill=document.getElementById('motor-score-fill');
     const sNow=document.getElementById('motor-score-now');
     const sThr=document.getElementById('motor-score-thr');
+    const sThrLblEl=document.querySelector('#motor-score-fill')?.closest('.motor-section')?.querySelector('[style*="threshold"]');
     if(sFill){
-      const col=rawScore>=thr?'var(--green)':rawScore>=thr*0.85?'var(--yellow)':'var(--red)';
-      sFill.style.width=Math.min(rawScore,100).toFixed(1)+'%';
+      const col=isBear
+        ? (displayScore>=50?'#ff4560':'rgba(255,69,96,0.5)')
+        : (rawScore>=thr?'var(--green)':rawScore>=thr*0.85?'var(--yellow)':'var(--red)');
+      sFill.style.width=Math.min(displayScore,100).toFixed(1)+'%';
       sFill.style.background=col;
     }
-    if(sNow) sNow.textContent=rawScore.toFixed(1)+'%';
-    if(sThr) sThr.textContent=thr.toFixed(1)+'%';
+    if(sNow) sNow.textContent=isBear&&bearComp>0
+      ? displayScore.toFixed(1)+'% (Bear)'
+      : rawScore.toFixed(1)+'%';
+    if(sThr) sThr.textContent=displayThr.toFixed(1)+'%';
     const sThrLine=document.getElementById('motor-score-thr-line');
-    if(sThrLine) sThrLine.style.left=Math.min(thr,100).toFixed(1)+'%';
+    if(sThrLine) sThrLine.style.left=Math.min(displayThr,100).toFixed(1)+'%';
+
+    // Schema strip: adapta cor e modo LONG/SHORT
+    const schemaStrip=document.getElementById('motor-schema-strip');
+    if(schemaStrip){
+      schemaStrip.style.background=isBear?'rgba(255,69,96,0.05)':'rgba(0,212,255,0.04)';
+      schemaStrip.style.borderColor=isBear?'rgba(255,69,96,0.22)':'rgba(0,212,255,0.12)';
+    }
 
     // Moduladores de threshold (Phase 5 + Phase 13)
     const metaMult = f.meta_thr_mult||1.0;
@@ -5121,16 +5242,50 @@ async function updateAll(){
       'TREND EXHAUSTION':       {sl:1.5, tp:2.5},
       'MEAN REVERTING CHOP':    {sl:1.0, tp:1.5},
       'HIGH CORRELATION RISK':  {sl:1.2, tp:2.0},
+      'BEAR TREND':             {sl:0.5, tp:1.0},  // SHORT: SL=0.5×ATR acima, TP=1.0×ATR abaixo
+      'BEAR_TREND':             {sl:0.5, tp:1.0},
     };
     const motorReg=(latest.regime||'').replace(/_/g,' ');
     const motorMult=MOTOR_REGIME_MULT[motorReg]||{sl:1.5,tp:3.0};
     const slEl=document.getElementById('motor-sl');
     const tpEl=document.getElementById('motor-tp');
-    if(slEl) slEl.textContent=`-${motorMult.sl.toFixed(1)}% ATR`;
-    if(tpEl) tpEl.textContent=`+${motorMult.tp.toFixed(1)}% ATR`;
+    const slBox=slEl?.closest('div[style*="border-radius:8px"]');
+    const tpBox=tpEl?.closest('div[style*="border-radius:8px"]');
+    const slLblEl=slBox?.querySelector('div[style*="text-transform"]');
+    const tpLblEl=tpBox?.querySelector('div[style*="text-transform"]');
+    if(isBear){
+      // SHORT: SL é ACIMA da entrada (perda se subir), TP é ABAIXO (lucro se cair)
+      if(slEl) slEl.textContent=`+${motorMult.sl.toFixed(1)}× ATR ↑`;
+      if(tpEl) tpEl.textContent=`-${motorMult.tp.toFixed(1)}× ATR ↓`;
+      if(slLblEl) slLblEl.textContent='Stop Loss (↑ Short)';
+      if(tpLblEl) tpLblEl.textContent='Take Profit (↓ Short)';
+      if(slEl) slEl.style.color='#ff4560';
+      if(tpEl) tpEl.style.color='#ff4560';
+    } else {
+      if(slEl) slEl.textContent=`-${motorMult.sl.toFixed(1)}% ATR`;
+      if(tpEl) tpEl.textContent=`+${motorMult.tp.toFixed(1)}% ATR`;
+      if(slLblEl) slLblEl.textContent='Stop Loss';
+      if(tpLblEl) tpLblEl.textContent='Take Profit';
+      if(slEl) slEl.style.color='var(--red)';
+      if(tpEl) tpEl.style.color='var(--green)';
+    }
 
     // Kelly Breakdown + Edge Gates (sz_* / ec_* campos dos fatores)
     updateEdgeGatesAndKelly(latest);
+
+    // Zona de operação — adapta labels para SHORT
+    const tzHold=document.getElementById('tz-hold');
+    const tzReduce=document.getElementById('tz-reduce');
+    const tzNormal=document.getElementById('tz-normal');
+    const tzAgg=document.getElementById('tz-agg');
+    if(isBear){
+      if(tzHold)  { tzHold.querySelector('.tval').textContent='<50%'; tzHold.querySelector('div').textContent='AGUARDAR'; }
+      if(tzReduce){ tzReduce.querySelector('.tval').textContent='50–60%'; tzReduce.querySelector('div').textContent='SHORT TESTE'; }
+      if(tzNormal){ tzNormal.querySelector('.tval').textContent='60–70%'; tzNormal.querySelector('div').textContent='SHORT 1×'; }
+      if(tzAgg)   { tzAgg.querySelector('.tval').textContent='70%+'; tzAgg.querySelector('div').textContent='SHORT 1.5×'; }
+    } else {
+      if(tzAgg)   { tzAgg.querySelector('.tval').textContent='75%+'; tzAgg.querySelector('div').textContent='AGR. 1.5×'; }
+    }
 
     // Threshold zone highlight — lógica baseada na DECISÃO, não no range numérico.
     // Evita overlap: score < threshold → SOMENTE HOLD acende, independente do valor.
@@ -5167,18 +5322,24 @@ async function updateAll(){
     // ── Hero do Motor — decisão + métricas ───────────────────
     {
       const isSignal  =(latest.result==='SIGNAL');
-      const isBear    =rg.includes('BEAR');
+      // isBear já definido no escopo externo
       const isPanic   =rg.includes('PANIC');
       const isBlocked = isPanic;
       const dir       =(latest.direction||'LONG').toUpperCase();
 
-      // Métricas no hero
+      // Métricas no hero — em SHORT mostra bear_composite, em LONG score normal
       const dscore=document.getElementById('motor-decision-score');
       const dkelly=document.getElementById('motor-decision-kelly');
       const dthr  =document.getElementById('motor-decision-thr');
-      if(dscore) dscore.textContent=rawScore.toFixed(1)+'%';
+      if(dscore){
+        dscore.textContent=isBear&&bearComp>0?(bearComp*100).toFixed(1)+'%':rawScore.toFixed(1)+'%';
+        dscore.style.color=isBear?'#ff4560':'#a855f7';
+      }
       if(dkelly) dkelly.textContent=(effKelly*100).toFixed(1)+'%';
-      if(dthr)   dthr.textContent=thrVal.toFixed(1)+'%';
+      if(dthr){
+        dthr.textContent=isBear?'50.0%':thrVal.toFixed(1)+'%';
+        dthr.style.color=isBear?'#ff4560':'var(--green)';
+      }
 
       // Badge de decisão no hero
       const heroBadge=document.getElementById('motor-hero-decision');

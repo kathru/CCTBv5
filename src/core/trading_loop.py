@@ -378,6 +378,15 @@ class TradingLoop:
         await self._squeeze.start()
         logger.info("ShortSqueezeDetector: squeeze detection strategy started")
 
+        # v5.20 Module 1 — RegimeAwarePairEngine: pares adaptativos BULL/BEAR/CHOP
+        from ..strategies.cross_asset.regime_aware_pair_engine import RegimeAwarePairEngine
+        self._rape = RegimeAwarePairEngine(
+            cache=self._cache,
+            okx_client=self._okx,
+        )
+        await self._rape.start()
+        logger.info("RegimeAwarePairEngine: adaptive pairs BULL/BEAR/CHOP started")
+
         await self._runner.start()
         await self._position_monitor.start()
         await self._reconciler.start()
@@ -551,6 +560,8 @@ class TradingLoop:
         self._news_sentiment.stop()
         await self._adv_risk.stop()
         await self._model_health.stop()
+        if hasattr(self, "_rape"):
+            await self._rape.stop()
         if hasattr(self, "_squeeze"):
             await self._squeeze.stop()
         if hasattr(self, "_sector_pairs"):
@@ -1487,6 +1498,8 @@ class TradingLoop:
                     self._sector_pairs.set_portfolio_value(total)
                 if hasattr(self, "_squeeze"):
                     self._squeeze.set_portfolio_value(total)
+                if hasattr(self, "_rape"):
+                    self._rape.set_portfolio_value(total)
                 # Sincroniza cash interno com saldo USDT real da OKX
                 usdt_cash = self._portfolio.state.cash_available
                 if usdt_cash > 0:

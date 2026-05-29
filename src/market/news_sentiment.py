@@ -268,10 +268,13 @@ class NewsSentimentCollector:
             "source":          "fng+coingecko",
             "updated_at":      datetime.now(UTC).isoformat(),
         }
+        # TTL do composto M9 = 30min (alinha com M6/M7/M8).
+        # CACHE_TTL_FNG (1h) é usado apenas para o F&G raw (atualiza diariamente);
+        # o composto inclui dados CoinGecko (30min) então deve expirar mais cedo.
         await self._cache.set(
             CACHE_KEY_M9.format(symbol=symbol),
             json.dumps(payload),
-            ttl=CACHE_TTL_FNG,
+            ttl=CACHE_TTL_COIN,
         )
         logger.info(
             "NewsSentimentCollector: %s M9=%.3f (F&G=%d [%s] sent=%.0f%% px24h=%.1f%%)",

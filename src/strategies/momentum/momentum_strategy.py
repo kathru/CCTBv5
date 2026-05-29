@@ -589,11 +589,16 @@ class MomentumStrategy(BaseStrategy):
         # ── M2: Trend Consistency — diagnóstico (peso=0%) ─────────────────────
         # Mantido para monitoramento, removido do score por perm_imp=-0.0033.
         n_m2 = min(6, len(closes) - 1)
-        bullish_count = sum(1 for i in range(n_m2) if i < len(opens) and closes[i] > opens[i])
-        pct_bullish   = bullish_count / n_m2 if n_m2 > 0 else 0.5
-        hh_count      = sum(1 for i in range(min(4, len(highs) - 1)) if highs[i] > highs[i + 1])
-        hl_count      = sum(1 for i in range(min(4, len(lows)  - 1)) if lows[i]  > lows[i + 1])
-        m2            = pct_bullish * 0.5 + (hh_count + hl_count) / 8 * 0.5
+        if n_m2 > 0:
+            bullish_count = sum(1 for i in range(n_m2) if i < len(opens) and closes[i] > opens[i])
+            pct_bullish   = bullish_count / n_m2
+            hh_count      = sum(1 for i in range(min(4, len(highs) - 1)) if highs[i] > highs[i + 1])
+            hl_count      = sum(1 for i in range(min(4, len(lows)  - 1)) if lows[i]  > lows[i + 1])
+            m2            = pct_bullish * 0.5 + (hh_count + hl_count) / 8 * 0.5
+        else:
+            # Fallback neutro — sem candles suficientes para calcular M2.
+            # Evita mc1 = m1 × 0.0 = 0 que deprimiria o score desnecessariamente.
+            m2 = 0.5
 
         # ── M3: Directional Volume — PRINCIPAL EDGE (40%) ─────────────────────
         # Reformulado v3.0: volume direcional (buy vs sell pressure)
@@ -877,9 +882,44 @@ class MomentumStrategy(BaseStrategy):
         if closes_6h[0] >= sma5_6h * 0.999:
             return None
 
-        # Condição C: score mínimo presente (indica tendência detectada)
-        # Lowered 0.45 → 0.38: BEAR_TREND avg_score≈0.406, 0.45 nunca disparava
-        if score < 0.38:
+        # Condição C: bear_composite — score probabilístico INVERTIDO para SHORT
+        #
+        # O score LONG é projetado para compra: M3 alto=bom, M6 alto=bom, M7 alto=bom.
+        # Para SHORT é o oposto: queremos M3 baixo (pressão vendedora), M6 baixo
+        # (funding negativo → longs pagando), M7 baixo (RS fraca = ativo a vender),
+        # M9 baixo (fear/medo = bom para short), mc1/mc2 baixos (bearish estrutura).
+        # M8 (volatilidade) é mantido direcional: expansão favorece ambos os lados.
+        #
+        # Pesos: mesmos do motor LONG mas com Mn → (1−Mn) para features direcionais.
+        m3  = float(factors.get("m3_volume",       score))  # fallback = score original
+        m6  = float(factors.get("m6_futures",      0.5))
+        m7  = float(factors.get("m7_rel_strength", 0.5))
+        m8  = float(factors.get("m8_vol_state",    0.5))
+        m9  = float(factors.get("m9_sentiment",    0.5))
+        mc1 = float(factors.get("mc1_rsi_cons",    0.5))
+        mc2 = float(factors.get("mc2_reg_vol",     0.5))
+
+        bear_composite = round(
+            (1.0 - m3)  * 0.37 +   # pressão vendedora domina
+            (1.0 - m6)  * 0.20 +   # funding negativo / OI caindo
+            (1.0 - m7)  * 0.17 +   # RS fraca vs BTC
+            m8          * 0.05 +   # volatilidade expandida favorece SHORT
+            (1.0 - m9)  * 0.13 +   # fear/medo confirma bear
+            (1.0 - mc1) * 0.04 +   # RSI baixo + consistência bearish
+            (1.0 - mc2) * 0.04,    # regime força baixa
+            3,
+        )
+
+        # Gate: bear_composite >= 0.50 (nível neutro — só entra se o bear edge é real)
+        # Mantém também o gate mínimo do score original como sanity check (≥ 0.25)
+        if bear_composite < 0.50:
+            logger.debug(
+                "SHORT %s rejeitado: bear_composite=%.3f < 0.50 "
+                "(m3=%.2f m6=%.2f m7=%.2f m9=%.2f)",
+                ctx.symbol, bear_composite, m3, m6, m7, m9,
+            )
+            return None
+        if score < 0.25:   # sanity: score LONG muito baixo = dados ruins
             return None
 
         # Condição D: ADX bear direcional
@@ -892,8 +932,8 @@ class MomentumStrategy(BaseStrategy):
         bear_score = round(min(di_minus / (di_plus + di_minus + 1e-6), 1.0), 3)
         logger.info(
             "SHORT opportunity %s: BEAR_TREND confirmado 3×1H + 6H bearish | "
-            "DI-=%.1f DI+=%.1f bear_strength=%.3f",
-            ctx.symbol, di_minus, di_plus, bear_score,
+            "DI-=%.1f DI+=%.1f bear_strength=%.3f bear_composite=%.3f",
+            ctx.symbol, di_minus, di_plus, bear_score, bear_composite,
         )
 
         from ..base import StrategyContext as _SC  # noqa
@@ -901,10 +941,12 @@ class MomentumStrategy(BaseStrategy):
 
         kelly_short = 0.03   # tamanho conservador para shorts (3% do portfolio)
         short_factors = dict(factors)
-        short_factors["bear_strength"]  = bear_score
+        short_factors["bear_strength"]   = bear_score
+        short_factors["bear_composite"] = bear_composite   # score probabilístico SHORT
         short_factors["di_minus"]       = round(di_minus, 2)
         short_factors["di_plus"]        = round(di_plus, 2)
         short_factors["short_via_swap"] = 1.0   # flag para roteamento no TradingLoop
+        short_factors["regime"]         = regime  # preserva regime ADX para ExitPlan
 
         return _Signal(
             symbol=ctx.symbol,
@@ -917,13 +959,3 @@ class MomentumStrategy(BaseStrategy):
             factors=short_factors,
         )
 
-    def _detect_bear_strength(self, ctx: "StrategyContext") -> float:
-        """Força do sinal bear: proporção DI- vs DI+ em ADX(10)."""
-        if len(ctx.candles_1h) < 21:
-            return 0.0
-        highs  = [c.high  for c in ctx.candles_1h[:21]]
-        lows   = [c.low   for c in ctx.candles_1h[:21]]
-        closes = [c.close for c in ctx.candles_1h[:21]]
-        _, di_plus, di_minus = self._calc_adx(highs, lows, closes, period=10)
-        denom = di_plus + di_minus
-        return round(di_minus / denom, 3) if denom > 0 else 0.0

@@ -883,7 +883,7 @@
         <span style="font-size:0.78rem;font-weight:700;color:#f59e0b;text-align:right" id="w-mc1">–</span>
         <span style="font-size:0.72rem;color:#f59e0b;text-align:right;white-space:nowrap;font-weight:700">4%</span>
 
-        <span style="font-size:0.73rem;color:#fb923c;font-weight:600">mc2 = Reg. x Vol.</span>
+        <span style="font-size:0.73rem;color:#fb923c;font-weight:600">mc2 = M4 × M3</span>
         <div style="height:10px;background:#060d1a;border-radius:7px;overflow:hidden;"><div id="wb-mc2" style="height:10px;border-radius:7px;background:#fb923c;transition:width 0.5s;width:0%"></div></div>
         <span style="font-size:0.78rem;font-weight:700;color:#fb923c;text-align:right" id="w-mc2">–</span>
         <span style="font-size:0.72rem;color:#fb923c;text-align:right;white-space:nowrap;font-weight:700">4%</span>
@@ -2995,7 +2995,7 @@ function renderGovernance(status, drift, live, schema){
       schemaEl.innerHTML='<div class="m" style="font-size:0.92rem">Schema vazio</div>';
     } else {
       const SLABELS={'m1_momentum':'M1','m2_consistency':'M2','m3_volume':'M3','m4_regime_str':'M4','m5_candle':'M5','m6_futures':'M6','m7_rel_strength':'M7','m8_vol_state':'M8','m9_sentiment':'M9'};
-      const SDESC={'m1_momentum':'RSI(14)\n→mc1','m2_consistency':'Consist.\n→mc1','m3_volume':'Dir.Vol\n37%','m4_regime_str':'Reg.Str.\n→mc2','m5_candle':'Candle\noff','m6_futures':'Funding\n20%','m7_rel_strength':'RS vs BTC\n17%','m8_vol_state':'Vol.State\n5%','m9_sentiment':'Sentiment\n13%','mc1_rsi_cons':'RSI x Cons.\n4%','mc2_reg_vol':'Reg. x Vol.\n4%'};
+      const SDESC={'m1_momentum':'RSI(14)\n→mc1','m2_consistency':'Consist.\n→mc1','m3_volume':'Dir.Vol\n37%','m4_regime_str':'Reg.Str.\n→mc2','m5_candle':'Candle\noff','m6_futures':'Funding\n20%','m7_rel_strength':'RS vs BTC\n17%','m8_vol_state':'Vol.State\n5%','m9_sentiment':'Sentiment\n13%','mc1_rsi_cons':'RSI x Cons.\n4%','mc2_reg_vol':'M4 × M3\n4%'};
       // Sort: active first
       const sortedKeys=[...keys].sort((a,b)=>((feats[b].weight||0)-(feats[a].weight||0)));
       schemaEl.innerHTML=`<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;">`+

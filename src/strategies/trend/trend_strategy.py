@@ -131,6 +131,7 @@ class TrendStrategy(BaseStrategy):
             regime=regime, score=score, calibrated=calibrated,
             threshold=0.0, ev=ev, direction=direction,
             result=result, detail=detail, factors=factors or {},
+            strategy_id=self._strategy_id,
         ))
 
     # ── Helpers ───────────────────────────────────────────────────────────────

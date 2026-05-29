@@ -43,6 +43,7 @@ class SignalAuditEntry:
     result:      str
     detail:      str
     factors:     dict = field(default_factory=dict)
+    strategy_id: str  = "momentum_v2"
 
     def to_dict(self) -> dict:
         return {
@@ -57,6 +58,7 @@ class SignalAuditEntry:
             "result":      self.result,
             "detail":      self.detail,
             "icon":        RESULT_ICON.get(self.result, "⚪"),
+            "strategy_id": self.strategy_id,
             "factors":     {
                 k: round(v, 3) if isinstance(v, (int, float)) else v
                 for k, v in self.factors.items()
@@ -145,6 +147,7 @@ class SignalAuditLog:
                     result=row["result"],
                     detail=row["detail"],
                     factors=factors,
+                    strategy_id=factors.pop("_strategy_id", "momentum_v2"),
                 )
                 self._entries.appendleft(entry)
                 self._counters[entry.result] = self._counters.get(entry.result, 0) + 1

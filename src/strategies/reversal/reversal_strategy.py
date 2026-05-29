@@ -95,6 +95,7 @@ class ReversalStrategy1H(BaseStrategy):
             result=result,
             detail=detail,
             factors=factors or {},
+            strategy_id=self._strategy_id,
         ))
 
     async def evaluate(self, ctx: StrategyContext) -> Signal | None:

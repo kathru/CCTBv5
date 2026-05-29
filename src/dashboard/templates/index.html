@@ -568,6 +568,19 @@
     .sfeed-ts  { margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:0.65rem; color:var(--slate); font-variant-numeric:tabular-nums; }
     .sfeed-tags { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
 
+    /* ══ STRATEGY BADGES ═════════════════════════════════════ */
+    .strat-badge { padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; white-space:nowrap; }
+    .sb-mv2   { background:rgba(0,212,255,0.10);  color:#00d4ff; border:1px solid rgba(0,212,255,0.22); }
+    .sb-rev   { background:rgba(168,85,247,0.10); color:#a855f7; border:1px solid rgba(168,85,247,0.22); }
+    .sb-trn   { background:rgba(0,230,118,0.10);  color:#00e676; border:1px solid rgba(0,230,118,0.22); }
+    .sb-fund  { background:rgba(255,215,0,0.10);  color:#ffd700; border:1px solid rgba(255,215,0,0.22); }
+    .sb-sqz   { background:rgba(255,152,0,0.12);  color:#ff9800; border:1px solid rgba(255,152,0,0.25); }
+    .sb-pair  { background:rgba(236,72,153,0.10); color:#ec4899; border:1px solid rgba(236,72,153,0.22); }
+    .sb-rpair { background:rgba(99,102,241,0.12); color:#818cf8; border:1px solid rgba(99,102,241,0.25); }
+    .sb-pm    { background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.2); }
+    /* No trade-history, a estratégia ganha destaque visual por cor */
+    .trade-meta .strat-badge { font-size:0.70rem; }
+
     /* Charts — overridden at bottom of style block */
 
     /* Donut legend */
@@ -2384,6 +2397,22 @@ function regimeTag(r){
 }
 
 // ── Signal feed ────────────────────────────────────────────
+// ── Strategy badge helper ───────────────────────────────────
+const STRAT_META={
+  'momentum_v2':     {cls:'sb-mv2',   lbl:'MV2'},
+  'reversal_1h':     {cls:'sb-rev',   lbl:'REV'},
+  'trend_v56':       {cls:'sb-trn',   lbl:'TRN'},
+  'funding_harvest': {cls:'sb-fund',  lbl:'FUND'},
+  'short_squeeze':   {cls:'sb-sqz',   lbl:'SQZ'},
+  'sector_pair':     {cls:'sb-pair',  lbl:'PAIR'},
+  'regime_pair':     {cls:'sb-rpair', lbl:'RPAIR'},
+  'position_monitor':{cls:'sb-pm',    lbl:'PM'},
+};
+function stratBadge(sid){
+  const s=STRAT_META[sid]||{cls:'sb-pm',lbl:(sid||'?').replace('momentum_','m').toUpperCase().slice(0,6)};
+  return`<span class="strat-badge ${s.cls}">${s.lbl}</span>`;
+}
+
 function buildSignalFeed(log){
   const entries=(log?.entries||[]);
   const stats=log?.stats||{};
@@ -2403,11 +2432,13 @@ function buildSignalFeed(log){
     'SIGNAL':'var(--green)','SCORE_LOW':'var(--yellow)','EV_LOW':'var(--orange)',
     'REGIME_BLOCKED':'var(--red)','DIRECTION_FLAT':'var(--muted)',
     'NO_CANDLES':'#2d3748','FALL_WEAK':'var(--muted)',
+    'GATE_CLOSED':'var(--red)','RISK_BLOCKED':'var(--red)',
   };
   const RESULT_LBL={
     'SIGNAL':'✓ SINAL','SCORE_LOW':'score baixo','EV_LOW':'EV baixo',
     'REGIME_BLOCKED':'regime block','DIRECTION_FLAT':'direção plana',
     'NO_CANDLES':'sem dados','FALL_WEAK':'sinal fraco',
+    'GATE_CLOSED':'gate fechado','RISK_BLOCKED':'risk block',
   };
 
   return entries.map(e=>{
@@ -2417,10 +2448,12 @@ function buildSignalFeed(log){
     const ts=new Date(e.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     const score=e.score!=null?(e.score*100).toFixed(1)+'%':'–';
     const sym=e.symbol.replace('-USDT','');
+    const sid=e.strategy_id||'momentum_v2';
     return`<div class="sfeed-item${isSig?' sfeed-signal':''}">
       <div class="sfeed-top">
         <span style="font-size:0.75rem;font-weight:800;color:var(--text)">${sym}</span>
         ${regimeTag(e.regime)}
+        ${stratBadge(sid)}
         <span class="sfeed-ts">${ts}</span>
       </div>
       <div class="sfeed-tags">
@@ -2453,11 +2486,12 @@ function buildTradeHistory(orders, totalFilled){
     const cashStr=(cashFlow>=0?'+':'')+usd(Math.abs(cashFlow));
     const cashCls=isSell?'g':'r';
     const ts=dt(o.filled_at||o.created_at);
+    const sid=o.strategy_id||'momentum_v2';
     return`<div class="trade-item">
       <div class="trade-pill ${isSell?'tp-sell':'tp-buy'}">${side.toUpperCase()}</div>
       <div>
         <div class="trade-sym">${esc(o.symbol)||'–'}</div>
-        <div class="trade-meta"><span class="strat">${esc((o.strategy_id||'momentum_v2').replace('momentum_','m').toUpperCase())}</span> · ${qty.toFixed(4)} un · ${feeStr}</div>
+        <div class="trade-meta">${stratBadge(sid)} · ${qty.toFixed(4)} un · ${feeStr}</div>
       </div>
       <div class="trade-right">
         <div class="trade-pnl ${cashCls}">${cashFlow>=0?'+':'-'}${usd(Math.abs(cashFlow))}</div>
@@ -5512,7 +5546,7 @@ async function updateAll(){
   document.getElementById('orders-body').innerHTML=all.length?all.map(o=>{
     const q=parseFloat(o.quantity||0),f=parseFloat(o.filled_quantity||0),px=parseFloat(o.avg_fill_price||0),n=f>0&&px>0?f*px:0;
     const si=(o.side||'').toLowerCase(),st=(o.status||'').toLowerCase();
-    return`<tr><td class="b">${esc(o.symbol)||'–'}</td><td>${pill(si.toUpperCase(),si)}</td><td>${pill(st.toUpperCase(),st)}</td><td>${q.toFixed(4)}</td><td>${f.toFixed(4)}</td><td>${px>0?usd(px):'–'}</td><td>${n>0?usd(n,0):'–'}</td><td class="m" style="font-size:0.82rem">${esc(o.strategy_id)||'–'}</td><td class="m" style="font-size:0.82rem">${dt(o.created_at)}</td></tr>`;
+    return`<tr><td class="b">${esc(o.symbol)||'–'}</td><td>${pill(si.toUpperCase(),si)}</td><td>${pill(st.toUpperCase(),st)}</td><td>${q.toFixed(4)}</td><td>${f.toFixed(4)}</td><td>${px>0?usd(px):'–'}</td><td>${n>0?usd(n,0):'–'}</td><td class="m">${stratBadge(o.strategy_id||'momentum_v2')}</td><td class="m" style="font-size:0.82rem">${dt(o.created_at)}</td></tr>`;
   }).join(''):'<tr class="empty-row"><td colspan="9">Nenhuma ordem</td></tr>';
 
   const luEl=document.getElementById('last-update');

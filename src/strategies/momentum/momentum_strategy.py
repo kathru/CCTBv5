@@ -147,6 +147,7 @@ class MomentumStrategy(BaseStrategy):
                 threshold=threshold, ev=ev,
                 direction=direction, result=result, detail=detail,
                 factors=factors or {},
+                strategy_id=self._strategy_id,
             ))
 
         # ── Filtro 0: candles ────────────────────────────────

@@ -35,6 +35,7 @@ from ...market.alpha_orthogonality import alpha_orthogonality
 from ...monitoring.feature_governance import governance
 from ...monitoring.signal_log import SignalAuditEntry, signal_audit_log
 from ...oms.sizing_engine import SizingEngine
+from ...risk.strategy_router import strategy_router as _sr
 from ..base import BaseStrategy, StrategyContext
 from ..edge_conditioner import EdgeConditioner
 from ..ml.inference import PlattCalibrator
@@ -181,6 +182,22 @@ class MomentumStrategy(BaseStrategy):
         # Expõe distribuição de probabilidade para diagnóstico
         regime_distribution = meta_regime_data.get("regime_distribution", {})
         threshold = round(min(threshold * meta_thr_mult, 0.99), 4)
+
+        # ── StrategyRouter: aptidão por regime/macro ──────────────────────────
+        # Passa regime micro + macro_state para personalizar parâmetros.
+        # Para momentum: só aplica kelly_mult e allowed (threshold já modulado acima).
+        route = await _sr.consult(
+            strategy_id="momentum",
+            regime=regime,
+            macro_state=meta_regime_name,
+        )
+        if not route.allowed:
+            _log("ROUTER_BLOCKED",
+                 f"StrategyRouter bloqueou: {route.reason}",
+                 regime=regime)
+            return None
+        # Aplica kelly_mult do router ao regime kelly_mult
+        kelly_mult = round(kelly_mult * route.kelly_mult, 4)
 
         # ── Phase 5: Adaptive Threshold — percentil de ATR 1H ────────────────
         # ATR alto (mercado agitado) → exige score maior → mult > 1.0

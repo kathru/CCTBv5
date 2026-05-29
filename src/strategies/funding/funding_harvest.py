@@ -42,6 +42,7 @@ from datetime import UTC, datetime
 
 from ...persistence.strategy_trade_log import strategy_trade_log as _stl
 from ...risk.global_risk_guard import global_risk_guard as _grg
+from ...risk.strategy_router import strategy_router as _sr
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +230,12 @@ class FundingHarvest:
             logger.info("FundingHarvest: entrada bloqueada pelo GlobalRiskGuard — %s", guard.reason)
             return
 
+        # ── StrategyRouter: aptidão por regime/macro ──────────────────────────
+        route = await _sr.consult(strategy_id="funding_harvest")
+        if not route.allowed:
+            logger.info("FundingHarvest: entrada bloqueada pelo StrategyRouter — %s", route.reason)
+            return
+
         funding_rate = await self._get_funding_rate(swap_sym)
         if funding_rate is None or funding_rate < HARVEST_THRESHOLD:
             logger.debug(
@@ -248,8 +255,9 @@ class FundingHarvest:
                 )
                 return
 
-        # Sizing — aplica kelly_mult do GlobalRiskGuard (modo defensivo → ×0.5)
-        contracts = self._size_contracts(symbol, swap_sym, kelly_mult=guard.kelly_mult)
+        # Sizing — combina kelly_mult do GlobalRiskGuard e do StrategyRouter
+        combined_kelly = guard.kelly_mult * route.kelly_mult
+        contracts = self._size_contracts(symbol, swap_sym, kelly_mult=combined_kelly)
         if contracts < 1:
             logger.debug("FundingHarvest: %s portfolio insuficiente para sizing", symbol)
             return
@@ -260,8 +268,10 @@ class FundingHarvest:
             return
 
         logger.info(
-            "FundingHarvest ENTRADA: %s funding=%.4f%% contracts=%d kelly_mult=%.1f",
-            symbol, funding_rate * 100, contracts, guard.kelly_mult,
+            "FundingHarvest ENTRADA: %s funding=%.4f%% contracts=%d "
+            "kelly_mult=%.2f [guard=%.2f router=%.2f apt=%.2f]",
+            symbol, funding_rate * 100, contracts,
+            combined_kelly, guard.kelly_mult, route.kelly_mult, route.aptitude,
         )
 
         # Coloca ordem SHORT no swap

@@ -71,6 +71,7 @@ from datetime import UTC, datetime
 
 from ...persistence.strategy_trade_log import strategy_trade_log as _stl
 from ...risk.global_risk_guard import global_risk_guard as _grg
+from ...risk.strategy_router import strategy_router as _sr
 
 logger = logging.getLogger(__name__)
 
@@ -258,10 +259,25 @@ class ShortSqueezeDetector:
             logger.info("ShortSqueezeDetector: entrada bloqueada pelo GlobalRiskGuard — %s", guard.reason)
             return
 
+        # ── StrategyRouter: aptidão por regime/macro ──────────────────────────
+        route = await _sr.consult(strategy_id="short_squeeze")
+        if not route.allowed:
+            logger.info("ShortSqueezeDetector: entrada bloqueada pelo StrategyRouter — %s", route.reason)
+            return
+
+        # Aplica score_mult do router ao threshold de squeeze
+        adjusted_threshold = SQUEEZE_THRESHOLD * route.score_mult
+        # Re-filtra candidatos com threshold ajustado
+        candidates = [(s, sc, comp) for s, sc, comp in candidates if sc >= adjusted_threshold]
+        if not candidates:
+            logger.debug("ShortSqueezeDetector: nenhum candidato após ajuste de threshold router (×%.2f)", route.score_mult)
+            return
+
         # Escolhe o símbolo com maior squeeze_score
         candidates.sort(key=lambda x: x[1], reverse=True)
         best_sym, best_score, best_comp = candidates[0]
-        await self._enter_squeeze(best_sym, best_score, best_comp, kelly_mult=guard.kelly_mult)
+        combined_kelly = guard.kelly_mult * route.kelly_mult
+        await self._enter_squeeze(best_sym, best_score, best_comp, kelly_mult=combined_kelly)
 
     # ── Score de squeeze ──────────────────────────────────────────────────────
 

@@ -54,6 +54,7 @@ from datetime import UTC, datetime
 
 from ...persistence.strategy_trade_log import strategy_trade_log as _stl
 from ...risk.global_risk_guard import global_risk_guard as _grg
+from ...risk.strategy_router import strategy_router as _sr
 
 logger = logging.getLogger(__name__)
 
@@ -344,8 +345,15 @@ class SectorPairDetector:
             logger.info("SectorPairDetector: entrada bloqueada pelo GlobalRiskGuard — %s", guard.reason)
             return
 
-        # Sizing — kelly_mult do GlobalRiskGuard aplicado ao notional
-        notional      = self._portfolio_value * PAIRS_ALLOC_PCT / 2 * guard.kelly_mult
+        # ── StrategyRouter: aptidão por regime/macro ──────────────────────────
+        route = await _sr.consult(strategy_id="sector_pair")
+        if not route.allowed:
+            logger.info("SectorPairDetector: entrada bloqueada pelo StrategyRouter — %s", route.reason)
+            return
+
+        # Sizing — combina kelly_mult do GlobalRiskGuard e do StrategyRouter
+        combined_kelly = guard.kelly_mult * route.kelly_mult
+        notional      = self._portfolio_value * PAIRS_ALLOC_PCT / 2 * combined_kelly
         swap_sym      = SWAP_SYMBOLS.get(short_sym)
         cs            = SWAP_CONTRACT_SIZE.get(swap_sym, 1.0)
         if not swap_sym or notional <= 0:
@@ -356,9 +364,10 @@ class SectorPairDetector:
 
         logger.info(
             "SectorPairDetector ENTRADA: LONG %s @ %.4f | SHORT %s @ %.4f "
-            "| z=%.2f div=%.1f%% notional=%.0f kelly_mult=%.1f",
+            "| z=%.2f div=%.1f%% notional=%.0f kelly=%.2f [g=%.2f r=%.2f apt=%.2f]",
             long_sym, long_px, short_sym, short_px,
-            z, div_pct * 100, notional, guard.kelly_mult,
+            z, div_pct * 100, notional, combined_kelly,
+            guard.kelly_mult, route.kelly_mult, route.aptitude,
         )
 
         # Coloca ordens

@@ -2025,3 +2025,17 @@ async def get_strategy_performance(request: Request) -> dict:
         "strategies_tracked": sorted(all_strategies.keys()),
         "computed_at": datetime.now(UTC).isoformat(),
     }
+
+
+@router.get("/strategy_router")
+async def get_strategy_router(request: Request) -> dict:
+    """
+    Estado atual do StrategyRouter — regime × macro → aptidão por estratégia.
+
+    Expõe:
+      - regime e macro_state atuais
+      - aptidão e parâmetros calculados para cada estratégia
+      - matriz completa de aptidão para o dashboard
+    """
+    from ...risk.strategy_router import strategy_router as _sr
+    return await _sr.snapshot()

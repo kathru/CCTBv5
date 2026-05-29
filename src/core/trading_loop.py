@@ -121,6 +121,11 @@ class TradingLoop:
         _grg.init(kill_switch=self._kill_switch, cache=cache)
         logger.info("GlobalRiskGuard: inicializado e pronto")
 
+        # ── StrategyRouter (consultor regime/macro para estratégias v5.20) ───
+        from ..risk.strategy_router import strategy_router as _sr
+        _sr.init(cache=cache)
+        logger.info("StrategyRouter: inicializado e pronto")
+
         # ── OKX client ────────────────────────────────────────
         # Use demo credentials when in paper mode and demo keys are configured
         _paper = settings.okx_paper_trading

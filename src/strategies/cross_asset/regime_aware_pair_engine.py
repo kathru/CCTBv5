@@ -65,6 +65,7 @@ from datetime import UTC, datetime
 
 from ...persistence.strategy_trade_log import strategy_trade_log as _stl
 from ...risk.global_risk_guard import global_risk_guard as _grg
+from ...risk.strategy_router import strategy_router as _sr
 
 logger = logging.getLogger(__name__)
 
@@ -357,10 +358,17 @@ class RegimeAwarePairEngine:
             logger.info("RegimeAwarePairEngine: entrada bloqueada pelo GlobalRiskGuard — %s", guard.reason)
             return
 
-        # Sizing — kelly_mult do GlobalRiskGuard aplicado ao notional
+        # ── StrategyRouter: aptidão por regime/macro ──────────────────────────
+        route = await _sr.consult(strategy_id="regime_pair", regime=regime)
+        if not route.allowed:
+            logger.info("RegimeAwarePairEngine: entrada bloqueada pelo StrategyRouter — %s", route.reason)
+            return
+
+        # Sizing — combina kelly_mult do GlobalRiskGuard e do StrategyRouter
         if self._portfolio_value <= 0:
             return
-        notional    = self._portfolio_value * params["allocation_pct"] / 2 * guard.kelly_mult
+        combined_kelly = guard.kelly_mult * route.kelly_mult
+        notional    = self._portfolio_value * params["allocation_pct"] / 2 * combined_kelly
         swap_sym    = SWAP_SYMBOLS.get(short_sym)
         cs          = SWAP_CONTRACT_SIZE.get(swap_sym, 1.0)
         if not swap_sym or cs <= 0:
@@ -370,9 +378,11 @@ class RegimeAwarePairEngine:
 
         logger.info(
             "RegimeAwarePairEngine [%s] ENTRADA: LONG %s(RS=%.3f) "
-            "SHORT %s(RS=%.3f) spread=%.3f regime=%s notional=%.0f kelly_mult=%.1f",
+            "SHORT %s(RS=%.3f) spread=%.3f regime=%s notional=%.0f "
+            "kelly=%.2f [g=%.2f r=%.2f apt=%.2f]",
             mode, long_sym, long_score, short_sym, short_score,
-            spread, regime, notional, guard.kelly_mult,
+            spread, regime, notional,
+            combined_kelly, guard.kelly_mult, route.kelly_mult, route.aptitude,
         )
 
         try:

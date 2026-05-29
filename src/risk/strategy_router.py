@@ -231,8 +231,12 @@ class StrategyRouter:
 
     async def _get_current_regime_macro(self) -> tuple[str, str, float]:
         """
-        Lê regime e macro state do Redis.
-        Retorna (regime, macro_state, threshold_mult).
+        Lê regime e macro state do Redis e do signal_audit_log.
+        Retorna (regime_micro, macro_state, threshold_mult).
+
+        Fontes:
+          - macro_state: Redis "meta_regime" → campo "regime" (RISK_ON, RISK_OFF, etc.)
+          - regime_micro: última entrada do signal_audit_log com regime válido
         """
         regime_name  = "UNKNOWN"
         macro_name   = "UNKNOWN"
@@ -242,21 +246,27 @@ class StrategyRouter:
             return regime_name, macro_name, thr_mult_raw
 
         try:
-            # Regime micro (position_monitor → meta_regime usa campo "regime")
+            # Macro state via meta_regime Redis
             meta_raw = await self._cache.get("meta_regime")
             if meta_raw:
                 meta = meta_raw if isinstance(meta_raw, dict) else json.loads(meta_raw)
                 macro_name   = meta.get("regime", "UNKNOWN")
                 thr_mult_raw = float(meta.get("threshold_mult", 1.0))
-
-            # Regime de mercado micro (position_monitor → "market_regime")
-            mkt_raw = await self._cache.get("market_regime")
-            if mkt_raw:
-                mkt = mkt_raw if isinstance(mkt_raw, dict) else json.loads(mkt_raw)
-                regime_name = mkt.get("regime", "UNKNOWN")
-
         except Exception as exc:
-            logger.debug("StrategyRouter: falha ao ler regime do Redis: %s", exc)
+            logger.debug("StrategyRouter: falha ao ler meta_regime: %s", exc)
+
+        # Regime micro via signal_audit_log (regime mais recente avaliado)
+        try:
+            from ..monitoring.signal_log import signal_audit_log
+            entries = list(signal_audit_log._entries)
+            # Itera do mais recente para o mais antigo
+            for e in reversed(entries):
+                r = getattr(e, "regime", None) or ""
+                if r and r in KNOWN_REGIMES:
+                    regime_name = r
+                    break
+        except Exception as exc:
+            logger.debug("StrategyRouter: falha ao ler regime do signal_audit_log: %s", exc)
 
         return regime_name, macro_name, thr_mult_raw
 

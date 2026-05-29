@@ -69,6 +69,8 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from ...persistence.strategy_trade_log import strategy_trade_log as _stl
+
 logger = logging.getLogger(__name__)
 
 # ── Configuração ──────────────────────────────────────────────────────────────
@@ -461,11 +463,14 @@ class ShortSqueezeDetector:
             "ShortSqueezeDetector SAÍDA: %s motivo=%s pnl=%.2f%%",
             symbol, ", ".join(reasons), pnl_pct * 100,
         )
-        await self._close_squeeze(symbol, pos)
+        await self._close_squeeze(symbol, pos, reason=", ".join(reasons))
 
-    async def _close_squeeze(self, symbol: str, pos: SqueezePosition) -> None:
+    async def _close_squeeze(
+        self, symbol: str, pos: SqueezePosition, reason: str = ""
+    ) -> None:
         """Fecha o LONG de squeeze via venda spot."""
         coid = f"sq_close_{uuid.uuid4().hex[:12]}"
+        exit_price: float | None = None
         try:
             await self._okx.place_order(
                 symbol=symbol,
@@ -475,9 +480,28 @@ class ShortSqueezeDetector:
                 price=None,
                 client_order_id=coid,
             )
+            exit_price = await self._get_price(symbol)
         except Exception as exc:
             logger.error("ShortSqueezeDetector: falha ao fechar %s: %s", symbol, exc)
             return
+
+        # Persiste trade no strategy_trades
+        pnl_pct_val  = pos.pnl_pct(exit_price) if exit_price else None
+        pnl_usdt_val = (pnl_pct_val * pos.quantity * pos.entry_price) if pnl_pct_val is not None else None
+        await _stl.log_trade(
+            strategy_id="short_squeeze",
+            symbol=symbol,
+            side="long",
+            entry_price=pos.entry_price,
+            exit_price=exit_price,
+            notional=pos.quantity * pos.entry_price,
+            pnl_pct=pnl_pct_val,
+            pnl_usdt=pnl_usdt_val,
+            reason=reason or "manual_close",
+            opened_at=pos.opened_at,
+            closed_at=datetime.now(UTC),
+            extra={"squeeze_score": pos.squeeze_score},
+        )
 
         self._active.pop(symbol, None)
 
@@ -490,8 +514,8 @@ class ShortSqueezeDetector:
 
         await self._persist_status()
         logger.info(
-            "ShortSqueezeDetector: %s fechado (%.1fh hold)",
-            symbol, pos.age_hours,
+            "ShortSqueezeDetector: %s fechado (%.1fh hold) pnl=%.2f%%",
+            symbol, pos.age_hours, (pnl_pct_val or 0) * 100,
         )
 
     # ── Dados de mercado ──────────────────────────────────────────────────────

@@ -40,6 +40,8 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
+from ...persistence.strategy_trade_log import strategy_trade_log as _stl
+
 logger = logging.getLogger(__name__)
 
 # ── Configuração ──────────────────────────────────────────────────────────────
@@ -349,9 +351,11 @@ class FundingHarvest:
             "FundingHarvest SAÍDA: %s motivo=%s",
             symbol, ", ".join(reasons),
         )
-        await self._close_harvest(symbol, entry)
+        await self._close_harvest(symbol, entry, reason=", ".join(reasons))
 
-    async def _close_harvest(self, symbol: str, entry: FundingHarvestEntry) -> None:
+    async def _close_harvest(
+        self, symbol: str, entry: FundingHarvestEntry, reason: str = ""
+    ) -> None:
         """Fecha posição de harvest via swap buy (cobre o short)."""
         try:
             coid = f"fh_close_{uuid.uuid4().hex[:12]}"
@@ -370,13 +374,43 @@ class FundingHarvest:
         # Remove do PositionMonitor via API pública
         self._pm.unregister_short_plan(symbol)
 
+        # Obtém preço atual para calcular pnl (SHORT: lucro quando preço cai)
+        exit_price: float | None = None
+        pnl_pct: float | None = None
+        pnl_usdt: float | None = None
+        try:
+            exit_price = await self._get_price(symbol)
+            if exit_price and entry.entry_price:
+                # SHORT: pnl_pct = (entry - exit) / entry
+                pnl_pct  = (entry.entry_price - exit_price) / entry.entry_price
+                notional  = self._portfolio_value * HARVEST_ALLOCATION_PCT
+                pnl_usdt = pnl_pct * notional
+        except Exception:
+            pass
+
+        # Persiste trade no strategy_trades
+        await _stl.log_trade(
+            strategy_id="funding_harvest",
+            symbol=symbol,
+            side="short",
+            entry_price=entry.entry_price,
+            exit_price=exit_price,
+            notional=self._portfolio_value * HARVEST_ALLOCATION_PCT,
+            pnl_pct=pnl_pct,
+            pnl_usdt=pnl_usdt,
+            reason=reason or "manual_close",
+            opened_at=entry.opened_at,
+            closed_at=datetime.now(UTC),
+            extra={"entry_funding_rate": entry.entry_funding_rate},
+        )
+
         # Remove estado interno e cache
         self._positions.pop(symbol, None)
         await self._cache.delete(f"funding_harvest:{symbol}")
 
         logger.info(
-            "FundingHarvest: %s posição fechada (%.1fh de hold)",
-            symbol, entry.age_hours,
+            "FundingHarvest: %s posição fechada (%.1fh de hold) pnl=%.2f%%",
+            symbol, entry.age_hours, (pnl_pct or 0) * 100,
         )
 
     # ── Sizing ────────────────────────────────────────────────────────────────

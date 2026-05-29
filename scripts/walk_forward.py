@@ -769,6 +769,45 @@ async def main_async(args: argparse.Namespace) -> None:
             args.start,
         )
 
+    # ── v5.20 Live Paper Trading Stats ───────────────────────────────────────
+    # Estratégias bypass-OMS não têm backtest histórico (dependem de OI/funding/RS).
+    # Reportamos as métricas de paper trading ao vivo para o operador avaliar.
+    oracle_base = "http://137.131.220.216:8001"
+    if not args.dry_run:
+        try:
+            resp = requests.get(f"{oracle_base}/api/analytics/strategy_performance", timeout=10)
+            if resp.status_code == 200:
+                sp = resp.json()
+                log.info("")
+                log.info("══ v5.20 Strategy Performance (paper trading ao vivo) ══")
+                for sid, stats in sp.get("by_strategy", {}).items():
+                    n  = stats.get("n_trades", 0)
+                    wr = stats.get("win_rate")
+                    pf = stats.get("profit_factor")
+                    sh = stats.get("sharpe")
+                    pnl = stats.get("total_pnl_usdt", 0)
+                    ea  = sp.get("edge_alpha", {}).get(sid)
+                    log.info(
+                        "  %-20s  n=%3d  WR=%-5s  PF=%-5s  Sharpe=%-6s  PnL=%+.2f  EdgeAlpha=%s",
+                        sid, n,
+                        f"{wr:.1%}" if wr is not None else "N/A",
+                        f"{pf:.2f}" if pf is not None else "N/A",
+                        f"{sh:.2f}"  if sh is not None else "N/A",
+                        pnl,
+                        f"{ea:.2f}" if ea is not None else "N/A",
+                    )
+                port = sp.get("portfolio", {})
+                log.info(
+                    "  %-20s  n=%3d  WR=%-5s  PnL=%+.2f  Sharpe=%s",
+                    "TOTAL",
+                    port.get("n_trades", 0),
+                    f"{port['win_rate']:.1%}" if port.get("win_rate") else "N/A",
+                    port.get("total_pnl_usdt", 0),
+                    f"{port['sharpe']:.2f}" if port.get("sharpe") else "N/A",
+                )
+        except Exception as exc:
+            log.warning("v5.20 stats indisponíveis (Oracle offline?): %s", exc)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Walk-Forward Optimization CCTBv5")

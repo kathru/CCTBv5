@@ -955,6 +955,31 @@ async def get_reality_check(request: Request) -> dict:
                     ]) else "RED"),
     }
 
+    # ── v5.20 strategy reality check (from strategy_trades table) ──────────────
+    from ...persistence.strategy_trade_log import strategy_trade_log as _stl
+    v520_reality: dict = {}
+    try:
+        v520_by_strat = await _stl.get_stats_by_strategy()
+        for sid, stats in v520_by_strat.items():
+            n_s  = stats.get("n_trades", 0)
+            wr_s = stats.get("win_rate")
+            pf_s = stats.get("profit_factor")
+            # Minimal reality check: WR > 30%, PF > 1
+            v520_reality[sid] = {
+                "n_trades":       n_s,
+                "win_rate":       wr_s,
+                "profit_factor":  pf_s,
+                "total_pnl_usdt": stats.get("total_pnl_usdt"),
+                "sufficient_data": n_s >= 10,
+                "verdict": (
+                    "GREEN"  if n_s >= 10 and pf_s and pf_s > 1.0 else
+                    "YELLOW" if n_s >= 5  and pf_s and pf_s > 0.8 else
+                    "GREY"   if n_s < 5  else "RED"
+                ),
+            }
+    except Exception:
+        pass
+
     return {
         "n_trades":        n,
         "sufficient_data": True,
@@ -973,6 +998,7 @@ async def get_reality_check(request: Request) -> dict:
         "fee_stress":   fee_stress,
         "verdict":      verdict,
         "alpha":        ALPHA,
+        "v520_strategies": v520_reality,
         "computed_at":  datetime.now(UTC).isoformat(),
     }
 
@@ -1883,3 +1909,119 @@ async def get_strategy_weights(request: Request) -> dict:
         }
     except Exception as exc:
         return {"available": False, "error": str(exc)}
+
+
+# ── v5.20 Strategy Performance ────────────────────────────────────────────────
+
+@router.get("/strategy_performance")
+async def get_strategy_performance(request: Request) -> dict:
+    """
+    Performance por estratégia — integra OMS trades (momentum/reversal/trend)
+    com trades bypass-OMS (funding_harvest, short_squeeze, sector_pair, regime_pair).
+
+    Usado por: WFO, reality_check, autonomous_review, dashboard.
+    """
+    from ...persistence.strategy_trade_log import strategy_trade_log as _stl
+
+    # ── 1. Trades OMS (tabela orders) ─────────────────────────────────────────
+    db = request.app.state.db
+    oms_orders = await _get_filled_orders(db)
+    oms_trades = _pair_trades(oms_orders)
+
+    # Enriquece com strategy_id via signal_audit_log (aproximação por símbolo+tempo)
+    audit_entries = list(signal_audit_log._entries)
+    by_sym_audit: dict[str, list] = {}
+    for ae in audit_entries:
+        by_sym_audit.setdefault(ae.symbol, []).append(ae)
+
+    def _find_strategy(symbol: str, entry_ts) -> str:
+        if entry_ts is None:
+            return "momentum_v2"
+        epoch = entry_ts.timestamp() if hasattr(entry_ts, "timestamp") else float(entry_ts)
+        candidates = [
+            ae for ae in by_sym_audit.get(symbol, [])
+            if hasattr(ae.timestamp, "timestamp")
+            and abs(ae.timestamp.timestamp() - epoch) <= 7200
+        ]
+        if candidates:
+            closest = min(candidates, key=lambda ae: abs(ae.timestamp.timestamp() - epoch))
+            return getattr(closest, "strategy_id", "momentum_v2")
+        return "momentum_v2"
+
+    oms_by_strategy: dict[str, list[dict]] = {}
+    for t in oms_trades:
+        sid = _find_strategy(t["symbol"], t.get("entry_ts"))
+        oms_by_strategy.setdefault(sid, []).append(t)
+
+    # ── 2. Trades bypass-OMS (tabela strategy_trades) ─────────────────────────
+    bypass_stats = await _stl.get_stats_by_strategy()
+    bypass_trades_raw = await _stl.get_trades(limit=1000)
+
+    # ── 3. Agrega stats OMS por strategy_id ───────────────────────────────────
+    def _stats_from_trades(trades: list[dict]) -> dict:
+        n     = len(trades)
+        pnls  = [t["pnl"]     for t in trades]
+        pcts  = [t["pnl_pct"] for t in trades]
+        wins  = [p for p in pnls if p > 0]
+        losses= [p for p in pnls if p <= 0]
+        gp    = sum(wins)
+        gl    = abs(sum(losses))
+        return {
+            "n_trades":       n,
+            "n_wins":         len(wins),
+            "n_losses":       len(losses),
+            "win_rate":       round(len(wins) / n, 4) if n else None,
+            "total_pnl_usdt": round(sum(pnls), 2),
+            "avg_pnl_pct":    round(sum(pcts) / n, 6) if n else None,
+            "profit_factor":  round(gp / gl, 3) if gl > 0 else None,
+            "sharpe":         _sharpe(pcts),
+        }
+
+    all_strategies: dict[str, dict] = {}
+
+    # OMS strategies
+    for sid, trades in oms_by_strategy.items():
+        all_strategies[sid] = {
+            **_stats_from_trades(trades),
+            "source": "oms",
+        }
+
+    # bypass-OMS strategies — merge stats from DB
+    for sid, stats in bypass_stats.items():
+        all_strategies[sid] = {
+            **stats,
+            "source": "strategy_trades",
+        }
+
+    # ── 4. Portfolio total (todas estratégias combinadas) ─────────────────────
+    all_pnls: list[float] = [t["pnl"] for t in oms_trades]
+    all_pcts: list[float] = [t["pnl_pct"] for t in oms_trades]
+    for tr in bypass_trades_raw:
+        if tr.get("pnl_usdt") is not None:
+            all_pnls.append(float(tr["pnl_usdt"]))
+        if tr.get("pnl_pct") is not None:
+            all_pcts.append(float(tr["pnl_pct"]))
+
+    total_n    = len(all_pnls)
+    total_wins = sum(1 for p in all_pnls if p > 0)
+
+    # ── 5. Edge Alpha por estratégia ──────────────────────────────────────────
+    # Edge Alpha = Sharpe × sqrt(N) — mede evidência estatística do edge
+    edge_alpha: dict[str, float | None] = {}
+    for sid, stats in all_strategies.items():
+        sh = stats.get("sharpe")
+        n  = stats.get("n_trades", 0)
+        edge_alpha[sid] = round(sh * math.sqrt(n), 3) if sh and n > 0 else None
+
+    return {
+        "by_strategy":    all_strategies,
+        "edge_alpha":     edge_alpha,
+        "portfolio": {
+            "n_trades":       total_n,
+            "win_rate":       round(total_wins / total_n, 4) if total_n else None,
+            "total_pnl_usdt": round(sum(all_pnls), 2),
+            "sharpe":         _sharpe(all_pcts),
+        },
+        "strategies_tracked": sorted(all_strategies.keys()),
+        "computed_at": datetime.now(UTC).isoformat(),
+    }

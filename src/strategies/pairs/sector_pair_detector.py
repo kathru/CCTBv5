@@ -52,6 +52,8 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from ...persistence.strategy_trade_log import strategy_trade_log as _stl
+
 logger = logging.getLogger(__name__)
 
 # ── Configuração ──────────────────────────────────────────────────────────────
@@ -449,9 +451,17 @@ class SectorPairDetector:
             trade.long_sym, trade.short_sym,
             ", ".join(reasons), pnl_pct * 100,
         )
-        await self._close_trade(key, trade)
+        await self._close_trade(
+            key, trade,
+            reason=", ".join(reasons),
+            exit_long_px=long_px, exit_short_px=short_px,
+        )
 
-    async def _close_trade(self, key: str, trade: PairTrade) -> None:
+    async def _close_trade(
+        self, key: str, trade: PairTrade,
+        reason: str = "", exit_long_px: float | None = None,
+        exit_short_px: float | None = None,
+    ) -> None:
         """Fecha ambos os legs do par (spot sell + swap buy)."""
         try:
             coid_close_long  = f"sp_cl_{uuid.uuid4().hex[:12]}"
@@ -472,12 +482,38 @@ class SectorPairDetector:
             logger.error("SectorPairDetector: falha ao fechar %s: %s", key, exc)
             return
 
+        # Calcula pnl para o registro
+        pnl_pct_val: float | None = None
+        if exit_long_px and exit_short_px:
+            pnl_pct_val = trade.pnl_pct(exit_long_px, exit_short_px)
+        pnl_usdt_val = pnl_pct_val * trade.notional if pnl_pct_val is not None else None
+
+        await _stl.log_trade(
+            strategy_id="sector_pair",
+            symbol=f"{trade.long_sym}/{trade.short_sym}",
+            side="pair_long_short",
+            entry_price=trade.entry_long_price,
+            exit_price=exit_long_px,
+            notional=trade.notional,
+            pnl_pct=pnl_pct_val,
+            pnl_usdt=pnl_usdt_val,
+            reason=reason or "manual_close",
+            opened_at=trade.opened_at,
+            closed_at=datetime.now(UTC),
+            extra={
+                "entry_zscore": trade.entry_zscore,
+                "long_sym":  trade.long_sym,
+                "short_sym": trade.short_sym,
+            },
+        )
+
         self._active.pop(key, None)
         await self._persist_status()
 
         logger.info(
-            "SectorPairDetector: par %s/%s fechado (%.1fh hold)",
+            "SectorPairDetector: par %s/%s fechado (%.1fh hold) pnl=%.2f%%",
             trade.long_sym, trade.short_sym, trade.age_hours,
+            (pnl_pct_val or 0) * 100,
         )
 
     # ── Helpers ───────────────────────────────────────────────────────────────

@@ -77,6 +77,8 @@ async def fetch_all(base: str) -> dict:
         "watchdog":            "/api/watchdog/status",
         # CrossAsset market-neutral
         "cross_asset":         "/api/cross_asset/status",
+        # v5.20 Strategy Performance (edge alpha, WR, PF por estratégia)
+        "strategy_performance": "/api/analytics/strategy_performance",
     }
 
     results: dict = {}
@@ -109,10 +111,10 @@ def _safe_json(obj, limit=1500) -> str:
 def build_prompt(data: dict, week_start: str, week_end: str) -> str:
     health      = data.get("health", {})
     version     = data.get("version", {})
-    system      = data.get("system", {})
+    _system     = data.get("system", {})  # noqa: F841 – coletado mas não exibido diretamente
     perf        = data.get("performance", {})
     portfolio   = data.get("portfolio", {})
-    signals_log = data.get("signals_log", {})
+    _signals_log = data.get("signals_log", {})  # noqa: F841 – usado via week_trades
     funnel      = data.get("signals_funnel", {})
     cal         = data.get("signals_calibration", {})
     dist        = data.get("distribution", {})
@@ -569,7 +571,7 @@ async def post_discord_approval(pending: dict) -> None:
         f":link: {workflow_link}",
         "",
         f"**Aprovados IDs:** `{all_ids}` (todos) ou IDs especificos separados por virgula",
-        f"**Dry-run disponivel** para testar sem modificar o sistema.",
+        "**Dry-run disponivel** para testar sem modificar o sistema.",
     ]
 
     msg = "\n".join(lines)
@@ -590,7 +592,6 @@ async def post_discord_approval(pending: dict) -> None:
 # -- Entry point --------------------------------------------------------------
 
 async def main() -> None:
-    import asyncio
 
     if not ANTHROPIC_API_KEY:
         logger.error("ANTHROPIC_API_KEY nao configurada -- abortando")

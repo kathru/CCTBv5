@@ -420,6 +420,68 @@ class AdvancedRiskManager:
                 except Exception as exc:
                     logger.debug("CB consec_loss %s: %s", sym, exc)
 
+        # CB 1b: 5+ losses consecutivos por estratégia v5.20 (via strategy_trades)
+        if self._db is not None:
+            V520_STRATEGIES = [
+                "funding_harvest", "short_squeeze", "sector_pair", "regime_pair"
+            ]
+            for sid in V520_STRATEGIES:
+                cb_key = f"circuit_breaker:consec_loss_strat:{sid}"
+                try:
+                    rows = await self._db.fetch(
+                        """
+                        SELECT pnl_usdt, closed_at FROM strategy_trades
+                        WHERE strategy_id=$1 AND closed_at IS NOT NULL
+                        ORDER BY closed_at DESC LIMIT 20
+                        """,
+                        sid,
+                    )
+                    consec = 0
+                    for r in rows:
+                        if r["pnl_usdt"] is not None and float(r["pnl_usdt"]) < 0:
+                            consec += 1
+                        else:
+                            break   # sequência de perdas termina
+
+                    triggered = consec >= CB_MAX_CONSEC_LOSSES
+                    paused_until_raw = await self._cache.get(cb_key)
+                    paused_until = None
+                    if paused_until_raw:
+                        try:
+                            paused_until = datetime.fromisoformat(
+                                paused_until_raw if isinstance(paused_until_raw, str)
+                                else str(paused_until_raw)
+                            )
+                        except (ValueError, TypeError):
+                            pass
+
+                    now = datetime.now(UTC)
+                    still_paused = paused_until and paused_until > now
+
+                    if triggered and not still_paused:
+                        pause_until = now + timedelta(hours=CB_PAUSE_HOURS)
+                        await self._cache.set(cb_key, pause_until.isoformat(), ttl=REDIS_TTL)
+                        paused_until = pause_until
+                        still_paused = True
+                        logger.warning(
+                            "CIRCUIT BREAKER v5.20: %s — %d losses consecutivos → pausa %dh",
+                            sid, consec, CB_PAUSE_HOURS,
+                        )
+
+                    cb_strat = {
+                        "type":            "CONSEC_LOSS_STRATEGY",
+                        "strategy_id":     sid,
+                        "consec_losses":   consec,
+                        "threshold":       CB_MAX_CONSEC_LOSSES,
+                        "triggered":       triggered or bool(still_paused),
+                        "paused_until":    paused_until.isoformat() if paused_until else None,
+                    }
+                    results[f"consec_loss_strat_{sid}"] = cb_strat
+                    if cb_strat["triggered"]:
+                        any_active = True
+                except Exception as exc:
+                    logger.debug("CB consec_loss_strat %s: %s", sid, exc)
+
         # CB 2: Weekly drawdown > 5% → modo defensivo (kelly ×0.5)
         try:
             hwm_raw  = await self._cache.get("analytics:hwm")

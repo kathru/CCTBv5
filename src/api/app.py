@@ -41,6 +41,10 @@ def create_app() -> FastAPI:
         await db.connect()
         await cache.connect()
 
+        # Inicializa o StrategyTradeLogger (v5.20 bypass-OMS strategies)
+        from ..persistence.strategy_trade_log import strategy_trade_log as _stl
+        _stl.init(db)
+
         # Start trading loop in background (non-blocking)
         trading_task = None
         if settings.app_env != "test":

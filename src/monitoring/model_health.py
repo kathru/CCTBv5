@@ -223,6 +223,7 @@ class ModelHealthMonitor:
         try:
             # Busca trades fechados do DB (para WR real) — faz aqui, fora do _compute síncrono
             closed_orders = []
+            v520_stats: dict = {}
             if self._db is not None:
                 try:
                     from ..persistence.repositories.orders import OrderRepository
@@ -230,8 +231,14 @@ class ModelHealthMonitor:
                     closed_orders = await repo.get_filled(limit=500)
                 except Exception as exc:
                     logger.warning("ModelHealthMonitor: erro ao buscar trades fechados: %s", exc)
+                # Busca stats das estratégias v5.20 (bypass-OMS)
+                try:
+                    from ..persistence.strategy_trade_log import strategy_trade_log as _stl
+                    v520_stats = await _stl.get_stats_by_strategy()
+                except Exception as exc:
+                    logger.debug("ModelHealthMonitor: v5.20 stats: %s", exc)
 
-            result = self._compute(closed_orders)
+            result = self._compute(closed_orders, v520_stats=v520_stats)
             await self._cache.set("model_health", json.dumps(result), ttl=REDIS_TTL)
             health = result["health_score"]
             status = result["status"]
@@ -247,7 +254,7 @@ class ModelHealthMonitor:
         except Exception as exc:
             logger.warning("ModelHealthMonitor._evaluate: %s", exc)
 
-    def _compute(self, closed_orders: list) -> dict:
+    def _compute(self, closed_orders: list, v520_stats: dict | None = None) -> dict:
         calib   = _load_json(CALIB_PATH)
         baseline= _load_json(BASELINE_PATH)
         exp_log = _load_json(EXP_LOG_PATH)
@@ -317,6 +324,7 @@ class ModelHealthMonitor:
                 "latest_a":      latest_exp.get("platt_a"),
             },
             "recommendations": self._recommendations(status, psi_dim, wr_dim),
+            "v520_strategies": v520_stats or {},
             "evaluated_at": datetime.now(UTC).isoformat(),
         }
 

@@ -63,6 +63,8 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from ...persistence.strategy_trade_log import strategy_trade_log as _stl
+
 logger = logging.getLogger(__name__)
 
 # ── Símbolos e contratos ──────────────────────────────────────────────────────
@@ -467,9 +469,16 @@ class RegimeAwarePairEngine:
             pos.mode, pos.long_symbol, pos.short_symbol,
             ", ".join(reasons), pnl_pct * 100,
         )
-        await self._close_position(", ".join(reasons))
+        await self._close_position(
+            ", ".join(reasons),
+            exit_long_px=long_px, exit_short_px=short_px,
+        )
 
-    async def _close_position(self, reason: str = "") -> None:
+    async def _close_position(
+        self, reason: str = "",
+        exit_long_px: float | None = None,
+        exit_short_px: float | None = None,
+    ) -> None:
         pos = self._position
         if not pos:
             return
@@ -489,12 +498,38 @@ class RegimeAwarePairEngine:
             )
         except Exception as exc:
             logger.error("RegimeAwarePairEngine: falha ao fechar par: %s", exc)
-        finally:
-            self._position = None
-            await self._cache.delete("regime_pair:position")
-            logger.info(
-                "RegimeAwarePairEngine: par fechado — motivo='%s'", reason
-            )
+
+        # Persiste trade no strategy_trades
+        pnl_pct_val: float | None = None
+        if exit_long_px and exit_short_px:
+            pnl_pct_val = pos.pnl_pct(exit_long_px, exit_short_px)
+        pnl_usdt_val = pnl_pct_val * pos.notional if pnl_pct_val is not None else None
+        await _stl.log_trade(
+            strategy_id="regime_pair",
+            symbol=f"{pos.long_symbol}/{pos.short_symbol}",
+            side="pair_long_short",
+            entry_price=pos.entry_long_price,
+            exit_price=exit_long_px,
+            notional=pos.notional,
+            pnl_pct=pnl_pct_val,
+            pnl_usdt=pnl_usdt_val,
+            reason=reason or "manual_close",
+            opened_at=pos.opened_at,
+            closed_at=datetime.now(UTC),
+            extra={
+                "mode":   pos.mode,
+                "spread": pos.entry_spread,
+                "long":   pos.long_symbol,
+                "short":  pos.short_symbol,
+            },
+        )
+
+        self._position = None
+        await self._cache.delete("regime_pair:position")
+        logger.info(
+            "RegimeAwarePairEngine: par fechado — motivo='%s' pnl=%.2f%%",
+            reason, (pnl_pct_val or 0) * 100,
+        )
 
     # ── Dados de mercado ──────────────────────────────────────────────────────
 

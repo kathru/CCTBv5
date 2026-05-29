@@ -1,5 +1,5 @@
 {
-  "current": 19,
+  "current": 20,
   "phases": [
     { "n":  1, "name": "Alertas Discord",                  "status": "done" },
     { "n":  2, "name": "Daily Digest",                     "status": "done" },
@@ -19,6 +19,7 @@
     { "n": 16, "name": "Meta-learning de Regimes",         "status": "done" },
     { "n": 17, "name": "Execution Intelligence",           "status": "done" },
     { "n": 18, "name": "Alpha Orthogonality",              "status": "done" },
-    { "n": 19, "name": "Quantitative Edge Reform",         "status": "done" }
+    { "n": 19, "name": "Quantitative Edge Reform",         "status": "done" },
+    { "n": 20, "name": "Long/Short Engine v5.20",          "status": "in_progress" }
   ]
 }

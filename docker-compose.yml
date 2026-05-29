@@ -68,6 +68,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-cctb}:${POSTGRES_PASSWORD:-cctb_secret}@postgres:5432/${POSTGRES_DB:-cctbv5}
       REDIS_URL: redis://redis:6379/0
     depends_on:
+      # docker compose up: espera postgres+redis healthy antes de iniciar.
+      # docker start direto: o docker-entrypoint.sh cobre esse caso com wait-for loop interno.
       postgres:
         condition: service_healthy
       redis:
@@ -77,10 +79,10 @@ services:
       - ./data:/app/data      # persist calibration files
     healthcheck:
       test: ["CMD", "python", "-c",
-             "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+             "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=8)"]
       interval: 30s
       timeout: 10s
-      start_period: 60s
+      start_period: 90s   # 90s: boot completo inclui wait-for-postgres + schema + reconcile
       retries: 3
     restart: unless-stopped
     networks:

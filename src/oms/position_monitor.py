@@ -146,11 +146,13 @@ class ShortSwapPlan:
     take_profit:  float      # preço ABAIXO da entrada (shortTP = entry − atr×tp_mult)
     backstop_at:  datetime   # expiração máxima (7 dias)
     strategy_id:  str
+    harvest_mode: bool     = False   # True = posição passiva de funding harvest
     created_at:   datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def summary(self) -> str:
+        mode = " [HARVEST]" if self.harvest_mode else ""
         return (
-            f"SHORT {self.symbol} contracts={self.contracts} "
+            f"SHORT{mode} {self.symbol} contracts={self.contracts} "
             f"entry={self.entry_price:.2f} sl={self.stop_loss:.2f} tp={self.take_profit:.2f}"
         )
 
@@ -815,18 +817,30 @@ class PositionMonitor:
         entry_price: float,
         atr: float,
         strategy_id: str,
+        harvest_mode: bool = False,
     ) -> None:
         """
-        Registra um ShortSwapPlan após abertura confirmada de SHORT direcional.
-        Chamado pelo TradingLoop após _place_swap_short() retornar.
+        Registra um ShortSwapPlan após abertura confirmada de SHORT direcional
+        ou de funding harvest (harvest_mode=True).
 
         SL/TP invertidos (SHORT):
-          - SL = entry + atr × 0.5   (fecha com perda se mercado SUBIR)
-          - TP = entry − atr × 1.0   (fecha com lucro se mercado CAIR)
-          - Backstop: 7 dias (shorts direcionais não devem durar mais)
+          - SL = entry + atr × sl_mult  (fecha com perda se mercado SUBIR)
+          - TP = entry − atr × tp_mult  (fecha com lucro se mercado CAIR)
+
+        harvest_mode=True:
+          - SL/TP extremamente largos para não fechar prematuramente
+          - FundingHarvest gerencia a saída baseada em funding rate
+          - Backstop: 48h (em vez de 7 dias)
         """
-        sl_mult = REGIME_MULT.get("BEAR_TREND", {}).get("sl", 0.5)
-        tp_mult = REGIME_MULT.get("BEAR_TREND", {}).get("tp", 1.0)
+        if harvest_mode:
+            # Harvest: SL/TP largos para não interferir com a gestão do FundingHarvest
+            sl_mult  = 5.0
+            tp_mult  = 5.0
+            backstop = datetime.now(UTC) + timedelta(hours=48)
+        else:
+            sl_mult  = REGIME_MULT.get("BEAR_TREND", {}).get("sl", 0.5)
+            tp_mult  = REGIME_MULT.get("BEAR_TREND", {}).get("tp", 1.0)
+            backstop = datetime.now(UTC) + timedelta(days=7)
         plan = ShortSwapPlan(
             symbol=symbol,
             swap_sym=swap_sym,
@@ -834,8 +848,9 @@ class PositionMonitor:
             entry_price=entry_price,
             stop_loss=round(entry_price + atr * sl_mult, 2),
             take_profit=round(entry_price - atr * tp_mult, 2),
-            backstop_at=datetime.now(UTC) + timedelta(days=7),
+            backstop_at=backstop,
             strategy_id=strategy_id,
+            harvest_mode=harvest_mode,
         )
         self._short_plans[symbol] = plan
         logger.info("ShortSwapPlan criado: %s", plan.summary())

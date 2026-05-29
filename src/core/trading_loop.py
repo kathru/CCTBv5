@@ -350,6 +350,16 @@ class TradingLoop:
         # B1 fix: injeta no PositionMonitor para fechar SHORTs direcionais via swap
         self._position_monitor.set_cross_asset(self._cross_asset)
 
+        # v5.20 Module 3 — FundingHarvest: coleta funding passiva de perpetual swaps
+        from ..strategies.funding.funding_harvest import FundingHarvest
+        self._funding_harvest = FundingHarvest(
+            cache=self._cache,
+            okx_client=self._okx,
+            position_monitor=self._position_monitor,
+        )
+        await self._funding_harvest.start()
+        logger.info("FundingHarvest: passive funding income strategy started")
+
         await self._runner.start()
         await self._position_monitor.start()
         await self._reconciler.start()
@@ -523,6 +533,8 @@ class TradingLoop:
         self._news_sentiment.stop()
         await self._adv_risk.stop()
         await self._model_health.stop()
+        if hasattr(self, "_funding_harvest"):
+            await self._funding_harvest.stop()
         if hasattr(self, "_cross_asset"):
             await self._cross_asset.stop()
         await self._runner.stop()
@@ -1447,6 +1459,8 @@ class TradingLoop:
                 self._runner.update_portfolio_value(total)
                 if hasattr(self, "_cross_asset"):
                     self._cross_asset.set_portfolio_value(total)
+                if hasattr(self, "_funding_harvest"):
+                    self._funding_harvest.set_portfolio_value(total)
                 # Sincroniza cash interno com saldo USDT real da OKX
                 usdt_cash = self._portfolio.state.cash_available
                 if usdt_cash > 0:

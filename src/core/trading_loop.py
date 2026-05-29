@@ -387,6 +387,15 @@ class TradingLoop:
         await self._rape.start()
         logger.info("RegimeAwarePairEngine: adaptive pairs BULL/BEAR/CHOP started")
 
+        # v5.20 Module 4 — LongAndChill: SMA 6H trailing para winners de alta convicção
+        from ..strategies.longchill.long_and_chill import LongAndChill
+        self._long_and_chill = LongAndChill(
+            market=self._market,
+            position_monitor=self._position_monitor,
+        )
+        await self._long_and_chill.start()
+        logger.info("LongAndChill: extended hold SMA6H trailing started")
+
         await self._runner.start()
         await self._position_monitor.start()
         await self._reconciler.start()
@@ -560,6 +569,8 @@ class TradingLoop:
         self._news_sentiment.stop()
         await self._adv_risk.stop()
         await self._model_health.stop()
+        if hasattr(self, "_long_and_chill"):
+            await self._long_and_chill.stop()
         if hasattr(self, "_rape"):
             await self._rape.stop()
         if hasattr(self, "_squeeze"):

@@ -195,6 +195,9 @@ class ExitPlan:
     tp_converted:   bool  = False   # TP foi convertido em trailing livre
     running_mode:   bool  = False   # posição em modo "let it run" (teto removido)
 
+    # Phase C — LongAndChill (extended hold via SMA 6H trailing)
+    chill_mode:     bool  = False   # True = LongAndChill ativo: trailing via SMA 6H
+
     # Hold Engine — Conviction Decay
     conviction_score:      float = 100.0
     conviction_state:      str   = "HOLD"      # HOLD/WATCH/ALERT/EXIT
@@ -257,7 +260,8 @@ class ExitPlan:
             f"conviction={self.conviction_score:.0f}%({self.conviction_state}) "
             f"trail={'ON' if self.trailing_activated else 'off'} "
             f"partial={'done' if self.partial_done else 'pending'} "
-            f"running={'YES' if self.running_mode else 'no'}"
+            f"running={'YES' if self.running_mode else 'no'} "
+            f"chill={'YES' if self.chill_mode else 'no'}"
         )
 
 

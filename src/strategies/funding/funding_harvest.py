@@ -41,6 +41,7 @@ import uuid
 from datetime import UTC, datetime
 
 from ...persistence.strategy_trade_log import strategy_trade_log as _stl
+from ...risk.global_risk_guard import global_risk_guard as _grg
 
 logger = logging.getLogger(__name__)
 
@@ -222,6 +223,12 @@ class FundingHarvest:
         if not swap_sym:
             return
 
+        # ── GlobalRiskGuard: Kill Switch + CB + DrawdownEngine ────────────────
+        guard = await _grg.allows_new_entry(strategy_id="funding_harvest", symbol=symbol)
+        if not guard.allowed:
+            logger.info("FundingHarvest: entrada bloqueada pelo GlobalRiskGuard — %s", guard.reason)
+            return
+
         funding_rate = await self._get_funding_rate(swap_sym)
         if funding_rate is None or funding_rate < HARVEST_THRESHOLD:
             logger.debug(
@@ -241,8 +248,8 @@ class FundingHarvest:
                 )
                 return
 
-        # Sizing
-        contracts = self._size_contracts(symbol, swap_sym)
+        # Sizing — aplica kelly_mult do GlobalRiskGuard (modo defensivo → ×0.5)
+        contracts = self._size_contracts(symbol, swap_sym, kelly_mult=guard.kelly_mult)
         if contracts < 1:
             logger.debug("FundingHarvest: %s portfolio insuficiente para sizing", symbol)
             return
@@ -253,8 +260,8 @@ class FundingHarvest:
             return
 
         logger.info(
-            "FundingHarvest ENTRADA: %s funding=%.4f%% contracts=%d",
-            symbol, funding_rate * 100, contracts,
+            "FundingHarvest ENTRADA: %s funding=%.4f%% contracts=%d kelly_mult=%.1f",
+            symbol, funding_rate * 100, contracts, guard.kelly_mult,
         )
 
         # Coloca ordem SHORT no swap
@@ -415,19 +422,19 @@ class FundingHarvest:
 
     # ── Sizing ────────────────────────────────────────────────────────────────
 
-    def _size_contracts(self, symbol: str, swap_sym: str) -> int:
-        """Calcula número de contratos com base na alocação do portfolio."""
+    def _size_contracts(
+        self, symbol: str, swap_sym: str, kelly_mult: float = 1.0
+    ) -> int:
+        """Calcula número de contratos com base na alocação do portfolio.
+
+        kelly_mult: multiplicador do GlobalRiskGuard (1.0 normal, 0.5 defensivo).
+        """
         if self._portfolio_value <= 0:
             return 0
         contract_size = SWAP_CONTRACT_SIZE.get(swap_sym, 1.0)
         if contract_size <= 0:
             return 0
-        # Usa preço médio estimado por símbolo (fallback seguro)
-        # O tamanho é calculado como: notional / (price × contract_size)
-        # Como não temos preço aqui, retorna um mínimo conservador
-        notional = self._portfolio_value * HARVEST_ALLOCATION_PCT
-        # Para tamanho mínimo seguro: 1 contrato
-        # O caller deve verificar se 1 contrato é razoável
+        notional = self._portfolio_value * HARVEST_ALLOCATION_PCT * kelly_mult
         return min(MAX_HARVEST_CONTRACTS, max(1, int(notional / 500)))  # 500 USDT por contrato como ref
 
     # ── Dados de mercado ──────────────────────────────────────────────────────

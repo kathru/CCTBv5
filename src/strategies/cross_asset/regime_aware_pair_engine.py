@@ -64,6 +64,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from ...persistence.strategy_trade_log import strategy_trade_log as _stl
+from ...risk.global_risk_guard import global_risk_guard as _grg
 
 logger = logging.getLogger(__name__)
 
@@ -350,10 +351,16 @@ class RegimeAwarePairEngine:
         if not long_px or not short_px:
             return
 
-        # Sizing
+        # ── GlobalRiskGuard: Kill Switch + CB + DrawdownEngine ────────────────
+        guard = await _grg.allows_new_entry(strategy_id="regime_pair")
+        if not guard.allowed:
+            logger.info("RegimeAwarePairEngine: entrada bloqueada pelo GlobalRiskGuard — %s", guard.reason)
+            return
+
+        # Sizing — kelly_mult do GlobalRiskGuard aplicado ao notional
         if self._portfolio_value <= 0:
             return
-        notional    = self._portfolio_value * params["allocation_pct"] / 2
+        notional    = self._portfolio_value * params["allocation_pct"] / 2 * guard.kelly_mult
         swap_sym    = SWAP_SYMBOLS.get(short_sym)
         cs          = SWAP_CONTRACT_SIZE.get(swap_sym, 1.0)
         if not swap_sym or cs <= 0:
@@ -363,9 +370,9 @@ class RegimeAwarePairEngine:
 
         logger.info(
             "RegimeAwarePairEngine [%s] ENTRADA: LONG %s(RS=%.3f) "
-            "SHORT %s(RS=%.3f) spread=%.3f regime=%s notional=%.0f",
+            "SHORT %s(RS=%.3f) spread=%.3f regime=%s notional=%.0f kelly_mult=%.1f",
             mode, long_sym, long_score, short_sym, short_score,
-            spread, regime, notional,
+            spread, regime, notional, guard.kelly_mult,
         )
 
         try:

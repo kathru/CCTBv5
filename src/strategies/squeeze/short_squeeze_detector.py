@@ -70,6 +70,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from ...persistence.strategy_trade_log import strategy_trade_log as _stl
+from ...risk.global_risk_guard import global_risk_guard as _grg
 
 logger = logging.getLogger(__name__)
 
@@ -251,10 +252,16 @@ class ShortSqueezeDetector:
         if not candidates:
             return
 
+        # ── GlobalRiskGuard: Kill Switch + CB + DrawdownEngine ────────────────
+        guard = await _grg.allows_new_entry(strategy_id="short_squeeze")
+        if not guard.allowed:
+            logger.info("ShortSqueezeDetector: entrada bloqueada pelo GlobalRiskGuard — %s", guard.reason)
+            return
+
         # Escolhe o símbolo com maior squeeze_score
         candidates.sort(key=lambda x: x[1], reverse=True)
         best_sym, best_score, best_comp = candidates[0]
-        await self._enter_squeeze(best_sym, best_score, best_comp)
+        await self._enter_squeeze(best_sym, best_score, best_comp, kelly_mult=guard.kelly_mult)
 
     # ── Score de squeeze ──────────────────────────────────────────────────────
 
@@ -357,14 +364,14 @@ class ShortSqueezeDetector:
     # ── Entrada ───────────────────────────────────────────────────────────────
 
     async def _enter_squeeze(
-        self, symbol: str, score: float, components: dict
+        self, symbol: str, score: float, components: dict, kelly_mult: float = 1.0
     ) -> None:
         price = await self._get_price(symbol)
         if not price:
             return
 
-        # Sizing
-        notional = self._portfolio_value * SQUEEZE_ALLOC_PCT
+        # Sizing — kelly_mult do GlobalRiskGuard (0.5 em modo defensivo)
+        notional = self._portfolio_value * SQUEEZE_ALLOC_PCT * kelly_mult
         if notional < 10:
             logger.debug("ShortSqueezeDetector: portfolio insuficiente para %s", symbol)
             return
@@ -377,8 +384,8 @@ class ShortSqueezeDetector:
 
         logger.info(
             "ShortSqueezeDetector ENTRADA: %s @ %.4f score=%.3f "
-            "components=%s sl=%.4f tp=%.4f qty=%.6f",
-            symbol, price, score, components, sl, tp, qty,
+            "components=%s sl=%.4f tp=%.4f qty=%.6f kelly_mult=%.1f",
+            symbol, price, score, components, sl, tp, qty, kelly_mult,
         )
 
         # Coloca ordem spot LONG

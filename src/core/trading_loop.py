@@ -116,6 +116,11 @@ class TradingLoop:
         self._kill_switch = KillSwitch()
         self._infra_metrics = InfraMetrics()
 
+        # ── GlobalRiskGuard (compartilhado pelas estratégias v5.20) ──────────
+        from ..risk.global_risk_guard import global_risk_guard as _grg
+        _grg.init(kill_switch=self._kill_switch, cache=cache)
+        logger.info("GlobalRiskGuard: inicializado e pronto")
+
         # ── OKX client ────────────────────────────────────────
         # Use demo credentials when in paper mode and demo keys are configured
         _paper = settings.okx_paper_trading

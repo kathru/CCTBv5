@@ -53,6 +53,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from ...persistence.strategy_trade_log import strategy_trade_log as _stl
+from ...risk.global_risk_guard import global_risk_guard as _grg
 
 logger = logging.getLogger(__name__)
 
@@ -337,8 +338,14 @@ class SectorPairDetector:
         if not long_px or not short_px:
             return
 
-        # Sizing
-        notional      = self._portfolio_value * PAIRS_ALLOC_PCT / 2
+        # ── GlobalRiskGuard: Kill Switch + CB + DrawdownEngine ────────────────
+        guard = await _grg.allows_new_entry(strategy_id="sector_pair")
+        if not guard.allowed:
+            logger.info("SectorPairDetector: entrada bloqueada pelo GlobalRiskGuard — %s", guard.reason)
+            return
+
+        # Sizing — kelly_mult do GlobalRiskGuard aplicado ao notional
+        notional      = self._portfolio_value * PAIRS_ALLOC_PCT / 2 * guard.kelly_mult
         swap_sym      = SWAP_SYMBOLS.get(short_sym)
         cs            = SWAP_CONTRACT_SIZE.get(swap_sym, 1.0)
         if not swap_sym or notional <= 0:
@@ -349,9 +356,9 @@ class SectorPairDetector:
 
         logger.info(
             "SectorPairDetector ENTRADA: LONG %s @ %.4f | SHORT %s @ %.4f "
-            "| z=%.2f div=%.1f%% notional=%.0f",
+            "| z=%.2f div=%.1f%% notional=%.0f kelly_mult=%.1f",
             long_sym, long_px, short_sym, short_px,
-            z, div_pct * 100, notional,
+            z, div_pct * 100, notional, guard.kelly_mult,
         )
 
         # Coloca ordens

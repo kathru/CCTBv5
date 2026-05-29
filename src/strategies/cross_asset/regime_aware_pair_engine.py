@@ -194,8 +194,62 @@ class RegimeAwarePairEngine:
         if self._running:
             return
         self._running = True
+        await self._recover_position_from_cache()
         self._task = asyncio.create_task(self._loop(), name="regime_aware_pair_engine")
         logger.info("RegimeAwarePairEngine: started (BULL/BEAR/CHOP adaptive pairs)")
+
+    async def _recover_position_from_cache(self) -> None:
+        """
+        Restaura posição aberta do Redis após restart.
+
+        Se o processo reiniciar com par aberto no OKX, o estado em memória
+        (_position) seria perdido. Lê o snapshot gravado em 'regime_pair:position'
+        para reconstruir o estado e evitar posições órfãs.
+        """
+        try:
+            raw = await self._cache.get("regime_pair:position")
+            if not raw:
+                return
+            data = raw if isinstance(raw, dict) else json.loads(raw)
+            # Reconstrói posição com dados mínimos para gestão de saída
+            long_sym  = data.get("long")
+            short_sym = data.get("short")
+            mode      = data.get("mode", MODE_IDLE)
+            notional  = float(data.get("notional", 0))
+            opened_at_str = data.get("opened_at")
+            if not long_sym or not short_sym or notional <= 0:
+                return
+            swap_sym = SWAP_SYMBOLS.get(short_sym)
+            if not swap_sym:
+                return
+            opened_at = (
+                datetime.fromisoformat(opened_at_str)
+                if opened_at_str else datetime.now(UTC)
+            )
+            self._position = RegimePairPosition(
+                mode=mode,
+                long_symbol=long_sym,
+                short_symbol=short_sym,
+                short_swap_sym=swap_sym,
+                entry_long_price=0.0,    # não conhecido — saída via spread/tempo
+                entry_short_price=0.0,
+                long_qty=notional / max(1.0, notional),   # approx: será recalculado
+                short_contracts=1,
+                notional=notional,
+                entry_spread=float(data.get("spread", 0.0)),
+                long_eid="recovered",
+                short_eid="recovered",
+            )
+            # Corrige o opened_at para o valor original
+            self._position.opened_at = opened_at
+            self._current_mode = mode
+            logger.info(
+                "RegimeAwarePairEngine: posição recuperada do cache — "
+                "LONG %s SHORT %s mode=%s notional=%.0f",
+                long_sym, short_sym, mode, notional,
+            )
+        except Exception as exc:
+            logger.warning("RegimeAwarePairEngine: falha ao recuperar posição do cache: %s", exc)
 
     async def stop(self) -> None:
         self._running = False

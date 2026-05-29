@@ -127,15 +127,10 @@ class LongAndChill:
 
     async def _tick(self) -> None:
         """Avalia cada ExitPlan ativo e atualiza trailing se condições atendidas."""
-        plans = self._pm._plans   # acesso direto ao dict — mesmo processo, sem lock
-
-        for symbol, plan in list(plans.items()):
+        # Usa API pública iter_running_plans() — já filtra running_mode=True
+        for symbol, plan in self._pm.iter_running_plans():
 
             # ── 1. Ativação de chill_mode ─────────────────────────────────────
-            # Só ativa quando: running_mode já ligado + regime certo + score alto
-            if not plan.running_mode:
-                continue
-
             if plan.entry_regime != TARGET_REGIME:
                 continue
 

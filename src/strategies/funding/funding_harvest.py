@@ -78,6 +78,9 @@ BLOCKED_REGIMES = {"BEAR_TREND", "PANIC_LIQUIDATION"}
 # Poll: a cada 30min (OKX atualiza funding rate previsto continuamente)
 POLL_INTERVAL = 1800
 
+# TTL do cache de estado harvest no Redis (4h = 8 ciclos de poll de 30min)
+CACHE_TTL_HARVEST = 14400
+
 
 class FundingHarvestEntry:
     """Estado de uma posição de harvest ativa."""
@@ -364,9 +367,8 @@ class FundingHarvest:
             logger.error("FundingHarvest: falha ao fechar %s: %s", symbol, exc)
             return
 
-        # Remove do PositionMonitor (se ainda registrado)
-        if symbol in (self._pm._short_plans or {}):
-            del self._pm._short_plans[symbol]
+        # Remove do PositionMonitor via API pública
+        self._pm.unregister_short_plan(symbol)
 
         # Remove estado interno e cache
         self._positions.pop(symbol, None)
@@ -442,5 +444,4 @@ class FundingHarvest:
         return ""
 
 
-# TTL do cache de estado harvest (4h — alinhado ao poll de 30min × 8 ciclos)
-CACHE_TTL_HARVEST = 14400
+# (CACHE_TTL_HARVEST movido para o bloco de configuração acima)

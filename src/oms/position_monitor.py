@@ -859,6 +859,31 @@ class PositionMonitor:
         self._short_plans[symbol] = plan
         logger.info("ShortSwapPlan criado: %s", plan.summary())
 
+    def unregister_short_plan(self, symbol: str) -> None:
+        """
+        Remove um ShortSwapPlan registrado (API pública para módulos externos).
+
+        Incrementa _exits_today para manter contadores consistentes.
+        Use este método em vez de acessar _short_plans diretamente.
+        """
+        if symbol in self._short_plans:
+            self._short_plans.pop(symbol)
+            self._exits_today += 1
+            logger.debug("ShortSwapPlan removido externamente: %s", symbol)
+
+    def iter_running_plans(self):
+        """
+        Retorna iterator de (symbol, ExitPlan) para planos em running_mode.
+
+        API pública para LongAndChill e outros módulos que precisam
+        monitorar posições em running_mode sem acessar _plans diretamente.
+        """
+        return (
+            (sym, plan)
+            for sym, plan in list(self._plans.items())
+            if plan.running_mode
+        )
+
     async def _check_short_plans(self) -> None:
         """Verifica SL/TP/backstop para todos os SHORTs direcionais ativos."""
         if not self._short_plans:
@@ -898,6 +923,21 @@ class PositionMonitor:
             "SHORT EXIT %s contracts=%d entry=%.2f exit=%.2f pnl≈%.2f USDT reason=%s",
             symbol, plan.contracts, plan.entry_price, price, pnl, reason,
         )
+
+        # Posições de harvest_mode são gerenciadas pelo FundingHarvest.
+        # O PositionMonitor não deve fechar via _cross_asset — deixa o
+        # FundingHarvest cuidar da saída baseada em funding rate/backstop.
+        # SL/TP do harvest são propositalmente largos (5×ATR) para raramente atingir.
+        if plan.harvest_mode:
+            logger.warning(
+                "ShortSwapPlan harvest_mode atingiu SL/TP/backstop no PM (%s reason=%s) "
+                "— delegando fechamento ao FundingHarvest via unregister.",
+                symbol, reason,
+            )
+            # Remove o plano do PM; o FundingHarvest detectará a ausência no próximo ciclo
+            # e fechará o swap corretamente limpando seu próprio estado interno.
+            self.unregister_short_plan(symbol)
+            return
 
         if self._cross_asset is None:
             logger.error(

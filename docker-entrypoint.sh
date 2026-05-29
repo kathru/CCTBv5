@@ -50,10 +50,19 @@ done
 
 echo "[entrypoint] PostgreSQL disponível em ${PG_HOST}:${PG_PORT} (${elapsed}s)"
 
-# ── Wait-for-Redis (opcional, rápido) ────────────────────────────────────────
+# ── Wait-for-Redis (usa redis-cli ping para check de liveness real) ──────────
+# Usa python urlparse para extração segura do host (suporta senhas na URL)
 REDIS_URL="${REDIS_URL:-redis://redis:6379/0}"
-REDIS_HOST=$(echo "$REDIS_URL" | sed 's|redis://||' | cut -d: -f1)
-REDIS_PORT=$(echo "$REDIS_URL" | sed 's|redis://||' | cut -d: -f2 | cut -d/ -f1)
+_redis_parse=$(python -c "
+from urllib.parse import urlparse
+u = urlparse('${REDIS_URL}')
+h = u.hostname or 'redis'
+p = u.port or 6379
+print(h)
+print(p)
+" 2>/dev/null)
+REDIS_HOST=$(echo "$_redis_parse" | head -1)
+REDIS_PORT=$(echo "$_redis_parse" | tail -1)
 REDIS_HOST="${REDIS_HOST:-redis}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 
@@ -61,22 +70,34 @@ redis_elapsed=0
 redis_max=30
 
 echo "[entrypoint] Aguardando Redis em ${REDIS_HOST}:${REDIS_PORT}..."
-until python -c "
+# Prefere redis-cli (liveness real via PING/PONG), fallback para socket TCP
+if command -v redis-cli >/dev/null 2>&1; then
+    until redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" ping 2>/dev/null | grep -q PONG; do
+        if [ "$redis_elapsed" -ge "$redis_max" ]; then
+            echo "[entrypoint] AVISO: Redis não respondeu em ${redis_max}s — continuando mesmo assim."
+            break
+        fi
+        sleep 2
+        redis_elapsed=$((redis_elapsed + 2))
+    done
+else
+    # Fallback: socket TCP (sem redis-cli instalado)
+    until python -c "
 import socket, sys
 try:
     s = socket.create_connection(('${REDIS_HOST}', ${REDIS_PORT}), timeout=2)
-    s.close()
-    sys.exit(0)
+    s.close(); sys.exit(0)
 except Exception:
     sys.exit(1)
 " 2>/dev/null; do
-    if [ "$redis_elapsed" -ge "$redis_max" ]; then
-        echo "[entrypoint] AVISO: Redis não respondeu em ${redis_max}s — continuando mesmo assim."
-        break
-    fi
-    sleep 2
-    redis_elapsed=$((redis_elapsed + 2))
-done
+        if [ "$redis_elapsed" -ge "$redis_max" ]; then
+            echo "[entrypoint] AVISO: Redis não respondeu em ${redis_max}s — continuando mesmo assim."
+            break
+        fi
+        sleep 2
+        redis_elapsed=$((redis_elapsed + 2))
+    done
+fi
 
 echo "[entrypoint] Dependências OK — iniciando CCTBv5..."
 

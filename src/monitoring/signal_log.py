@@ -95,8 +95,9 @@ class SignalAuditLog:
                     """
                     INSERT INTO signal_evaluations
                         (ts, symbol, regime, score, calibrated, threshold,
-                         ev, direction, result, detail, factors)
-                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                         ev, direction, result, detail, factors, strategy_id)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                    ON CONFLICT DO NOTHING
                     """,
                     entry.timestamp,
                     entry.symbol,
@@ -110,6 +111,7 @@ class SignalAuditLog:
                     entry.detail,
                     json.dumps({k: round(v, 4) if isinstance(v, (int, float)) else v
                                 for k, v in entry.factors.items()}),
+                    entry.strategy_id,
                 )
         except Exception as exc:
             logger.debug("signal_log persist error: %s", exc)
@@ -121,11 +123,20 @@ class SignalAuditLog:
         """
         self.set_db(db)
         try:
+            # Ensure strategy_id column exists (idempotent migration)
+            async with db.acquire() as conn:
+                await conn.execute(
+                    """
+                    ALTER TABLE signal_evaluations
+                    ADD COLUMN IF NOT EXISTS strategy_id VARCHAR DEFAULT 'momentum_v2'
+                    """
+                )
             async with db.acquire() as conn:
                 rows = await conn.fetch(
                     """
                     SELECT ts, symbol, regime, score, calibrated, threshold,
-                           ev, direction, result, detail, factors
+                           ev, direction, result, detail, factors,
+                           COALESCE(strategy_id, 'momentum_v2') AS strategy_id
                     FROM signal_evaluations
                     ORDER BY ts DESC
                     LIMIT $1
@@ -147,7 +158,7 @@ class SignalAuditLog:
                     result=row["result"],
                     detail=row["detail"],
                     factors=factors,
-                    strategy_id=factors.pop("_strategy_id", "momentum_v2"),
+                    strategy_id=row["strategy_id"],
                 )
                 self._entries.appendleft(entry)
                 self._counters[entry.result] = self._counters.get(entry.result, 0) + 1

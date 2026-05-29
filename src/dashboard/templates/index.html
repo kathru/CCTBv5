@@ -1382,6 +1382,33 @@
   </div>
 </div>
 
+<!-- ══ STRATEGY PERFORMANCE ═══════════════════════════════════ -->
+<div class="section-hdr"><div class="dot" style="background:#f59e0b"></div>Performance por Estratégia <span class="cnt" id="sp-updated"></span></div>
+<div class="card" id="strategy-perf-card" style="padding:0;overflow:hidden">
+  <div style="padding:12px 16px 8px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
+    <div style="font-size:0.72rem;color:var(--muted)">Win Rate · Profit Factor · Sharpe · Edge Alpha · PnL total — todas as estratégias</div>
+    <div id="sp-portfolio-badge" style="font-size:0.70rem;color:var(--slate)"></div>
+  </div>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:0.78rem" id="sp-table">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);color:var(--muted);font-size:0.66rem;text-transform:uppercase;letter-spacing:0.07em">
+          <th style="text-align:left;padding:7px 14px;font-weight:500">Estratégia</th>
+          <th style="text-align:right;padding:7px 10px;font-weight:500">Trades</th>
+          <th style="text-align:right;padding:7px 10px;font-weight:500">Win Rate</th>
+          <th style="text-align:right;padding:7px 10px;font-weight:500">Profit Factor</th>
+          <th style="text-align:right;padding:7px 10px;font-weight:500">Sharpe</th>
+          <th style="text-align:right;padding:7px 10px;font-weight:500">Edge Alpha</th>
+          <th style="text-align:right;padding:7px 14px;font-weight:500">PnL (USDT)</th>
+        </tr>
+      </thead>
+      <tbody id="sp-tbody">
+        <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Aguardando dados…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <!-- ══ QUANTITATIVE ANALYTICS ══════════════════════════════════ -->
 <div class="section-hdr"><div class="dot" style="background:var(--purple)"></div>Quantitative Analytics<span class="cnt" id="quant-trades"></span></div>
 
@@ -3762,10 +3789,10 @@ function buildDistributionPanel(dist){
 }
 
 // Dados pesados que raramente mudam — atualizados a cada 10min
-let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null,sw:null,pa:null,ei:null,ao:null,eg:null,ca:null};
+let _slowData={calib:null,quant:null,govStatus:null,govDrift:null,govLive:null,govSchema:null,govImp:null,govWfo:null,recon:null,equity:null,rolling:null,dist:null,rc:null,mo:null,ff:null,rs:null,vs:null,mr:null,ar:null,mh:null,ens:null,st:null,sw:null,pa:null,ei:null,ao:null,eg:null,ca:null,sp:null};
 
 async function updateSlow(){
-  const [ca,calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st,sw,pa,ei,ao,eg]=await Promise.all([
+  const [ca,calib,quant,govStatus,govDrift,govLive,govSchema,govImp,govWfo,recon,equity,rolling,dist,rc,mo,ff,rs,vs,mr,ar,mh,ens,st,sw,pa,ei,ao,eg,sp]=await Promise.all([
     fetchJSON('/api/cross_asset/status'),fetchJSON('/api/signals/calibration'),fetchJSON('/api/analytics/quantitative'),
     fetchJSON('/api/governance/status'),fetchJSON('/api/governance/drift'),
     fetchJSON('/api/governance/live-stats'),fetchJSON('/api/governance/schema'),
@@ -3789,6 +3816,7 @@ async function updateSlow(){
     fetchJSON('/api/portfolio/execution_quality'),
     fetchJSON('/api/analytics/alpha_orthogonality'),
     fetchJSON('/api/analytics/edge_gate'),
+    fetchJSON('/api/analytics/strategy_performance'),
   ]);
   // Só sobrescreve se chegou dado válido (não descarta cache se API falhar)
   if(ca)        { _slowData.ca=ca; buildCrossAsset(ca); }
@@ -3819,6 +3847,91 @@ async function updateSlow(){
   if(ei)        { _slowData.ei=ei; buildExecutionIntelligence(ei); }
   if(ao)        { _slowData.ao=ao; buildAlphaOrthogonality(ao); }
   if(eg)        { _slowData.eg=eg; buildEdgeGate(eg); }
+  if(sp)        { _slowData.sp=sp; buildStrategyPerf(sp); }
+}
+
+// ── Strategy Performance ──────────────────────────────────────────────────────
+
+function buildStrategyPerf(sp){
+  if(!sp) return;
+  const tbody = document.getElementById('sp-tbody');
+  if(!tbody) return;
+
+  const byStrat = sp.by_strategy || {};
+  const ea      = sp.edge_alpha  || {};
+  const port    = sp.portfolio   || {};
+  const sids    = Object.keys(byStrat).sort();
+
+  // Paleta de verde/vermelho para PnL
+  const pnlColor = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--slate)';
+  const fmt2 = v => v == null ? '–' : v.toFixed(2);
+  const fmtPct = v => v == null ? '–' : (v*100).toFixed(1)+'%';
+  const fmtN  = v => v == null ? '–' : v.toString();
+
+  // Edge Alpha badge: semáforo
+  function eaBadge(val){
+    if(val == null) return '<span style="color:var(--slate)">–</span>';
+    const color = val >= 2.0 ? 'var(--green)' : val >= 0.5 ? 'var(--yellow)' : 'var(--red)';
+    return `<span style="color:${color};font-weight:600">${val.toFixed(2)}</span>`;
+  }
+
+  // WR badge
+  function wrBadge(val){
+    if(val == null) return '<span style="color:var(--slate)">–</span>';
+    const color = val >= 0.55 ? 'var(--green)' : val >= 0.40 ? 'var(--yellow)' : 'var(--red)';
+    return `<span style="color:${color}">${fmtPct(val)}</span>`;
+  }
+
+  // PF badge
+  function pfBadge(val){
+    if(val == null) return '<span style="color:var(--slate)">–</span>';
+    const color = val >= 1.5 ? 'var(--green)' : val >= 1.0 ? 'var(--yellow)' : 'var(--red)';
+    return `<span style="color:${color}">${fmt2(val)}</span>`;
+  }
+
+  let rows = '';
+  for(const sid of sids){
+    const s    = byStrat[sid];
+    const n    = s.n_trades || 0;
+    const pnl  = s.total_pnl_usdt;
+    const pc   = pnlColor(pnl);
+    const sign = pnl > 0 ? '+' : '';
+    rows += `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:8px 14px">${stratBadge(sid)}</td>
+      <td style="text-align:right;padding:8px 10px;color:var(--text)">${n}</td>
+      <td style="text-align:right;padding:8px 10px">${wrBadge(s.win_rate)}</td>
+      <td style="text-align:right;padding:8px 10px">${pfBadge(s.profit_factor)}</td>
+      <td style="text-align:right;padding:8px 10px;color:var(--slate)">${fmt2(s.sharpe)}</td>
+      <td style="text-align:right;padding:8px 10px">${eaBadge(ea[sid])}</td>
+      <td style="text-align:right;padding:8px 14px;color:${pc};font-weight:600">${pnl!=null?sign+pnl.toFixed(2):'–'}</td>
+    </tr>`;
+  }
+
+  // Linha de total do portfolio
+  const portPnl = port.total_pnl_usdt;
+  const portSign = portPnl > 0 ? '+' : '';
+  rows += `<tr style="border-top:2px solid var(--border2);background:rgba(255,255,255,0.03)">
+    <td style="padding:8px 14px;font-weight:600;color:var(--text)">PORTFOLIO TOTAL</td>
+    <td style="text-align:right;padding:8px 10px;font-weight:600;color:var(--text)">${port.n_trades||0}</td>
+    <td style="text-align:right;padding:8px 10px">${wrBadge(port.win_rate)}</td>
+    <td style="text-align:right;padding:8px 10px;color:var(--slate)">–</td>
+    <td style="text-align:right;padding:8px 10px;color:var(--slate)">${fmt2(port.sharpe)}</td>
+    <td style="text-align:right;padding:8px 10px;color:var(--slate)">–</td>
+    <td style="text-align:right;padding:8px 14px;color:${pnlColor(portPnl)};font-weight:700">${portPnl!=null?portSign+portPnl.toFixed(2):'–'}</td>
+  </tr>`;
+
+  tbody.innerHTML = rows || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Sem trades registrados ainda</td></tr>';
+
+  // Badge de atualização
+  const upd = document.getElementById('sp-updated');
+  if(upd) upd.textContent = sp.computed_at ? new Date(sp.computed_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+
+  // Porta total no badge lateral
+  const pb = document.getElementById('sp-portfolio-badge');
+  if(pb && port.sharpe != null){
+    pb.textContent = `Sharpe total: ${fmt2(port.sharpe)}`;
+    pb.style.color = port.sharpe > 0 ? 'var(--green)' : 'var(--red)';
+  }
 }
 
 // ── Cross-Asset Engine ────────────────────────────────────────────────────────

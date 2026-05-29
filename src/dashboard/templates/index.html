@@ -407,6 +407,80 @@
     .motor-regime-box.rb-other .motor-regime-txt { color:var(--blue); }
     .motor-sizing-row { display:flex; gap:14px; flex-wrap:wrap; font-size:0.82rem; color:rgba(255,255,255,0.4); }
     .msr-val { color:rgba(255,255,255,0.72); font-weight:600; }
+
+    /* ══ STRATEGY COMMAND CENTER ════════════════════════════════ */
+    .cc-regime-pill, .cc-macro-pill {
+      font-size:0.72rem; font-weight:700; padding:3px 11px;
+      border-radius:5px; letter-spacing:0.03em; white-space:nowrap;
+    }
+    .cc-heat-th {
+      font-size:0.60rem; font-weight:600; text-transform:uppercase;
+      letter-spacing:0.07em; color:rgba(255,255,255,0.30);
+      padding:5px 5px 4px; white-space:nowrap; text-align:center;
+    }
+    .cc-heat-th.cc-col-active {
+      color:rgba(255,255,255,0.85);
+      background:rgba(255,255,255,0.07);
+      border-radius:5px 5px 0 0;
+    }
+    .cc-heat-row-lbl {
+      font-size:0.64rem; font-weight:600; padding:5px 8px 5px 2px;
+      white-space:nowrap; text-align:right; color:rgba(255,255,255,0.45);
+      vertical-align:middle;
+    }
+    .cc-heat-cell {
+      font-size:0.68rem; font-weight:700; padding:5px 4px;
+      border-radius:6px; text-align:center; white-space:nowrap;
+      min-width:50px; cursor:default; vertical-align:middle;
+    }
+    .cc-heat-cell.cc-col-active {
+      outline:2px solid rgba(255,255,255,0.28);
+      outline-offset:-1px;
+    }
+    .cc-strat-cards {
+      display:grid; grid-template-columns:repeat(5,1fr);
+      border-top:1px solid var(--border);
+    }
+    .cc-strat-card {
+      padding:13px 12px 11px;
+      border-right:1px solid var(--border);
+      display:flex; flex-direction:column; gap:7px; min-width:0;
+    }
+    .cc-strat-card:last-child { border-right:none; }
+    .cc-strat-card.cc-s-blocked  { background:rgba(255,69,96,0.04); }
+    .cc-strat-card.cc-s-elevated { background:rgba(0,230,118,0.03); }
+    .cc-status-pill {
+      font-size:0.58rem; font-weight:700; text-transform:uppercase;
+      letter-spacing:0.08em; padding:2px 7px; border-radius:4px;
+      display:inline-block; align-self:flex-start;
+    }
+    .cc-apt-bar-track {
+      height:4px; border-radius:3px;
+      background:rgba(255,255,255,0.08); overflow:hidden; margin-top:2px;
+    }
+    .cc-apt-bar-fill { height:100%; border-radius:3px; transition:width 0.6s ease; }
+    .cc-mults { display:flex; gap:4px; }
+    .cc-mult-chip {
+      display:flex; flex-direction:column; align-items:center;
+      background:rgba(255,255,255,0.05); border-radius:5px;
+      padding:4px 6px; flex:1; min-width:0;
+    }
+    .cc-strat-perf {
+      border-top:1px solid rgba(255,255,255,0.06);
+      padding-top:6px; display:flex; align-items:baseline;
+      justify-content:space-between; gap:4px; flex-wrap:wrap;
+    }
+    @media (max-width:900px){
+      .cc-strat-cards { grid-template-columns:repeat(3,1fr); }
+      .cc-strat-card:nth-child(3n){ border-right:none; }
+      .cc-strat-card:nth-child(n+4){ border-top:1px solid var(--border); }
+    }
+    @media (max-width:600px){
+      .cc-strat-cards { grid-template-columns:repeat(2,1fr); }
+      .cc-strat-card:nth-child(2n){ border-right:none; }
+      .cc-strat-card:nth-child(n+3){ border-top:1px solid var(--border); }
+    }
+
     /* ── Mobile fixes ─────────────────────────────────────── */
     @media (max-width: 600px) {
       /* Motor hero: título linha 1, métricas linha 2, badge linha 3 */
@@ -1409,32 +1483,45 @@
   </div>
 </div>
 
-<!-- ══ STRATEGY ROUTER ══════════════════════════════════════════ -->
-<div class="section-hdr"><div class="dot" style="background:var(--blue)"></div>Strategy Router — Aptidão por Regime &amp; Macro</div>
+<!-- ══ STRATEGY COMMAND CENTER ═══════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="dot" style="background:var(--blue)"></div>
+  Strategy Command Center
+  <span style="margin-left:8px;font-size:0.67rem;font-weight:400;color:var(--muted)">regime × macro → aptidão em tempo real</span>
+</div>
 
-<div class="card" id="strategy-router-card" style="padding:0;overflow:hidden">
-  <div style="padding:10px 16px 8px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)">
-    <div id="sr-regime-badge" style="font-size:0.78rem;font-weight:700;color:var(--blue)">–</div>
-    <div id="sr-macro-badge" style="font-size:0.75rem;color:var(--muted)">–</div>
+<div class="card" id="cc-card" style="padding:0;overflow:hidden">
+
+  <!-- ── Barra de contexto ─────────────────────────────────────── -->
+  <div id="cc-header-bar" style="padding:10px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:7px">
+      <span style="font-size:0.60rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.09em">Regime</span>
+      <span id="cc-regime-pill" class="cc-regime-pill" style="background:rgba(100,100,100,0.15);color:var(--muted)">–</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:7px">
+      <span style="font-size:0.60rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.09em">Macro</span>
+      <span id="cc-macro-pill" class="cc-macro-pill" style="background:rgba(100,100,100,0.15);color:var(--muted)">–</span>
+    </div>
+    <div id="cc-thr-chip" style="margin-left:auto;font-size:0.70rem;color:var(--muted)">thr× –</div>
   </div>
-  <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:0.78rem" id="sr-table">
-      <thead>
-        <tr style="border-bottom:1px solid var(--border);color:var(--muted);font-size:0.66rem;text-transform:uppercase;letter-spacing:0.07em">
-          <th style="text-align:left;padding:7px 14px;font-weight:500">Estratégia</th>
-          <th style="text-align:center;padding:7px 10px;font-weight:500">Aptidão</th>
-          <th style="text-align:center;padding:7px 10px;font-weight:500">Permitida</th>
-          <th style="text-align:right;padding:7px 10px;font-weight:500">Kelly ×</th>
-          <th style="text-align:right;padding:7px 10px;font-weight:500">Score ×</th>
-          <th style="text-align:right;padding:7px 10px;font-weight:500">Thr ×</th>
-          <th style="text-align:left;padding:7px 14px;font-weight:500">Motivo</th>
-        </tr>
-      </thead>
-      <tbody id="sr-tbody">
-        <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Aguardando dados…</td></tr>
-      </tbody>
-    </table>
+
+  <!-- ── Heatmap: aptidão por regime ──────────────────────────── -->
+  <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
+    <div style="font-size:0.60rem;text-transform:uppercase;letter-spacing:0.09em;color:var(--muted);margin-bottom:8px">
+      Aptidão por Regime — macro atual aplicado · coluna em destaque = regime em vigor
+    </div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <table id="cc-heatmap" style="border-collapse:separate;border-spacing:3px;white-space:nowrap">
+        <tr><td colspan="8" style="text-align:center;padding:14px;color:var(--muted);font-size:0.78rem">Aguardando dados…</td></tr>
+      </table>
+    </div>
   </div>
+
+  <!-- ── Cards por estratégia ─────────────────────────────────── -->
+  <div id="cc-strat-cards" class="cc-strat-cards">
+    <div style="padding:20px;text-align:center;color:var(--muted);grid-column:1/-1;font-size:0.82rem">Aguardando dados…</div>
+  </div>
+
 </div>
 
 <!-- ══ QUANTITATIVE ANALYTICS ══════════════════════════════════ -->
@@ -3964,62 +4051,219 @@ function buildStrategyPerf(sp){
   }
 }
 
-// ── Strategy Router ──────────────────────────────────────────────────────────
+// ── Strategy Command Center ───────────────────────────────────────────────────
 
-function buildStrategyRouter(sr){
-  if(!sr || sr.error) return;
-  const tbody = document.getElementById('sr-tbody');
-  if(!tbody) return;
+const CC_REGIME_ORDER = [
+  'TREND_EXPANSION','VOLATILITY_COMPRESSION','MEAN_REVERTING_CHOP',
+  'TREND_EXHAUSTION','HIGH_CORRELATION_RISK','BEAR_TREND','PANIC_LIQUIDATION',
+];
+const CC_REGIME_SHORT = {
+  'TREND_EXPANSION':        'TREND↑',
+  'VOLATILITY_COMPRESSION': 'COMPR.',
+  'MEAN_REVERTING_CHOP':    'CHOP',
+  'TREND_EXHAUSTION':       'EXHAUST',
+  'HIGH_CORRELATION_RISK':  'CORR↑',
+  'BEAR_TREND':             'BEAR',
+  'PANIC_LIQUIDATION':      'PANIC',
+};
+const CC_STRAT_ORDER = ['momentum','short_squeeze','funding_harvest','sector_pair','regime_pair'];
+const CC_STRAT_META  = {
+  'momentum':        {name:'Momentum V2',        sp_key:'momentum_v2',     cls:'sb-mv2',   badge:'MV2'},
+  'short_squeeze':   {name:'Short Squeeze',      sp_key:'short_squeeze',   cls:'sb-sqz',   badge:'SQZ'},
+  'funding_harvest': {name:'Funding Harvest',    sp_key:'funding_harvest', cls:'sb-fund',  badge:'FUND'},
+  'sector_pair':     {name:'Sector Pair',        sp_key:'sector_pair',     cls:'sb-pair',  badge:'PAIR'},
+  'regime_pair':     {name:'Regime Pair Engine', sp_key:'regime_pair',     cls:'sb-rpair', badge:'RPAIR'},
+};
+const CC_REGIME_COLORS = {
+  'TREND_EXPANSION':        {pill:'rgba(0,230,118,0.20)',   color:'#00e676'},
+  'VOLATILITY_COMPRESSION': {pill:'rgba(0,212,255,0.18)',   color:'#00d4ff'},
+  'MEAN_REVERTING_CHOP':    {pill:'rgba(255,213,0,0.18)',   color:'#ffd700'},
+  'TREND_EXHAUSTION':       {pill:'rgba(255,153,0,0.18)',   color:'#ff9900'},
+  'HIGH_CORRELATION_RISK':  {pill:'rgba(255,90,0,0.18)',    color:'#ff5a00'},
+  'BEAR_TREND':             {pill:'rgba(255,69,96,0.20)',   color:'#ff4560'},
+  'PANIC_LIQUIDATION':      {pill:'rgba(200,20,60,0.28)',   color:'#e8294f'},
+  'UNKNOWN':                {pill:'rgba(100,116,139,0.18)', color:'#94a3b8'},
+};
+const CC_MACRO_COLORS = {
+  'RISK_ON':    {bg:'rgba(0,230,118,0.18)',   color:'#00e676'},
+  'ALTSEASON':  {bg:'rgba(167,139,250,0.18)', color:'#a78bfa'},
+  'SIDEWAYS':   {bg:'rgba(100,116,139,0.18)', color:'#94a3b8'},
+  'TRANSITION': {bg:'rgba(255,213,0,0.18)',   color:'#ffd700'},
+  'RISK_OFF':   {bg:'rgba(255,69,96,0.18)',   color:'#ff4560'},
+  'UNKNOWN':    {bg:'rgba(100,116,139,0.12)', color:'#64748b'},
+};
 
-  // Atualiza badges de regime/macro
-  const regEl = document.getElementById('sr-regime-badge');
-  const macEl = document.getElementById('sr-macro-badge');
-  if(regEl) regEl.textContent = `Regime: ${sr.regime || '–'}`;
-  if(macEl) macEl.textContent = `Macro: ${sr.macro_state || '–'} · thr×${(sr.thr_mult_raw||1).toFixed(3)}`;
-
-  const strats = sr.strategies || {};
-  const sids   = Object.keys(strats).sort();
-
-  // Aptidão badge: semáforo
-  function aptBadge(val){
-    if(val == null) return '<span style="color:var(--slate)">–</span>';
-    const pct  = Math.min(Math.round(val * 100), 140);
-    const color = val >= 1.0 ? 'var(--green)' : val >= 0.5 ? 'var(--yellow)' : 'var(--red)';
-    return `<span style="color:${color};font-weight:700">${pct}%</span>`;
-  }
-
-  // Allowed badge
-  function allowedBadge(allowed){
-    return allowed
-      ? '<span style="color:var(--green);font-weight:600">✓ sim</span>'
-      : '<span style="color:var(--red);font-weight:600">✗ não</span>';
-  }
-
-  // Multiplicador colorido
-  function multBadge(val, neutral=1.0){
-    if(val == null) return '<span style="color:var(--slate)">–</span>';
-    const diff = val - neutral;
-    const color = diff > 0.05 ? 'var(--green)' : diff < -0.05 ? 'var(--red)' : 'var(--slate)';
-    return `<span style="color:${color}">×${val.toFixed(2)}</span>`;
-  }
-
-  let rows = '';
-  for(const sid of sids){
-    const s = strats[sid];
-    const bg = s.allowed ? '' : 'background:rgba(255,69,96,0.04);';
-    rows += `<tr style="border-bottom:1px solid var(--border);${bg}">
-      <td style="padding:8px 14px">${stratBadge(sid)}</td>
-      <td style="text-align:center;padding:8px 10px">${aptBadge(s.aptitude)}</td>
-      <td style="text-align:center;padding:8px 10px">${allowedBadge(s.allowed)}</td>
-      <td style="text-align:right;padding:8px 10px">${multBadge(s.kelly_mult)}</td>
-      <td style="text-align:right;padding:8px 10px">${multBadge(s.score_mult)}</td>
-      <td style="text-align:right;padding:8px 10px">${multBadge(s.thr_mult)}</td>
-      <td style="padding:8px 14px;color:var(--muted);font-size:0.72rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.reason||'–'}</td>
-    </tr>`;
-  }
-
-  tbody.innerHTML = rows || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Sem dados</td></tr>';
+function _ccAptStyle(apt){
+  if(apt >= 1.0)  return {bg:'rgba(0,230,118,0.28)', color:'#00e676'};
+  if(apt >= 0.70) return {bg:'rgba(0,230,118,0.13)', color:'#6ee7b7'};
+  if(apt >= 0.35) return {bg:'rgba(255,213,0,0.18)', color:'#ffd700'};
+  return                 {bg:'rgba(255,69,96,0.28)', color:'#ff4560'};
 }
+function _ccStatusPill(apt, allowed){
+  if(!allowed || apt < 0.35) return {text:'BLOQUEADO', bg:'rgba(255,69,96,0.18)',   color:'#ff4560'};
+  if(apt >= 1.0)             return {text:'ELEVADO',   bg:'rgba(0,230,118,0.18)',   color:'#00e676'};
+  if(apt >= 0.70)            return {text:'ATIVO',     bg:'rgba(0,230,118,0.12)',   color:'#6ee7b7'};
+  return                            {text:'CONSERV.',  bg:'rgba(255,213,0,0.14)',   color:'#ffd700'};
+}
+function _ccMultColor(v, invert=false){
+  // invert=true: valor > 1 é restritivo (score_mult, thr_mult)
+  const hi = invert ? v > 1.05 : v > 1.05;
+  const lo = invert ? v < 0.95 : v < 0.95;
+  if(invert) return v > 1.05 ? '#ff9900' : v < 0.95 ? '#6ee7b7' : 'rgba(255,255,255,0.45)';
+  return             v > 1.05 ? '#6ee7b7' : v < 0.95 ? '#ff9900' : 'rgba(255,255,255,0.45)';
+}
+function _ccKellyColor(v){
+  return v > 1.05 ? '#00e676' : v < 0.50 ? '#ff4560' : v < 0.95 ? '#ff9900' : 'rgba(255,255,255,0.55)';
+}
+
+function buildCommandCenter(sr){
+  if(!sr || sr.error) return;
+
+  const regime  = sr.regime      || 'UNKNOWN';
+  const macro   = sr.macro_state || 'UNKNOWN';
+  const thr     = sr.thr_mult_raw ?? 1.0;
+
+  // ── Barra de contexto ──────────────────────────────────────────────────────
+  const regEl = document.getElementById('cc-regime-pill');
+  const macEl = document.getElementById('cc-macro-pill');
+  const thrEl = document.getElementById('cc-thr-chip');
+
+  if(regEl){
+    const rc = CC_REGIME_COLORS[regime] || CC_REGIME_COLORS['UNKNOWN'];
+    regEl.style.cssText += `;background:${rc.pill};color:${rc.color}`;
+    regEl.textContent = CC_REGIME_SHORT[regime] || regime;
+  }
+  if(macEl){
+    const mc = CC_MACRO_COLORS[macro] || CC_MACRO_COLORS['UNKNOWN'];
+    macEl.style.cssText += `;background:${mc.bg};color:${mc.color}`;
+    macEl.textContent = macro;
+  }
+  if(thrEl){
+    const d = thr - 1.0;
+    const c = d > 0.05 ? '#ff9900' : d < -0.05 ? '#6ee7b7' : 'rgba(255,255,255,0.5)';
+    const a = d > 0.05 ? '▲' : d < -0.05 ? '▼' : '—';
+    thrEl.innerHTML = `<span style="color:var(--muted)">threshold </span>`
+                    + `<span style="color:${c};font-weight:700">${a}×${thr.toFixed(3)}</span>`;
+  }
+
+  // ── Heatmap ────────────────────────────────────────────────────────────────
+  const matrix  = sr.matrix_summary || {};
+  const heatEl  = document.getElementById('cc-heatmap');
+  if(heatEl && Object.keys(matrix).length){
+    let html = '<tr><td></td>';
+    // cabeçalho: nomes dos regimes
+    for(const rg of CC_REGIME_ORDER){
+      const active = rg === regime;
+      html += `<th class="cc-heat-th${active?' cc-col-active':''}">${CC_REGIME_SHORT[rg]||rg}</th>`;
+    }
+    html += '</tr>';
+    // linhas: uma por estratégia
+    for(const sid of CC_STRAT_ORDER){
+      const meta = CC_STRAT_META[sid]||{badge:sid.slice(0,5).toUpperCase(),cls:'sb-pm'};
+      html += `<tr><td class="cc-heat-row-lbl"><span class="strat-badge ${meta.cls}">${meta.badge}</span></td>`;
+      for(const rg of CC_REGIME_ORDER){
+        const apt   = (matrix[sid]||{})[rg] ?? 0.7;
+        const st    = _ccAptStyle(apt);
+        const isAc  = rg === regime;
+        const label = apt < 0.35 ? '✗' : Math.round(apt*100)+'%';
+        const tip   = `${meta.badge} · ${CC_REGIME_SHORT[rg]||rg} = ${Math.round(apt*100)}%`;
+        html += `<td class="cc-heat-cell${isAc?' cc-col-active':''}" `
+              + `style="background:${st.bg};color:${st.color}" title="${tip}">${label}</td>`;
+      }
+      html += '</tr>';
+    }
+    heatEl.innerHTML = html;
+  }
+
+  // ── Cards por estratégia ───────────────────────────────────────────────────
+  const strats  = sr.strategies || {};
+  const sp      = _slowData.sp;
+  const bySp    = sp ? (sp.by_strategy||{}) : {};
+  const eaMap   = sp ? (sp.edge_alpha  ||{}) : {};
+  const cardsEl = document.getElementById('cc-strat-cards');
+  if(!cardsEl) return;
+
+  let html = '';
+  for(const sid of CC_STRAT_ORDER){
+    const adv   = strats[sid] || {};
+    const meta  = CC_STRAT_META[sid]||{name:sid,sp_key:sid,badge:'?',cls:'sb-pm'};
+    const apt   = adv.aptitude  ?? 1.0;
+    const ok    = adv.allowed   !== false;
+    const kelly = adv.kelly_mult ?? 1.0;
+    const smx   = adv.score_mult ?? 1.0;
+    const tmx   = adv.thr_mult   ?? 1.0;
+    const pill  = _ccStatusPill(apt, ok);
+    const ast   = _ccAptStyle(apt);
+    const bar   = Math.min(apt/1.4*100, 100).toFixed(1);
+    const cc    = !ok||apt<0.35 ? 'cc-s-blocked' : apt>=1.0 ? 'cc-s-elevated' : '';
+
+    // Dados de performance (sp)
+    const spd   = bySp[meta.sp_key]||{};
+    const n     = spd.n_trades||0;
+    const wr    = spd.win_rate;
+    const pnl   = spd.total_pnl_usdt;
+    const ea    = eaMap[meta.sp_key];
+    const pc    = pnl > 0 ? '#00e676' : pnl < 0 ? '#ff4560' : 'rgba(255,255,255,0.3)';
+    const ps    = pnl > 0 ? '+' : '';
+
+    // Motivo curto: remove texto técnico e brackets
+    const rsn   = (adv.reason||'')
+                    .replace(/aptidão=[\d.]+\s?/gi,'')
+                    .replace(/\[[\w/_]+\]/g,'')
+                    .trim();
+
+    html += `
+<div class="cc-strat-card ${cc}">
+  <!-- Nome + badge -->
+  <div style="display:flex;align-items:center;gap:7px;min-width:0">
+    <span class="strat-badge ${meta.cls}" style="flex-shrink:0">${meta.badge}</span>
+    <span style="font-size:0.70rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${meta.name}</span>
+  </div>
+  <!-- Status pill -->
+  <div>
+    <span class="cc-status-pill" style="background:${pill.bg};color:${pill.color}">${pill.text}</span>
+  </div>
+  <!-- Barra de aptidão -->
+  <div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+      <span style="font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em">Aptidão</span>
+      <span style="font-size:0.80rem;font-weight:700;color:${ast.color}">${Math.round(apt*100)}%</span>
+    </div>
+    <div class="cc-apt-bar-track">
+      <div class="cc-apt-bar-fill" style="width:${bar}%;background:${ast.color}"></div>
+    </div>
+  </div>
+  <!-- Multiplicadores Kelly / Score / Thr -->
+  <div class="cc-mults">
+    <div class="cc-mult-chip">
+      <span style="font-size:0.54rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Kelly</span>
+      <span style="font-size:0.75rem;font-weight:700;color:${_ccKellyColor(kelly)}">&times;${kelly.toFixed(2)}</span>
+    </div>
+    <div class="cc-mult-chip">
+      <span style="font-size:0.54rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Score</span>
+      <span style="font-size:0.75rem;font-weight:700;color:${_ccMultColor(smx,true)}">&times;${smx.toFixed(2)}</span>
+    </div>
+    <div class="cc-mult-chip">
+      <span style="font-size:0.54rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Thr</span>
+      <span style="font-size:0.75rem;font-weight:700;color:${_ccMultColor(tmx,true)}">&times;${tmx.toFixed(2)}</span>
+    </div>
+  </div>
+  <!-- Motivo -->
+  ${rsn?`<div style="font-size:0.63rem;color:var(--muted);line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${rsn}</div>`:''}
+  <!-- Performance (do sp data) -->
+  <div class="cc-strat-perf">
+    <span style="font-size:0.63rem;color:var(--muted)">${n} trade${n!==1?'s':''}${wr!=null?' · '+Math.round(wr*100)+'% WR':''}</span>
+    ${pnl!=null?`<span style="font-size:0.63rem;font-weight:700;color:${pc}">${ps}${pnl.toFixed(1)} USDT</span>`:''}
+  </div>
+</div>`;
+  }
+
+  cardsEl.innerHTML = html ||
+    '<div style="padding:20px;text-align:center;color:var(--muted);grid-column:1/-1">Sem dados</div>';
+}
+
+// alias mantido para compatibilidade interna (a variável sr ainda é passada via updateSlow)
+function buildStrategyRouter(sr){ buildCommandCenter(sr); }
 
 // ── Cross-Asset Engine ────────────────────────────────────────────────────────
 

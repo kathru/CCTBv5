@@ -23,6 +23,7 @@ import asyncio
 import logging
 from pathlib import Path
 
+from ..alerts.base import NullAlertChannel
 from ..alerts.discord import create_alert_channel
 from ..alerts.listener import AlertListener
 from ..alerts.trading_alerts import TradingAlertsManager
@@ -244,10 +245,15 @@ class TradingLoop:
         self._meta.register(v4.strategy_id)
 
         # ── Alerts ────────────────────────────────────────────
-        self._alert_channel = create_alert_channel(
-            settings.discord_webhook_url,
-            bot_name=f"CCTBv5 [{settings.bot_instance}]",
-        )
+        # monitor_only=True → sem alertas Discord (apenas observação)
+        if settings.monitor_only:
+            self._alert_channel = NullAlertChannel()
+            logger.info("AlertChannel: desativado (monitor_only=True)")
+        else:
+            self._alert_channel = create_alert_channel(
+                settings.discord_webhook_url,
+                bot_name=f"CCTBv5 [{settings.bot_instance}]",
+            )
         self._alert_listener = AlertListener(
             bus=self._bus,
             channel=self._alert_channel,
